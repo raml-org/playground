@@ -1,6 +1,6 @@
 # AML Modeling Framework - Playground
 
-![AMF Playground Logo](logo_dark.png)
+![RAML Playground Logo](docs/images/ramlLogo.svg)
 
 This repository contains the code for the AML Modeling Framework (AMF) Playground hosted under [this URL](http://a.ml/amf-playground/).
 
