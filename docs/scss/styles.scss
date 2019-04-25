@@ -1,0 +1,277 @@
+// Mulesoft Colors
+$primary: #00A2DF;
+$tertiary: #ffffff;
+$coreBlue4: #087299;
+$futureGreen2: #33CC7A;
+$aluminum2: #F4F5F6;
+$aluminum5: #989A9B;
+$steel1: #6B6C6D;
+$steel3: #3A3B3C;
+$steel4: #262728;
+$steel5: #121314;
+
+// Other colors
+$ramlWhite: #ECECEC;
+$blueHightlight: #14A7DE;
+$notSelected: #999A9B;
+$black: #000;
+$white: $tertiary;
+
+html {
+  background-color: $aluminum2;
+}
+
+// fonts
+$inputMono: Input Mono, monospace;
+$openSans: Open Sans, sans-serif;
+
+// loader
+#preloader {
+  position: absolute;
+  top: 13px;
+}
+
+#preloader-progress::-moz-progress-bar {
+  background-color: $primary;
+}
+
+#preloader-progress::-webkit-progress-value {
+  background-color: $primary;
+}
+
+// page layout/General
+* {
+  box-sizing: border-box;
+}
+@media screen and (min-width: 769px) {
+  .column.is-three-quarters {
+    width: 66%;
+    background-color: $white;
+  }
+}
+.column {
+  background-color: $aluminum2;
+  position: relative;
+  &.is-three-quarters {
+    padding-bottom: 0;
+  }
+}
+
+.label,.input {
+  color: $steel1;
+  font-family: $openSans;
+  font-weight: normal;
+}
+.input {
+  background-color: $aluminum2;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  border-left: 2px solid $aluminum5;
+  border-right: 2px solid $aluminum5;
+}
+.button.is-primary, a.button.is-success {
+  background-color: $primary!important;
+  border-radius: 0;
+  padding: 0 20px;
+  margin-right: 20px;
+  &:hover {
+    color: $white;
+  }
+}
+.menu-list a.is-active {
+  background-color: $blueHightlight;
+}
+.tabs {
+  font-family: $openSans;
+  ul {
+    border-bottom: 3px solid $notSelected;
+    color: $notSelected;
+    opacity: 0.9;
+  }
+  a {
+    color: $notSelected;
+    opacity: 0.9;
+    border: none;
+    &:hover {
+      color: $steel3;
+    }
+  }
+  li.is-active a {
+    color: $steel3;
+    border-bottom: 3px solid $blueHightlight;
+    margin-bottom: -3px;
+    opacity: 1;
+  }
+}
+
+
+// Nav
+.navbar {
+  background-image: url("../images/header.svg");
+  position: relative;
+  padding: 5px 0;
+  .navbar-item  {
+    .select {
+      select {
+        background-color: transparent;
+        color: $white;
+        border: none;
+        border-radius: 0;
+        option {
+          color: $black;
+          &:hover {
+            color: $white;
+          }
+        }
+      }
+      &:after {
+        border-color: $white;
+      }
+    }
+
+    a.button {
+      border-radius: 0;
+      color: $primary;
+      border: 1px solid $primary;
+      background-color: transparent;
+      position: absolute;
+      right: 200px;
+    }
+  }
+  .logo-wrapper {
+    color: $white;
+    font-family: $openSans;
+    .navbar-logo-text {
+      font-size: 20px;
+      margin: 0 8px 0 13px;
+    }
+    .navbar-logo-img {
+      margin-left: 10px;
+    }
+    .super {
+      margin-bottom: 8px;
+    }
+  }
+
+}
+
+//  Editor
+#editor-container {
+  border: none;
+  .monaco-editor.vs {
+    .token, .token.comment, .token.comment.block, .token.comment.block.documentation, .token.comment.line, .token.type{
+      color: $primary;
+      // font-family: $inputMono;
+      &.string.value, &.string.yaml {
+        color: $ramlWhite!important;
+      }
+    }
+    .token.number {
+      background-color: $primary;
+      color: $white;
+      font-size: 1em;
+      padding: 10px 8px;
+      height: 1em;
+    }
+    .line-numbers {
+      color: $white;
+      padding-right: 9px;
+      text-align: right;
+      background-color: $black;
+    }
+    .current-line {
+      border: none;
+    }
+  }
+  .selected-element-line-decoration {
+    background-color: $primary;
+  }
+}
+.base-url-form {
+  display: flex;
+  > div {
+    flex: 1;
+    &.input-div {
+      flex: 6;
+      padding-right: 20px;
+    }
+    &:first-child {
+      text-align: center;
+    }
+  }
+}
+.monaco-editor-background {
+  &.margin-view-overlays {
+    background: $steel5;
+  }
+  &.lines-content {
+    background: $steel4;
+  }
+}
+
+// navigator
+#navigator {
+  .menu {
+    max-height: calc(100% - 59px);
+    overflow-y: scroll;
+  }
+}
+.menu-list {
+  a {
+    &.is-active {
+      &:hover {
+        color: $white;
+      }
+    }
+    &:hover {
+      color: $primary;
+    }
+  }
+}
+#bottom-links {
+  background-color: $aluminum2;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding-top: 10px;
+
+  .ms-logo {
+    margin: 0 20px;
+    padding: 30px 0;
+    border-top: 1px solid $aluminum5;
+  }
+}
+
+.amf-links {
+  display: flex;
+  > a {
+    flex: 1;
+    height: 46px;
+    font-size: 17px;
+    color: $coreBlue4;
+  }
+  .github-logo {
+    img {
+      opacity: 0.6;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+  }
+}
+
+// modal
+.modal-card-body, #query {
+  .select {
+    select {
+      &:focus, &:active {
+        border-color: $primary;
+      }
+    }
+    &:after {
+      border-color: $primary;
+    }
+  }
+}

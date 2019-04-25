@@ -1,0 +1,17 @@
+<div id="panel" class="level imported" style="padding-bottom: 15px" data-bind="visible: editorSection()=='editor'">
+    <div class="level-item has-text-centered">
+        <div data-bind="visible: started() && !isLoading()">
+          <p class="heading" data-bind="text: leftHash().count + ' assertions', style: {color: (leftHash().count===rightHash().count) ? '#276cda' : null}"></p>
+          <p class="title" style="font-size: 12px; font-weight: bolder" data-bind="text: leftHash().hash"></p>
+        </div>
+    </div>
+    <div class="level-item has-text-centered" style="margin-top: 5px">
+        <a data-bind="click: computeDiff, css: {'is-loading': (isLoading() === true)}" class="button is-primary">Diff</a>
+    </div>
+    <div class="level-item has-text-centered">
+        <div data-bind="visible: started() && !isLoading()">
+          <p class="heading" data-bind="text: rightHash().count + ' assertions', style: {color: (leftHash().count===rightHash().count) ? '#276cda' : null}"></p>
+          <p class="title" style="font-size: 12px; font-weight: bolder" data-bind="text: rightHash().hash"></p>
+        </div>
+    </div>
+</div>

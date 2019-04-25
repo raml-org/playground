@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+
+<div class="box imported is-paddingless">
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <div class="logo-wrapper navbar-item">
+                <span class="nav-logo-img">
+                    <img src='./images/ramlLogo.svg'>
+                </span>
+                <span style="color:white; margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Vocabularies / Dialects</span>
+            </div>
+        </div>
+        <div class="navbar-start navbar-menu">
+        </div>
+        <div class="navbar-item">
+            <div class="dropdown is-right">
+              <select name="raml-demo" class="raml-demo-select"
+                onchange="(function(el) {window.location = el.value})(this)">
+                  <option value="playground.html">Demo: Playground</option>
+                  <option value="diff.html">Demo: Diff</option>
+                  <option value="custom_validation.html">Demo: Custom Validation</option>
+                  <option value="validation.html">Demo: Payload Validation</option>
+                  <option value="vocabularies.html" selected>Demo: Vocabularies and Dialects</option>
+              </select>
+            </div>
+        </div>
+    </nav>
+</div>

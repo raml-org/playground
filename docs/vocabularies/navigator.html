@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<div id="navigator" class="imported">
+    <div class="tabs">
+        <ul>
+            <li data-bind="click: () => { navigatorSection('files') },
+                           css: {'is-active': navigatorSection() === 'files'}">
+                <a>Workspace</a>
+            </li>
+        </ul>
+    </div>
+    <aside  data-bind="visible: navigatorSection()==='files'"
+            class="menu" id="modules-navigator">
+        <p class="menu-label">Vocabularies</p>
+        <ul class="menu-list" data-bind="foreach: vocabsFiles">
+            <li data-bind="click: $parent.selectNavigatorFile.bind($parent)">
+                <span class="icon is-small pull-left" style="margin-right: 5px; margin-top: 10px; margin-left: 15px">
+                    <i class="fa fa-file"></i>
+                </span>
+                <a data-bind="text: name,
+                              css: {'is-active': $parent.selectedReference() && $parent.selectedReference().name === name}"></a>
+            </li>
+        </ul>
+        <p class="menu-label">Dialects</p>
+        <ul class="menu-list" data-bind="foreach: dialectFiles">
+            <li data-bind="click: $parent.selectNavigatorFile.bind($parent)">
+                <span class="icon is-small pull-left" style="margin-right: 5px; margin-top: 10px; margin-left: 15px">
+                    <i class="fa fa-file"></i>
+                </span>
+                <a data-bind="text: name,
+                              css: {'is-active': $parent.selectedReference() && $parent.selectedReference().name === name}"></a>
+            </li>
+        </ul>
+        <p class="menu-label">Documents</p>
+        <ul class="menu-list" data-bind="foreach: instanceFiles">
+            <li data-bind="click: $parent.selectNavigatorFile.bind($parent)">
+                <span class="icon is-small pull-left" style="margin-right: 5px; margin-top: 10px; margin-left: 15px">
+                    <i class="fa fa-file"></i>
+                </span>
+                <a data-bind="text: name,
+                              css: {'is-active': $parent.selectedReference() && $parent.selectedReference().name === name}"></a>
+            </li>
+        </ul>
+    </aside>
+</div>

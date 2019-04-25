@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<div id="editor_data" class="imported">
+    <div class="tabs">
+        <ul>
+            <li data-bind="click: () => { validationSection('custom') },
+                           css: { 'is-active': validationSection() === 'custom' }">
+                <a>Custom Validation</a>
+            </li>
+            <li data-bind="click: () => { validationSection('shacl') },
+                           css: { 'is-active': validationSection() === 'shacl' }">
+                <a>SHACL Shapes</a>
+            </li>
+        </ul>
+    </div>
+    <div id="editor-data-container" class="editor-container"></div>
+</div>

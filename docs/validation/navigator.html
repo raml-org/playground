@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<div id="navigator" class="imported">
+    <div class="tabs">
+        <ul>
+            <li data-bind="click: () => { navigatorSection('shapes') },
+                           css: {'is-active': navigatorSection() === 'shapes'}">
+                <a>Shapes</a>
+            </li>
+            <li data-bind="click: () => { navigatorSection('errors') },
+                           css: {'is-active': navigatorSection() === 'errors'}">
+                <a data-bind="text: (errors().length === 0 ? 'Errors' : 'Errors (' + (errors().length) + ')')"></a>
+            </li>
+        </ul>
+    </div>
+    <aside id="shapes-list" data-bind="visible: navigatorSection()==='shapes'"
+           class="menu" id="shapes-navigator">
+        <ul class="menu-list" data-bind="foreach: shapes" style="font-size: 105%">
+            <span data-bind="template: {name: 'shape-template', data: $data}"></span>
+        </ul>
+    </aside>
+
+    <script type="text/html" id="shape-template">
+        <!-- NodeShape -->
+        <li class="navigator-item" data-bind="if: ($data.properties !== undefined)">
+            <a data-bind="css: { 'with-error': viewModel.hasError($data) }">
+                <i class="fa fa-cubes" style="float: left"></i>
+                <span class="menu-label submenu-label imported"
+                      data-bind="css: { 'with-error': viewModel.hasError($data) }"
+                      style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;">
+                    Node Shape
+                </span>
+            </a>
+            <ul class="menu-list">
+                <li data-bind="text: ($data.id || '').split('document/type')[1]"></li>
+                <span data-bind="foreach: $data.properties">
+                    <span data-bind="template: {name: 'shape-template', data: $data}"></span>
+                </span>
+            </ul>
+        </li>
+        <!-- PropertyShape -->
+        <li class="navigator-item" data-bind="if: ($data.path !== undefined)">
+            <a data-bind="css: { 'with-error': viewModel.hasError($data) }">
+                <i class="fa fa-cube" style="float: left"></i>
+                <span class="menu-label submenu-label imported"
+                      data-bind="css: { 'with-error': viewModel.hasError($data) }"
+                      style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;">
+                    Property Shape
+                </span>
+            </a>
+            <ul class="menu-list">
+                <li class="navigator-item" data-bind="text: '/' + ($data.path.value()||'').split('#')[1]"></li>
+                <li data-bind="if: ($data.range != null && $data.range.dataType === undefined)">
+                    <span data-bind="template: {name: 'shape-template', data: $data.range}"></span>
+                </li>
+                <li data-bind="if: ($data.range.isNull != null && $data.dataType !== undefined)">
+                    <h2 data-bind="text: 'xsd:' + ($data.range.dataType.value() ||'').split('#')[1]"></h2>
+                </li>
+            </ul>
+        </li>
+    </script>
+
+
+    <aside data-bind="visible: navigatorSection()==='errors'"
+           class="menu" id="errors-navigator">
+        <ul class="menu-list" data-bind="foreach: errors" style="font-size: 105%">
+            <li>
+                <a style="color: red; cursor: default;">
+                    <i class="fa fa-exclamation-circle" style="float: left"></i>
+                    <span data-bind="text: level" style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;color: red"></span>
+                </a>
+                <ul>
+                    <li><p data-bind="text: message" style="padding-top: 5px"></p></li>
+                </ul>
+            </li>
+        </ul>
+    </aside>
+
+</div>
