@@ -12,8 +12,6 @@
     <script src="js/preload.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
-    <link rel="stylesheet" href="css/app.css">
-    <link rel="stylesheet" href="css/vocabularies_styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <title>AML Demo</title>
 </head>
@@ -140,15 +138,10 @@
                     customizeMonaco();
 
                     var editorData = monaco.editor.create(document.getElementById("editor-aml-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             '# loading data'
                         ].join('\n'),
-                        language: 'yaml',
+                        language: 'raml',
                         minimap: {
                             enabled: false
                         }

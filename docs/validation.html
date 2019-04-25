@@ -12,8 +12,6 @@
     <script src="js/preload.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
-    <link rel="stylesheet" href="css/app.css">
-    <link rel="stylesheet" href="css/validation_styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <title>RAML Payload Validation</title>
 </head>
@@ -144,26 +142,16 @@
                     customizeMonaco();
 
                     var editorData = monaco.editor.create(document.getElementById("editor-data-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                         '{\n  "name": "Timothy",\n  "surname": "Berners-Lee"\n}'
                         ].join('\n'),
-                        language: 'json',
+                        language: 'raml',
                         minimap: {
                             enabled: false
                         }
                     });
 
                     var editorShape = monaco.editor.create(document.getElementById("editor-shape-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             "type: object\n" +
                             "additionalProperties: false\n" +
@@ -192,7 +180,7 @@
                             "    required: false\n" +
                             "    type: string"
                         ].join('\n'),
-                        language: 'yaml',
+                        language: 'raml',
                         minimap: {
                             enabled: false
                         }

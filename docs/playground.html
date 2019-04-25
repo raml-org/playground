@@ -12,7 +12,6 @@
     <script src="js/preload.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
-    <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" href="bower_components/balloon-css/balloon.css">
@@ -165,11 +164,6 @@
                     customizeMonaco();
 
                     var editor = monaco.editor.create(document.getElementById("editor-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             '# no data loaded'
                         ].join('\n'),

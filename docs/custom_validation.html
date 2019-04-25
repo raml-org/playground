@@ -12,7 +12,6 @@
     <script src="js/preload.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
-    <link rel="stylesheet" href="css/app.css">
     <link rel="stylesheet" href="css/validation_styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <title>RAML Custom Validation</title>
@@ -144,11 +143,6 @@
                     customizeMonaco();
 
                     var editorData = monaco.editor.create(document.getElementById("editor-data-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             "#%Validation Profile 1.0\n" +
                             "\n" +
@@ -217,11 +211,6 @@
                     });
 
                     var editorShape = monaco.editor.create(document.getElementById("editor-shape-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             "#%RAML 1.0\n" +
                             "title: Mobile Order API\n" +

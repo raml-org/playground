@@ -43,7 +43,7 @@ function customizeMonaco () {
         ],
         {include:"@flowScalars"},
         [/.+(?=#)/,{cases:{"@keywords":"keyword","@default":"string"}}],
-        [/.+$/,{cases:{"@keywords":"keyword","@default":"string"}}],
+        [/.+$/,{cases:{"@keywords":"keyword","@default":"string"}}]
       ],
 
       object:[

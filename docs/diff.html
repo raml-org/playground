@@ -12,8 +12,6 @@
     <script src="js/preload.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
-    <link rel="stylesheet" href="css/app.css">
-    <link rel="stylesheet" href="css/validation_styles.css">
     <link rel="stylesheet" href="css/vis.min.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <title>RAML Diff</title>
@@ -128,11 +126,6 @@
                     customizeMonaco();
 
                     var editorLeft = monaco.editor.create(document.getElementById("editor-left-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             '#%RAML 1.0\n' +
                             '\n' +
@@ -163,11 +156,6 @@
                     });
 
                     var editorRight = monaco.editor.create(document.getElementById("editor-right-container"), {
-                        automaticLayout: true,
-                        fontSize: 16,
-                        fontWeight: "bold",
-                        scrollBeyondLastLine: false,
-                        readOnly: false,
                         value: [
                             '#%RAML 1.0\n' +
                             '\n' +
