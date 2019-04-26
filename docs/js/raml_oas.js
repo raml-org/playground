@@ -24187,7 +24187,7 @@ class ViewModel {
         let value = editor.getModel().getValue();
         if (!value) {
             return;
-        }
+        } // Don't parse editor content if it's empty
         let baseUrl = this.baseUrl() || '';
         this.parseString(section, baseUrl, value, (err, model) => {
             if (err) {
