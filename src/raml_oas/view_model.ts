@@ -1,6 +1,6 @@
 import * as ko from 'knockout'
 import { ModelProxy, ModelLevel } from '../main/model_proxy'
-import * as amf from 'amf-client-js'
+import { WebApiParser as wap } from 'webapi-parser'
 
 export type EditorSection = 'raml' | 'oas';
 export type ModelType = 'raml' | 'oas';
@@ -58,10 +58,7 @@ export class ViewModel {
 
   public apply (location: Node) {
     window['viewModel'] = this
-    amf.plugins.document.WebApi.register()
-    amf.plugins.document.Vocabularies.register()
-    amf.plugins.features.AMFValidation.register()
-    amf.Core.init().then(() => {
+    wap.init().then(() => {
       ko.applyBindings(this)
     })
   }
@@ -94,13 +91,8 @@ export class ViewModel {
   }
 
   public parseString (type: ModelType, baseUrl: string, value: string, cb: (err, model) => any) {
-    let parser: any
-    if (type === 'raml') {
-      parser = amf.Core.parser('RAML 1.0', 'application/yaml')
-    } else if (type === 'oas') {
-      parser = amf.Core.parser('OAS 2.0', 'application/yaml')
-    }
-    parser.parseStringAsync(value).then((model) => {
+    let parser = type === 'raml' ? wap.raml10 : wap.oas20
+    parser.parse(value).then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
       console.error(`Failed to parse string: ${err}`)
