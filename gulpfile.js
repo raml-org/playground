@@ -27,7 +27,7 @@ gulp.task('sass', function () {
 const options = {'standalone': 'raml_oas'}
 const b = watchify(browserify(options))
 
-function bundleRamlOas () {
+gulp.task('bundleRamlOas', function () {
   return b
     .add([
       'src/raml_oas/view_model.ts'
@@ -35,24 +35,23 @@ function bundleRamlOas () {
     .plugin(tsify, { target: 'es6' })
     .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
     .bundle()
-     // log errors if they happen
+  // log errors if they happen
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
     .pipe(source('raml_oas.js'))
-     // optional, remove if you don't need to buffer file contents
+  // optional, remove if you don't need to buffer file contents
     .pipe(buffer())
-     // optional, remove if you dont want sourcemaps
-     // loads map from browserify file
+  // optional, remove if you dont want sourcemaps
+  // loads map from browserify file
     .pipe(sourcemaps.init({loadMaps: true}))
-     // Add transformation tasks to the pipeline here.
+  // Add transformation tasks to the pipeline here.
     .pipe(sourcemaps.write('./')) // writes .map file
     .pipe(gulp.dest('./docs/js'))
     .pipe(browserSync.stream({once: true}))
-}
+})
 
-gulp.task('serve', ['bower'], function () {
-  bundleRamlOas()
-  browserSync.init({
+gulp.task('serveRamlOas', gulp.series('bower', 'bundleRamlOas', function () {
+  return browserSync.init({
     server: 'docs',
     startPath: '/raml_oas.html'
   })
-})
+}))
