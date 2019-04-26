@@ -77,6 +77,7 @@ export class ViewModel {
     console.log(`Parsing text from editor section '${section}'`)
     let editor = section === 'raml' ? this.ramlEditor : this.oasEditor
     let value = editor.getModel().getValue()
+    if (!value) { return } // Don't parse editor content if it's empty
     let baseUrl = this.baseUrl() || ''
     this.parseString(section as 'raml' | 'oas', baseUrl, value, (err, model) => {
       if (err) {
