@@ -30,7 +30,7 @@ export class ModelProxy {
         // for the kind of model.
         if (this.sourceType === "raml") {
             this.generatedRamlModel = model;
-        } else if(this.sourceType === "open-api") {
+        } else if(this.sourceType === "oas") {
             this.generatedOpenAPIModel = model;
         }
 
@@ -72,7 +72,7 @@ export class ModelProxy {
      * @param level: document, domain
      * @param cb
      */
-    toOpenAPI(level: ModelLevel, options: any, cb) {
+    toOas(level: ModelLevel, options: any, cb) {
         console.log(`** Generating OAS with level ${level}`);
         try {
             if (level == "document") {
@@ -98,7 +98,7 @@ export class ModelProxy {
         var parser;
         if (modelType === "raml") {
             parser = ramlParser
-        } else if (modelType === "open-api") {
+        } else if (modelType === "oas") {
             parser = openAPIParser
         } else {
             parser = apiModelParser

@@ -1,6 +1,6 @@
 import {ModelProxy} from "./model_proxy";
 import * as amf from "amf-client-js";
-export type ModelType = "raml" | "open-api" | "api-model";
+export type ModelType = "raml" | "oas";
 export class AmfPlaygroundWindow {
 
 
@@ -19,7 +19,7 @@ export class AmfPlaygroundWindow {
 
         if (type === "raml") {
             parser = amf.Core.parser("RAML 1.0", "application/yaml");
-        } else if(type === "open-api") {
+        } else if(type === "oas") {
             parser = amf.Core.parser("OAS 2.0", "application/yaml");
         }
 
@@ -37,10 +37,8 @@ export class AmfPlaygroundWindow {
         let parser: any;
         if (type === "raml") {
             parser = amf.Core.parser("RAML 1.0", "application/yaml");
-        } else if(type === "open-api") {
+        } else if(type === "oas") {
             parser = amf.Core.parser("OAS 2.0", "application/yaml");
-        } else if(type === "api-model") {
-            parser = amf.Core.parser("AMF Graph", "application/ld+json");
         }
         parser.parseStringAsync(value).then((model) => {
             cb(null, new ModelProxy(model, type));

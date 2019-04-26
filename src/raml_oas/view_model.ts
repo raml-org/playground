@@ -5,7 +5,6 @@ import { Document, Fragment, Module } from '../main/units_model'
 import { DomainElement, DomainModel } from '../main/domain_model'
 import * as amf from 'amf-client-js'
 
-export type NavigatorSection = 'files' | 'logic' | 'domain';
 export type EditorSection = 'raml' | 'oas';
 export type ModelType = 'raml' | 'oas';
 
@@ -32,14 +31,7 @@ export class ViewModel {
 
   // Observables for the main interface state
   public baseUrl: KnockoutObservable<string> = ko.observable<string>('');
-  public navigatorSection: KnockoutObservable<NavigatorSection> = ko.observable<NavigatorSection>('files');
   public editorSection: KnockoutObservable<EditorSection> = ko.observable<EditorSection>('raml');
-  public references: KnockoutObservableArray<ReferenceFile> = ko.observableArray<ReferenceFile>([]);
-  public selectedReference: KnockoutObservable<ReferenceFile | null> = ko.observable<ReferenceFile | null>(null);
-  public documentUnits: KnockoutObservableArray<Document> = ko.observableArray<Document>([]);
-  public fragmentUnits: KnockoutObservableArray<Fragment> = ko.observableArray<Fragment>([]);
-  public moduleUnits: KnockoutObservableArray<Module> = ko.observableArray<Module>([]);
-  public domainUnits: KnockoutObservable<{ [kind: string]: DomainElement[] }> = ko.observable<{ [kind: string]: DomainElement[] }>({});
   public generationOptions: KnockoutObservable<any> = ko.observable<any>({ 'source-maps?': false });
   public generateSourceMaps: KnockoutObservable<string> = ko.observable<string>('no');
   public focusedId: KnockoutObservable<string> = ko.observable<string>('');
