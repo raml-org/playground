@@ -47,7 +47,6 @@ export class ModelProxy {
      * @param cb
      */
     toRaml(level: ModelLevel, options: any, cb) {
-        console.log(`** Generating RAML with level ${level}`);
         try {
             if (level == "document") {
                 const text = ramlGenerator.generateString(this.model).then((text) => {
@@ -73,7 +72,6 @@ export class ModelProxy {
      * @param cb
      */
     toOas(level: ModelLevel, options: any, cb) {
-        console.log(`** Generating OAS with level ${level}`);
         try {
             if (level == "document") {
                 const text = oasGenerator.generateString(this.model).then((text) => {

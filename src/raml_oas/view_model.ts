@@ -50,10 +50,10 @@ export class ViewModel {
       }
     }
 
-    ramlEditor.onDidChangeModelContent(
-      changeModelContent('ramlChangesFromLastUpdate', 'raml'))
-    oasEditor.onDidChangeModelContent(
-      changeModelContent('oasChangesFromLastUpdate', 'oas'))
+    ramlEditor.onDidChangeModelContent(changeModelContent.call(
+      this, 'ramlChangesFromLastUpdate', 'raml'))
+    oasEditor.onDidChangeModelContent(changeModelContent.call(
+      this, 'oasChangesFromLastUpdate', 'oas'))
   }
 
   public apply (location: Node) {
@@ -84,7 +84,7 @@ export class ViewModel {
     this.parseString(section as 'raml' | 'oas', baseUrl, value, (err, model) => {
       if (err) {
         alert(`Failed to parse editor section '${section}'`)
-        console.log(`Failed to parse editor section '${section}': ${err}`)
+        console.error(`Failed to parse editor section '${section}': ${err}`)
       } else {
         this.lastParsedSection(section)
         this.model = model
@@ -103,7 +103,7 @@ export class ViewModel {
     parser.parseStringAsync(value).then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
-      console.log(`Failed to parse string: ${err}`)
+      console.error(`Failed to parse string: ${err}`)
       cb(err, null)
     })
   }
@@ -123,7 +123,7 @@ export class ViewModel {
       this.model.toOas(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
           alert('Failed to generate OAS')
-          console.log(`Failed to generate OAS: ${err}`)
+          console.error(`Failed to generate OAS: ${err}`)
         } else {
           this.oasEditor.setModel(createModel(this.model!.oasString, 'yaml'))
         }
@@ -139,7 +139,7 @@ export class ViewModel {
       this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
           alert('Failed to generate RAML')
-          console.log(`Failed to generate RAML: ${err}`)
+          console.error(`Failed to generate RAML: ${err}`)
         } else {
           this.ramlEditor.setModel(createModel(this.model!.ramlString, 'yaml'))
         }
