@@ -16,29 +16,28 @@
     <link rel="stylesheet" href="bower_components/font-awesome/css/font-awesome.min.css">
     <link rel="stylesheet" href="bower_components/balloon-css/balloon.css">
     <link rel="stylesheet" href="bower_components/jointjs/dist/joint.css">
-    <title>RAML Playground</title>
+    <title>Demo: RAML + OAS</title>
 </head>
 <body>
 <!-- Loader view -->
 <div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
-    <h2 class="title is-2">Loading RAML Playground</h2>
+    <h2 class="title is-2">Loading Demo: RAML + OAS</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
     <img src="./images/powered_by_mulesoft.png">
 </div>
 
-<!-- Load spec modal window -->
-<link rel="import" href="html_fragments/playground/load_modal.html">
+<!-- Nav -->
+<link rel="import" href="html_fragments/raml_oas/nav.html">
+
 <!-- Main container class -->
-<link rel="import" href="html_fragments/playground/nav.html">
 <div class="section" style="padding: 0px">
     <div id="the-app" class="container is-marginless is-fluid">
         <div class="columns">
-            <div class="column" id="navigator-container">
-                <link rel="import" href="html_fragments/playground/navigator.html">
-                <link rel="import" href="html_fragments/playground/bottom_links.html">
+            <div class="column">
+                <link rel="import" href="html_fragments/raml_oas/editor_left.html">
             </div>
-            <div class="column is-three-quarters">
-                <link rel="import" href="html_fragments/playground/editor.html">
+            <div class="column">
+                <link rel="import" href="html_fragments/raml_oas/editor_right.html">
             </div>
         </div>
         <!-- data-bind="visible: (lastLoadedFile() != null)" -->
@@ -63,7 +62,7 @@
         // ************
         var loadApp = function(cb) {
             var assets = [
-                "./js/amf_playground.js",
+                "./js/raml_oas.js",
                 "js/monaco-editor/min/vs/loader.js",
                 "js/monaco-editor/monaco-customize.js"
             ];
@@ -111,75 +110,45 @@
 
                 require.config({paths: {'vs': 'js/monaco-editor/min/vs'}});
                 require(['vs/editor/editor.main'], function () {
-
                     var resize = function () {
                         console.log("** Resizing **");
                         var height = document.documentElement.clientHeight;
-                        var containerDiv = document.getElementById("editor-container");
-                        var style = window.getComputedStyle(containerDiv);
-                        var hidden = style.display == "none";
-                        if (!hidden) {
-                            containerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+                        var ramlContainerDiv = document.getElementById("editor-container-raml");
+                        if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
+                            ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
                         }
-                        var navigatorHeight = getHeight("navigator");
-                        var navigatorContainerHeight = getHeight("navigator-container");
-
-                        if(navigatorContainerHeight - navigatorHeight < 154) {
-                            document.getElementById("navigator").style.height = (navigatorContainerHeight - 154) + "px";
-                        } else {
-                            document.getElementById("navigator").style.height = "auto";
+                        var oasContainerDiv = document.getElementById("editor-container-oas");
+                        if (window.getComputedStyle(oasContainerDiv).display !== "none") {
+                            ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
                         }
-
-                        var navigatorDiv = document.getElementById("navigator-container");
-                        if (navigatorDiv != null) {
-                            navigatorDiv.style.maxHeight = (height-75) + "px";
-                            navigatorDiv.style.height = (height-75) + "px";
-                        }
-
-                        var graphDiv = document.getElementById("graph-container");
-                        if (graphDiv != null) {
-                            graphDiv.style.maxHeight = (height-200) + "px";
-                            graphDiv.style.height = (height-200) + "px";
-                        }
-
-                        var queryDiv = document.getElementById("query");
-                        if (queryDiv != null) {
-                            queryDiv.style.maxHeight = (height-200) + "px";
-                            queryDiv.style.height = (height-200) + "px";
-                        }
-                    };
-
-                    var getHeight = function(containerId) {
-                        var containerDiv = document.getElementById(containerId);
-                        var containerStyle = window.getComputedStyle(containerDiv);
-                        var heightString = containerStyle.height;
-                        var heightNumber = heightString.split("px")[0];
-                        return Number(heightNumber);
-                    };
-
+                    }
                     window.onresize = resize;
                     window.resizeFn = resize;
                     resize();
 
                     customizeMonaco();
 
-                    var editor = monaco.editor.create(document.getElementById("editor-container"), {
-                        value: [
-                            '# no data loaded'
-                        ].join('\n'),
-                        language: 'raml',
-                        minimap: {
-                            enabled: false
-                        }
-                    });
+                    var ramlEditor = monaco.editor
+                        .create(document.getElementById("editor-container-raml"), {
+                            value: '# no data loaded',
+                            language: 'raml',
+                            minimap: {enabled: false}
+                        });
 
-                    window.appModel = new amf_playground.ViewModel(editor);
+                    var oasEditor = monaco.editor
+                        .create(document.getElementById("editor-container-oas"), {
+                            value: '# no data loaded',
+                            language: 'raml',
+                            minimap: {enabled: false}
+                        });
+
+                    window.appModel = new raml_oas.ViewModel(ramlEditor, oasEditor);
                     window.appModel.apply(document.getElementById("the-app"));
                     setTimeout(function() {
                         document.getElementById("preloader").style.display = "none";
                         var brand = document.getElementById("brand");
                         if (brand) {
-                            brand.style.display='block';
+                            brand.style.display = 'block';
                         }
                     }, 200);
                 });

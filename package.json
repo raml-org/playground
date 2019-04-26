@@ -4,7 +4,8 @@
   "description": "",
   "main": "build.js",
   "scripts": {
-    "build-css": "node-sass --include-path scss docs/scss/styles.scss  docs/css/styles.css"
+    "build-css": "node-sass --include-path scss docs/scss/styles.scss  docs/css/styles.css",
+    "standard": "./node_modules/standard/bin/cmd.js --fix"
   },
   "author": "",
   "license": "ISC",
@@ -23,16 +24,25 @@
     "babelify": "^7.3.0",
     "browser-sync": "^2.18.8",
     "browserify": "^14.3.0",
+    "eslint-plugin-typescript": "^0.14.0",
     "gulp": "^3.9.1",
     "gulp-bower": "0.0.14",
     "gulp-sass": "4.0.2",
     "gulp-sourcemaps": "2.6.4",
     "gulp-util": "3.0.8",
     "node-sass": "^4.5.2",
+    "standard": "^12.0.1",
     "tsify": "^3.0.1",
     "typescript": "^2.2.2",
+    "typescript-eslint-parser": "^22.0.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.1.0",
     "watchify": "^3.9.0"
+  },
+  "standard": {
+    "parser": "typescript-eslint-parser",
+    "plugins": [
+      "typescript"
+    ]
   }
 }

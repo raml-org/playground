@@ -7,20 +7,22 @@
                 <span class="nav-logo-img">
                     <img src='./images/ramlLogo.svg'>
                 </span>
-                <span style="margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Vocabularies / Dialects</span>
+                <span style="margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Payload Validation</span>
             </div>
         </div>
         <div class="navbar-start navbar-menu">
+        </div>
+        <div class="navbar-end nav-menu">
+            <div class="navbar-item">
+                <span style="font-size: 14px; font-weight: bolder" class="tag is-success" data-bind="visible: (errors()||[]).length === 0">No Errors</span>
+                <span style="font-size: 14px; font-weight: bolder" class="tag is-danger" data-bind="visible: (errors()||[]).length > 0, text: ((errors()||[]).length)+' errors'"></span>
+            </div>
         </div>
         <div class="navbar-item">
             <div class="dropdown is-right">
               <select name="raml-demo" class="raml-demo-select"
                 onchange="(function(el) {window.location = el.value})(this)">
-                  <option value="playground.html">Demo: Playground</option>
-                  <option value="diff.html">Demo: Diff</option>
-                  <option value="custom_validation.html">Demo: Custom Validation</option>
-                  <option value="validation.html">Demo: Payload Validation</option>
-                  <option value="vocabularies.html" selected>Demo: Vocabularies and Dialects</option>
+                  <option value="raml_oas.html">Demo: RAML + OAS</option>
               </select>
             </div>
         </div>
