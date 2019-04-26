@@ -53,112 +53,120 @@
 </div>
 
 <script>
-    (function() {
-        window.global = window;
-        // ************
-        // $URL will be replaced by the URL passed to the AMF requests
-        // to form the final URL for the invocation throught the proxy
-        // window.JS_USE_PROXY="https://mycorsproxy.com/$URL";
-        // ************
-        var loadApp = function(cb) {
-            var assets = [
-                "./js/raml_oas.js",
-                "js/monaco-editor/min/vs/loader.js",
-                "js/monaco-editor/monaco-customize.js"
-            ];
-            var loaded = 0;
-            var preload = new createjs.LoadQueue();
-            var handleFileComplete = function(event) {
-                var oldValue = document.getElementById("preloader-progress").value;
-                var newValue = Math.floor(oldValue + (100 / (loaded + assets.length)));
-                document.getElementById("preloader-progress").value = newValue;
-                document.body.appendChild(event.result);
-                loaded++;
-                if(assets.length == 0) {
-                    document.getElementById("preloader-progress").value = 100;
-                    cb();
-                } else {
-                    console.log("loading " + assets[0]);
-                    preload.loadFile(assets.shift());
-                }
-            };
-            preload.addEventListener("fileload", handleFileComplete);
-            console.log("loading " + assets[0]);
-            preload.loadFile(assets.shift());
-        };
+  (function() {
+    window.global = window;
+    // ************
+    // $URL will be replaced by the URL passed to the AMF requests
+    // to form the final URL for the invocation throught the proxy
+    // window.JS_USE_PROXY="https://mycorsproxy.com/$URL";
+    // ************
+    var loadApp = function(cb) {
+      var assets = [
+        "./js/raml_oas.js",
+        "js/monaco-editor/min/vs/loader.js",
+        "js/monaco-editor/monaco-customize.js"
+      ];
+      var loaded = 0;
+      var preload = new createjs.LoadQueue();
+      var handleFileComplete = function(event) {
+        var oldValue = document.getElementById("preloader-progress").value;
+        var newValue = Math.floor(oldValue + (100 / (loaded + assets.length)));
+        document.getElementById("preloader-progress").value = newValue;
+        document.body.appendChild(event.result);
+        loaded++;
+        if (assets.length == 0) {
+          document.getElementById("preloader-progress").value = 100;
+          cb();
+        } else {
+          console.log("loading " + assets[0]);
+          preload.loadFile(assets.shift());
+        }
+      };
+      preload.addEventListener("fileload", handleFileComplete);
+      console.log("loading " + assets[0]);
+      preload.loadFile(assets.shift());
+    };
 
-        window.addEventListener('WebComponentsReady', function() {
-            document.getElementsByName("body");
-            // Imported content
-            window.reloadApp = function () {
-                var importedMap = {};
-                var pending = true;
-                while (pending === true) {
-                    pending = false;
-                    var links = document.querySelectorAll('link[rel="import"]');
-                    for (var i = 0; i < links.length; i++) {
-                        var link = links[i];
-                        if (link.import != null && importedMap[link.href] == null) {
-                            pending = true;
-                            importedMap[link.href] = true;
-                            var content = link.import;
-                            var el = content.querySelector('.imported');
-                            link.parentNode.insertBefore(el.cloneNode(true), link);
-                        }
-                    }
-                }
+    window.addEventListener('WebComponentsReady', function() {
+      document.getElementsByName("body");
+      // Imported content
+      window.reloadApp = function() {
+        var importedMap = {};
+        var pending = true;
+        while (pending === true) {
+          pending = false;
+          var links = document.querySelectorAll('link[rel="import"]');
+          for (var i = 0; i < links.length; i++) {
+            var link = links[i];
+            if (link.import != null && importedMap[link.href] == null) {
+              pending = true;
+              importedMap[link.href] = true;
+              var content = link.import;
+              var el = content.querySelector('.imported');
+              link.parentNode.insertBefore(el.cloneNode(true), link);
+            }
+          }
+        }
 
-                require.config({paths: {'vs': 'js/monaco-editor/min/vs'}});
-                require(['vs/editor/editor.main'], function () {
-                    var resize = function () {
-                        console.log("** Resizing **");
-                        var height = document.documentElement.clientHeight;
-                        var ramlContainerDiv = document.getElementById("editor-container-raml");
-                        if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-                            ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
-                        }
-                        var oasContainerDiv = document.getElementById("editor-container-oas");
-                        if (window.getComputedStyle(oasContainerDiv).display !== "none") {
-                            ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
-                        }
-                    }
-                    window.onresize = resize;
-                    window.resizeFn = resize;
-                    resize();
-
-                    customizeMonaco();
-
-                    var ramlEditor = monaco.editor
-                        .create(document.getElementById("editor-container-raml"), {
-                            value: '# no data loaded',
-                            language: 'raml',
-                            minimap: {enabled: false}
-                        });
-
-                    var oasEditor = monaco.editor
-                        .create(document.getElementById("editor-container-oas"), {
-                            value: '# no data loaded',
-                            language: 'raml',
-                            minimap: {enabled: false}
-                        });
-
-                    window.appModel = new raml_oas.ViewModel(ramlEditor, oasEditor);
-                    window.appModel.apply(document.getElementById("the-app"));
-                    setTimeout(function() {
-                        document.getElementById("preloader").style.display = "none";
-                        var brand = document.getElementById("brand");
-                        if (brand) {
-                            brand.style.display = 'block';
-                        }
-                    }, 200);
-                });
-            };
-
-            loadApp(function(){
-                reloadApp();
-            });
+        require.config({
+          paths: {
+            'vs': 'js/monaco-editor/min/vs'
+          }
         });
-    })();
+        require(['vs/editor/editor.main'], function() {
+          var resize = function() {
+            console.log("** Resizing **");
+            var height = document.documentElement.clientHeight;
+            var ramlContainerDiv = document.getElementById("editor-container-raml");
+            if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
+              ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+            }
+            var oasContainerDiv = document.getElementById("editor-container-oas");
+            if (window.getComputedStyle(oasContainerDiv).display !== "none") {
+              ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+            }
+          }
+          window.onresize = resize;
+          window.resizeFn = resize;
+          resize();
+
+          customizeMonaco();
+
+          var ramlEditor = monaco.editor
+            .create(document.getElementById("editor-container-raml"), {
+              value: '# no data loaded',
+              language: 'raml',
+              minimap: {
+                enabled: false
+              }
+            });
+
+          var oasEditor = monaco.editor
+            .create(document.getElementById("editor-container-oas"), {
+              value: '# no data loaded',
+              language: 'raml',
+              minimap: {
+                enabled: false
+              }
+            });
+
+          window.appModel = new raml_oas.ViewModel(ramlEditor, oasEditor);
+          window.appModel.apply(document.getElementById("the-app"));
+          setTimeout(function() {
+            document.getElementById("preloader").style.display = "none";
+            var brand = document.getElementById("brand");
+            if (brand) {
+              brand.style.display = 'block';
+            }
+          }, 200);
+        });
+      };
+
+      loadApp(function() {
+        reloadApp();
+      });
+    });
+  })();
 </script>
 </body>
 </html>
