@@ -6,11 +6,11 @@ import {model} from "amf-client-js";
 export type ModelLevel = "document" | "domain";
 
 const ramlGenerator = amf.Core.generator("RAML 1.0", "application/raml");
-const openAPIGenerator = amf.Core.generator("OAS 2.0", "application/yaml");
+const oasGenerator = amf.Core.generator("OAS 2.0", "application/yaml");
 const apiModelGenerator = amf.Core.generator("AMF Graph", "application/ld+json");
 
 const ramlParser = amf.Core.parser("RAML 1.0", "application/raml");
-const openAPIParser = amf.Core.parser("OAS 2.0", "application/yaml");
+const oasParser = amf.Core.parser("OAS 2.0", "application/yaml");
 const apiModelParser = amf.Core.parser("AMF Graph", "application/ld+json");
 
 /**
@@ -20,8 +20,8 @@ export class ModelProxy {
     // holders for the generated strings
     public ramlString: string = "";
     public generatedRamlModel: amf.model.document.BaseUnit;
-    public openAPIString: string = "";
-    public generatedOpenAPIModel: amf.model.document.BaseUnit;
+    public oasString: string = "";
+    public generatedOasModel: amf.model.document.BaseUnit;
     public apiModelString: string = "";
     public raw: string = "";
 
@@ -31,7 +31,7 @@ export class ModelProxy {
         if (this.sourceType === "raml") {
             this.generatedRamlModel = model;
         } else if(this.sourceType === "oas") {
-            this.generatedOpenAPIModel = model;
+            this.generatedOasModel = model;
         }
 
         this.raw = this.model.raw
@@ -76,14 +76,14 @@ export class ModelProxy {
         console.log(`** Generating OAS with level ${level}`);
         try {
             if (level == "document") {
-                const text = openAPIGenerator.generateString(this.model).then((text) => {
-                    this.openAPIString = text;
+                const text = oasGenerator.generateString(this.model).then((text) => {
+                    this.oasString = text;
                     cb(null, text);
                 }).catch(cb)
             } else { // domain level
                 let resolved = amf.Core.resolver("OAS 2.0").resolve(this.model);
-                const text = openAPIGenerator.generateString(resolved).then((text) => {
-                    this.openAPIString = text;
+                const text = oasGenerator.generateString(resolved).then((text) => {
+                    this.oasString = text;
                     cb(null, text);
                 }).catch(cb)
             }
@@ -99,7 +99,7 @@ export class ModelProxy {
         if (modelType === "raml") {
             parser = ramlParser
         } else if (modelType === "oas") {
-            parser = openAPIParser
+            parser = oasParser
         } else {
             parser = apiModelParser
         }
