@@ -1,0 +1,92 @@
+#%Vocabulary 1.0
+
+vocabulary: Asynchronous API
+base: http://www.asyncapi.com/v1/vocabulary#
+
+external:
+  schema-org: http://schema.org/
+
+classTerms:
+
+  Message:
+    extends: schema-org.Message
+    displayName: Message
+    description: |
+      A message is a piece of information a process will send to a message broker.
+      It MUST contain headers and payload.
+
+  MessageFrame:
+    displayName: Message Frame
+    description: TODO
+
+  Topic:
+    extends: schema-org.ServiceChannel
+    displayName: Topic
+    description: |
+      A topic is a routing key used by the message broker to deliver messages to the subscribed processes.
+      Depending on the protocol used, a message MAY include the topic in its headers.
+
+  Stream:
+    extends: schema-org.ServiceChannel
+    displayName: Stream
+    description: TODO
+
+  Event:
+    extends: Message
+    description: TODO
+
+  MessageBroker:
+    displayName: Message Broker
+    description: |
+      A message broker is a system in charge of message exchange.
+      It MAY provide additional features, such as message queueing, storage or processing.
+
+  AsyncAPI:
+    extends: schema-org.Service
+    displayName: Async API
+    description: |
+      An application programming interface accessible over some kind of asynchronous technology.
+
+propertyTerms:
+
+  topicTemplate:
+    extends: schema-org.urlTemplate
+    displayName: topic template
+    description: Topic templating refers to the usage of curly braces ({}) to mark a section of a topic as replaceable.
+
+  events:
+    extends: schema-org.availableChannel
+    displayName: events
+    description: TODO
+
+  topics:
+    extends: schema-org.availableChannel
+    displayName: topics
+    description: List of channels for asynchronous communication
+
+  stream:
+    extends: schema-org.availableChannel
+    displayName: stream
+    description: TODO
+
+  subscribe:
+    extends: schema-org.potentialAction
+    displayName: subscribe
+    description: A consumer is a process subscribed to a message broker and consumes messages from it.
+
+  publish:
+    extends: schema-org.potentialAction
+    displayName: publish
+    description: A producer is a process publishing messages to a message broker.
+
+  framing:
+    displayName: framing
+    description: TODO
+
+  framingType:
+    displayName: framing type
+    description: TODO
+
+  framingDelimiter:
+    displayName: framing delimiter
+    description: TODO
