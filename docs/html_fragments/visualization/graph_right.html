@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<div id="editor-graph" class="imported">
+    <div class="tabs">
+        <ul>
+            <li>Graph Representation</li>
+        </ul>
+        <p class="control">
+            <a class="button" data-bind="click: function() { viewModel.diagram.zoomOut() }" style="float: left">
+                <span class="icon">
+                    <i class="fa fa-search-minus"></i>
+                </span>
+            </a>
+            <a class="button" data-bind="click: function() { viewModel.diagram.zoomIn() }" style="float: left">
+                <span class="icon">
+                    <i class="fa fa-search-plus"></i>
+                </span>
+            </a>
+        </p>
+    </div>
+    <div id="graph-container"
+         style="overflow: auto"
+         class="imported">
+        <div id="graph-container-inner">
+
+        </div>
+    </div>
+</div>

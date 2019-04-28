@@ -49,9 +49,34 @@ gulp.task('bundleRamlOas', function () {
     .pipe(browserSync.stream({once: true}))
 })
 
+gulp.task('bundleVisualization', function () {
+  return b
+    .add([
+      'src/visualization/view_model.ts'
+    ])
+    .plugin(tsify, { target: 'es6' })
+    .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
+    .bundle()
+    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .pipe(source('visualization.js'))
+    .pipe(buffer())
+    .pipe(sourcemaps.init({loadMaps: true}))
+    .pipe(sourcemaps.write('./')) // writes .map file
+    .pipe(gulp.dest('./docs/js'))
+    .pipe(browserSync.stream({once: true}))
+})
+
+
 gulp.task('serveRamlOas', gulp.series('bower', 'bundleRamlOas', function () {
   return browserSync.init({
     server: 'docs',
     startPath: '/raml_oas.html'
+  })
+}))
+
+gulp.task('serveVisualization', gulp.series('bower', 'bundleVisualization', function () {
+  return browserSync.init({
+    server: 'docs',
+    startPath: '/visualization.html'
   })
 }))

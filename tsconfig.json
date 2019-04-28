@@ -16,6 +16,7 @@
         "src/main/model_proxy.ts",
         "src/main/units_model.ts",
         "src/raml_oas/view_model.ts"
+        "src/visualization/view_model.ts"
     ],
     "exclude": [
         "node_modules",
