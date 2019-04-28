@@ -107,7 +107,7 @@ export class ViewModel {
     }
 
     console.log('Updating RAML editor with existing model')
-    this.ramlEditor.setModel(createModel(this.model.raw, 'yaml'))
+    this.ramlEditor.setModel(createModel(this.model.raw, 'raml'))
     console.log('Updating graph representation')
     this.resetUnits(() => {
       this.resetGraph()

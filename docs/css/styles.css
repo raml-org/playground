@@ -8558,3 +8558,6 @@ header {
 .raml-demo-select {
   border: none;
   background-color: transparent; }
+
+.selected-element-line-decoration {
+  background-color: #EDF0F4; }
