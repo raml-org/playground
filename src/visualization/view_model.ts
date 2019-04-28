@@ -114,15 +114,11 @@ export class ViewModel {
   }
 
   private onSelectedGraphId (id, unit) {
-    if (this.model === null) {
+    if (this.model === null || id === undefined || unit === undefined) {
       return
     }
 
     const lexicalInfo: core.parser.Range = this.model.elementLexicalInfo(id)
-    console.log(id)
-    console.log(unit)
-    console.log(lexicalInfo)
-
     if (lexicalInfo != null) {
       this.ramlEditor.revealRangeInCenter({
         startLineNumber: lexicalInfo.start.line,
@@ -154,7 +150,7 @@ export class ViewModel {
       let oldGraph = this.graph
       this.graph = new PlaygroundGraph(
         this.model!.location(),
-        this.documentLevel,
+        'domain',
         (id: string, unit: any) => {
           this.onSelectedGraphId(id, unit)
         }

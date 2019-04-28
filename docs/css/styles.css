@@ -8560,4 +8560,10 @@ header {
   background-color: transparent; }
 
 .selected-element-line-decoration {
-  background-color: #EDF0F4; }
+  background-color: #DBE8FD; }
+
+.half-width {
+  max-width: 50%; }
+
+.tool-remove {
+  display: none; }

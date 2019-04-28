@@ -4,9 +4,9 @@ import {
   DomainElement } from '../main/units_model'
 import * as domain from '../main/domain_model'
 import {
-   APIDocumentation, EndPoint, Operation,
-   Response, Request, Payload,
-   IncludeRelationship } from '../main/domain_model'
+  APIDocumentation, EndPoint, Operation,
+  Response, Request, Payload,
+  IncludeRelationship } from '../main/domain_model'
 import * as utils from '../utils'
 import Rect = joint.shapes.basic.Rect;
 import Link = joint.dia.Link;
@@ -82,8 +82,8 @@ export class PlaygroundGraph {
             marginY: 50,
             nodeSep: 100,
             edgeSep: 100,
-            // clusterPadding: { top: 30, left: 10, right: 10, bottom: 10 },
-            rankDir: 'LR'
+            rankSep: 100,
+            rankDir: 'TB'
           })
         }
         const maxX = finalCells
@@ -365,7 +365,6 @@ export class PlaygroundGraph {
 
   private makeLink (sourceId: string, targetId: string, label: string) {
     if (this.nodes[sourceId] && this.nodes[targetId]) {
-      // console.log("GENERATING LINK FROM " + this.nodes[sourceId].id + " TO " + this.nodes[targetId].id);
       this.links.push(new Link({
         source: { id: this.nodes[sourceId].id },
         target: { id: this.nodes[targetId].id },
