@@ -24,11 +24,10 @@ gulp.task('sass', function () {
     .pipe(gulp.dest('./docs/css'))
 })
 
-const options = {'standalone': 'raml_oas'}
-const b = watchify(browserify(options))
-
+const optionsRamlOas = {'standalone': 'raml_oas'}
+const bRamlOas = watchify(browserify(optionsRamlOas))
 gulp.task('bundleRamlOas', function () {
-  return b
+  return bRamlOas
     .add([
       'src/raml_oas/view_model.ts'
     ])
@@ -49,8 +48,10 @@ gulp.task('bundleRamlOas', function () {
     .pipe(browserSync.stream({once: true}))
 })
 
+const optionsVisualization = {'standalone': 'visualization'}
+const bVisualization = watchify(browserify(optionsVisualization))
 gulp.task('bundleVisualization', function () {
-  return b
+  return bVisualization
     .add([
       'src/visualization/view_model.ts'
     ])
