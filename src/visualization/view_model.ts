@@ -2,7 +2,8 @@ import * as ko from 'knockout'
 import { ModelProxy, ModelLevel } from '../main/model_proxy'
 import { Document } from '../main/units_model'
 import { PlaygroundGraph } from '../view_models/graph'
-import { WebApiParser as wap } from 'webapi-parser'
+import { DomainElement } from '../main/domain_model'
+import { WebApiParser as wap, core } from 'webapi-parser'
 
 export type EditorSection = 'raml' | 'graph';
 export type ModelType = 'raml';
@@ -35,6 +36,8 @@ export class ViewModel {
   public ramlChangesFromLastUpdate = 0;
   public modelChanged = false;
   public RELOAD_PERIOD = 2000;
+
+  private decorations: any = [];
 
   constructor (public ramlEditor: any) {
     function changeModelContent (counter: string, section: EditorSection) {
@@ -112,7 +115,38 @@ export class ViewModel {
   }
 
   private onSelectedGraphId (id, unit) {
-    console.log(`Selected ${id} ${unit}`)
+    if (this.model === null) {
+      return
+    }
+
+    const lexicalInfo: core.parser.Range = this.model.elementLexicalInfo(id)
+    console.log(id)
+    console.log(unit)
+    console.log(lexicalInfo)
+
+    if (lexicalInfo != null) {
+      this.ramlEditor.revealRangeInCenter({
+        startLineNumber: lexicalInfo.start.line,
+        startColumn: lexicalInfo.start.column,
+        endLineNumber: lexicalInfo.end.line,
+        endColumn: lexicalInfo.end.column
+      })
+      this.decorations = this.ramlEditor.deltaDecorations(this.decorations, [
+        {
+          range: new monaco.Range(
+            lexicalInfo.start.line,
+            lexicalInfo.start.column,
+            lexicalInfo.end.line,
+            lexicalInfo.end.column),
+          options: {
+            linesDecorationsClassName: 'selected-element-line-decoration',
+            isWholeLine: true
+          }
+        }
+      ])
+    } else {
+      this.decorations = this.ramlEditor.deltaDecorations(this.decorations, [])
+    }
   }
 
   public resetGraph () {
