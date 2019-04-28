@@ -82,7 +82,6 @@ export class ViewModel {
     let baseUrl = this.baseUrl() || ''
     this.parseString(section as 'raml', baseUrl, value, (err, model) => {
       if (err) {
-        alert(`Failed to parse editor section '${section}'`)
         console.error(`Failed to parse editor section '${section}': ${err}`)
       } else {
         this.model = model
