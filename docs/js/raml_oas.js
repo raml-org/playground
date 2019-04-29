@@ -23901,7 +23901,7 @@ class ModelProxy {
 }
 exports.ModelProxy = ModelProxy;
 
-},{"./units_model":48,"jsonld":15,"webapi-parser":97}],48:[function(require,module,exports){
+},{"./units_model":48,"jsonld":15,"webapi-parser":98}],48:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -24127,45 +24127,21 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const ko = require("knockout");
 const model_proxy_1 = require("../main/model_proxy");
 const load_modal_1 = require("../view_models/load_modal");
+const common_view_model_1 = require("../view_models/common_view_model");
 const webapi_parser_1 = require("webapi-parser");
-const createModel = function (text, mode) {
-    return window['monaco'].editor.createModel(text, mode);
-};
-class ViewModel {
+class ViewModel extends common_view_model_1.CommonViewModel {
     constructor(ramlEditor, oasEditor) {
+        super();
         this.ramlEditor = ramlEditor;
         this.oasEditor = oasEditor;
-        // The global 'level' for the active document
-        this.documentLevel = 'document';
-        // The model used to show the spec text in the editor, this can change as different parts of the global
-        // model are selected and we need to show different spec texts
-        this.model = undefined;
-        // Observables for the main interface state
-        this.generationOptions = ko.observable({ 'source-maps?': false });
         // Editor section parsed most recently
         this.lastParsedSection = ko.observable(undefined);
-        this.loadModal = new load_modal_1.LoadModal();
-        // checks if we need to reparse the document
-        this.ramlChangesFromLastUpdate = 0;
+        // Checks if we need to reparse the document
         this.oasChangesFromLastUpdate = 0;
-        this.modelChanged = false;
-        this.RELOAD_PERIOD = 2000;
-        function changeModelContent(counter, section) {
-            let self = this;
-            return function (evt) {
-                self[counter]++;
-                self.modelChanged = true;
-                (number => {
-                    setTimeout(() => {
-                        if (self[counter] === number) {
-                            self.updateModels(section);
-                        }
-                    }, self.RELOAD_PERIOD);
-                })(self[counter]);
-            };
-        }
-        ramlEditor.onDidChangeModelContent(changeModelContent.call(this, 'ramlChangesFromLastUpdate', 'raml'));
-        oasEditor.onDidChangeModelContent(changeModelContent.call(this, 'oasChangesFromLastUpdate', 'oas'));
+        // OAS, RAML generation options
+        this.generationOptions = ko.observable({ 'source-maps?': false });
+        ramlEditor.onDidChangeModelContent(this.changeModelContent('ramlChangesFromLastUpdate', 'raml'));
+        oasEditor.onDidChangeModelContent(this.changeModelContent('oasChangesFromLastUpdate', 'oas'));
         this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
             return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
                 this.lastParsedSection('raml');
@@ -24177,42 +24153,9 @@ class ViewModel {
             });
         });
     }
-    apply() {
-        window['viewModel'] = this;
-        webapi_parser_1.WebApiParser.init().then(() => {
-            ko.applyBindings(this);
-        });
-    }
-    loadRamlFromQueryParam() {
-        const paramName = 'raml';
-        const params = new URLSearchParams(window.location.search);
-        let value = params.get(paramName);
-        // Query param is not provided or has no value
-        if (!value) {
-            return;
-        }
-        try {
-            // Query param value is a RAML file URL
-            new URL(value);
-            this.loadModal.fileUrl(value.trim());
-            this.loadModal.save();
-        } catch (e) {
-            // Query param value is a RAML file content
-            try {
-                value = decodeURIComponent(value);
-            } catch (err) {}
-            this.ramlEditor.setValue(value.trim());
-            this.updateModels('raml');
-        }
-    }
     updateModels(section) {
-        if (!this.modelChanged) {
-            return;
-        }
-        this.modelChanged = false;
-        this.ramlChangesFromLastUpdate = 0;
         this.oasChangesFromLastUpdate = 0;
-        this.parseEditorSection(section);
+        super.updateModels(section);
     }
     parseEditorSection(section) {
         console.log(`Parsing text from editor section '${section}'`);
@@ -24249,13 +24192,13 @@ class ViewModel {
         // Generate model for OAS editor
         if (this.lastParsedSection() === 'raml') {
             console.log('Updating RAML editor with existing model');
-            this.ramlEditor.setModel(createModel(this.model.raw, 'raml'));
+            this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'));
             console.log('Generating model for OAS editor');
             this.model.toOas(this.documentLevel, this.generationOptions(), (err, string) => {
                 if (err !== null) {
                     console.error(`Failed to generate OAS: ${err}`);
                 } else {
-                    this.oasEditor.setModel(createModel(this.model.oasString, 'raml'));
+                    this.oasEditor.setModel(this.createModel(this.model.oasString, 'raml'));
                 }
             });
         }
@@ -24263,13 +24206,13 @@ class ViewModel {
         // Generate model for RAML editor
         if (this.lastParsedSection() === 'oas') {
             console.log('Updating OAS editor with existing model');
-            this.oasEditor.setModel(createModel(this.model.raw, 'raml'));
+            this.oasEditor.setModel(this.createModel(this.model.raw, 'raml'));
             console.log('Generating model for RAML editor');
             this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
                 if (err !== null) {
                     console.error(`Failed to generate RAML: ${err}`);
                 } else {
-                    this.ramlEditor.setModel(createModel(this.model.ramlString, 'raml'));
+                    this.ramlEditor.setModel(this.createModel(this.model.ramlString, 'raml'));
                 }
             });
         }
@@ -24277,7 +24220,7 @@ class ViewModel {
 }
 exports.ViewModel = ViewModel;
 
-},{"../main/model_proxy":47,"../view_models/load_modal":51,"knockout":16,"webapi-parser":97}],50:[function(require,module,exports){
+},{"../main/model_proxy":47,"../view_models/common_view_model":51,"../view_models/load_modal":52,"knockout":16,"webapi-parser":98}],50:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -24315,6 +24258,82 @@ function nestedLabel(parent, child) {
 exports.nestedLabel = nestedLabel;
 
 },{"./main/domain_model":46}],51:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const ko = require("knockout");
+const load_modal_1 = require("../view_models/load_modal");
+const webapi_parser_1 = require("webapi-parser");
+class CommonViewModel {
+    constructor() {
+        // The global 'level' for the active document
+        this.documentLevel = 'document';
+        // The model used to show the spec text in the editor, this can change as different
+        // parts of the global model are selected and we need to show different spec texts
+        this.model = undefined;
+        this.loadModal = new load_modal_1.LoadModal();
+        // checks if we need to reparse the document
+        this.ramlChangesFromLastUpdate = 0;
+        this.modelChanged = false;
+        this.RELOAD_PERIOD = 2000;
+    }
+    apply() {
+        window['viewModel'] = this;
+        webapi_parser_1.WebApiParser.init().then(() => {
+            ko.applyBindings(this);
+        });
+    }
+    changeModelContent(counter, section) {
+        let self = this;
+        return function (evt) {
+            self[counter]++;
+            self.modelChanged = true;
+            (number => {
+                setTimeout(() => {
+                    if (self[counter] === number) {
+                        self.updateModels(section);
+                    }
+                }, self.RELOAD_PERIOD);
+            })(self[counter]);
+        };
+    }
+    createModel(text, mode) {
+        return window['monaco'].editor.createModel(text, mode);
+    }
+    loadRamlFromQueryParam() {
+        const paramName = 'raml';
+        const params = new URLSearchParams(window.location.search);
+        let value = params.get(paramName);
+        // Query param is not provided or has no value
+        if (!value) {
+            return;
+        }
+        try {
+            // Query param value is a RAML file URL
+            new URL(value);
+            this.loadModal.fileUrl(value.trim());
+            this.loadModal.save();
+        } catch (e) {
+            // Query param value is a RAML file content
+            try {
+                value = decodeURIComponent(value);
+            } catch (err) {}
+            this.ramlEditor.setValue(value.trim());
+            this.updateModels('raml');
+        }
+    }
+    updateModels(section) {
+        if (!this.modelChanged) {
+            return;
+        }
+        this.modelChanged = false;
+        this.ramlChangesFromLastUpdate = 0;
+        this.parseEditorSection(section);
+    }
+}
+exports.CommonViewModel = CommonViewModel;
+
+},{"../view_models/load_modal":52,"knockout":16,"webapi-parser":98}],52:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -24368,7 +24387,7 @@ class LoadModal {
 LoadModal.LOAD_FILE_EVENT = 'load-file';
 exports.LoadModal = LoadModal;
 
-},{"knockout":16}],52:[function(require,module,exports){
+},{"knockout":16}],53:[function(require,module,exports){
 'use strict';
 
 var compileSchema = require('./compile')
@@ -24873,7 +24892,7 @@ function setLogger(self) {
 
 function noop() {}
 
-},{"./cache":53,"./compile":57,"./compile/async":54,"./compile/error_classes":55,"./compile/formats":56,"./compile/resolve":58,"./compile/rules":59,"./compile/schema_obj":60,"./compile/util":62,"./data":63,"./keyword":90,"./refs/data.json":91,"./refs/json-schema-draft-07.json":92,"fast-json-stable-stringify":94}],53:[function(require,module,exports){
+},{"./cache":54,"./compile":58,"./compile/async":55,"./compile/error_classes":56,"./compile/formats":57,"./compile/resolve":59,"./compile/rules":60,"./compile/schema_obj":61,"./compile/util":63,"./data":64,"./keyword":91,"./refs/data.json":92,"./refs/json-schema-draft-07.json":93,"fast-json-stable-stringify":95}],54:[function(require,module,exports){
 'use strict';
 
 
@@ -24901,7 +24920,7 @@ Cache.prototype.clear = function Cache_clear() {
   this._cache = {};
 };
 
-},{}],54:[function(require,module,exports){
+},{}],55:[function(require,module,exports){
 'use strict';
 
 var MissingRefError = require('./error_classes').MissingRef;
@@ -24993,7 +25012,7 @@ function compileAsync(schema, meta, callback) {
   }
 }
 
-},{"./error_classes":55}],55:[function(require,module,exports){
+},{"./error_classes":56}],56:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve');
@@ -25029,7 +25048,7 @@ function errorSubclass(Subclass) {
   return Subclass;
 }
 
-},{"./resolve":58}],56:[function(require,module,exports){
+},{"./resolve":59}],57:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -25180,7 +25199,7 @@ function regex(str) {
   }
 }
 
-},{"./util":62}],57:[function(require,module,exports){
+},{"./util":63}],58:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve')
@@ -25561,7 +25580,7 @@ function vars(arr, statement) {
   return code;
 }
 
-},{"../dotjs/validate":89,"./error_classes":55,"./resolve":58,"./util":62,"fast-deep-equal":93,"fast-json-stable-stringify":94}],58:[function(require,module,exports){
+},{"../dotjs/validate":90,"./error_classes":56,"./resolve":59,"./util":63,"fast-deep-equal":94,"fast-json-stable-stringify":95}],59:[function(require,module,exports){
 'use strict';
 
 var URI = require('uri-js')
@@ -25833,7 +25852,7 @@ function resolveIds(schema) {
   return localRefs;
 }
 
-},{"./schema_obj":60,"./util":62,"fast-deep-equal":93,"json-schema-traverse":95,"uri-js":96}],59:[function(require,module,exports){
+},{"./schema_obj":61,"./util":63,"fast-deep-equal":94,"json-schema-traverse":96,"uri-js":97}],60:[function(require,module,exports){
 'use strict';
 
 var ruleModules = require('../dotjs')
@@ -25901,7 +25920,7 @@ module.exports = function rules() {
   return RULES;
 };
 
-},{"../dotjs":78,"./util":62}],60:[function(require,module,exports){
+},{"../dotjs":79,"./util":63}],61:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -25912,7 +25931,7 @@ function SchemaObject(obj) {
   util.copy(obj, this);
 }
 
-},{"./util":62}],61:[function(require,module,exports){
+},{"./util":63}],62:[function(require,module,exports){
 'use strict';
 
 // https://mathiasbynens.be/notes/javascript-encoding
@@ -25934,7 +25953,7 @@ module.exports = function ucs2length(str) {
   return length;
 };
 
-},{}],62:[function(require,module,exports){
+},{}],63:[function(require,module,exports){
 'use strict';
 
 
@@ -26203,7 +26222,7 @@ function unescapeJsonPointer(str) {
   return str.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-},{"./ucs2length":61,"fast-deep-equal":93}],63:[function(require,module,exports){
+},{"./ucs2length":62,"fast-deep-equal":94}],64:[function(require,module,exports){
 'use strict';
 
 var KEYWORDS = [
@@ -26254,7 +26273,7 @@ module.exports = function (metaSchema, keywordsJsonPointers) {
   return metaSchema;
 };
 
-},{}],64:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limit(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26411,7 +26430,7 @@ module.exports = function generate__limit(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],65:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26489,7 +26508,7 @@ module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],66:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26572,7 +26591,7 @@ module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],67:[function(require,module,exports){
+},{}],68:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26650,7 +26669,7 @@ module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],68:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
 'use strict';
 module.exports = function generate_allOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26695,7 +26714,7 @@ module.exports = function generate_allOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],69:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 'use strict';
 module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26770,7 +26789,7 @@ module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],70:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 'use strict';
 module.exports = function generate_comment(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26786,7 +26805,7 @@ module.exports = function generate_comment(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],71:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 'use strict';
 module.exports = function generate_const(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26843,7 +26862,7 @@ module.exports = function generate_const(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],72:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 'use strict';
 module.exports = function generate_contains(it, $keyword, $ruleType) {
   var out = ' ';
@@ -26926,7 +26945,7 @@ module.exports = function generate_contains(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],73:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 'use strict';
 module.exports = function generate_custom(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27154,7 +27173,7 @@ module.exports = function generate_custom(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],74:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 'use strict';
 module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27323,7 +27342,7 @@ module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],75:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 'use strict';
 module.exports = function generate_enum(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27390,7 +27409,7 @@ module.exports = function generate_enum(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],76:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 'use strict';
 module.exports = function generate_format(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27541,7 +27560,7 @@ module.exports = function generate_format(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],77:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 'use strict';
 module.exports = function generate_if(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27646,7 +27665,7 @@ module.exports = function generate_if(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],78:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 'use strict';
 
 //all requires must be explicit because browserify won't work with dynamic requires
@@ -27681,7 +27700,7 @@ module.exports = {
   validate: require('./validate')
 };
 
-},{"./_limit":64,"./_limitItems":65,"./_limitLength":66,"./_limitProperties":67,"./allOf":68,"./anyOf":69,"./comment":70,"./const":71,"./contains":72,"./dependencies":74,"./enum":75,"./format":76,"./if":77,"./items":79,"./multipleOf":80,"./not":81,"./oneOf":82,"./pattern":83,"./properties":84,"./propertyNames":85,"./ref":86,"./required":87,"./uniqueItems":88,"./validate":89}],79:[function(require,module,exports){
+},{"./_limit":65,"./_limitItems":66,"./_limitLength":67,"./_limitProperties":68,"./allOf":69,"./anyOf":70,"./comment":71,"./const":72,"./contains":73,"./dependencies":75,"./enum":76,"./format":77,"./if":78,"./items":80,"./multipleOf":81,"./not":82,"./oneOf":83,"./pattern":84,"./properties":85,"./propertyNames":86,"./ref":87,"./required":88,"./uniqueItems":89,"./validate":90}],80:[function(require,module,exports){
 'use strict';
 module.exports = function generate_items(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27823,7 +27842,7 @@ module.exports = function generate_items(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],80:[function(require,module,exports){
+},{}],81:[function(require,module,exports){
 'use strict';
 module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27901,7 +27920,7 @@ module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],81:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 'use strict';
 module.exports = function generate_not(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27986,7 +28005,7 @@ module.exports = function generate_not(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],82:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 'use strict';
 module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28060,7 +28079,7 @@ module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],83:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 'use strict';
 module.exports = function generate_pattern(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28136,7 +28155,7 @@ module.exports = function generate_pattern(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],84:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 'use strict';
 module.exports = function generate_properties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28466,7 +28485,7 @@ module.exports = function generate_properties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],85:[function(require,module,exports){
+},{}],86:[function(require,module,exports){
 'use strict';
 module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28549,7 +28568,7 @@ module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],86:[function(require,module,exports){
+},{}],87:[function(require,module,exports){
 'use strict';
 module.exports = function generate_ref(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28674,7 +28693,7 @@ module.exports = function generate_ref(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],87:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 'use strict';
 module.exports = function generate_required(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28944,7 +28963,7 @@ module.exports = function generate_required(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],88:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 'use strict';
 module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29031,7 +29050,7 @@ module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],89:[function(require,module,exports){
+},{}],90:[function(require,module,exports){
 'use strict';
 module.exports = function generate_validate(it, $keyword, $ruleType) {
   var out = '';
@@ -29478,7 +29497,7 @@ module.exports = function generate_validate(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],90:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 'use strict';
 
 var IDENTIFIER = /^[a-z_$][a-z0-9_$-]*$/i;
@@ -29615,7 +29634,7 @@ function removeKeyword(keyword) {
   return this;
 }
 
-},{"./dotjs/custom":73}],91:[function(require,module,exports){
+},{"./dotjs/custom":74}],92:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/epoberezkin/ajv/master/lib/refs/data.json#",
@@ -29634,7 +29653,7 @@ module.exports={
     "additionalProperties": false
 }
 
-},{}],92:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "http://json-schema.org/draft-07/schema#",
@@ -29804,7 +29823,7 @@ module.exports={
     "default": true
 }
 
-},{}],93:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 'use strict';
 
 var isArray = Array.isArray;
@@ -29861,7 +29880,7 @@ module.exports = function equal(a, b) {
   return a!==a && b!==b;
 };
 
-},{}],94:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 'use strict';
 
 module.exports = function (data, opts) {
@@ -29922,7 +29941,7 @@ module.exports = function (data, opts) {
     })(data);
 };
 
-},{}],95:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 'use strict';
 
 var traverse = module.exports = function (schema, opts, cb) {
@@ -30013,7 +30032,7 @@ function escapeJsonPtr(str) {
   return str.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
-},{}],96:[function(require,module,exports){
+},{}],97:[function(require,module,exports){
 /** @license URI.js v4.2.1 (c) 2011 Gary Court. License: http://github.com/garycourt/uri-js */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -31404,7 +31423,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 })));
 
 
-},{}],97:[function(require,module,exports){
+},{}],98:[function(require,module,exports){
 (function (global){
 Ajv = require("ajv")
 'use strict';
@@ -38304,7 +38323,7 @@ m.model.domain.MatrixShape=function(){var a=new gn;gn.prototype.a.call(a);return
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"ajv":52,"fs":3,"http":25,"https":10,"os":17,"path":18}]},{},[49])(49)
+},{"ajv":53,"fs":3,"http":25,"https":10,"os":17,"path":18}]},{},[49])(49)
 });
 
 //# sourceMappingURL=raml_oas.js.map

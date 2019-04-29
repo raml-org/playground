@@ -1,63 +1,26 @@
 import * as ko from 'knockout'
-import { ModelProxy, ModelLevel } from '../main/model_proxy'
+import { ModelProxy } from '../main/model_proxy'
 import { Document } from '../main/units_model'
 import { PlaygroundGraph } from '../view_models/graph'
-import { DomainElement } from '../main/domain_model'
 import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
+import { CommonViewModel } from '../view_models/common_view_model'
 import { WebApiParser as wap, core } from 'webapi-parser'
 
 export type EditorSection = 'raml' | 'graph';
 export type ModelType = 'raml';
 
-export interface ReferenceFile {
-  id: string;
-  label: string;
-  type: 'local' | 'remote'
-}
-
-const createModel = function (text, mode) {
-  return window['monaco'].editor.createModel(text, mode)
-}
-
-export class ViewModel {
-  // The global 'level' for the active document
-  public documentLevel: ModelLevel = 'document';
-  // The model used to show the spec text in the editor, this can change as different parts of the global
-  // model are selected and we need to show different spec texts
-  public model?: ModelProxy = undefined;
+export class ViewModel extends CommonViewModel {
+  // Units to be displayed in graph
   public documentUnits: KnockoutObservableArray<Document> = ko.observableArray<Document>([]);
-
-  // Observables for the main interface state
-  public generationOptions: KnockoutObservable<any> = ko.observable<any>({ 'source-maps?': false });
-
   public graph: any;
-  public loadModal: LoadModal = new LoadModal();
-
-  // checks if we need to reparse the document
-  public ramlChangesFromLastUpdate = 0;
-  public modelChanged = false;
-  public RELOAD_PERIOD = 2000;
-
+  // Selected editor segment decorations
   private decorations: any = [];
 
   constructor (public ramlEditor: any) {
-    function changeModelContent (counter: string, section: EditorSection) {
-      let self = this
-      return function (evt) {
-        self[counter]++
-        self.modelChanged = true;
-        ((number) => {
-          setTimeout(() => {
-            if (self[counter] === number) {
-              self.updateModels(section)
-            }
-          }, self.RELOAD_PERIOD)
-        })(self[counter])
-      }
-    }
+    super()
 
-    ramlEditor.onDidChangeModelContent(changeModelContent.call(
-      this, 'ramlChangesFromLastUpdate', 'raml'))
+    ramlEditor.onDidChangeModelContent(this.changeModelContent(
+      'ramlChangesFromLastUpdate', 'raml'))
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
@@ -70,43 +33,6 @@ export class ViewModel {
           alert(`Failed to parse file: ${err}`)
         })
     })
-  }
-
-  public apply () {
-    window['viewModel'] = this
-    wap.init().then(() => {
-      ko.applyBindings(this)
-    })
-  }
-
-  public loadRamlFromQueryParam () {
-    const paramName = 'raml'
-    const params = new URLSearchParams(window.location.search)
-    let value = params.get(paramName)
-    // Query param is not provided or has no value
-    if (!value) {
-      return
-    }
-    try {
-      // Query param value is a RAML file URL
-      new URL(value)
-      this.loadModal.fileUrl(value.trim())
-      this.loadModal.save()
-    } catch (e) {
-      // Query param value is a RAML file content
-      try { value = decodeURIComponent(value) } catch(err) {}
-      this.ramlEditor.setValue(value.trim())
-      this.updateModels('raml')
-    }
-  }
-
-  public updateModels (section: EditorSection) {
-    if (!this.modelChanged) {
-      return
-    }
-    this.modelChanged = false
-    this.ramlChangesFromLastUpdate = 0
-    this.parseEditorSection(section)
   }
 
   public parseEditorSection (section?: EditorSection) {
@@ -132,14 +58,14 @@ export class ViewModel {
     })
   }
 
-  private updateEditorsModels () {
+  protected updateEditorsModels () {
     console.log(`Updating editors models`)
     if (this.model === null || this.model.raw === null) {
       return
     }
 
     console.log('Updating RAML editor with existing model')
-    this.ramlEditor.setModel(createModel(this.model.raw, 'raml'))
+    this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
     console.log('Updating graph representation')
     this.resetUnits(() => {
       this.resetGraph()
