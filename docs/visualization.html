@@ -10,6 +10,7 @@
     <script src="bower_components/webcomponentsjs/webcomponents-lite.min.js"></script>
 
     <script src="js/preload.js"></script>
+    <script src="js/monaco-editor/monaco-customize.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
@@ -55,9 +56,8 @@
     // ************
     var loadApp = function(cb) {
       var assets = [
-        "./js/visualization.js",
-        "js/monaco-editor/min/vs/loader.js",
-        "js/monaco-editor/monaco-customize.js"
+        "js/visualization.js",
+        "js/monaco-editor/min/vs/loader.js"
       ];
       var loaded = 0;
       var preload = new createjs.LoadQueue();
