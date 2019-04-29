@@ -24183,6 +24183,28 @@ class ViewModel {
             ko.applyBindings(this);
         });
     }
+    loadRamlFromQueryParam() {
+        const paramName = 'raml';
+        const params = new URLSearchParams(window.location.search);
+        let value = params.get(paramName);
+        // Query param is not provided or has no value
+        if (!value) {
+            return;
+        }
+        try {
+            // Query param value is a RAML file URL
+            new URL(value);
+            this.loadModal.fileUrl(value.trim());
+            this.loadModal.save();
+        } catch (e) {
+            // Query param value is a RAML file content
+            try {
+                value = decodeURIComponent(value);
+            } catch (err) {}
+            this.ramlEditor.setValue(value.trim());
+            this.updateModels('raml');
+        }
+    }
     updateModels(section) {
         if (!this.modelChanged) {
             return;

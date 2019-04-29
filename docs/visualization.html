@@ -138,6 +138,8 @@
 
           window.appModel = new visualization.ViewModel(ramlEditor);
           window.appModel.apply();
+          window.appModel.loadRamlFromQueryParam();
+
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";
             var brand = document.getElementById("brand");
