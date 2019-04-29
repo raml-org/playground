@@ -3,6 +3,7 @@ import { ModelProxy, ModelLevel } from '../main/model_proxy'
 import { Document } from '../main/units_model'
 import { PlaygroundGraph } from '../view_models/graph'
 import { DomainElement } from '../main/domain_model'
+import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
 import { WebApiParser as wap, core } from 'webapi-parser'
 
 export type EditorSection = 'raml' | 'graph';
@@ -27,10 +28,10 @@ export class ViewModel {
   public documentUnits: KnockoutObservableArray<Document> = ko.observableArray<Document>([]);
 
   // Observables for the main interface state
-  public baseUrl: KnockoutObservable<string> = ko.observable<string>('');
   public generationOptions: KnockoutObservable<any> = ko.observable<any>({ 'source-maps?': false });
 
   public graph: any;
+  public loadModal: LoadModal = new LoadModal();
 
   // checks if we need to reparse the document
   public ramlChangesFromLastUpdate = 0;
@@ -57,9 +58,21 @@ export class ViewModel {
 
     ramlEditor.onDidChangeModelContent(changeModelContent.call(
       this, 'ramlChangesFromLastUpdate', 'raml'))
+
+    this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
+      return wap.raml10.parse(evt.location)
+        .then((parsedModel) => {
+          this.model = new ModelProxy(parsedModel, 'raml')
+          this.updateEditorsModels()
+        })
+        .catch((err) => {
+          console.error(`Failed to parse file: ${err}`)
+          alert(`Failed to parse file: ${err}`)
+        })
+    })
   }
 
-  public apply (location: Node) {
+  public apply () {
     window['viewModel'] = this
     wap.init().then(() => {
       ko.applyBindings(this)
@@ -79,8 +92,7 @@ export class ViewModel {
     console.log(`Parsing text from editor section '${section}'`)
     let value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
-    let baseUrl = this.baseUrl() || ''
-    this.parseString(section as 'raml', baseUrl, value, (err, model) => {
+    this.parseString(section as 'raml', value, (err, model) => {
       if (err) {
         console.error(`Failed to parse editor section '${section}': ${err}`)
       } else {
@@ -90,7 +102,7 @@ export class ViewModel {
     })
   }
 
-  public parseString (type: ModelType, baseUrl: string, value: string, cb: (err, model) => any) {
+  public parseString (type: ModelType, value: string, cb: (err, model) => any) {
     wap.raml10.parse(value).then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
@@ -189,7 +201,7 @@ export class ViewModel {
           this.documentUnits.push(doc)
         })
       } else {
-        console.log(`Error loading units: ${err}`)
+        console.error(`Error loading units: ${err}`)
       }
       if (cb) { cb() }
     })

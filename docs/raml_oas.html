@@ -25,6 +25,8 @@
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
 
+<!-- Load RAML File modal -->
+<link rel="import" href="html_fragments/load_modal.html">
 <!-- Nav -->
 <link rel="import" href="html_fragments/raml_oas/nav.html">
 
@@ -144,7 +146,7 @@
             });
 
           window.appModel = new raml_oas.ViewModel(ramlEditor, oasEditor);
-          window.appModel.apply(document.getElementById("the-app"));
+          window.appModel.apply();
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";
             var brand = document.getElementById("brand");

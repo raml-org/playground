@@ -8559,6 +8559,7 @@ header {
   border: none;
   background-color: transparent; }
 
+/* CUSTOM  */
 .selected-element-line-decoration {
   background-color: #DBE8FD; }
 
@@ -8567,3 +8568,15 @@ header {
 
 .tool-remove {
   display: none; }
+
+.modal-card-body .select select:focus, .modal-card-body .select select:active, #query .select select:focus, #query .select select:active {
+  border-color: #007bff; }
+
+.modal-card-body .select:after, #query .select:after {
+  border-color: #007bff; }
+
+.modal-card-head {
+  margin-bottom: 0px; }
+
+.modal-card-foot .is-success {
+  background-color: #26D3FF; }

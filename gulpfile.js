@@ -62,22 +62,32 @@ gulp.task('bundleVisualization', function () {
     .pipe(source('visualization.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init({loadMaps: true}))
-    .pipe(sourcemaps.write('./')) // writes .map file
+    .pipe(sourcemaps.write('./'))
     .pipe(gulp.dest('./docs/js'))
     .pipe(browserSync.stream({once: true}))
 })
 
 
-gulp.task('serveRamlOas', gulp.series('bower', 'bundleRamlOas', function () {
-  return browserSync.init({
-    server: 'docs',
-    startPath: '/raml_oas.html'
-  })
-}))
+gulp.task('serveRamlOas', gulp.series(
+  'sass',
+  'bower',
+  'bundleRamlOas',
+  function () {
+    return browserSync.init({
+      server: 'docs',
+      startPath: '/raml_oas.html'
+    })
+  }
+))
 
-gulp.task('serveVisualization', gulp.series('bower', 'bundleVisualization', function () {
-  return browserSync.init({
-    server: 'docs',
-    startPath: '/visualization.html'
-  })
-}))
+gulp.task('serveVisualization', gulp.series(
+  'sass',
+  'bower',
+  'bundleVisualization',
+  function () {
+    return browserSync.init({
+      server: 'docs',
+      startPath: '/visualization.html'
+    })
+  }
+))

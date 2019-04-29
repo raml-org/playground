@@ -1816,6 +1816,8 @@ header{
   background-color: transparent;
 }
 
+/* CUSTOM  */
+
 .selected-element-line-decoration {
   background-color: $selected-line;
 }
@@ -1827,4 +1829,25 @@ header{
 // Hide graph X buttons
 .tool-remove {
   display: none;
+}
+
+.modal-card-body, #query {
+  .select {
+    select {
+      &:focus, &:active {
+        border-color: $primary;
+      }
+    }
+    &:after {
+      border-color: $primary;
+    }
+  }
+}
+.modal-card-head {
+  margin-bottom: 0px;
+}
+.modal-card-foot {
+  .is-success {
+    background-color: #26D3FF;
+  }
 }
