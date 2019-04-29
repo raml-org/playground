@@ -2,8 +2,17 @@
 
 ![RAML Playground Logo](docs/images/ramlLogo.svg)
 
-## Running this project
+## Demos
+* [RAML + OAS](https://raml-org.github.io/playground/raml_oas.html)
+* [Visualization](https://raml-org.github.io/playground/visualization.html)
 
+## Running this project
+RAML+OAS demo:
 ```bash
-$ gulp serve
+$ gulp serveRamlOas
+```
+
+Visualization demo:
+```bash
+$ gulp serveVisualization
 ```
