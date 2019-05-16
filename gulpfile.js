@@ -4,7 +4,6 @@ const gulp = require('gulp')
 
 const browserify = require('browserify')
 const tsify = require('tsify')
-const watchify = require('watchify')
 const babelify = require('babelify')
 const source = require('vinyl-source-stream')
 const buffer = require('vinyl-buffer')
@@ -25,7 +24,7 @@ gulp.task('sass', function () {
 })
 
 const optionsRamlOas = {'standalone': 'raml_oas'}
-const bRamlOas = watchify(browserify(optionsRamlOas))
+const bRamlOas = browserify(optionsRamlOas)
 gulp.task('bundleRamlOas', function () {
   return bRamlOas
     .add([
@@ -49,7 +48,7 @@ gulp.task('bundleRamlOas', function () {
 })
 
 const optionsVisualization = {'standalone': 'visualization'}
-const bVisualization = watchify(browserify(optionsVisualization))
+const bVisualization = browserify(optionsVisualization)
 gulp.task('bundleVisualization', function () {
   return bVisualization
     .add([
