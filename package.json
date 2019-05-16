@@ -13,12 +13,9 @@
     "webapi-parser": "^0.0.1",
     "@types/es6-promise": "0.0.33",
     "jointjs": "^1.1.0",
-    "js-sha1": "^0.4.1",
     "jsonld": "^0.4.11",
     "knockout": "^3.4.2",
-    "monaco-editor": "^0.12.0",
-    "rdfstore": "^0.9.17",
-    "vis": "^4.19.1"
+    "monaco-editor": "^0.12.0"
   },
   "devDependencies": {
     "babelify": "^7.3.0",
