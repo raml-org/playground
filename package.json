@@ -4,37 +4,35 @@
   "description": "",
   "main": "build.js",
   "scripts": {
-    "build-css": "node-sass --include-path scss docs/scss/styles.scss  docs/css/styles.css",
     "standard": "./node_modules/standard/bin/cmd.js --fix"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "webapi-parser": "^0.0.1",
     "@types/es6-promise": "0.0.33",
-    "jointjs": "^1.1.0",
+    "jointjs": "^2.2.1",
     "jsonld": "^0.4.11",
     "knockout": "^3.4.2",
-    "monaco-editor": "^0.12.0"
+    "monaco-editor": "^0.12.0",
+    "webapi-parser": "^0.0.1"
   },
   "devDependencies": {
     "babelify": "^7.3.0",
-    "browser-sync": "^2.18.8",
+    "browser-sync": "^2.26.5",
     "browserify": "^14.3.0",
     "eslint-plugin-typescript": "^0.14.0",
-    "gulp": "^4.0.1",
+    "gulp": "^4.0.2",
     "gulp-bower": "0.0.15",
     "gulp-sass": "4.0.2",
     "gulp-sourcemaps": "2.6.4",
     "gulp-util": "3.0.8",
-    "node-sass": "^4.5.2",
     "standard": "^12.0.1",
     "tsify": "^3.0.1",
     "typescript": "^2.2.2",
     "typescript-eslint-parser": "^22.0.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^2.0.0",
-    "watchify": "^3.9.0"
+    "watchify": "^3.11.1"
   },
   "standard": {
     "parser": "typescript-eslint-parser",
