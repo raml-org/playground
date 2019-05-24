@@ -38,7 +38,7 @@ export class PlaygroundGraph {
   public scaleY = 1;
   public elements: (DocumentId & Unit)[];
 
-  constructor (public selectedId: string, public level: 'domain' | 'document' | 'files', public handler: (id: string, unit: any) => void) {}
+  constructor (public selectedId: string, public level: 'domain' | 'document', public handler: (id: string, unit: any) => void) {}
 
   process (elements: (DocumentId & Unit)[]) {
     this.nodes = {}
@@ -126,7 +126,7 @@ export class PlaygroundGraph {
             width: (minWidth > width ? minWidth : width),
             height: (minHeight > height ? minHeight : height),
             gridSize: 1,
-            highlighting: false
+            interactive: false
           }
           options['model'] = graph
           this.paper = new Paper(options)
@@ -135,8 +135,6 @@ export class PlaygroundGraph {
             (cellView, evt, x, y) => {
               const nodeId = cellView.model.attributes.attrs.nodeId
               const unit = cellView.model.attributes.attrs.unit
-              // console.log(cellView);
-              // console.log(nodeId);
               this.handler(nodeId, unit)
             }
           )
@@ -155,6 +153,7 @@ export class PlaygroundGraph {
           }
           let zoom = zoomy < zoomx ? zoomy : zoomx
           this.paperScale(zoom, zoom)
+          this.paper.removeTools()
           if (cb) {
             cb()
           } else {
@@ -192,7 +191,7 @@ export class PlaygroundGraph {
 
   private processFragmentNode (element: Fragment) {
     this.makeNode(element, 'unit', element)
-    if (element.encodes != null && this.level !== 'files') {
+    if (element.encodes != null) {
       const encodes = element.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
@@ -206,7 +205,7 @@ export class PlaygroundGraph {
 
   private processModuleNode (element: Module) {
     this.makeNode(element, 'unit', element)
-    if (element.declares != null && this.level !== 'files') {
+    if (element.declares != null) {
       element.declares.forEach(declaration => {
         if (this.nodes[declaration.id] == null) {
           this.makeNode(declaration, 'declaration', declaration)
@@ -220,7 +219,7 @@ export class PlaygroundGraph {
     this.makeNode(document, 'unit', document)
     // first declarations to avoid refs in the domain level pointing
     // to declarations not added yet
-    if (document.declares != null && this.level !== 'files') {
+    if (document.declares != null) {
       document.declares.forEach(declaration => {
         if (this.nodes[declaration.id] == null) {
           this.makeNode(declaration, 'declaration', declaration)
@@ -228,7 +227,7 @@ export class PlaygroundGraph {
         this.makeLink(document.id, declaration.id, 'declares')
       })
     }
-    if (document.encodes != null && this.level !== 'files') {
+    if (document.encodes != null) {
       const encodes = document.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
@@ -245,7 +244,6 @@ export class PlaygroundGraph {
       const domainKind = element.kind
       switch (domainKind) {
         case 'APIDocumentation': {
-          // console.log("Processing APIDomain in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'encodes');
           ((element as APIDocumentation).endpoints || []).forEach(endpoint => {
@@ -254,7 +252,6 @@ export class PlaygroundGraph {
           break
         }
         case 'EndPoint': {
-          // console.log("Processing EndPoint in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'endpoint');
           ((element as EndPoint).operations || []).forEach(operation => {
@@ -263,7 +260,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Operation': {
-          // console.log("Processing Operation in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Operation).method }, 'domain', element)
           this.makeLink(parentId, element.id, 'supportedOperation');
           ((element as Operation).requests || []).forEach(request => {
@@ -275,7 +271,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Response': {
-          // console.log("Processing Response in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Response).status }, 'domain', element)
           this.makeLink(parentId, element.id, 'returns');
           ((element as Response).payloads || []).forEach(payload => {
@@ -284,7 +279,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Request': {
-          // console.log("Processing Request in graph " + element.id);
           this.makeNode({ id: element.id, label: 'request' }, 'domain', element)
           this.makeLink(parentId, element.id, 'expects');
           ((element as Request).payloads || []).forEach(payload => {
@@ -293,20 +287,17 @@ export class PlaygroundGraph {
           break
         }
         case 'Payload': {
-          // console.log("Processing Payload in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Payload).mediaType || '*/*' }, 'domain', element)
           this.makeLink(parentId, element.id, 'payload')
           this.processDomainElement(element.id, (element as Payload).schema)
           break
         }
         case 'Shape': {
-          // console.log("Processing Schema in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'shape')
           break
         }
         case 'Include': {
-          // console.log("Processing Schema in graph " + parentId + " <-> " + element.id + " <-> " + (element as IncludeRelationship).target);
           this.makeNode(element, 'relationship', element)
           this.makeLink(parentId, element.id, 'include')
           this.makeLink(element.id, (element as IncludeRelationship).target, 'includes')
@@ -359,7 +350,6 @@ export class PlaygroundGraph {
       })
       this.nodes[node.id].attributes.attrs.nodeId = node.id
       this.nodes[node.id].attributes.attrs.unit = unit
-      // console.log("GENERATING NODE " + node.id + " => " + this.nodes[node.id].id);
     }
   }
 
