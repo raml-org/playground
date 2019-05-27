@@ -45,7 +45,7 @@ export class ViewModel extends CommonViewModel {
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
     let editor = section === 'raml' ? this.ramlEditor : this.oasEditor
-    let value = editor.getModel().getValue()
+    let value = editor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     this.parseString(section as 'raml' | 'oas', value, (err, model) => {
       if (err) {
@@ -79,8 +79,6 @@ export class ViewModel extends CommonViewModel {
     // Update RAML editor with existing model
     // Generate model for OAS editor
     if (this.lastParsedSection() === 'raml') {
-      console.log('Updating RAML editor with existing model')
-      this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
       console.log('Generating model for OAS editor')
       this.model.toOas(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
@@ -94,8 +92,6 @@ export class ViewModel extends CommonViewModel {
     // Update OAS editor with existing model
     // Generate model for RAML editor
     if (this.lastParsedSection() === 'oas') {
-      console.log('Updating OAS editor with existing model')
-      this.oasEditor.setModel(this.createModel(this.model.raw, 'raml'))
       console.log('Generating model for RAML editor')
       this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
