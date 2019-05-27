@@ -59,8 +59,10 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
-    let parser = type === 'raml' ? wap.raml10 : wap.oas20
-    parser.parse(value).then((model) => {
+    let parsingProm = type === 'raml'
+      ? wap.raml10.parse(value)
+      : wap.oas20.parseYaml(value)
+    parsingProm.then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
       console.error(`Failed to parse string: ${err}`)

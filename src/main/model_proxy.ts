@@ -71,14 +71,14 @@ export class ModelProxy {
   toOas (level: ModelLevel, options: any, cb) {
     try {
       if (level === 'document') {
-        wap.oas20.generateString(this.model).then((text) => {
+        wap.oas20.generateYamlString(this.model).then((text) => {
           this.oasString = text
           cb(null, text)
         }).catch(cb)
       } else { // domain level
         wap.oas20.resolve(this.model)
           .then((resolved) => {
-            return wap.oas20.generateString(resolved)
+            return wap.oas20.generateYamlString(resolved)
           })
           .then((text) => {
             this.oasString = text
@@ -92,17 +92,17 @@ export class ModelProxy {
   }
 
   update (location: string, text: string, modelType: ModelType, cb: (e: any) => void): void {
-    var parser
+    let parsingProm
     if (modelType === 'raml') {
-      parser = wap.raml10
+      parsingProm = wap.raml10.parse(location, text)
     } else if (modelType === 'oas') {
-      parser = wap.oas20
+      parsingProm = wap.oas20.parseYaml(location, text)
     } else {
-      parser = wap.amfGraph
+      parsingProm = wap.amfGraph.parse(location, text)
     }
     if (location === this.model.location) {
       // we need to update the main document model
-      parser.parse(location, text).then((model) => {
+      parsingProm.then((model) => {
         this.model = model
         this.raw = model.raw
       }).catch((err) => {
@@ -112,7 +112,7 @@ export class ModelProxy {
       // we need to update one reference in the document model
       const ref = this.model.references().filter((ref) => ref.location === location)[0]
       if (ref != null) {
-        parser.parse(location, text).then((model) => {
+        parsingProm.then((model) => {
           const newRefs = this.model.references().map((ref) => {
             if (ref.location !== location) {
               return ref
