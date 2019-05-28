@@ -169,6 +169,7 @@ export class PlaygroundGraph {
     this.scaleX = sx
     this.scaleY = sy
     this.paper.scale(sx, sy)
+    this.paper.fitToContent()
   }
 
   zoomOut () {
