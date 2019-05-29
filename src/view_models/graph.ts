@@ -86,29 +86,27 @@ export class PlaygroundGraph {
             rankDir: 'TB'
           })
         }
-        const maxX = finalCells
-          .map(c => c['attributes'].position ? (c['attributes'].position.x + c['attributes'].size.width) : 0)
-          .sort((a, b) => {
-            if (a > b) {
-              return -1
-            } else if (a < b) {
-              return 1
-            } else {
-              return 0
-            }
-          })[0]
-        const maxY = finalCells
-          .map(c => c['attributes'].position ? (c['attributes'].position.y + c['attributes'].size.height) : 0)
-          .sort((a, b) => {
-            if (a > b) {
-              return -1
-            } else if (a < b) {
-              return 1
-            } else {
-              return 0
-            }
-          })[0]
-        finalCells.map(c => c['attributes'].position ? c['attributes'].position.x : 0)
+
+        let sorter = (a, b) => {
+          if (a > b) {
+            return -1
+          } else if (a < b) {
+            return 1
+          } else {
+            return 0
+          }
+        }
+
+        const widths = finalCells.map(c => {
+          return c['attributes'].position ? (c['attributes'].position.x + c['attributes'].size.width) : 0
+        }).sort(sorter)
+
+        const heights = finalCells.map(c => {
+          return c['attributes'].position ? (c['attributes'].position.y + c['attributes'].size.height) : 0
+        }).sort(sorter)
+
+        const maxX = widths[0]
+        const maxY = heights[0]
 
         const graph: any = new Graph()
         let width = maxX + 100
@@ -170,6 +168,21 @@ export class PlaygroundGraph {
     this.scaleY = sy
     this.paper.scale(sx, sy)
     this.paper.fitToContent()
+    this.centerGraphX()
+  }
+
+  centerGraphX () {
+    // TODO: Preserve position if user scrolled
+    let container = document.getElementById('graph-container')
+    let containerWidth = container.clientWidth
+    let contentWidth = this.paper.getContentBBox().width
+    let offset = (containerWidth - contentWidth) / 2
+    if (contentWidth + offset > containerWidth) {
+      container.scroll(Math.abs(offset), container.scrollTop)
+    } else {
+      this.paper.translate(offset)
+      this.paper.setDimensions('100%')
+    }
   }
 
   zoomOut () {
