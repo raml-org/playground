@@ -172,13 +172,12 @@ export class PlaygroundGraph {
   }
 
   centerGraphX () {
-    // TODO: Preserve position if user scrolled
     let container = document.getElementById('graph-container')
     let containerWidth = container.clientWidth
     let contentWidth = this.paper.getContentBBox().width
     let offset = (containerWidth - contentWidth) / 2
     if (contentWidth + offset > containerWidth) {
-      container.scroll(Math.abs(offset), container.scrollTop)
+      container.scroll(Math.abs(offset), 0)
     } else {
       this.paper.translate(offset)
       this.paper.setDimensions('100%')
