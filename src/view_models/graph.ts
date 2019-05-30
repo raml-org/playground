@@ -379,6 +379,7 @@ export class PlaygroundGraph {
           },
           '.connection': { stroke: COLORS[label] || DEFAULT_DOMAIN_COLOR }
         },
+        arrowheadMarkup: '<g />',
         labels: [{
           position: 0.5,
           attrs: {
