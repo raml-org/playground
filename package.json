@@ -15,7 +15,7 @@
     "knockout": "^3.4.2",
     "monaco-editor": "^0.12.0",
     "node-gyp": "^4.0.0",
-    "webapi-parser": "^0.0.2"
+    "webapi-parser": "^0.1.0"
   },
   "devDependencies": {
     "babelify": "^7.3.0",
