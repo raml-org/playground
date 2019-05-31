@@ -91,44 +91,6 @@ export class ModelProxy {
     }
   }
 
-  update (location: string, text: string, modelType: ModelType, cb: (e: any) => void): void {
-    let parsingProm
-    if (modelType === 'raml') {
-      parsingProm = wap.raml10.parse(location, text)
-    } else if (modelType === 'oas') {
-      parsingProm = wap.oas20.parseYaml(location, text)
-    } else {
-      parsingProm = wap.amfGraph.parse(location, text)
-    }
-    if (location === this.model.location) {
-      // we need to update the main document model
-      parsingProm.then((model) => {
-        this.model = model
-        this.raw = model.raw
-      }).catch((err) => {
-        console.log(`Error updating refs: ${err}`)
-      })
-    } else {
-      // we need to update one reference in the document model
-      const ref = this.model.references().filter((ref) => ref.location === location)[0]
-      if (ref != null) {
-        parsingProm.then((model) => {
-          const newRefs = this.model.references().map((ref) => {
-            if (ref.location !== location) {
-              return ref
-            } else {
-              return model
-            }
-          })
-          this.model.withReferences(newRefs)
-          cb(model)
-        }).catch((err) => {
-          console.log(`Error updating refs: ${err}`)
-        })
-      }
-    }
-  }
-
   toAPIModel (level: ModelLevel, options: any, cb) {
     this.toAPIModelProcessed(level, true, true, options, cb)
   }
