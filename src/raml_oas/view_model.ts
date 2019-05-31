@@ -28,6 +28,9 @@ export class ViewModel extends CommonViewModel {
         .then((parsedModel) => {
           this.lastParsedSection('raml')
           this.model = new ModelProxy(parsedModel, 'raml')
+          this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
+            this.ramlEditor.setModel(this.createModel(string, 'raml'))
+          })
           this.updateEditorsModels()
         })
         .catch((err) => {
@@ -84,7 +87,7 @@ export class ViewModel extends CommonViewModel {
         if (err !== null) {
           console.error(`Failed to generate OAS: ${err}`)
         } else {
-          this.oasEditor.setModel(this.createModel(this.model!.oasString, 'raml'))
+          this.oasEditor.setModel(this.createModel(string, 'raml'))
         }
       })
     }
@@ -97,7 +100,7 @@ export class ViewModel extends CommonViewModel {
         if (err !== null) {
           console.error(`Failed to generate RAML: ${err}`)
         } else {
-          this.ramlEditor.setModel(this.createModel(this.model!.ramlString, 'raml'))
+          this.ramlEditor.setModel(this.createModel(string, 'raml'))
         }
       })
     }
