@@ -17,17 +17,19 @@ import Paper = joint.dia.Paper;
 
 const CHAR_SIZE = 10
 
-const DEFAULT_DOMAIN_COLOR = 'wheat'
-const SELECTED_STROKE_COLOR = 'red'
+const DEFAULT_LINK_COLOR = '#748599'
+const SELECTED_STROKE_COLOR = '#748599'
+const DEFAULT_LABEL_COLOR = '#748599'
+const NODE_TEXT_COLOR = '#fff'
 
 const COLORS = {
-  'encodes': 'wheat',
-  'declares': 'lightpink',
-  'references': 'mediumseagreen',
+  'encodes': '#748599',
+  'declares': '#748599',
+  'references': '#748599',
 
-  'unit': 'azure',
-  'domain': 'beige',
-  'declaration': 'lavenderblush'
+  'unit': '#115CD4',
+  'domain': '#115CD4',
+  'declaration': '#115CD4'
 }
 
 export class PlaygroundGraph {
@@ -344,12 +346,12 @@ export class PlaygroundGraph {
         attrs: {
           rect: {
             fill: COLORS[kind],
-            stroke: node.id === this.selectedId ? SELECTED_STROKE_COLOR : 'black',
+            stroke: node.id === this.selectedId ? SELECTED_STROKE_COLOR : NODE_TEXT_COLOR,
             'stroke-width': node.id === this.selectedId ? '3' : '1'
           },
           text: {
             text: label,
-            fill: 'black'
+            fill: NODE_TEXT_COLOR
           }
         },
         position: {
@@ -374,17 +376,18 @@ export class PlaygroundGraph {
         attrs: {
           '.marker-target': {
             d: 'M 10 0 L 0 5 L 10 10 z',
-            fill: COLORS[label] || DEFAULT_DOMAIN_COLOR,
-            stroke: COLORS[label] || DEFAULT_DOMAIN_COLOR
+            fill: COLORS[label] || DEFAULT_LINK_COLOR,
+            stroke: COLORS[label] || DEFAULT_LINK_COLOR
           },
-          '.connection': { stroke: COLORS[label] || DEFAULT_DOMAIN_COLOR }
+          '.connection': { stroke: COLORS[label] || DEFAULT_LINK_COLOR }
         },
         arrowheadMarkup: '<g />',
         labels: [{
           position: 0.5,
           attrs: {
             text: {
-              text: label
+              text: label,
+              stroke: DEFAULT_LABEL_COLOR
             }
           }
         }]
