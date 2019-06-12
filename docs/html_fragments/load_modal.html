@@ -17,6 +17,18 @@
                            placeholder="http://">
                 </p>
             </form>
+            <div>
+                <label class="label" data-bind="html: `Or select an example from <a href='https://github.com/${ghExamplesRepo}' target='blank'>${ghExamplesRepo}</a>`"></label>
+                <span class="select">
+                    <select data-bind="options: ghExamples,
+                                       optionsText: 'name',
+                                       optionsCaption: 'Select example...',
+                                       value: selectedGhExample">
+                        <option>Select dropdown</option>
+                        <option>With options</option>
+                    </select>
+                </span>
+            </div>
         </section>
         <footer class="modal-card-foot">
             <a class="button is-success" data-bind="click: save">Load</a>
