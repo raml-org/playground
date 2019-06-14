@@ -17,17 +17,19 @@ import Paper = joint.dia.Paper;
 
 const CHAR_SIZE = 10
 
-const DEFAULT_DOMAIN_COLOR = 'wheat'
-const SELECTED_STROKE_COLOR = 'red'
+const DEFAULT_LINK_COLOR = '#748599'
+const SELECTED_STROKE_COLOR = '#748599'
+const DEFAULT_LABEL_COLOR = '#748599'
+const NODE_TEXT_COLOR = '#fff'
 
 const COLORS = {
-  'encodes': 'wheat',
-  'declares': 'lightpink',
-  'references': 'mediumseagreen',
+  'encodes': '#748599',
+  'declares': '#748599',
+  'references': '#748599',
 
-  'unit': 'azure',
-  'domain': 'beige',
-  'declaration': 'lavenderblush'
+  'unit': '#115CD4',
+  'domain': '#115CD4',
+  'declaration': '#115CD4'
 }
 
 export class PlaygroundGraph {
@@ -38,7 +40,7 @@ export class PlaygroundGraph {
   public scaleY = 1;
   public elements: (DocumentId & Unit)[];
 
-  constructor (public selectedId: string, public level: 'domain' | 'document' | 'files', public handler: (id: string, unit: any) => void) {}
+  constructor (public selectedId: string, public level: 'domain' | 'document', public handler: (id: string, unit: any) => void) {}
 
   process (elements: (DocumentId & Unit)[]) {
     this.nodes = {}
@@ -86,29 +88,27 @@ export class PlaygroundGraph {
             rankDir: 'TB'
           })
         }
-        const maxX = finalCells
-          .map(c => c['attributes'].position ? (c['attributes'].position.x + c['attributes'].size.width) : 0)
-          .sort((a, b) => {
-            if (a > b) {
-              return -1
-            } else if (a < b) {
-              return 1
-            } else {
-              return 0
-            }
-          })[0]
-        const maxY = finalCells
-          .map(c => c['attributes'].position ? (c['attributes'].position.y + c['attributes'].size.height) : 0)
-          .sort((a, b) => {
-            if (a > b) {
-              return -1
-            } else if (a < b) {
-              return 1
-            } else {
-              return 0
-            }
-          })[0]
-        finalCells.map(c => c['attributes'].position ? c['attributes'].position.x : 0)
+
+        let sorter = (a, b) => {
+          if (a > b) {
+            return -1
+          } else if (a < b) {
+            return 1
+          } else {
+            return 0
+          }
+        }
+
+        const widths = finalCells.map(c => {
+          return c['attributes'].position ? (c['attributes'].position.x + c['attributes'].size.width) : 0
+        }).sort(sorter)
+
+        const heights = finalCells.map(c => {
+          return c['attributes'].position ? (c['attributes'].position.y + c['attributes'].size.height) : 0
+        }).sort(sorter)
+
+        const maxX = widths[0]
+        const maxY = heights[0]
 
         const graph: any = new Graph()
         let width = maxX + 100
@@ -126,7 +126,7 @@ export class PlaygroundGraph {
             width: (minWidth > width ? minWidth : width),
             height: (minHeight > height ? minHeight : height),
             gridSize: 1,
-            highlighting: false
+            interactive: false
           }
           options['model'] = graph
           this.paper = new Paper(options)
@@ -135,8 +135,6 @@ export class PlaygroundGraph {
             (cellView, evt, x, y) => {
               const nodeId = cellView.model.attributes.attrs.nodeId
               const unit = cellView.model.attributes.attrs.unit
-              // console.log(cellView);
-              // console.log(nodeId);
               this.handler(nodeId, unit)
             }
           )
@@ -155,6 +153,7 @@ export class PlaygroundGraph {
           }
           let zoom = zoomy < zoomx ? zoomy : zoomx
           this.paperScale(zoom, zoom)
+          this.paper.removeTools()
           if (cb) {
             cb()
           } else {
@@ -170,6 +169,21 @@ export class PlaygroundGraph {
     this.scaleX = sx
     this.scaleY = sy
     this.paper.scale(sx, sy)
+    this.paper.fitToContent()
+    this.centerGraphX()
+  }
+
+  centerGraphX () {
+    let container = document.getElementById('graph-container')
+    let containerWidth = container.clientWidth
+    let contentWidth = this.paper.getContentBBox().width
+    let offset = (containerWidth - contentWidth) / 2
+    if (contentWidth + offset > containerWidth) {
+      container.scroll(Math.abs(offset), 0)
+    } else {
+      this.paper.translate(offset)
+      this.paper.setDimensions('100%')
+    }
   }
 
   zoomOut () {
@@ -192,7 +206,7 @@ export class PlaygroundGraph {
 
   private processFragmentNode (element: Fragment) {
     this.makeNode(element, 'unit', element)
-    if (element.encodes != null && this.level !== 'files') {
+    if (element.encodes != null) {
       const encodes = element.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
@@ -206,7 +220,7 @@ export class PlaygroundGraph {
 
   private processModuleNode (element: Module) {
     this.makeNode(element, 'unit', element)
-    if (element.declares != null && this.level !== 'files') {
+    if (element.declares != null) {
       element.declares.forEach(declaration => {
         if (this.nodes[declaration.id] == null) {
           this.makeNode(declaration, 'declaration', declaration)
@@ -220,7 +234,7 @@ export class PlaygroundGraph {
     this.makeNode(document, 'unit', document)
     // first declarations to avoid refs in the domain level pointing
     // to declarations not added yet
-    if (document.declares != null && this.level !== 'files') {
+    if (document.declares != null) {
       document.declares.forEach(declaration => {
         if (this.nodes[declaration.id] == null) {
           this.makeNode(declaration, 'declaration', declaration)
@@ -228,7 +242,7 @@ export class PlaygroundGraph {
         this.makeLink(document.id, declaration.id, 'declares')
       })
     }
-    if (document.encodes != null && this.level !== 'files') {
+    if (document.encodes != null) {
       const encodes = document.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
@@ -245,7 +259,6 @@ export class PlaygroundGraph {
       const domainKind = element.kind
       switch (domainKind) {
         case 'APIDocumentation': {
-          // console.log("Processing APIDomain in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'encodes');
           ((element as APIDocumentation).endpoints || []).forEach(endpoint => {
@@ -254,7 +267,6 @@ export class PlaygroundGraph {
           break
         }
         case 'EndPoint': {
-          // console.log("Processing EndPoint in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'endpoint');
           ((element as EndPoint).operations || []).forEach(operation => {
@@ -263,7 +275,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Operation': {
-          // console.log("Processing Operation in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Operation).method }, 'domain', element)
           this.makeLink(parentId, element.id, 'supportedOperation');
           ((element as Operation).requests || []).forEach(request => {
@@ -275,7 +286,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Response': {
-          // console.log("Processing Response in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Response).status }, 'domain', element)
           this.makeLink(parentId, element.id, 'returns');
           ((element as Response).payloads || []).forEach(payload => {
@@ -284,7 +294,6 @@ export class PlaygroundGraph {
           break
         }
         case 'Request': {
-          // console.log("Processing Request in graph " + element.id);
           this.makeNode({ id: element.id, label: 'request' }, 'domain', element)
           this.makeLink(parentId, element.id, 'expects');
           ((element as Request).payloads || []).forEach(payload => {
@@ -293,20 +302,17 @@ export class PlaygroundGraph {
           break
         }
         case 'Payload': {
-          // console.log("Processing Payload in graph " + element.id);
           this.makeNode({ id: element.id, label: (element as Payload).mediaType || '*/*' }, 'domain', element)
           this.makeLink(parentId, element.id, 'payload')
           this.processDomainElement(element.id, (element as Payload).schema)
           break
         }
         case 'Shape': {
-          // console.log("Processing Schema in graph " + element.id);
           this.makeNode(element, 'domain', element)
           this.makeLink(parentId, element.id, 'shape')
           break
         }
         case 'Include': {
-          // console.log("Processing Schema in graph " + parentId + " <-> " + element.id + " <-> " + (element as IncludeRelationship).target);
           this.makeNode(element, 'relationship', element)
           this.makeLink(parentId, element.id, 'include')
           this.makeLink(element.id, (element as IncludeRelationship).target, 'includes')
@@ -340,12 +346,12 @@ export class PlaygroundGraph {
         attrs: {
           rect: {
             fill: COLORS[kind],
-            stroke: node.id === this.selectedId ? SELECTED_STROKE_COLOR : 'black',
+            stroke: node.id === this.selectedId ? SELECTED_STROKE_COLOR : NODE_TEXT_COLOR,
             'stroke-width': node.id === this.selectedId ? '3' : '1'
           },
           text: {
             text: label,
-            fill: 'black'
+            fill: NODE_TEXT_COLOR
           }
         },
         position: {
@@ -359,7 +365,6 @@ export class PlaygroundGraph {
       })
       this.nodes[node.id].attributes.attrs.nodeId = node.id
       this.nodes[node.id].attributes.attrs.unit = unit
-      // console.log("GENERATING NODE " + node.id + " => " + this.nodes[node.id].id);
     }
   }
 
@@ -371,16 +376,18 @@ export class PlaygroundGraph {
         attrs: {
           '.marker-target': {
             d: 'M 10 0 L 0 5 L 10 10 z',
-            fill: COLORS[label] || DEFAULT_DOMAIN_COLOR,
-            stroke: COLORS[label] || DEFAULT_DOMAIN_COLOR
+            fill: COLORS[label] || DEFAULT_LINK_COLOR,
+            stroke: COLORS[label] || DEFAULT_LINK_COLOR
           },
-          '.connection': { stroke: COLORS[label] || DEFAULT_DOMAIN_COLOR }
+          '.connection': { stroke: COLORS[label] || DEFAULT_LINK_COLOR }
         },
+        arrowheadMarkup: '<g />',
         labels: [{
           position: 0.5,
           attrs: {
             text: {
-              text: label
+              text: label,
+              stroke: DEFAULT_LABEL_COLOR
             }
           }
         }]
