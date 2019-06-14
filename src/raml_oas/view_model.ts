@@ -28,6 +28,9 @@ export class ViewModel extends CommonViewModel {
         .then((parsedModel) => {
           this.lastParsedSection('raml')
           this.model = new ModelProxy(parsedModel, 'raml')
+          this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
+            this.ramlEditor.setModel(this.createModel(string, 'raml'))
+          })
           this.updateEditorsModels()
         })
         .catch((err) => {
@@ -45,7 +48,7 @@ export class ViewModel extends CommonViewModel {
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
     let editor = section === 'raml' ? this.ramlEditor : this.oasEditor
-    let value = editor.getModel().getValue()
+    let value = editor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     this.parseString(section as 'raml' | 'oas', value, (err, model) => {
       if (err) {
@@ -59,8 +62,10 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
-    let parser = type === 'raml' ? wap.raml10 : wap.oas20
-    parser.parse(value).then((model) => {
+    let parsingProm = type === 'raml'
+      ? wap.raml10.parse(value)
+      : wap.oas20.parseYaml(value)
+    parsingProm.then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
       console.error(`Failed to parse string: ${err}`)
@@ -77,14 +82,12 @@ export class ViewModel extends CommonViewModel {
     // Update RAML editor with existing model
     // Generate model for OAS editor
     if (this.lastParsedSection() === 'raml') {
-      console.log('Updating RAML editor with existing model')
-      this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
       console.log('Generating model for OAS editor')
       this.model.toOas(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
           console.error(`Failed to generate OAS: ${err}`)
         } else {
-          this.oasEditor.setModel(this.createModel(this.model!.oasString, 'raml'))
+          this.oasEditor.setModel(this.createModel(string, 'raml'))
         }
       })
     }
@@ -92,14 +95,12 @@ export class ViewModel extends CommonViewModel {
     // Update OAS editor with existing model
     // Generate model for RAML editor
     if (this.lastParsedSection() === 'oas') {
-      console.log('Updating OAS editor with existing model')
-      this.oasEditor.setModel(this.createModel(this.model.raw, 'raml'))
       console.log('Generating model for RAML editor')
       this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
         if (err !== null) {
           console.error(`Failed to generate RAML: ${err}`)
         } else {
-          this.ramlEditor.setModel(this.createModel(this.model!.ramlString, 'raml'))
+          this.ramlEditor.setModel(this.createModel(string, 'raml'))
         }
       })
     }

@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/es6-promise": "0.0.33",
+    "axios": "^0.19.0",
     "jointjs": "^2.2.1",
     "jsonld": "^0.4.11",
     "knockout": "^3.4.2",
