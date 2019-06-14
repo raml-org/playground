@@ -1826,11 +1826,6 @@ header{
   max-width: 50%;
 }
 
-// Hide graph X buttons
-.tool-remove {
-  display: none;
-}
-
 .modal-card-body, #query {
   .select {
     select {
@@ -1850,4 +1845,12 @@ header{
   .is-success {
     background-color: #26D3FF;
   }
+}
+
+.link-tools {
+  display: none;
+}
+
+.connection-wrap {
+  display: none;
 }

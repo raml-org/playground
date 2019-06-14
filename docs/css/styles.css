@@ -8566,9 +8566,6 @@ header {
 .half-width {
   max-width: 50%; }
 
-.tool-remove {
-  display: none; }
-
 .modal-card-body .select select:focus, .modal-card-body .select select:active, #query .select select:focus, #query .select select:active {
   border-color: #007bff; }
 
@@ -8580,3 +8577,9 @@ header {
 
 .modal-card-foot .is-success {
   background-color: #26D3FF; }
+
+.link-tools {
+  display: none; }
+
+.connection-wrap {
+  display: none; }
