@@ -26,7 +26,7 @@
         <div class="navbar-item">
             <div class="dropdown is-right">
               <select name="raml-demo" class="raml-demo-select"
-                onchange="(function(el) {window.location = el.value})(this)">
+                      data-bind="event: { change: switchDemo }">
                   <option value="raml_oas.html" selected>Demo: RAML + OAS</option>
                   <option value="visualization.html">Demo: Visualization</option>
               </select>

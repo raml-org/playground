@@ -33801,7 +33801,6 @@ class ViewModel extends common_view_model_1.CommonViewModel {
                 this.updateEditorsModels();
             }).catch(err => {
                 console.error(`Failed to parse file: ${err}`);
-                alert(`Failed to parse file: ${err}`);
             });
         });
     }
@@ -33924,12 +33923,21 @@ class CommonViewModel {
         this.ramlChangesFromLastUpdate = 0;
         this.modelChanged = false;
         this.RELOAD_PERIOD = 2000;
+        this.queryParamName = 'raml';
     }
     apply() {
         window['viewModel'] = this;
         webapi_parser_1.WebApiParser.init().then(() => {
             ko.applyBindings(this);
         });
+    }
+    switchDemo(obj, event) {
+        let href = event.target.value;
+        const value = this.ramlEditor.getValue();
+        if (value) {
+            href += `?${this.queryParamName}=${encodeURIComponent(value)}`;
+        }
+        window.location.href = href;
     }
     changeModelContent(counter, section) {
         let self = this;
@@ -33949,9 +33957,8 @@ class CommonViewModel {
         return window['monaco'].editor.createModel(text, mode);
     }
     loadRamlFromQueryParam() {
-        const paramName = 'raml';
         const params = new URLSearchParams(window.location.search);
-        let value = params.get(paramName);
+        let value = params.get(this.queryParamName);
         // Query param is not provided or has no value
         if (!value) {
             return;

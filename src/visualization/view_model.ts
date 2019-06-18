@@ -30,7 +30,6 @@ export class ViewModel extends CommonViewModel {
         })
         .catch((err) => {
           console.error(`Failed to parse file: ${err}`)
-          alert(`Failed to parse file: ${err}`)
         })
     })
   }

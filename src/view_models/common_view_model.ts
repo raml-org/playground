@@ -23,11 +23,22 @@ export abstract class CommonViewModel {
 
   public ramlEditor: any;
 
+  public queryParamName = 'raml';
+
   public apply () {
     window['viewModel'] = this
     wap.init().then(() => {
       ko.applyBindings(this)
     })
+  }
+
+  public switchDemo (obj, event) {
+    let href = event.target.value
+    const value = this.ramlEditor.getValue()
+    if (value) {
+      href += `?${this.queryParamName}=${encodeURIComponent(value)}`
+    }
+    window.location.href = href
   }
 
   public changeModelContent (counter: string, section: EditorSection) {
@@ -50,9 +61,8 @@ export abstract class CommonViewModel {
   }
 
   public loadRamlFromQueryParam () {
-    const paramName = 'raml'
     const params = new URLSearchParams(window.location.search)
-    let value = params.get(paramName)
+    let value = params.get(this.queryParamName)
     // Query param is not provided or has no value
     if (!value) {
       return
