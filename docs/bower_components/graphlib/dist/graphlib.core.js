@@ -1,39 +1,4 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
-/**
- * @license
- * Copyright (c) 2014, Chris Pettitt
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- * list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- * this list of conditions and the following disclaimer in the documentation
- * and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its contributors
- * may be used to endorse or promote products derived from this software without
- * specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-global.graphlib = require('./index');
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./index":2}],2:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.graphlib = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 /**
  * Copyright (c) 2014, Chris Pettitt
  * All rights reserved.
@@ -73,7 +38,7 @@ module.exports = {
   version: lib.version
 };
 
-},{"./lib":18,"./lib/alg":9,"./lib/json":19}],3:[function(require,module,exports){
+},{"./lib":17,"./lib/alg":8,"./lib/json":18}],2:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = components;
@@ -102,15 +67,16 @@ function components(g) {
   return cmpts;
 }
 
-},{"../lodash":20}],4:[function(require,module,exports){
+},{"../lodash":19}],3:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = dfs;
 
 /*
  * A helper that preforms a pre- or post-order traversal on the input graph
- * and returns the nodes in the order they were visited. This algorithm treats
- * the input as undirected.
+ * and returns the nodes in the order they were visited. If the graph is
+ * undirected then this algorithm will navigate using neighbors. If the graph
+ * is directed then this algorithm will navigate using successors.
  *
  * Order must be one of "pre" or "post".
  */
@@ -119,6 +85,8 @@ function dfs(g, vs, order) {
     vs = [vs];
   }
 
+  var navigation = (g.isDirected() ? g.successors : g.neighbors).bind(g);
+
   var acc = [],
       visited = {};
   _.each(vs, function(v) {
@@ -126,24 +94,24 @@ function dfs(g, vs, order) {
       throw new Error("Graph does not have node: " + v);
     }
 
-    doDfs(g, v, order === "post", visited, acc);
+    doDfs(g, v, order === "post", visited, navigation, acc);
   });
   return acc;
 }
 
-function doDfs(g, v, postorder, visited, acc) {
+function doDfs(g, v, postorder, visited, navigation, acc) {
   if (!_.has(visited, v)) {
     visited[v] = true;
 
     if (!postorder) { acc.push(v); }
-    _.each(g.neighbors(v), function(w) {
-      doDfs(g, w, postorder, visited, acc);
+    _.each(navigation(v), function(w) {
+      doDfs(g, w, postorder, visited, navigation, acc);
     });
     if (postorder) { acc.push(v); }
   }
 }
 
-},{"../lodash":20}],5:[function(require,module,exports){
+},{"../lodash":19}],4:[function(require,module,exports){
 var dijkstra = require("./dijkstra"),
     _ = require("../lodash");
 
@@ -155,7 +123,7 @@ function dijkstraAll(g, weightFunc, edgeFunc) {
   }, {});
 }
 
-},{"../lodash":20,"./dijkstra":6}],6:[function(require,module,exports){
+},{"../lodash":19,"./dijkstra":5}],5:[function(require,module,exports){
 var _ = require("../lodash"),
     PriorityQueue = require("../data/priority-queue");
 
@@ -211,7 +179,7 @@ function runDijkstra(g, source, weightFn, edgeFn) {
   return results;
 }
 
-},{"../data/priority-queue":16,"../lodash":20}],7:[function(require,module,exports){
+},{"../data/priority-queue":15,"../lodash":19}],6:[function(require,module,exports){
 var _ = require("../lodash"),
     tarjan = require("./tarjan");
 
@@ -223,7 +191,7 @@ function findCycles(g) {
   });
 }
 
-},{"../lodash":20,"./tarjan":14}],8:[function(require,module,exports){
+},{"../lodash":19,"./tarjan":13}],7:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = floydWarshall;
@@ -275,7 +243,7 @@ function runFloydWarshall(g, weightFn, edgeFn) {
   return results;
 }
 
-},{"../lodash":20}],9:[function(require,module,exports){
+},{"../lodash":19}],8:[function(require,module,exports){
 module.exports = {
   components: require("./components"),
   dijkstra: require("./dijkstra"),
@@ -290,7 +258,7 @@ module.exports = {
   topsort: require("./topsort")
 };
 
-},{"./components":3,"./dijkstra":6,"./dijkstra-all":5,"./find-cycles":7,"./floyd-warshall":8,"./is-acyclic":10,"./postorder":11,"./preorder":12,"./prim":13,"./tarjan":14,"./topsort":15}],10:[function(require,module,exports){
+},{"./components":2,"./dijkstra":5,"./dijkstra-all":4,"./find-cycles":6,"./floyd-warshall":7,"./is-acyclic":9,"./postorder":10,"./preorder":11,"./prim":12,"./tarjan":13,"./topsort":14}],9:[function(require,module,exports){
 var topsort = require("./topsort");
 
 module.exports = isAcyclic;
@@ -307,7 +275,7 @@ function isAcyclic(g) {
   return true;
 }
 
-},{"./topsort":15}],11:[function(require,module,exports){
+},{"./topsort":14}],10:[function(require,module,exports){
 var dfs = require("./dfs");
 
 module.exports = postorder;
@@ -316,7 +284,7 @@ function postorder(g, vs) {
   return dfs(g, vs, "post");
 }
 
-},{"./dfs":4}],12:[function(require,module,exports){
+},{"./dfs":3}],11:[function(require,module,exports){
 var dfs = require("./dfs");
 
 module.exports = preorder;
@@ -325,7 +293,7 @@ function preorder(g, vs) {
   return dfs(g, vs, "pre");
 }
 
-},{"./dfs":4}],13:[function(require,module,exports){
+},{"./dfs":3}],12:[function(require,module,exports){
 var _ = require("../lodash"),
     Graph = require("../graph"),
     PriorityQueue = require("../data/priority-queue");
@@ -379,7 +347,7 @@ function prim(g, weightFunc) {
   return result;
 }
 
-},{"../data/priority-queue":16,"../graph":17,"../lodash":20}],14:[function(require,module,exports){
+},{"../data/priority-queue":15,"../graph":16,"../lodash":19}],13:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = tarjan;
@@ -428,7 +396,7 @@ function tarjan(g) {
   return results;
 }
 
-},{"../lodash":20}],15:[function(require,module,exports){
+},{"../lodash":19}],14:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = topsort;
@@ -463,8 +431,8 @@ function topsort(g) {
 }
 
 function CycleException() {}
-
-},{"../lodash":20}],16:[function(require,module,exports){
+CycleException.prototype = new Error(); // must be an instance of Error to pass testing
+},{"../lodash":19}],15:[function(require,module,exports){
 var _ = require("../lodash");
 
 module.exports = PriorityQueue;
@@ -618,7 +586,7 @@ PriorityQueue.prototype._swap = function(i, j) {
   keyIndices[origArrI.key] = j;
 };
 
-},{"../lodash":20}],17:[function(require,module,exports){
+},{"../lodash":19}],16:[function(require,module,exports){
 "use strict";
 
 var _ = require("./lodash");
@@ -734,26 +702,29 @@ Graph.prototype.nodes = function() {
 };
 
 Graph.prototype.sources = function() {
+  var self = this;
   return _.filter(this.nodes(), function(v) {
-    return _.isEmpty(this._in[v]);
-  }, this);
+    return _.isEmpty(self._in[v]);
+  });
 };
 
 Graph.prototype.sinks = function() {
+  var self = this;
   return _.filter(this.nodes(), function(v) {
-    return _.isEmpty(this._out[v]);
-  }, this);
+    return _.isEmpty(self._out[v]);
+  });
 };
 
 Graph.prototype.setNodes = function(vs, value) {
   var args = arguments;
+  var self = this;
   _.each(vs, function(v) {
     if (args.length > 1) {
-      this.setNode(v, value);
+      self.setNode(v, value);
     } else {
-      this.setNode(v);
+      self.setNode(v);
     }
-  }, this);
+  });
   return this;
 };
 
@@ -796,8 +767,8 @@ Graph.prototype.removeNode =  function(v) {
       this._removeFromParentsChildList(v);
       delete this._parent[v];
       _.each(this.children(v), function(child) {
-        this.setParent(child);
-      }, this);
+        self.setParent(child);
+      });
       delete this._children[v];
     }
     _.each(_.keys(this._in[v]), removeEdge);
@@ -826,7 +797,7 @@ Graph.prototype.setParent = function(v, parent) {
          ancestor = this.parent(ancestor)) {
       if (ancestor === v) {
         throw new Error("Setting " + parent+ " as parent of " + v +
-                        " would create create a cycle");
+                        " would create a cycle");
       }
     }
 
@@ -891,6 +862,16 @@ Graph.prototype.neighbors = function(v) {
   }
 };
 
+Graph.prototype.isLeaf = function (v) {
+  var neighbors;
+  if (this.isDirected()) {
+    neighbors = this.successors(v);
+  } else {
+    neighbors = this.neighbors(v);
+  }
+  return neighbors.length === 0;
+};
+
 Graph.prototype.filterNodes = function(filter) {
   var copy = new this.constructor({
     directed: this._isDirected,
@@ -900,19 +881,19 @@ Graph.prototype.filterNodes = function(filter) {
 
   copy.setGraph(this.graph());
 
+  var self = this;
   _.each(this._nodes, function(value, v) {
     if (filter(v)) {
       copy.setNode(v, value);
     }
-  }, this);
+  });
 
   _.each(this._edgeObjs, function(e) {
     if (copy.hasNode(e.v) && copy.hasNode(e.w)) {
-      copy.setEdge(e, this.edge(e));
+      copy.setEdge(e, self.edge(e));
     }
-  }, this);
+  });
 
-  var self = this;
   var parents = {};
   function findParent(v) {
     var parent = self.parent(v);
@@ -1139,14 +1120,14 @@ function edgeObjToId(isDirected, edgeObj) {
   return edgeArgsToId(isDirected, edgeObj.v, edgeObj.w, edgeObj.name);
 }
 
-},{"./lodash":20}],18:[function(require,module,exports){
+},{"./lodash":19}],17:[function(require,module,exports){
 // Includes only the "core" of graphlib
 module.exports = {
   Graph: require("./graph"),
   version: require("./version")
 };
 
-},{"./graph":17,"./version":21}],19:[function(require,module,exports){
+},{"./graph":16,"./version":20}],18:[function(require,module,exports){
 var _ = require("./lodash"),
     Graph = require("./graph");
 
@@ -1214,14 +1195,31 @@ function read(json) {
   return g;
 }
 
-},{"./graph":17,"./lodash":20}],20:[function(require,module,exports){
+},{"./graph":16,"./lodash":19}],19:[function(require,module,exports){
 /* global window */
 
 var lodash;
 
 if (typeof require === "function") {
   try {
-    lodash = require("lodash");
+    lodash = {
+      clone: require("lodash/clone"),
+      constant: require("lodash/constant"),
+      each: require("lodash/each"),
+      filter: require("lodash/filter"),
+      has:  require("lodash/has"),
+      isArray: require("lodash/isArray"),
+      isEmpty: require("lodash/isEmpty"),
+      isFunction: require("lodash/isFunction"),
+      isUndefined: require("lodash/isUndefined"),
+      keys: require("lodash/keys"),
+      map: require("lodash/map"),
+      reduce: require("lodash/reduce"),
+      size: require("lodash/size"),
+      transform: require("lodash/transform"),
+      union: require("lodash/union"),
+      values: require("lodash/values")
+    };
   } catch (e) {}
 }
 
@@ -1231,7 +1229,8 @@ if (!lodash) {
 
 module.exports = lodash;
 
-},{"lodash":undefined}],21:[function(require,module,exports){
-module.exports = '1.0.7';
+},{"lodash/clone":undefined,"lodash/constant":undefined,"lodash/each":undefined,"lodash/filter":undefined,"lodash/has":undefined,"lodash/isArray":undefined,"lodash/isEmpty":undefined,"lodash/isFunction":undefined,"lodash/isUndefined":undefined,"lodash/keys":undefined,"lodash/map":undefined,"lodash/reduce":undefined,"lodash/size":undefined,"lodash/transform":undefined,"lodash/union":undefined,"lodash/values":undefined}],20:[function(require,module,exports){
+module.exports = '2.1.7';
 
-},{}]},{},[1]);
+},{}]},{},[1])(1)
+});

@@ -1,6 +1,6 @@
 {
   "name": "graphlib",
-  "version": "1.0.7",
+  "version": "2.1.7",
   "main": [
     "dist/graphlib.core.js"
   ],
@@ -20,16 +20,17 @@
     "test/**"
   ],
   "dependencies": {
-    "lodash": "^3.10.0"
+    "lodash": "^4.17.5"
   },
   "homepage": "https://github.com/cpettitt/graphlib",
-  "_release": "1.0.7",
+  "_release": "2.1.7",
   "_resolution": {
     "type": "version",
-    "tag": "v1.0.7",
-    "commit": "fbd547f8f19bd743a4344d385ee1ec37eb34279f"
+    "tag": "v2.1.7",
+    "commit": "84f85b584b17573fe1c8a32f581c5bfbd5e4a093"
   },
   "_source": "https://github.com/cpettitt/graphlib.git",
-  "_target": "1.0.7",
-  "_originalSource": "graphlib"
+  "_target": "^2.1.7",
+  "_originalSource": "graphlib",
+  "_direct": true
 }

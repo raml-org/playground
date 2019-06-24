@@ -1,6 +1,6 @@
 {
   "name": "bulma",
-  "version": "0.6.2",
+  "version": "0.7.5",
   "homepage": "https://bulma.io",
   "authors": [
     "jgthms <bbxdesign@gmail.com>"
@@ -24,13 +24,14 @@
     "docs",
     "images"
   ],
-  "_release": "0.6.2",
+  "_release": "0.7.5",
   "_resolution": {
     "type": "version",
-    "tag": "0.6.2",
-    "commit": "6078acdd92f250d1c5ab3c512468e228c1b45630"
+    "tag": "0.7.5",
+    "commit": "114930c0fcbca64baf113b27845c790fdd878700"
   },
   "_source": "https://github.com/jgthms/bulma.git",
-  "_target": "^0.6.1",
-  "_originalSource": "bulma"
+  "_target": "^0.7.5",
+  "_originalSource": "bulma",
+  "_direct": true
 }

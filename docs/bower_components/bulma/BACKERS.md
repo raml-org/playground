@@ -1,28 +1,399 @@
 # Backers via Patreon
 
-## Website sponsors via Patreon ($300+)
+<div class="bd-content">
 
-* Ravi Gadesha [@_9brainz](https://twitter.com/@_9brainz)
-* Nazar [@nazar_io](https://twitter.com/@nazar_io)
 
-## Homepage sponsors via Patreon ($100+)
+<h2 class="title is-5">
+  Documentation sponsors via Patreon ($500+)
+</h2>
 
-* Aaron [@aequasi](https://twitter.com/@aequasi)
+<table class="table is-bordered">
 
-### Generous backers via Patreon ($30+)
+<thead>
+  <tr>
+    <th>Name</th>
+    <th>Twitter</th>
+    <th>Website</th>
+  </tr>
+</thead>
 
-* Adrian Ocneanu
-* Garry Newman
+  <tbody>
 
-#### Backers via Patreon ($10+)
+      <tr>
+  <td>Tipe</td>
 
-* Michael Schinis
-* Peter Ryszkiewicz
-* Wikiki
-* dansup [@dsup](https://twitter.com/@dsup)
-* Niklas [@paradoxxger](https://twitter.com/@paradoxxger)
-* Jordan Nemrow
-* Matt Swan
-* Kyu
-* Takayuki Yamaguchi [@takyam](https://twitter.com/@takyam)
-* Leo Zeba [@leozeba](https://twitter.com/@leozeba)
+  <td>
+
+      <a href="https://twitter.com/tipeio" target="_blank" rel="nofollow">
+        @tipeio
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+  </tbody>
+</table>
+
+<h2 class="title is-5">
+  Homepage sponsors via Patreon ($100+)
+</h2>
+
+<table class="table is-bordered">
+
+<thead>
+  <tr>
+    <th>Name</th>
+    <th>Twitter</th>
+    <th>Website</th>
+  </tr>
+</thead>
+
+  <tbody>
+
+      <tr>
+  <td>usave</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Tooltwist</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Robert Bolder</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Phil Alves</td>
+
+  <td>
+
+      <a href="https://twitter.com/philalves01" target="_blank" rel="nofollow">
+        @philalves01
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>HebergeurWeb.ca</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>DontPayFull</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+  </tbody>
+</table>
+
+<h2 class="title is-5">
+  Generous backers via Patreon ($30+)
+</h2>
+
+<table class="table is-bordered">
+
+<thead>
+  <tr>
+    <th>Name</th>
+    <th>Twitter</th>
+    <th>Website</th>
+  </tr>
+</thead>
+
+  <tbody>
+
+      <tr>
+  <td>Roman Chvanikoff</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Garry Newman</td>
+
+  <td>
+
+      <a href="https://twitter.com/garrynewman" target="_blank" rel="nofollow">
+        @garrynewman
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Adrian Ocneanu</td>
+
+  <td>
+
+      <a href="https://twitter.com/aocneanu" target="_blank" rel="nofollow">
+        @aocneanu
+      </a>
+
+  </td>
+
+  <td>
+
+      <a href="https://www.earthlink.ro/" target="_blank" rel="nofollow">
+        Earthlink
+      </a>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Aaron</td>
+
+  <td>
+
+      <a href="https://twitter.com/aequasi" target="_blank" rel="nofollow">
+        @aequasi
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+  </tbody>
+</table>
+
+<h2 class="title is-5">
+  Backers via Patreon ($10+)
+</h2>
+
+<table class="table is-bordered">
+
+<thead>
+  <tr>
+    <th>Name</th>
+    <th>Twitter</th>
+    <th>Website</th>
+  </tr>
+</thead>
+
+  <tbody>
+
+      <tr>
+  <td>Wikiki</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Tyler Weeres</td>
+
+  <td>
+
+      <a href="https://twitter.com/tweeres04" target="_blank" rel="nofollow">
+        @tweeres04
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Takayuki Yamaguchi</td>
+
+  <td>
+
+      <a href="https://twitter.com/takyam" target="_blank" rel="nofollow">
+        @takyam
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Stuart Stanfield</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Leo Zeba</td>
+
+  <td>
+
+      <a href="https://twitter.com/leozeba" target="_blank" rel="nofollow">
+        @leozeba
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Jordan Nemrow</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Jason Seminara</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Franz Geffke</td>
+
+  <td>
+
+      <a href="https://twitter.com/f_anzs" target="_blank" rel="nofollow">
+        @f_anzs
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Dmitry Malyshev</td>
+
+  <td>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+      <tr>
+  <td>Charles Treece</td>
+
+  <td>
+
+      <a href="https://twitter.com/charlestreece" target="_blank" rel="nofollow">
+        @charlestreece
+      </a>
+
+  </td>
+
+  <td>
+
+  </td>
+</tr>
+
+
+  </tbody>
+</table>
+
+        </div>
