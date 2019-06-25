@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import * as strings from '../../../base/common/strings.js';
 var LineDecoration = /** @class */ (function () {
     function LineDecoration(startColumn, endColumn, className, type) {
@@ -42,7 +41,7 @@ var LineDecoration = /** @class */ (function () {
                 // Ignore decorations that sit outside this line
                 continue;
             }
-            if (range.isEmpty() && d.type === 0 /* Regular */) {
+            if (range.isEmpty() && (d.type === 0 /* Regular */ || d.type === 3 /* RegularAffectingLetterSpacing */)) {
                 // Ignore empty range decorations
                 continue;
             }

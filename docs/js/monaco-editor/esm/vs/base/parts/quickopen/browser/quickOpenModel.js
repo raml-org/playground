@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,33 +16,15 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import * as nls from '../../../../nls.js';
-import { TPromise } from '../../../common/winjs.base.js';
 import * as types from '../../../common/types.js';
 import { IconLabel } from '../../../browser/ui/iconLabel/iconLabel.js';
-import { compareAnything } from '../../../common/comparers.js';
 import { ActionBar } from '../../../browser/ui/actionbar/actionbar.js';
 import { HighlightedLabel } from '../../../browser/ui/highlightedlabel/highlightedLabel.js';
 import * as DOM from '../../../browser/dom.js';
 import { KeybindingLabel } from '../../../browser/ui/keybindingLabel/keybindingLabel.js';
 import { OS } from '../../../common/platform.js';
+import { coalesce } from '../../../common/arrays.js';
 var IDS = 0;
-var QuickOpenItemAccessorClass = /** @class */ (function () {
-    function QuickOpenItemAccessorClass() {
-    }
-    QuickOpenItemAccessorClass.prototype.getItemLabel = function (entry) {
-        return entry.getLabel();
-    };
-    QuickOpenItemAccessorClass.prototype.getItemDescription = function (entry) {
-        return entry.getDescription();
-    };
-    QuickOpenItemAccessorClass.prototype.getItemPath = function (entry) {
-        var resource = entry.getResource();
-        return resource ? resource.fsPath : void 0;
-    };
-    return QuickOpenItemAccessorClass;
-}());
-export { QuickOpenItemAccessorClass };
-export var QuickOpenItemAccessor = new QuickOpenItemAccessorClass();
 var QuickOpenEntry = /** @class */ (function () {
     function QuickOpenEntry(highlights) {
         if (highlights === void 0) { highlights = []; }
@@ -70,7 +54,8 @@ var QuickOpenEntry = /** @class */ (function () {
      * The label of the entry to use when a screen reader wants to read about the entry
      */
     QuickOpenEntry.prototype.getAriaLabel = function () {
-        return this.getLabel();
+        return coalesce([this.getLabel(), this.getDescription(), this.getDetail()])
+            .join(', ');
     };
     /**
      * Detail information about the entry that is optional and can be shown below the label
@@ -109,23 +94,10 @@ var QuickOpenEntry = /** @class */ (function () {
         return null;
     };
     /**
-     * A resource for this entry. Resource URIs can be used to compare different kinds of entries and group
-     * them together.
-     */
-    QuickOpenEntry.prototype.getResource = function () {
-        return null;
-    };
-    /**
      * Allows to reuse the same model while filtering. Hidden entries will not show up in the viewer.
      */
     QuickOpenEntry.prototype.isHidden = function () {
         return this.hidden;
-    };
-    /**
-     * Allows to reuse the same model while filtering. Hidden entries will not show up in the viewer.
-     */
-    QuickOpenEntry.prototype.setHidden = function (hidden) {
-        this.hidden = hidden;
     };
     /**
      * Allows to set highlight ranges that should show up for the entry label and optionally description if set.
@@ -148,14 +120,6 @@ var QuickOpenEntry = /** @class */ (function () {
      * The context parameter provides additional context information how the run was triggered.
      */
     QuickOpenEntry.prototype.run = function (mode, context) {
-        return false;
-    };
-    /**
-     * Determines if this quick open entry should merge with the editor history in quick open. If set to true
-     * and the resource of this entry is the same as the resource for an editor history, it will not show up
-     * because it is considered to be a duplicate of an editor history.
-     */
-    QuickOpenEntry.prototype.mergeWithEditorHistory = function () {
         return false;
     };
     return QuickOpenEntry;
@@ -183,7 +147,7 @@ var QuickOpenEntryGroup = /** @class */ (function (_super) {
      * Whether to show a border on top of the group entry or not.
      */
     QuickOpenEntryGroup.prototype.showBorder = function () {
-        return this.withBorder;
+        return !!this.withBorder;
     };
     QuickOpenEntryGroup.prototype.setShowBorder = function (showBorder) {
         this.withBorder = showBorder;
@@ -200,17 +164,11 @@ var QuickOpenEntryGroup = /** @class */ (function (_super) {
     QuickOpenEntryGroup.prototype.getDetail = function () {
         return this.entry ? this.entry.getDetail() : _super.prototype.getDetail.call(this);
     };
-    QuickOpenEntryGroup.prototype.getResource = function () {
-        return this.entry ? this.entry.getResource() : _super.prototype.getResource.call(this);
-    };
     QuickOpenEntryGroup.prototype.getIcon = function () {
         return this.entry ? this.entry.getIcon() : _super.prototype.getIcon.call(this);
     };
     QuickOpenEntryGroup.prototype.getDescription = function () {
         return this.entry ? this.entry.getDescription() : _super.prototype.getDescription.call(this);
-    };
-    QuickOpenEntryGroup.prototype.getEntry = function () {
-        return this.entry;
     };
     QuickOpenEntryGroup.prototype.getHighlights = function () {
         return this.entry ? this.entry.getHighlights() : _super.prototype.getHighlights.call(this);
@@ -220,9 +178,6 @@ var QuickOpenEntryGroup = /** @class */ (function (_super) {
     };
     QuickOpenEntryGroup.prototype.setHighlights = function (labelHighlights, descriptionHighlights, detailHighlights) {
         this.entry ? this.entry.setHighlights(labelHighlights, descriptionHighlights, detailHighlights) : _super.prototype.setHighlights.call(this, labelHighlights, descriptionHighlights, detailHighlights);
-    };
-    QuickOpenEntryGroup.prototype.setHidden = function (hidden) {
-        this.entry ? this.entry.setHidden(hidden) : _super.prototype.setHidden.call(this, hidden);
     };
     QuickOpenEntryGroup.prototype.run = function (mode, context) {
         return this.entry ? this.entry.run(mode, context) : _super.prototype.run.call(this, mode, context);
@@ -237,15 +192,6 @@ var NoActionProvider = /** @class */ (function () {
         return false;
     };
     NoActionProvider.prototype.getActions = function (tree, element) {
-        return TPromise.as(null);
-    };
-    NoActionProvider.prototype.hasSecondaryActions = function (tree, element) {
-        return false;
-    };
-    NoActionProvider.prototype.getSecondaryActions = function (tree, element) {
-        return TPromise.as(null);
-    };
-    NoActionProvider.prototype.getActionItem = function (tree, element, action) {
         return null;
     };
     return NoActionProvider;
@@ -255,7 +201,6 @@ var templateEntryGroup = 'quickOpenEntryGroup';
 var Renderer = /** @class */ (function () {
     function Renderer(actionProvider, actionRunner) {
         if (actionProvider === void 0) { actionProvider = new NoActionProvider(); }
-        if (actionRunner === void 0) { actionRunner = null; }
         this.actionProvider = actionProvider;
         this.actionRunner = actionRunner;
     }
@@ -278,7 +223,7 @@ var Renderer = /** @class */ (function () {
         // Entry
         var row1 = DOM.$('.quick-open-row');
         var row2 = DOM.$('.quick-open-row');
-        var entry = DOM.$('.quick-open-entry', null, row1, row2);
+        var entry = DOM.$('.quick-open-entry', undefined, row1, row2);
         entryContainer.appendChild(entry);
         // Icon
         var icon = document.createElement('span');
@@ -294,7 +239,7 @@ var Renderer = /** @class */ (function () {
         var detailContainer = document.createElement('div');
         row2.appendChild(detailContainer);
         DOM.addClass(detailContainer, 'quick-open-entry-meta');
-        var detail = new HighlightedLabel(detailContainer);
+        var detail = new HighlightedLabel(detailContainer, true);
         // Entry Group
         var group;
         if (templateId === templateEntryGroup) {
@@ -330,14 +275,13 @@ var Renderer = /** @class */ (function () {
             DOM.removeClass(data.container, 'has-actions');
         }
         data.actionBar.context = entry; // make sure the context is the current element
-        this.actionProvider.getActions(null, entry).then(function (actions) {
-            if (data.actionBar.isEmpty() && actions && actions.length > 0) {
-                data.actionBar.push(actions, { icon: true, label: false });
-            }
-            else if (!data.actionBar.isEmpty() && (!actions || actions.length === 0)) {
-                data.actionBar.clear();
-            }
-        });
+        var actions = this.actionProvider.getActions(null, entry);
+        if (data.actionBar.isEmpty() && actions && actions.length > 0) {
+            data.actionBar.push(actions, { icon: true, label: false });
+        }
+        else if (!data.actionBar.isEmpty() && (!actions || actions.length === 0)) {
+            data.actionBar.clear();
+        }
         // Entry group class
         if (entry instanceof QuickOpenEntryGroup && entry.getGroupLabel()) {
             DOM.addClass(data.container, 'has-group-label');
@@ -352,7 +296,9 @@ var Renderer = /** @class */ (function () {
             // Border
             if (group.showBorder()) {
                 DOM.addClass(groupData.container, 'results-group-separator');
-                groupData.container.style.borderTopColor = styles.pickerGroupBorder.toString();
+                if (styles.pickerGroupBorder) {
+                    groupData.container.style.borderTopColor = styles.pickerGroupBorder.toString();
+                }
             }
             else {
                 DOM.removeClass(groupData.container, 'results-group-separator');
@@ -360,8 +306,12 @@ var Renderer = /** @class */ (function () {
             }
             // Group Label
             var groupLabel = group.getGroupLabel() || '';
-            groupData.group.textContent = groupLabel;
-            groupData.group.style.color = styles.pickerGroupForeground.toString();
+            if (groupData.group) {
+                groupData.group.textContent = groupLabel;
+                if (styles.pickerGroupForeground) {
+                    groupData.group.style.color = styles.pickerGroupForeground.toString();
+                }
+            }
         }
         // Normal Entry
         if (entry instanceof QuickOpenEntry) {
@@ -372,30 +322,27 @@ var Renderer = /** @class */ (function () {
             // Label
             var options = entry.getLabelOptions() || Object.create(null);
             options.matches = labelHighlights || [];
-            options.title = entry.getTooltip();
-            options.descriptionTitle = entry.getDescriptionTooltip() || entry.getDescription(); // tooltip over description because it could overflow
+            options.title = types.withNullAsUndefined(entry.getTooltip());
+            options.descriptionTitle = entry.getDescriptionTooltip() || types.withNullAsUndefined(entry.getDescription()); // tooltip over description because it could overflow
             options.descriptionMatches = descriptionHighlights || [];
-            data.label.setValue(entry.getLabel(), entry.getDescription(), options);
+            data.label.setLabel(types.withNullAsUndefined(entry.getLabel()), types.withNullAsUndefined(entry.getDescription()), options);
             // Meta
-            data.detail.set(entry.getDetail(), detailHighlights);
+            data.detail.set(types.withNullAsUndefined(entry.getDetail()), detailHighlights);
             // Keybinding
-            data.keybinding.set(entry.getKeybinding(), null);
+            data.keybinding.set(entry.getKeybinding());
         }
     };
     Renderer.prototype.disposeTemplate = function (templateId, templateData) {
-        var data = templateData;
-        data.actionBar.dispose();
-        data.actionBar = null;
-        data.container = null;
-        data.entry = null;
-        data.keybinding.dispose();
-        data.keybinding = null;
-        data.detail.dispose();
-        data.detail = null;
-        data.group = null;
-        data.icon = null;
-        data.label.dispose();
-        data.label = null;
+        templateData.actionBar.dispose();
+        templateData.actionBar = null;
+        templateData.container = null;
+        templateData.entry = null;
+        templateData.keybinding = null;
+        templateData.detail = null;
+        templateData.group = null;
+        templateData.icon = null;
+        templateData.label.dispose();
+        templateData.label = null;
     };
     return Renderer;
 }());
@@ -443,33 +390,6 @@ var QuickOpenModel = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    /**
-     * Adds entries that should show up in the quick open viewer.
-     */
-    QuickOpenModel.prototype.addEntries = function (entries) {
-        if (types.isArray(entries)) {
-            this._entries = this._entries.concat(entries);
-        }
-    };
-    /**
-     * Set the entries that should show up in the quick open viewer.
-     */
-    QuickOpenModel.prototype.setEntries = function (entries) {
-        if (types.isArray(entries)) {
-            this._entries = entries;
-        }
-    };
-    /**
-     * Get the entries that should show up in the quick open viewer.
-     *
-     * @visibleOnly optional parameter to only return visible entries
-     */
-    QuickOpenModel.prototype.getEntries = function (visibleOnly) {
-        if (visibleOnly) {
-            return this._entries.filter(function (e) { return !e.isHidden(); });
-        }
-        return this._entries;
-    };
     QuickOpenModel.prototype.getId = function (entry) {
         return entry.getId();
     };
@@ -492,31 +412,3 @@ var QuickOpenModel = /** @class */ (function () {
     return QuickOpenModel;
 }());
 export { QuickOpenModel };
-/**
- * A good default sort implementation for quick open entries respecting highlight information
- * as well as associated resources.
- */
-export function compareEntries(elementA, elementB, lookFor) {
-    // Give matches with label highlights higher priority over
-    // those with only description highlights
-    var labelHighlightsA = elementA.getHighlights()[0] || [];
-    var labelHighlightsB = elementB.getHighlights()[0] || [];
-    if (labelHighlightsA.length && !labelHighlightsB.length) {
-        return -1;
-    }
-    if (!labelHighlightsA.length && labelHighlightsB.length) {
-        return 1;
-    }
-    // Fallback to the full path if labels are identical and we have associated resources
-    var nameA = elementA.getLabel();
-    var nameB = elementB.getLabel();
-    if (nameA === nameB) {
-        var resourceA = elementA.getResource();
-        var resourceB = elementB.getResource();
-        if (resourceA && resourceB) {
-            nameA = resourceA.fsPath;
-            nameB = resourceB.fsPath;
-        }
-    }
-    return compareAnything(nameA, nameB, lookFor);
-}

@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,17 +16,17 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import './quickOutline.css';
-import * as nls from '../../../../nls.js';
+import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { matchesFuzzy } from '../../../../base/common/filters.js';
 import * as strings from '../../../../base/common/strings.js';
 import { QuickOpenEntryGroup, QuickOpenModel } from '../../../../base/parts/quickopen/browser/quickOpenModel.js';
-import { Mode } from '../../../../base/parts/quickopen/common/quickOpen.js';
-import { EditorContextKeys } from '../../../common/editorContextKeys.js';
-import { DocumentSymbolProviderRegistry, symbolKindToCssClass } from '../../../common/modes.js';
-import { BaseEditorQuickOpenAction } from './editorQuickOpen.js';
-import { getDocumentSymbols } from '../../../contrib/quickOpen/quickOpen.js';
 import { registerEditorAction } from '../../../browser/editorExtensions.js';
 import { Range } from '../../../common/core/range.js';
+import { EditorContextKeys } from '../../../common/editorContextKeys.js';
+import { DocumentSymbolProviderRegistry, symbolKindToCssClass } from '../../../common/modes.js';
+import { getDocumentSymbols } from '../../../contrib/quickOpen/quickOpen.js';
+import { BaseEditorQuickOpenAction } from './editorQuickOpen.js';
+import { QuickOutlineNLS } from '../../../common/standaloneStrings.js';
 var SCOPE_PREFIX = ':';
 var SymbolEntry = /** @class */ (function (_super) {
     __extends(SymbolEntry, _super);
@@ -43,7 +45,7 @@ var SymbolEntry = /** @class */ (function (_super) {
         return this.name;
     };
     SymbolEntry.prototype.getAriaLabel = function () {
-        return nls.localize('entryAriaLabel', "{0}, symbols", this.name);
+        return strings.format(QuickOutlineNLS.entryAriaLabel, this.name);
     };
     SymbolEntry.prototype.getIcon = function () {
         return this.type;
@@ -58,12 +60,12 @@ var SymbolEntry = /** @class */ (function (_super) {
         return this.range;
     };
     SymbolEntry.prototype.run = function (mode, context) {
-        if (mode === Mode.OPEN) {
+        if (mode === 1 /* OPEN */) {
             return this.runOpen(context);
         }
         return this.runPreview();
     };
-    SymbolEntry.prototype.runOpen = function (context) {
+    SymbolEntry.prototype.runOpen = function (_context) {
         // Apply selection and focus
         var range = this.toSelection();
         this.editor.setSelection(range);
@@ -84,17 +86,19 @@ var SymbolEntry = /** @class */ (function (_super) {
     };
     return SymbolEntry;
 }(QuickOpenEntryGroup));
+export { SymbolEntry };
 var QuickOutlineAction = /** @class */ (function (_super) {
     __extends(QuickOutlineAction, _super);
     function QuickOutlineAction() {
-        return _super.call(this, nls.localize('quickOutlineActionInput', "Type the name of an identifier you wish to navigate to"), {
+        return _super.call(this, QuickOutlineNLS.quickOutlineActionInput, {
             id: 'editor.action.quickOutline',
-            label: nls.localize('QuickOutlineAction.label', "Go to Symbol..."),
+            label: QuickOutlineNLS.quickOutlineActionLabel,
             alias: 'Go to Symbol...',
             precondition: EditorContextKeys.hasDocumentSymbolProvider,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
-                primary: 2048 /* CtrlCmd */ | 1024 /* Shift */ | 45 /* KEY_O */
+                primary: 2048 /* CtrlCmd */ | 1024 /* Shift */ | 45 /* KEY_O */,
+                weight: 100 /* EditorContrib */
             },
             menuOpts: {
                 group: 'navigation',
@@ -104,16 +108,19 @@ var QuickOutlineAction = /** @class */ (function (_super) {
     }
     QuickOutlineAction.prototype.run = function (accessor, editor) {
         var _this = this;
+        if (!editor.hasModel()) {
+            return undefined;
+        }
         var model = editor.getModel();
         if (!DocumentSymbolProviderRegistry.has(model)) {
-            return null;
+            return undefined;
         }
         // Resolve outline
-        return getDocumentSymbols(model).then(function (result) {
-            if (result.entries.length === 0) {
+        return getDocumentSymbols(model, true, CancellationToken.None).then(function (result) {
+            if (result.length === 0) {
                 return;
             }
-            _this._run(editor, result.entries);
+            _this._run(editor, result);
         });
     };
     QuickOutlineAction.prototype._run = function (editor, result) {
@@ -134,6 +141,9 @@ var QuickOutlineAction = /** @class */ (function (_super) {
             }
         });
     };
+    QuickOutlineAction.prototype.symbolEntry = function (name, type, description, range, highlights, editor, decorator) {
+        return new SymbolEntry(name, type, description, Range.lift(range), highlights, editor, decorator);
+    };
     QuickOutlineAction.prototype.toQuickOpenEntries = function (editor, flattened, searchValue) {
         var controller = this.getController(editor);
         var results = [];
@@ -142,8 +152,8 @@ var QuickOutlineAction = /** @class */ (function (_super) {
         if (searchValue.indexOf(SCOPE_PREFIX) === 0) {
             normalizedSearchValue = normalizedSearchValue.substr(SCOPE_PREFIX.length);
         }
-        for (var i = 0; i < flattened.length; i++) {
-            var element = flattened[i];
+        for (var _i = 0, flattened_1 = flattened; _i < flattened_1.length; _i++) {
+            var element = flattened_1[_i];
             var label = strings.trim(element.name);
             // Check for meatch
             var highlights = matchesFuzzy(normalizedSearchValue, label);
@@ -154,7 +164,7 @@ var QuickOutlineAction = /** @class */ (function (_super) {
                     description = element.containerName;
                 }
                 // Add
-                results.push(new SymbolEntry(label, symbolKindToCssClass(element.kind), description, Range.lift(element.location.range), highlights, editor, controller));
+                results.push(this.symbolEntry(label, symbolKindToCssClass(element.kind), description, element.range, highlights, editor, controller));
             }
         }
         // Sort properly if actually searching
@@ -177,39 +187,41 @@ var QuickOutlineAction = /** @class */ (function (_super) {
                 if (currentType !== result.getType()) {
                     // Update previous result with count
                     if (currentResult) {
-                        currentResult.setGroupLabel(this.typeToLabel(currentType, typeCounter));
+                        currentResult.setGroupLabel(this.typeToLabel(currentType || '', typeCounter));
                     }
                     currentType = result.getType();
                     currentResult = result;
                     typeCounter = 1;
                     result.setShowBorder(i > 0);
                 }
+                // Existing type, keep counting
                 else {
                     typeCounter++;
                 }
             }
             // Update previous result with count
             if (currentResult) {
-                currentResult.setGroupLabel(this.typeToLabel(currentType, typeCounter));
+                currentResult.setGroupLabel(this.typeToLabel(currentType || '', typeCounter));
             }
         }
+        // Mark first entry as outline
         else if (results.length > 0) {
-            results[0].setGroupLabel(nls.localize('symbols', "symbols ({0})", results.length));
+            results[0].setGroupLabel(strings.format(QuickOutlineNLS._symbols_, results.length));
         }
         return results;
     };
     QuickOutlineAction.prototype.typeToLabel = function (type, count) {
         switch (type) {
-            case 'module': return nls.localize('modules', "modules ({0})", count);
-            case 'class': return nls.localize('class', "classes ({0})", count);
-            case 'interface': return nls.localize('interface', "interfaces ({0})", count);
-            case 'method': return nls.localize('method', "methods ({0})", count);
-            case 'function': return nls.localize('function', "functions ({0})", count);
-            case 'property': return nls.localize('property', "properties ({0})", count);
-            case 'variable': return nls.localize('variable', "variables ({0})", count);
-            case 'var': return nls.localize('variable2', "variables ({0})", count);
-            case 'constructor': return nls.localize('_constructor', "constructors ({0})", count);
-            case 'call': return nls.localize('call', "calls ({0})", count);
+            case 'module': return strings.format(QuickOutlineNLS._modules_, count);
+            case 'class': return strings.format(QuickOutlineNLS._class_, count);
+            case 'interface': return strings.format(QuickOutlineNLS._interface_, count);
+            case 'method': return strings.format(QuickOutlineNLS._method_, count);
+            case 'function': return strings.format(QuickOutlineNLS._function_, count);
+            case 'property': return strings.format(QuickOutlineNLS._property_, count);
+            case 'variable': return strings.format(QuickOutlineNLS._variable_, count);
+            case 'var': return strings.format(QuickOutlineNLS._variable2_, count);
+            case 'constructor': return strings.format(QuickOutlineNLS._constructor_, count);
+            case 'call': return strings.format(QuickOutlineNLS._call_, count);
         }
         return type;
     };

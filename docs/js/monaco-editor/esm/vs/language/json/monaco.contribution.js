@@ -43,7 +43,8 @@ export { LanguageServiceDefaultsImpl };
 var diagnosticDefault = {
     validate: true,
     allowComments: true,
-    schemas: []
+    schemas: [],
+    enableSchemaRequest: false
 };
 var jsonDefaults = new LanguageServiceDefaultsImpl('json', diagnosticDefault);
 // Export API
@@ -55,7 +56,7 @@ function createAPI() {
 monaco.languages.json = createAPI();
 // --- Registration to monaco editor ---
 function getMode() {
-    return monaco.Promise.wrap(import('./jsonMode.js'));
+    return import('./jsonMode.js');
 }
 monaco.languages.register({
     id: 'json',

@@ -2,12 +2,15 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import * as DOM from './dom.js';
 import { defaultGenerator } from '../common/idGenerator.js';
 import { escape } from '../common/strings.js';
 import { removeMarkdownEscapes } from '../common/htmlContent.js';
-import { marked } from '../common/marked/marked.js';
+import * as marked from '../common/marked/marked.js';
+import { onUnexpectedError } from '../common/errors.js';
+import { URI } from '../common/uri.js';
+import { parse } from '../common/marshalling.js';
+import { cloneAndChange } from '../common/objects.js';
 function createElement(options) {
     var tagName = options.inline ? 'span' : 'div';
     var element = document.createElement(tagName);
@@ -34,12 +37,48 @@ export function renderFormattedText(formattedText, options) {
 export function renderMarkdown(markdown, options) {
     if (options === void 0) { options = {}; }
     var element = createElement(options);
+    var _uriMassage = function (part) {
+        var data;
+        try {
+            data = parse(decodeURIComponent(part));
+        }
+        catch (e) {
+            // ignore
+        }
+        if (!data) {
+            return part;
+        }
+        data = cloneAndChange(data, function (value) {
+            if (markdown.uris && markdown.uris[value]) {
+                return URI.revive(markdown.uris[value]);
+            }
+            else {
+                return undefined;
+            }
+        });
+        return encodeURIComponent(JSON.stringify(data));
+    };
+    var _href = function (href) {
+        var data = markdown.uris && markdown.uris[href];
+        if (!data) {
+            return href;
+        }
+        var uri = URI.revive(data);
+        if (uri.query) {
+            uri = uri.with({ query: _uriMassage(uri.query) });
+        }
+        if (data) {
+            href = uri.toString(true);
+        }
+        return href;
+    };
     // signal to code-block render that the
     // element has been created
     var signalInnerHTML;
     var withInnerHTML = new Promise(function (c) { return signalInnerHTML = c; });
     var renderer = new marked.Renderer();
     renderer.image = function (href, title, text) {
+        href = _href(href);
         var dimensions = [];
         if (href) {
             var splitted = href.split('|').map(function (s) { return s.trim(); });
@@ -48,8 +87,8 @@ export function renderMarkdown(markdown, options) {
             if (parameters) {
                 var heightFromParams = /height=(\d+)/.exec(parameters);
                 var widthFromParams = /width=(\d+)/.exec(parameters);
-                var height = (heightFromParams && heightFromParams[1]);
-                var width = (widthFromParams && widthFromParams[1]);
+                var height = heightFromParams ? heightFromParams[1] : '';
+                var width = widthFromParams ? widthFromParams[1] : '';
                 var widthIsFinite = isFinite(parseInt(width));
                 var heightIsFinite = isFinite(parseInt(height));
                 if (widthIsFinite) {
@@ -77,18 +116,26 @@ export function renderMarkdown(markdown, options) {
     };
     renderer.link = function (href, title, text) {
         // Remove markdown escapes. Workaround for https://github.com/chjj/marked/issues/829
-        if (href === text) {
+        if (href === text) { // raw link case
             text = removeMarkdownEscapes(text);
         }
+        href = _href(href);
         title = removeMarkdownEscapes(title);
         href = removeMarkdownEscapes(href);
         if (!href
             || href.match(/^data:|javascript:/i)
-            || (href.match(/^command:/i) && !markdown.isTrusted)) {
+            || (href.match(/^command:/i) && !markdown.isTrusted)
+            || href.match(/^command:(\/\/\/)?_workbench\.downloadResource/i)) {
             // drop the link
             return text;
         }
         else {
+            // HTML Encode href
+            href = href.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
             return "<a href=\"#\" data-href=\"" + href + "\" title=\"" + (title || href) + "\">" + text + "</a>";
         }
     };
@@ -125,9 +172,17 @@ export function renderMarkdown(markdown, options) {
                     return;
                 }
             }
-            var href = target.dataset['href'];
-            if (href) {
-                options.actionHandler.callback(href, event);
+            try {
+                var href = target.dataset['href'];
+                if (href) {
+                    options.actionHandler.callback(href, event);
+                }
+            }
+            catch (err) {
+                onUnexpectedError(err);
+            }
+            finally {
+                event.preventDefault();
             }
         }));
     }
@@ -135,7 +190,7 @@ export function renderMarkdown(markdown, options) {
         sanitize: true,
         renderer: renderer
     };
-    element.innerHTML = marked(markdown.value, markedOptions);
+    element.innerHTML = marked.parse(markdown.value, markedOptions);
     signalInnerHTML();
     return element;
 }
@@ -164,7 +219,7 @@ var StringStream = /** @class */ (function () {
 function _renderFormattedText(element, treeNode, actionHandler) {
     var child;
     if (treeNode.type === 2 /* Text */) {
-        child = document.createTextNode(treeNode.content);
+        child = document.createTextNode(treeNode.content || '');
     }
     else if (treeNode.type === 3 /* Bold */) {
         child = document.createElement('b');
@@ -186,10 +241,10 @@ function _renderFormattedText(element, treeNode, actionHandler) {
     else if (treeNode.type === 1 /* Root */) {
         child = element;
     }
-    if (element !== child) {
+    if (child && element !== child) {
         element.appendChild(child);
     }
-    if (Array.isArray(treeNode.children)) {
+    if (child && Array.isArray(treeNode.children)) {
         treeNode.children.forEach(function (nodeChild) {
             _renderFormattedText(child, nodeChild, actionHandler);
         });

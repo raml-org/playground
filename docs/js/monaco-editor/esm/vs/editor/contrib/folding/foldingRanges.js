@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 export var MAX_FOLDING_REGIONS = 0xFFFF;
 export var MAX_LINE_NUMBER = 0xFFFFFF;
 var MASK_INDENT = 0xFF000000;
@@ -55,7 +54,7 @@ var FoldingRegions = /** @class */ (function () {
         return this._endIndexes[index] & MAX_LINE_NUMBER;
     };
     FoldingRegions.prototype.getType = function (index) {
-        return this._types ? this._types[index] : void 0;
+        return this._types ? this._types[index] : undefined;
     };
     FoldingRegions.prototype.hasTypes = function () {
         return !!this._types;
@@ -178,9 +177,6 @@ var FoldingRegion = /** @class */ (function () {
     };
     FoldingRegion.prototype.containsLine = function (lineNumber) {
         return this.startLineNumber <= lineNumber && lineNumber <= this.endLineNumber;
-    };
-    FoldingRegion.prototype.hidesLine = function (lineNumber) {
-        return this.startLineNumber < lineNumber && lineNumber <= this.endLineNumber;
     };
     return FoldingRegion;
 }());

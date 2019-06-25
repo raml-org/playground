@@ -2,7 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -13,21 +25,24 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 import './messageController.css';
-import { setDisposableTimeout } from '../../../base/common/async.js';
-import { dispose } from '../../../base/common/lifecycle.js';
+import * as nls from '../../../nls.js';
+import { TimeoutTimer } from '../../../base/common/async.js';
+import { dispose, Disposable } from '../../../base/common/lifecycle.js';
 import { alert } from '../../../base/browser/ui/aria/aria.js';
 import { Range } from '../../common/core/range.js';
 import { registerEditorContribution, EditorCommand, registerEditorCommand } from '../../browser/editorExtensions.js';
-import { ContentWidgetPositionPreference } from '../../browser/editorBrowser.js';
 import { IContextKeyService, RawContextKey } from '../../../platform/contextkey/common/contextkey.js';
 import { registerThemingParticipant, HIGH_CONTRAST } from '../../../platform/theme/common/themeService.js';
-import { inputValidationInfoBorder, inputValidationInfoBackground } from '../../../platform/theme/common/colorRegistry.js';
-import { KeybindingsRegistry } from '../../../platform/keybinding/common/keybindingsRegistry.js';
-var MessageController = /** @class */ (function () {
+import { inputValidationInfoBorder, inputValidationInfoBackground, inputValidationInfoForeground } from '../../../platform/theme/common/colorRegistry.js';
+var MessageController = /** @class */ (function (_super) {
+    __extends(MessageController, _super);
     function MessageController(editor, contextKeyService) {
-        this._messageListeners = [];
-        this._editor = editor;
-        this._visible = MessageController.CONTEXT_SNIPPET_MODE.bindTo(contextKeyService);
+        var _this = _super.call(this) || this;
+        _this._messageListeners = [];
+        _this._editor = editor;
+        _this._visible = MessageController.MESSAGE_VISIBLE.bindTo(contextKeyService);
+        _this._register(_this._editor.onDidAttemptReadOnlyEdit(function () { return _this._onDidAttemptReadOnlyEdit(); }));
+        return _this;
     }
     MessageController.get = function (editor) {
         return editor.getContribution(MessageController._id);
@@ -36,10 +51,8 @@ var MessageController = /** @class */ (function () {
         return MessageController._id;
     };
     MessageController.prototype.dispose = function () {
+        _super.prototype.dispose.call(this);
         this._visible.reset();
-    };
-    MessageController.prototype.isVisible = function () {
-        return this._visible.get();
     };
     MessageController.prototype.showMessage = function (message, position) {
         var _this = this;
@@ -54,7 +67,7 @@ var MessageController = /** @class */ (function () {
         this._messageListeners.push(this._editor.onDidDispose(function () { return _this.closeMessage(); }));
         this._messageListeners.push(this._editor.onDidChangeModel(function () { return _this.closeMessage(); }));
         // close after 3s
-        this._messageListeners.push(setDisposableTimeout(function () { return _this.closeMessage(); }, 3000));
+        this._messageListeners.push(new TimeoutTimer(function () { return _this.closeMessage(); }, 3000));
         // close on mouse move
         var bounds;
         this._messageListeners.push(this._editor.onMouseMove(function (e) {
@@ -77,21 +90,26 @@ var MessageController = /** @class */ (function () {
         this._messageListeners = dispose(this._messageListeners);
         this._messageListeners.push(MessageWidget.fadeOut(this._messageWidget));
     };
+    MessageController.prototype._onDidAttemptReadOnlyEdit = function () {
+        if (this._editor.hasModel()) {
+            this.showMessage(nls.localize('editor.readonly', "Cannot edit in read-only editor"), this._editor.getPosition());
+        }
+    };
     MessageController._id = 'editor.contrib.messageController';
-    MessageController.CONTEXT_SNIPPET_MODE = new RawContextKey('messageVisible', false);
+    MessageController.MESSAGE_VISIBLE = new RawContextKey('messageVisible', false);
     MessageController = __decorate([
         __param(1, IContextKeyService)
     ], MessageController);
     return MessageController;
-}());
+}(Disposable));
 export { MessageController };
 var MessageCommand = EditorCommand.bindToContribution(MessageController.get);
 registerEditorCommand(new MessageCommand({
     id: 'leaveEditorMessage',
-    precondition: MessageController.CONTEXT_SNIPPET_MODE,
+    precondition: MessageController.MESSAGE_VISIBLE,
     handler: function (c) { return c.closeMessage(); },
     kbOpts: {
-        weight: KeybindingsRegistry.WEIGHT.editorContrib(30),
+        weight: 100 /* EditorContrib */ + 30,
         primary: 9 /* Escape */
     }
 }));
@@ -138,7 +156,7 @@ var MessageWidget = /** @class */ (function () {
         return this._domNode;
     };
     MessageWidget.prototype.getPosition = function () {
-        return { position: this._position, preference: [ContentWidgetPositionPreference.ABOVE] };
+        return { position: this._position, preference: [1 /* ABOVE */] };
     };
     return MessageWidget;
 }());
@@ -153,5 +171,9 @@ registerThemingParticipant(function (theme, collector) {
     var background = theme.getColor(inputValidationInfoBackground);
     if (background) {
         collector.addRule(".monaco-editor .monaco-editor-overlaymessage .message { background-color: " + background + "; }");
+    }
+    var foreground = theme.getColor(inputValidationInfoForeground);
+    if (foreground) {
+        collector.addRule(".monaco-editor .monaco-editor-overlaymessage .message { color: " + foreground + "; }");
     }
 });

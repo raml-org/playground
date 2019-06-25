@@ -2,33 +2,29 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import * as nls from '../../../nls.js';
 import { Emitter } from '../../../base/common/event.js';
-import { Registry } from '../../../platform/registry/common/platform.js';
-import { LanguageConfigurationRegistry } from './languageConfigurationRegistry.js';
 import { LanguageIdentifier } from '../modes.js';
+import { LanguageConfigurationRegistry } from './languageConfigurationRegistry.js';
+import { Registry } from '../../../platform/registry/common/platform.js';
 // Define extension point ids
 export var Extensions = {
     ModesRegistry: 'editor.modesRegistry'
 };
 var EditorModesRegistry = /** @class */ (function () {
     function EditorModesRegistry() {
-        this._onDidAddLanguages = new Emitter();
-        this.onDidAddLanguages = this._onDidAddLanguages.event;
+        this._onDidChangeLanguages = new Emitter();
+        this.onDidChangeLanguages = this._onDidChangeLanguages.event;
         this._languages = [];
+        this._dynamicLanguages = [];
     }
     // --- languages
     EditorModesRegistry.prototype.registerLanguage = function (def) {
         this._languages.push(def);
-        this._onDidAddLanguages.fire([def]);
-    };
-    EditorModesRegistry.prototype.registerLanguages = function (def) {
-        this._languages = this._languages.concat(def);
-        this._onDidAddLanguages.fire(def);
+        this._onDidChangeLanguages.fire(undefined);
     };
     EditorModesRegistry.prototype.getLanguages = function () {
-        return this._languages.slice(0);
+        return [].concat(this._languages).concat(this._dynamicLanguages);
     };
     return EditorModesRegistry;
 }());

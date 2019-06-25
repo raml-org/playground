@@ -2,9 +2,9 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { editorBackground, editorForeground, editorSelectionHighlight, editorInactiveSelection } from '../../../platform/theme/common/colorRegistry.js';
-import { editorIndentGuides } from '../../common/view/editorColorRegistry.js';
+var _a, _b, _c;
+import { editorActiveIndentGuides, editorIndentGuides } from '../../common/view/editorColorRegistry.js';
+import { editorBackground, editorForeground, editorInactiveSelection, editorSelectionHighlight } from '../../../platform/theme/common/colorRegistry.js';
 /* -------------------------------- Begin vs theme -------------------------------- */
 export var vs = {
     base: 'vs',
@@ -27,8 +27,8 @@ export var vs = {
         { token: 'delimiter.html', foreground: '383838' },
         { token: 'delimiter.xml', foreground: '0000FF' },
         { token: 'tag', foreground: '800000' },
-        { token: 'tag.id.jade', foreground: '4F76AC' },
-        { token: 'tag.class.jade', foreground: '4F76AC' },
+        { token: 'tag.id.pug', foreground: '4F76AC' },
+        { token: 'tag.class.pug', foreground: '4F76AC' },
         { token: 'meta.scss', foreground: '800000' },
         { token: 'metatag', foreground: 'e00000' },
         { token: 'metatag.content.html', foreground: 'FF0000' },
@@ -62,6 +62,7 @@ export var vs = {
         _a[editorForeground] = '#000000',
         _a[editorInactiveSelection] = '#E5EBF1',
         _a[editorIndentGuides] = '#D3D3D3',
+        _a[editorActiveIndentGuides] = '#939393',
         _a[editorSelectionHighlight] = '#ADD6FF4D',
         _a)
 };
@@ -89,8 +90,8 @@ export var vs_dark = {
         { token: 'delimiter.html', foreground: '808080' },
         { token: 'delimiter.xml', foreground: '808080' },
         { token: 'tag', foreground: '569CD6' },
-        { token: 'tag.id.jade', foreground: '4F76AC' },
-        { token: 'tag.class.jade', foreground: '4F76AC' },
+        { token: 'tag.id.pug', foreground: '4F76AC' },
+        { token: 'tag.class.pug', foreground: '4F76AC' },
         { token: 'meta.scss', foreground: 'A79873' },
         { token: 'meta.tag', foreground: 'CE9178' },
         { token: 'metatag', foreground: 'DD6A6F' },
@@ -122,6 +123,7 @@ export var vs_dark = {
         _b[editorForeground] = '#D4D4D4',
         _b[editorInactiveSelection] = '#3A3D41',
         _b[editorIndentGuides] = '#404040',
+        _b[editorActiveIndentGuides] = '#707070',
         _b[editorSelectionHighlight] = '#ADD6FF26',
         _b)
 };
@@ -146,8 +148,8 @@ export var hc_black = {
         { token: 'delimiter', foreground: 'FFFF00' },
         { token: 'delimiter.html', foreground: 'FFFF00' },
         { token: 'tag', foreground: '569CD6' },
-        { token: 'tag.id.jade', foreground: '4F76AC' },
-        { token: 'tag.class.jade', foreground: '4F76AC' },
+        { token: 'tag.id.pug', foreground: '4F76AC' },
+        { token: 'tag.class.pug', foreground: '4F76AC' },
         { token: 'meta', foreground: 'D4D4D4' },
         { token: 'meta.tag', foreground: 'CE9178' },
         { token: 'metatag', foreground: '569CD6' },
@@ -172,6 +174,7 @@ export var hc_black = {
         _c[editorBackground] = '#000000',
         _c[editorForeground] = '#FFFFFF',
         _c[editorIndentGuides] = '#FFFFFF',
+        _c[editorActiveIndentGuides] = '#FFFFFF',
         _c)
 };
-var _a, _b, _c;
+/* -------------------------------- End hc-black theme -------------------------------- */

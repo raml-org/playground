@@ -5,7 +5,6 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
      *--------------------------------------------------------------------------------------------*/
     'use strict';
     Object.defineProperty(exports, "__esModule", { value: true });
-    var Promise = monaco.Promise;
     var STOP_WHEN_IDLE_FOR = 2 * 60 * 1000; // 2min
     var WorkerManager = /** @class */ (function () {
         function WorkerManager(defaults) {
@@ -61,25 +60,15 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                 resources[_i] = arguments[_i];
             }
             var _client;
-            return toShallowCancelPromise(this._getClient().then(function (client) {
+            return this._getClient().then(function (client) {
                 _client = client;
             }).then(function (_) {
                 return _this._worker.withSyncedResources(resources);
-            }).then(function (_) { return _client; }));
+            }).then(function (_) { return _client; });
         };
         return WorkerManager;
     }());
     exports.WorkerManager = WorkerManager;
-    function toShallowCancelPromise(p) {
-        var completeCallback;
-        var errorCallback;
-        var r = new Promise(function (c, e) {
-            completeCallback = c;
-            errorCallback = e;
-        }, function () { });
-        p.then(completeCallback, errorCallback);
-        return r;
-    }
 });
 
 (function (factory) {
@@ -117,7 +106,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         function is(value) {
             var candidate = value;
-            return Is.defined(candidate) && Is.number(candidate.line) && Is.number(candidate.character);
+            return Is.objectLiteral(candidate) && Is.number(candidate.line) && Is.number(candidate.character);
         }
         Position.is = is;
     })(Position = exports.Position || (exports.Position = {}));
@@ -144,7 +133,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         function is(value) {
             var candidate = value;
-            return Is.defined(candidate) && Position.is(candidate.start) && Position.is(candidate.end);
+            return Is.objectLiteral(candidate) && Position.is(candidate.start) && Position.is(candidate.end);
         }
         Range.is = is;
     })(Range = exports.Range || (exports.Range = {}));
@@ -173,7 +162,199 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         Location.is = is;
     })(Location = exports.Location || (exports.Location = {}));
     /**
-     * The diagnostic's serverity.
+     * The LocationLink namespace provides helper functions to work with
+     * [LocationLink](#LocationLink) literals.
+     */
+    var LocationLink;
+    (function (LocationLink) {
+        /**
+         * Creates a LocationLink literal.
+         * @param targetUri The definition's uri.
+         * @param targetRange The full range of the definition.
+         * @param targetSelectionRange The span of the symbol definition at the target.
+         * @param originSelectionRange The span of the symbol being defined in the originating source file.
+         */
+        function create(targetUri, targetRange, targetSelectionRange, originSelectionRange) {
+            return { targetUri: targetUri, targetRange: targetRange, targetSelectionRange: targetSelectionRange, originSelectionRange: originSelectionRange };
+        }
+        LocationLink.create = create;
+        /**
+         * Checks whether the given literal conforms to the [LocationLink](#LocationLink) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.defined(candidate) && Range.is(candidate.targetRange) && Is.string(candidate.targetUri)
+                && (Range.is(candidate.targetSelectionRange) || Is.undefined(candidate.targetSelectionRange))
+                && (Range.is(candidate.originSelectionRange) || Is.undefined(candidate.originSelectionRange));
+        }
+        LocationLink.is = is;
+    })(LocationLink = exports.LocationLink || (exports.LocationLink = {}));
+    /**
+     * The Color namespace provides helper functions to work with
+     * [Color](#Color) literals.
+     */
+    var Color;
+    (function (Color) {
+        /**
+         * Creates a new Color literal.
+         */
+        function create(red, green, blue, alpha) {
+            return {
+                red: red,
+                green: green,
+                blue: blue,
+                alpha: alpha,
+            };
+        }
+        Color.create = create;
+        /**
+         * Checks whether the given literal conforms to the [Color](#Color) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.number(candidate.red)
+                && Is.number(candidate.green)
+                && Is.number(candidate.blue)
+                && Is.number(candidate.alpha);
+        }
+        Color.is = is;
+    })(Color = exports.Color || (exports.Color = {}));
+    /**
+     * The ColorInformation namespace provides helper functions to work with
+     * [ColorInformation](#ColorInformation) literals.
+     */
+    var ColorInformation;
+    (function (ColorInformation) {
+        /**
+         * Creates a new ColorInformation literal.
+         */
+        function create(range, color) {
+            return {
+                range: range,
+                color: color,
+            };
+        }
+        ColorInformation.create = create;
+        /**
+         * Checks whether the given literal conforms to the [ColorInformation](#ColorInformation) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Range.is(candidate.range) && Color.is(candidate.color);
+        }
+        ColorInformation.is = is;
+    })(ColorInformation = exports.ColorInformation || (exports.ColorInformation = {}));
+    /**
+     * The Color namespace provides helper functions to work with
+     * [ColorPresentation](#ColorPresentation) literals.
+     */
+    var ColorPresentation;
+    (function (ColorPresentation) {
+        /**
+         * Creates a new ColorInformation literal.
+         */
+        function create(label, textEdit, additionalTextEdits) {
+            return {
+                label: label,
+                textEdit: textEdit,
+                additionalTextEdits: additionalTextEdits,
+            };
+        }
+        ColorPresentation.create = create;
+        /**
+         * Checks whether the given literal conforms to the [ColorInformation](#ColorInformation) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.string(candidate.label)
+                && (Is.undefined(candidate.textEdit) || TextEdit.is(candidate))
+                && (Is.undefined(candidate.additionalTextEdits) || Is.typedArray(candidate.additionalTextEdits, TextEdit.is));
+        }
+        ColorPresentation.is = is;
+    })(ColorPresentation = exports.ColorPresentation || (exports.ColorPresentation = {}));
+    /**
+     * Enum of known range kinds
+     */
+    var FoldingRangeKind;
+    (function (FoldingRangeKind) {
+        /**
+         * Folding range for a comment
+         */
+        FoldingRangeKind["Comment"] = "comment";
+        /**
+         * Folding range for a imports or includes
+         */
+        FoldingRangeKind["Imports"] = "imports";
+        /**
+         * Folding range for a region (e.g. `#region`)
+         */
+        FoldingRangeKind["Region"] = "region";
+    })(FoldingRangeKind = exports.FoldingRangeKind || (exports.FoldingRangeKind = {}));
+    /**
+     * The folding range namespace provides helper functions to work with
+     * [FoldingRange](#FoldingRange) literals.
+     */
+    var FoldingRange;
+    (function (FoldingRange) {
+        /**
+         * Creates a new FoldingRange literal.
+         */
+        function create(startLine, endLine, startCharacter, endCharacter, kind) {
+            var result = {
+                startLine: startLine,
+                endLine: endLine
+            };
+            if (Is.defined(startCharacter)) {
+                result.startCharacter = startCharacter;
+            }
+            if (Is.defined(endCharacter)) {
+                result.endCharacter = endCharacter;
+            }
+            if (Is.defined(kind)) {
+                result.kind = kind;
+            }
+            return result;
+        }
+        FoldingRange.create = create;
+        /**
+         * Checks whether the given literal conforms to the [FoldingRange](#FoldingRange) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.number(candidate.startLine) && Is.number(candidate.startLine)
+                && (Is.undefined(candidate.startCharacter) || Is.number(candidate.startCharacter))
+                && (Is.undefined(candidate.endCharacter) || Is.number(candidate.endCharacter))
+                && (Is.undefined(candidate.kind) || Is.string(candidate.kind));
+        }
+        FoldingRange.is = is;
+    })(FoldingRange = exports.FoldingRange || (exports.FoldingRange = {}));
+    /**
+     * The DiagnosticRelatedInformation namespace provides helper functions to work with
+     * [DiagnosticRelatedInformation](#DiagnosticRelatedInformation) literals.
+     */
+    var DiagnosticRelatedInformation;
+    (function (DiagnosticRelatedInformation) {
+        /**
+         * Creates a new DiagnosticRelatedInformation literal.
+         */
+        function create(location, message) {
+            return {
+                location: location,
+                message: message
+            };
+        }
+        DiagnosticRelatedInformation.create = create;
+        /**
+         * Checks whether the given literal conforms to the [DiagnosticRelatedInformation](#DiagnosticRelatedInformation) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.defined(candidate) && Location.is(candidate.location) && Is.string(candidate.message);
+        }
+        DiagnosticRelatedInformation.is = is;
+    })(DiagnosticRelatedInformation = exports.DiagnosticRelatedInformation || (exports.DiagnosticRelatedInformation = {}));
+    /**
+     * The diagnostic's severity.
      */
     var DiagnosticSeverity;
     (function (DiagnosticSeverity) {
@@ -203,7 +384,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         /**
          * Creates a new Diagnostic literal.
          */
-        function create(range, message, severity, code, source) {
+        function create(range, message, severity, code, source, relatedInformation) {
             var result = { range: range, message: message };
             if (Is.defined(severity)) {
                 result.severity = severity;
@@ -213,6 +394,9 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
             }
             if (Is.defined(source)) {
                 result.source = source;
+            }
+            if (Is.defined(relatedInformation)) {
+                result.relatedInformation = relatedInformation;
             }
             return result;
         }
@@ -227,7 +411,8 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                 && Is.string(candidate.message)
                 && (Is.number(candidate.severity) || Is.undefined(candidate.severity))
                 && (Is.number(candidate.code) || Is.string(candidate.code) || Is.undefined(candidate.code))
-                && (Is.string(candidate.source) || Is.undefined(candidate.source));
+                && (Is.string(candidate.source) || Is.undefined(candidate.source))
+                && (Is.undefined(candidate.relatedInformation) || Is.typedArray(candidate.relatedInformation, DiagnosticRelatedInformation.is));
         }
         Diagnostic.is = is;
     })(Diagnostic = exports.Diagnostic || (exports.Diagnostic = {}));
@@ -257,7 +442,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         function is(value) {
             var candidate = value;
-            return Is.defined(candidate) && Is.string(candidate.title) && Is.string(candidate.title);
+            return Is.defined(candidate) && Is.string(candidate.title) && Is.string(candidate.command);
         }
         Command.is = is;
     })(Command = exports.Command || (exports.Command = {}));
@@ -293,6 +478,13 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
             return { range: range, newText: '' };
         }
         TextEdit.del = del;
+        function is(value) {
+            var candidate = value;
+            return Is.objectLiteral(candidate)
+                && Is.string(candidate.newText)
+                && Range.is(candidate.range);
+        }
+        TextEdit.is = is;
     })(TextEdit = exports.TextEdit || (exports.TextEdit = {}));
     /**
      * The TextDocumentEdit namespace provides helper function to create
@@ -315,6 +507,87 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         }
         TextDocumentEdit.is = is;
     })(TextDocumentEdit = exports.TextDocumentEdit || (exports.TextDocumentEdit = {}));
+    var CreateFile;
+    (function (CreateFile) {
+        function create(uri, options) {
+            var result = {
+                kind: 'create',
+                uri: uri
+            };
+            if (options !== void 0 && (options.overwrite !== void 0 || options.ignoreIfExists !== void 0)) {
+                result.options = options;
+            }
+            return result;
+        }
+        CreateFile.create = create;
+        function is(value) {
+            var candidate = value;
+            return candidate && candidate.kind === 'create' && Is.string(candidate.uri) &&
+                (candidate.options === void 0 ||
+                    ((candidate.options.overwrite === void 0 || Is.boolean(candidate.options.overwrite)) && (candidate.options.ignoreIfExists === void 0 || Is.boolean(candidate.options.ignoreIfExists))));
+        }
+        CreateFile.is = is;
+    })(CreateFile = exports.CreateFile || (exports.CreateFile = {}));
+    var RenameFile;
+    (function (RenameFile) {
+        function create(oldUri, newUri, options) {
+            var result = {
+                kind: 'rename',
+                oldUri: oldUri,
+                newUri: newUri
+            };
+            if (options !== void 0 && (options.overwrite !== void 0 || options.ignoreIfExists !== void 0)) {
+                result.options = options;
+            }
+            return result;
+        }
+        RenameFile.create = create;
+        function is(value) {
+            var candidate = value;
+            return candidate && candidate.kind === 'rename' && Is.string(candidate.oldUri) && Is.string(candidate.newUri) &&
+                (candidate.options === void 0 ||
+                    ((candidate.options.overwrite === void 0 || Is.boolean(candidate.options.overwrite)) && (candidate.options.ignoreIfExists === void 0 || Is.boolean(candidate.options.ignoreIfExists))));
+        }
+        RenameFile.is = is;
+    })(RenameFile = exports.RenameFile || (exports.RenameFile = {}));
+    var DeleteFile;
+    (function (DeleteFile) {
+        function create(uri, options) {
+            var result = {
+                kind: 'delete',
+                uri: uri
+            };
+            if (options !== void 0 && (options.recursive !== void 0 || options.ignoreIfNotExists !== void 0)) {
+                result.options = options;
+            }
+            return result;
+        }
+        DeleteFile.create = create;
+        function is(value) {
+            var candidate = value;
+            return candidate && candidate.kind === 'delete' && Is.string(candidate.uri) &&
+                (candidate.options === void 0 ||
+                    ((candidate.options.recursive === void 0 || Is.boolean(candidate.options.recursive)) && (candidate.options.ignoreIfNotExists === void 0 || Is.boolean(candidate.options.ignoreIfNotExists))));
+        }
+        DeleteFile.is = is;
+    })(DeleteFile = exports.DeleteFile || (exports.DeleteFile = {}));
+    var WorkspaceEdit;
+    (function (WorkspaceEdit) {
+        function is(value) {
+            var candidate = value;
+            return candidate &&
+                (candidate.changes !== void 0 || candidate.documentChanges !== void 0) &&
+                (candidate.documentChanges === void 0 || candidate.documentChanges.every(function (change) {
+                    if (Is.string(change.kind)) {
+                        return CreateFile.is(change) || RenameFile.is(change) || DeleteFile.is(change);
+                    }
+                    else {
+                        return TextDocumentEdit.is(change);
+                    }
+                }));
+        }
+        WorkspaceEdit.is = is;
+    })(WorkspaceEdit = exports.WorkspaceEdit || (exports.WorkspaceEdit = {}));
     var TextEditChangeImpl = /** @class */ (function () {
         function TextEditChangeImpl(edits) {
             this.edits = edits;
@@ -349,9 +622,11 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
             if (workspaceEdit) {
                 this._workspaceEdit = workspaceEdit;
                 if (workspaceEdit.documentChanges) {
-                    workspaceEdit.documentChanges.forEach(function (textDocumentEdit) {
-                        var textEditChange = new TextEditChangeImpl(textDocumentEdit.edits);
-                        _this._textEditChanges[textDocumentEdit.textDocument.uri] = textEditChange;
+                    workspaceEdit.documentChanges.forEach(function (change) {
+                        if (TextDocumentEdit.is(change)) {
+                            var textEditChange = new TextEditChangeImpl(change.edits);
+                            _this._textEditChanges[change.textDocument.uri] = textEditChange;
+                        }
                     });
                 }
                 else if (workspaceEdit.changes) {
@@ -381,7 +656,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                     };
                 }
                 if (!this._workspaceEdit.documentChanges) {
-                    throw new Error('Workspace edit is not configured for versioned document changes.');
+                    throw new Error('Workspace edit is not configured for document changes.');
                 }
                 var textDocument = key;
                 var result = this._textEditChanges[textDocument.uri];
@@ -414,6 +689,23 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                     this._textEditChanges[key] = result;
                 }
                 return result;
+            }
+        };
+        WorkspaceChange.prototype.createFile = function (uri, options) {
+            this.checkDocumentChanges();
+            this._workspaceEdit.documentChanges.push(CreateFile.create(uri, options));
+        };
+        WorkspaceChange.prototype.renameFile = function (oldUri, newUri, options) {
+            this.checkDocumentChanges();
+            this._workspaceEdit.documentChanges.push(RenameFile.create(oldUri, newUri, options));
+        };
+        WorkspaceChange.prototype.deleteFile = function (uri, options) {
+            this.checkDocumentChanges();
+            this._workspaceEdit.documentChanges.push(DeleteFile.create(uri, options));
+        };
+        WorkspaceChange.prototype.checkDocumentChanges = function () {
+            if (!this._workspaceEdit || !this._workspaceEdit.documentChanges) {
+                throw new Error('Workspace edit is not configured for document changes.');
             }
         };
         return WorkspaceChange;
@@ -462,7 +754,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         function is(value) {
             var candidate = value;
-            return Is.defined(candidate) && Is.string(candidate.uri) && Is.number(candidate.version);
+            return Is.defined(candidate) && Is.string(candidate.uri) && (candidate.version === null || Is.number(candidate.version));
         }
         VersionedTextDocumentIdentifier.is = is;
     })(VersionedTextDocumentIdentifier = exports.VersionedTextDocumentIdentifier || (exports.VersionedTextDocumentIdentifier = {}));
@@ -510,6 +802,27 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         MarkupKind.Markdown = 'markdown';
     })(MarkupKind = exports.MarkupKind || (exports.MarkupKind = {}));
+    (function (MarkupKind) {
+        /**
+         * Checks whether the given value is a value of the [MarkupKind](#MarkupKind) type.
+         */
+        function is(value) {
+            var candidate = value;
+            return candidate === MarkupKind.PlainText || candidate === MarkupKind.Markdown;
+        }
+        MarkupKind.is = is;
+    })(MarkupKind = exports.MarkupKind || (exports.MarkupKind = {}));
+    var MarkupContent;
+    (function (MarkupContent) {
+        /**
+         * Checks whether the given value conforms to the [MarkupContent](#MarkupContent) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.objectLiteral(value) && MarkupKind.is(candidate.kind) && Is.string(candidate.value);
+        }
+        MarkupContent.is = is;
+    })(MarkupContent = exports.MarkupContent || (exports.MarkupContent = {}));
     /**
      * The kind of a completion entry.
      */
@@ -606,7 +919,28 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
             return plainText.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&"); // escape markdown syntax tokens: http://daringfireball.net/projects/markdown/syntax#backslash
         }
         MarkedString.fromPlainText = fromPlainText;
+        /**
+         * Checks whether the given value conforms to the [MarkedString](#MarkedString) type.
+         */
+        function is(value) {
+            var candidate = value;
+            return Is.string(candidate) || (Is.objectLiteral(candidate) && Is.string(candidate.language) && Is.string(candidate.value));
+        }
+        MarkedString.is = is;
     })(MarkedString = exports.MarkedString || (exports.MarkedString = {}));
+    var Hover;
+    (function (Hover) {
+        /**
+         * Checks whether the given value conforms to the [Hover](#Hover) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return !!candidate && Is.objectLiteral(candidate) && (MarkupContent.is(candidate.contents) ||
+                MarkedString.is(candidate.contents) ||
+                Is.typedArray(candidate.contents, MarkedString.is)) && (value.range === void 0 || Range.is(value.range));
+        }
+        Hover.is = is;
+    })(Hover = exports.Hover || (exports.Hover = {}));
     /**
      * The ParameterInformation namespace provides helper functions to work with
      * [ParameterInformation](#ParameterInformation) literals.
@@ -656,7 +990,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
     var DocumentHighlightKind;
     (function (DocumentHighlightKind) {
         /**
-         * A textual occurrance.
+         * A textual occurrence.
          */
         DocumentHighlightKind.Text = 1;
         /**
@@ -728,7 +1062,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          * @param kind The kind of the symbol.
          * @param range The range of the location of the symbol.
          * @param uri The resource of the location of symbol, defaults to the current document.
-         * @param containerName The name of the symbol containg the symbol.
+         * @param containerName The name of the symbol containing the symbol.
          */
         function create(name, kind, range, uri, containerName) {
             var result = {
@@ -744,6 +1078,118 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         SymbolInformation.create = create;
     })(SymbolInformation = exports.SymbolInformation || (exports.SymbolInformation = {}));
     /**
+     * Represents programming constructs like variables, classes, interfaces etc.
+     * that appear in a document. Document symbols can be hierarchical and they
+     * have two ranges: one that encloses its definition and one that points to
+     * its most interesting range, e.g. the range of an identifier.
+     */
+    var DocumentSymbol = /** @class */ (function () {
+        function DocumentSymbol() {
+        }
+        return DocumentSymbol;
+    }());
+    exports.DocumentSymbol = DocumentSymbol;
+    (function (DocumentSymbol) {
+        /**
+         * Creates a new symbol information literal.
+         *
+         * @param name The name of the symbol.
+         * @param detail The detail of the symbol.
+         * @param kind The kind of the symbol.
+         * @param range The range of the symbol.
+         * @param selectionRange The selectionRange of the symbol.
+         * @param children Children of the symbol.
+         */
+        function create(name, detail, kind, range, selectionRange, children) {
+            var result = {
+                name: name,
+                detail: detail,
+                kind: kind,
+                range: range,
+                selectionRange: selectionRange
+            };
+            if (children !== void 0) {
+                result.children = children;
+            }
+            return result;
+        }
+        DocumentSymbol.create = create;
+        /**
+         * Checks whether the given literal conforms to the [DocumentSymbol](#DocumentSymbol) interface.
+         */
+        function is(value) {
+            var candidate = value;
+            return candidate &&
+                Is.string(candidate.name) && Is.number(candidate.kind) &&
+                Range.is(candidate.range) && Range.is(candidate.selectionRange) &&
+                (candidate.detail === void 0 || Is.string(candidate.detail)) &&
+                (candidate.deprecated === void 0 || Is.boolean(candidate.deprecated)) &&
+                (candidate.children === void 0 || Array.isArray(candidate.children));
+        }
+        DocumentSymbol.is = is;
+    })(DocumentSymbol = exports.DocumentSymbol || (exports.DocumentSymbol = {}));
+    exports.DocumentSymbol = DocumentSymbol;
+    /**
+     * A set of predefined code action kinds
+     */
+    var CodeActionKind;
+    (function (CodeActionKind) {
+        /**
+         * Base kind for quickfix actions: 'quickfix'
+         */
+        CodeActionKind.QuickFix = 'quickfix';
+        /**
+         * Base kind for refactoring actions: 'refactor'
+         */
+        CodeActionKind.Refactor = 'refactor';
+        /**
+         * Base kind for refactoring extraction actions: 'refactor.extract'
+         *
+         * Example extract actions:
+         *
+         * - Extract method
+         * - Extract function
+         * - Extract variable
+         * - Extract interface from class
+         * - ...
+         */
+        CodeActionKind.RefactorExtract = 'refactor.extract';
+        /**
+         * Base kind for refactoring inline actions: 'refactor.inline'
+         *
+         * Example inline actions:
+         *
+         * - Inline function
+         * - Inline variable
+         * - Inline constant
+         * - ...
+         */
+        CodeActionKind.RefactorInline = 'refactor.inline';
+        /**
+         * Base kind for refactoring rewrite actions: 'refactor.rewrite'
+         *
+         * Example rewrite actions:
+         *
+         * - Convert JavaScript function to class
+         * - Add or remove parameter
+         * - Encapsulate field
+         * - Make method static
+         * - Move method to base class
+         * - ...
+         */
+        CodeActionKind.RefactorRewrite = 'refactor.rewrite';
+        /**
+         * Base kind for source actions: `source`
+         *
+         * Source code actions apply to the entire file.
+         */
+        CodeActionKind.Source = 'source';
+        /**
+         * Base kind for an organize imports source action: `source.organizeImports`
+         */
+        CodeActionKind.SourceOrganizeImports = 'source.organizeImports';
+    })(CodeActionKind = exports.CodeActionKind || (exports.CodeActionKind = {}));
+    /**
      * The CodeActionContext namespace provides helper functions to work with
      * [CodeActionContext](#CodeActionContext) literals.
      */
@@ -752,8 +1198,12 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         /**
          * Creates a new CodeActionContext literal.
          */
-        function create(diagnostics) {
-            return { diagnostics: diagnostics };
+        function create(diagnostics, only) {
+            var result = { diagnostics: diagnostics };
+            if (only !== void 0 && only !== null) {
+                result.only = only;
+            }
+            return result;
         }
         CodeActionContext.create = create;
         /**
@@ -761,10 +1211,37 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
          */
         function is(value) {
             var candidate = value;
-            return Is.defined(candidate) && Is.typedArray(candidate.diagnostics, Diagnostic.is);
+            return Is.defined(candidate) && Is.typedArray(candidate.diagnostics, Diagnostic.is) && (candidate.only === void 0 || Is.typedArray(candidate.only, Is.string));
         }
         CodeActionContext.is = is;
     })(CodeActionContext = exports.CodeActionContext || (exports.CodeActionContext = {}));
+    var CodeAction;
+    (function (CodeAction) {
+        function create(title, commandOrEdit, kind) {
+            var result = { title: title };
+            if (Command.is(commandOrEdit)) {
+                result.command = commandOrEdit;
+            }
+            else {
+                result.edit = commandOrEdit;
+            }
+            if (kind !== void null) {
+                result.kind = kind;
+            }
+            return result;
+        }
+        CodeAction.create = create;
+        function is(value) {
+            var candidate = value;
+            return candidate && Is.string(candidate.title) &&
+                (candidate.diagnostics === void 0 || Is.typedArray(candidate.diagnostics, Diagnostic.is)) &&
+                (candidate.kind === void 0 || Is.string(candidate.kind)) &&
+                (candidate.edit !== void 0 || candidate.command !== void 0) &&
+                (candidate.command === void 0 || Command.is(candidate.command)) &&
+                (candidate.edit === void 0 || WorkspaceEdit.is(candidate.edit));
+        }
+        CodeAction.is = is;
+    })(CodeAction = exports.CodeAction || (exports.CodeAction = {}));
     /**
      * The CodeLens namespace provides helper functions to work with
      * [CodeLens](#CodeLens) literals.
@@ -830,8 +1307,8 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
         /**
          * Creates a new DocumentLink literal.
          */
-        function create(range, target) {
-            return { range: range, target: target };
+        function create(range, target, data) {
+            return { range: range, target: target, data: data };
         }
         DocumentLink.create = create;
         /**
@@ -873,7 +1350,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                 if (diff === 0) {
                     return a.range.start.character - b.range.start.character;
                 }
-                return 0;
+                return diff;
             });
             var lastModifiedOffset = text.length;
             for (var i = sortedEdits.length - 1; i >= 0; i--) {
@@ -884,7 +1361,7 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
                     text = text.substring(0, startOffset) + e.newText + text.substring(endOffset, text.length);
                 }
                 else {
-                    throw new Error('Ovelapping edit');
+                    throw new Error('Overlapping edit');
                 }
                 lastModifiedOffset = startOffset;
             }
@@ -1077,6 +1554,13 @@ define('vs/language/html/workerManager',["require", "exports"], function (requir
             return toString.call(value) === '[object Function]';
         }
         Is.func = func;
+        function objectLiteral(value) {
+            // Strictly speaking class instances pass this check as well. Since the LSP
+            // doesn't use classes we ignore this for now. If we do we need to add something
+            // like this: `Object.getPrototypeOf(Object.getPrototypeOf(x)) === null`
+            return value !== null && typeof value === 'object';
+        }
+        Is.objectLiteral = objectLiteral;
         function typedArray(value, check) {
             return Array.isArray(value) && value.every(check);
         }
@@ -1093,11 +1577,10 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
      *--------------------------------------------------------------------------------------------*/
     'use strict';
     Object.defineProperty(exports, "__esModule", { value: true });
-    var Uri = monaco.Uri;
     var Range = monaco.Range;
     // --- diagnostics --- ---
-    var DiagnostcsAdapter = /** @class */ (function () {
-        function DiagnostcsAdapter(_languageId, _worker) {
+    var DiagnosticsAdapter = /** @class */ (function () {
+        function DiagnosticsAdapter(_languageId, _worker, defaults) {
             var _this = this;
             this._languageId = _languageId;
             this._worker = _worker;
@@ -1132,6 +1615,14 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
                 onModelRemoved(event.model);
                 onModelAdd(event.model);
             }));
+            this._disposables.push(defaults.onDidChange(function (_) {
+                monaco.editor.getModels().forEach(function (model) {
+                    if (model.getModeId() === _this._languageId) {
+                        onModelRemoved(model);
+                        onModelAdd(model);
+                    }
+                });
+            }));
             this._disposables.push({
                 dispose: function () {
                     for (var key in _this._listener) {
@@ -1141,11 +1632,11 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
             });
             monaco.editor.getModels().forEach(onModelAdd);
         }
-        DiagnostcsAdapter.prototype.dispose = function () {
+        DiagnosticsAdapter.prototype.dispose = function () {
             this._disposables.forEach(function (d) { return d && d.dispose(); });
             this._disposables = [];
         };
-        DiagnostcsAdapter.prototype._doValidate = function (resource, languageId) {
+        DiagnosticsAdapter.prototype._doValidate = function (resource, languageId) {
             this._worker(resource).then(function (worker) {
                 return worker.doValidation(resource.toString()).then(function (diagnostics) {
                     var markers = diagnostics.map(function (d) { return toDiagnostics(resource, d); });
@@ -1155,9 +1646,9 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
                 console.error(err);
             });
         };
-        return DiagnostcsAdapter;
+        return DiagnosticsAdapter;
     }());
-    exports.DiagnostcsAdapter = DiagnostcsAdapter;
+    exports.DiagnosticsAdapter = DiagnosticsAdapter;
     function toSeverity(lsSeverity) {
         switch (lsSeverity) {
             case ls.DiagnosticSeverity.Error: return monaco.MarkerSeverity.Error;
@@ -1257,47 +1748,6 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
             text: textEdit.newText
         };
     }
-    function toCompletionItem(entry) {
-        return {
-            label: entry.label,
-            insertText: entry.insertText,
-            sortText: entry.sortText,
-            filterText: entry.filterText,
-            documentation: entry.documentation,
-            detail: entry.detail,
-            kind: toCompletionItemKind(entry.kind),
-            textEdit: toTextEdit(entry.textEdit),
-            data: entry.data
-        };
-    }
-    function fromMarkdownString(entry) {
-        return {
-            kind: (typeof entry === 'string' ? ls.MarkupKind.PlainText : ls.MarkupKind.Markdown),
-            value: (typeof entry === 'string' ? entry : entry.value)
-        };
-    }
-    function fromCompletionItem(entry) {
-        var item = {
-            label: entry.label,
-            sortText: entry.sortText,
-            filterText: entry.filterText,
-            documentation: fromMarkdownString(entry.documentation),
-            detail: entry.detail,
-            kind: fromCompletionItemKind(entry.kind),
-            data: entry.data
-        };
-        if (typeof entry.insertText === 'object' && typeof entry.insertText.value === 'string') {
-            item.insertText = entry.insertText.value;
-            item.insertTextFormat = ls.InsertTextFormat.Snippet;
-        }
-        else {
-            item.insertText = entry.insertText;
-        }
-        if (entry.range) {
-            item.textEdit = ls.TextEdit.replace(fromRange(entry.range), item.insertText);
-        }
-        return item;
-    }
     var CompletionAdapter = /** @class */ (function () {
         function CompletionAdapter(_worker) {
             this._worker = _worker;
@@ -1309,43 +1759,49 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
             enumerable: true,
             configurable: true
         });
-        CompletionAdapter.prototype.provideCompletionItems = function (model, position, token) {
-            var wordInfo = model.getWordUntilPosition(position);
+        CompletionAdapter.prototype.provideCompletionItems = function (model, position, context, token) {
             var resource = model.uri;
-            return wireCancellationToken(token, this._worker(resource).then(function (worker) {
+            return this._worker(resource).then(function (worker) {
                 return worker.doComplete(resource.toString(), fromPosition(position));
             }).then(function (info) {
                 if (!info) {
                     return;
                 }
+                var wordInfo = model.getWordUntilPosition(position);
+                var wordRange = new Range(position.lineNumber, wordInfo.startColumn, position.lineNumber, wordInfo.endColumn);
                 var items = info.items.map(function (entry) {
                     var item = {
                         label: entry.label,
-                        insertText: entry.insertText,
+                        insertText: entry.insertText || entry.label,
                         sortText: entry.sortText,
                         filterText: entry.filterText,
                         documentation: entry.documentation,
                         detail: entry.detail,
+                        range: wordRange,
                         kind: toCompletionItemKind(entry.kind),
                     };
                     if (entry.textEdit) {
                         item.range = toRange(entry.textEdit.range);
                         item.insertText = entry.textEdit.newText;
                     }
+                    if (entry.additionalTextEdits) {
+                        item.additionalTextEdits = entry.additionalTextEdits.map(toTextEdit);
+                    }
                     if (entry.insertTextFormat === ls.InsertTextFormat.Snippet) {
-                        item.insertText = { value: item.insertText };
+                        item.insertTextRules = monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
                     }
                     return item;
                 });
                 return {
                     isIncomplete: info.isIncomplete,
-                    items: items
+                    suggestions: items
                 };
-            }));
+            });
         };
         return CompletionAdapter;
     }());
     exports.CompletionAdapter = CompletionAdapter;
+    // --- hover ------
     function isMarkupContent(thing) {
         return thing && typeof thing === 'object' && typeof thing.kind === 'string';
     }
@@ -1376,13 +1832,56 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
         }
         return [toMarkdownString(contents)];
     }
-    // --- definition ------
-    function toLocation(location) {
-        return {
-            uri: Uri.parse(location.uri),
-            range: toRange(location.range)
+    var HoverAdapter = /** @class */ (function () {
+        function HoverAdapter(_worker) {
+            this._worker = _worker;
+        }
+        HoverAdapter.prototype.provideHover = function (model, position, token) {
+            var resource = model.uri;
+            return this._worker(resource).then(function (worker) {
+                return worker.doHover(resource.toString(), fromPosition(position));
+            }).then(function (info) {
+                if (!info) {
+                    return;
+                }
+                return {
+                    range: toRange(info.range),
+                    contents: toMarkedStringArray(info.contents)
+                };
+            });
         };
+        return HoverAdapter;
+    }());
+    exports.HoverAdapter = HoverAdapter;
+    // --- document highlights ------
+    function toHighlighKind(kind) {
+        var mKind = monaco.languages.DocumentHighlightKind;
+        switch (kind) {
+            case ls.DocumentHighlightKind.Read: return mKind.Read;
+            case ls.DocumentHighlightKind.Write: return mKind.Write;
+            case ls.DocumentHighlightKind.Text: return mKind.Text;
+        }
+        return mKind.Text;
     }
+    var DocumentHighlightAdapter = /** @class */ (function () {
+        function DocumentHighlightAdapter(_worker) {
+            this._worker = _worker;
+        }
+        DocumentHighlightAdapter.prototype.provideDocumentHighlights = function (model, position, token) {
+            var resource = model.uri;
+            return this._worker(resource).then(function (worker) { return worker.findDocumentHighlights(resource.toString(), fromPosition(position)); }).then(function (items) {
+                if (!items) {
+                    return;
+                }
+                return items.map(function (item) { return ({
+                    range: toRange(item.range),
+                    kind: toHighlighKind(item.kind)
+                }); });
+            });
+        };
+        return DocumentHighlightAdapter;
+    }());
+    exports.DocumentHighlightAdapter = DocumentHighlightAdapter;
     // --- document symbols ------
     function toSymbolKind(kind) {
         var mKind = monaco.languages.SymbolKind;
@@ -1408,49 +1907,46 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
         }
         return mKind.Function;
     }
-    function toHighlighKind(kind) {
-        var mKind = monaco.languages.DocumentHighlightKind;
-        switch (kind) {
-            case ls.DocumentHighlightKind.Read: return mKind.Read;
-            case ls.DocumentHighlightKind.Write: return mKind.Write;
-            case ls.DocumentHighlightKind.Text: return mKind.Text;
-        }
-        return mKind.Text;
-    }
-    var DocumentHighlightAdapter = /** @class */ (function () {
-        function DocumentHighlightAdapter(_worker) {
+    var DocumentSymbolAdapter = /** @class */ (function () {
+        function DocumentSymbolAdapter(_worker) {
             this._worker = _worker;
         }
-        DocumentHighlightAdapter.prototype.provideDocumentHighlights = function (model, position, token) {
+        DocumentSymbolAdapter.prototype.provideDocumentSymbols = function (model, token) {
             var resource = model.uri;
-            return wireCancellationToken(token, this._worker(resource).then(function (worker) { return worker.findDocumentHighlights(resource.toString(), fromPosition(position)); }).then(function (items) {
+            return this._worker(resource).then(function (worker) { return worker.findDocumentSymbols(resource.toString()); }).then(function (items) {
                 if (!items) {
                     return;
                 }
                 return items.map(function (item) { return ({
-                    range: toRange(item.range),
-                    kind: toHighlighKind(item.kind)
+                    name: item.name,
+                    detail: '',
+                    containerName: item.containerName,
+                    kind: toSymbolKind(item.kind),
+                    range: toRange(item.location.range),
+                    selectionRange: toRange(item.location.range)
                 }); });
-            }));
+            });
         };
-        return DocumentHighlightAdapter;
+        return DocumentSymbolAdapter;
     }());
-    exports.DocumentHighlightAdapter = DocumentHighlightAdapter;
+    exports.DocumentSymbolAdapter = DocumentSymbolAdapter;
     var DocumentLinkAdapter = /** @class */ (function () {
         function DocumentLinkAdapter(_worker) {
             this._worker = _worker;
         }
         DocumentLinkAdapter.prototype.provideLinks = function (model, token) {
             var resource = model.uri;
-            return wireCancellationToken(token, this._worker(resource).then(function (worker) { return worker.findDocumentLinks(resource.toString()); }).then(function (items) {
+            return this._worker(resource).then(function (worker) { return worker.findDocumentLinks(resource.toString()); }).then(function (items) {
                 if (!items) {
                     return;
                 }
-                return items.map(function (item) { return ({
-                    range: toRange(item.range),
-                    url: item.target
-                }); });
-            }));
+                return {
+                    links: items.map(function (item) { return ({
+                        range: toRange(item.range),
+                        url: item.target
+                    }); })
+                };
+            });
         };
         return DocumentLinkAdapter;
     }());
@@ -1467,14 +1963,14 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
         }
         DocumentFormattingEditProvider.prototype.provideDocumentFormattingEdits = function (model, options, token) {
             var resource = model.uri;
-            return wireCancellationToken(token, this._worker(resource).then(function (worker) {
+            return this._worker(resource).then(function (worker) {
                 return worker.format(resource.toString(), null, fromFormattingOptions(options)).then(function (edits) {
                     if (!edits || edits.length === 0) {
                         return;
                     }
                     return edits.map(toTextEdit);
                 });
-            }));
+            });
         };
         return DocumentFormattingEditProvider;
     }());
@@ -1485,26 +1981,50 @@ define('vs/language/html/languageFeatures',["require", "exports", "vscode-langua
         }
         DocumentRangeFormattingEditProvider.prototype.provideDocumentRangeFormattingEdits = function (model, range, options, token) {
             var resource = model.uri;
-            return wireCancellationToken(token, this._worker(resource).then(function (worker) {
+            return this._worker(resource).then(function (worker) {
                 return worker.format(resource.toString(), fromRange(range), fromFormattingOptions(options)).then(function (edits) {
                     if (!edits || edits.length === 0) {
                         return;
                     }
                     return edits.map(toTextEdit);
                 });
-            }));
+            });
         };
         return DocumentRangeFormattingEditProvider;
     }());
     exports.DocumentRangeFormattingEditProvider = DocumentRangeFormattingEditProvider;
-    /**
-     * Hook a cancellation token to a WinJS Promise
-     */
-    function wireCancellationToken(token, promise) {
-        if (promise.cancel) {
-            token.onCancellationRequested(function () { return promise.cancel(); });
+    var FoldingRangeAdapter = /** @class */ (function () {
+        function FoldingRangeAdapter(_worker) {
+            this._worker = _worker;
         }
-        return promise;
+        FoldingRangeAdapter.prototype.provideFoldingRanges = function (model, context, token) {
+            var resource = model.uri;
+            return this._worker(resource).then(function (worker) { return worker.provideFoldingRanges(resource.toString(), context); }).then(function (ranges) {
+                if (!ranges) {
+                    return;
+                }
+                return ranges.map(function (range) {
+                    var result = {
+                        start: range.startLine + 1,
+                        end: range.endLine + 1
+                    };
+                    if (typeof range.kind !== 'undefined') {
+                        result.kind = toFoldingRangeKind(range.kind);
+                    }
+                    return result;
+                });
+            });
+        };
+        return FoldingRangeAdapter;
+    }());
+    exports.FoldingRangeAdapter = FoldingRangeAdapter;
+    function toFoldingRangeKind(kind) {
+        switch (kind) {
+            case ls.FoldingRangeKind.Comment: return monaco.languages.FoldingRangeKind.Comment;
+            case ls.FoldingRangeKind.Imports: return monaco.languages.FoldingRangeKind.Imports;
+            case ls.FoldingRangeKind.Region: return monaco.languages.FoldingRangeKind.Region;
+        }
+        return void 0;
     }
 });
 
@@ -1516,9 +2036,7 @@ define('vs/language/html/htmlMode',["require", "exports", "./workerManager", "./
     'use strict';
     Object.defineProperty(exports, "__esModule", { value: true });
     function setupMode(defaults) {
-        var disposables = [];
         var client = new workerManager_1.WorkerManager(defaults);
-        disposables.push(client);
         var worker = function () {
             var uris = [];
             for (var _i = 0; _i < arguments.length; _i++) {
@@ -1528,14 +2046,17 @@ define('vs/language/html/htmlMode',["require", "exports", "./workerManager", "./
         };
         var languageId = defaults.languageId;
         // all modes
-        disposables.push(monaco.languages.registerCompletionItemProvider(languageId, new languageFeatures.CompletionAdapter(worker)));
-        disposables.push(monaco.languages.registerDocumentHighlightProvider(languageId, new languageFeatures.DocumentHighlightAdapter(worker)));
-        disposables.push(monaco.languages.registerLinkProvider(languageId, new languageFeatures.DocumentLinkAdapter(worker)));
+        monaco.languages.registerCompletionItemProvider(languageId, new languageFeatures.CompletionAdapter(worker));
+        monaco.languages.registerHoverProvider(languageId, new languageFeatures.HoverAdapter(worker));
+        monaco.languages.registerDocumentHighlightProvider(languageId, new languageFeatures.DocumentHighlightAdapter(worker));
+        monaco.languages.registerLinkProvider(languageId, new languageFeatures.DocumentLinkAdapter(worker));
+        monaco.languages.registerFoldingRangeProvider(languageId, new languageFeatures.FoldingRangeAdapter(worker));
+        monaco.languages.registerDocumentSymbolProvider(languageId, new languageFeatures.DocumentSymbolAdapter(worker));
         // only html
         if (languageId === 'html') {
-            disposables.push(monaco.languages.registerDocumentFormattingEditProvider(languageId, new languageFeatures.DocumentFormattingEditProvider(worker)));
-            disposables.push(monaco.languages.registerDocumentRangeFormattingEditProvider(languageId, new languageFeatures.DocumentRangeFormattingEditProvider(worker)));
-            disposables.push(new languageFeatures.DiagnostcsAdapter(languageId, worker));
+            monaco.languages.registerDocumentFormattingEditProvider(languageId, new languageFeatures.DocumentFormattingEditProvider(worker));
+            monaco.languages.registerDocumentRangeFormattingEditProvider(languageId, new languageFeatures.DocumentRangeFormattingEditProvider(worker));
+            new languageFeatures.DiagnosticsAdapter(languageId, worker, defaults);
         }
     }
     exports.setupMode = setupMode;

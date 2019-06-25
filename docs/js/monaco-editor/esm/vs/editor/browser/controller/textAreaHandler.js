@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,21 +16,21 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import './textAreaHandler.css';
-import * as platform from '../../../base/common/platform.js';
 import * as browser from '../../../base/browser/browser.js';
+import { createFastDomNode } from '../../../base/browser/fastDomNode.js';
+import * as platform from '../../../base/common/platform.js';
 import * as strings from '../../../base/common/strings.js';
-import { TextAreaInput } from './textAreaInput.js';
-import { TextAreaState, PagedScreenReaderStrategy } from './textAreaState.js';
+import { Configuration } from '../config/configuration.js';
+import { CopyOptions, TextAreaInput } from './textAreaInput.js';
+import { PagedScreenReaderStrategy, TextAreaState } from './textAreaState.js';
+import { PartFingerprints, ViewPart } from '../view/viewPart.js';
+import { LineNumbersOverlay } from '../viewParts/lineNumbers/lineNumbers.js';
+import { Margin } from '../viewParts/margin/margin.js';
+import { getMapForWordSeparators } from '../../common/controller/wordCharacterClassifier.js';
+import { Position } from '../../common/core/position.js';
 import { Range } from '../../common/core/range.js';
 import { Selection } from '../../common/core/selection.js';
-import { Position } from '../../common/core/position.js';
-import { Configuration } from '../config/configuration.js';
 import * as viewEvents from '../../common/view/viewEvents.js';
-import { createFastDomNode } from '../../../base/browser/fastDomNode.js';
-import { PartFingerprints, ViewPart } from '../view/viewPart.js';
-import { Margin } from '../viewParts/margin/margin.js';
-import { LineNumbersOverlay } from '../viewParts/lineNumbers/lineNumbers.js';
-import { getMapForWordSeparators } from '../../common/controller/wordCharacterClassifier.js';
 var VisibleTextAreaData = /** @class */ (function () {
     function VisibleTextAreaData(top, left, width) {
         this.top = top;
@@ -82,6 +84,7 @@ var TextAreaHandler = /** @class */ (function (_super) {
         _this._fontInfo = conf.fontInfo;
         _this._lineHeight = conf.lineHeight;
         _this._emptySelectionClipboard = conf.emptySelectionClipboard;
+        _this._copyWithSyntaxHighlighting = conf.copyWithSyntaxHighlighting;
         _this._visibleTextArea = null;
         _this._selections = [new Selection(1, 1, 1, 1)];
         // Text Area (The focus will always be in the textarea when the cursor is blinking)
@@ -113,7 +116,7 @@ var TextAreaHandler = /** @class */ (function (_super) {
         };
         var textAreaInputHost = {
             getPlainTextToCopy: function () {
-                var rawWhatToCopy = _this._context.model.getPlainTextToCopy(_this._selections, _this._emptySelectionClipboard);
+                var rawWhatToCopy = _this._context.model.getPlainTextToCopy(_this._selections, _this._emptySelectionClipboard, platform.isWindows);
                 var newLineCharacter = _this._context.model.getEOL();
                 var isFromEmptySelection = (_this._emptySelectionClipboard && _this._selections.length === 1 && _this._selections[0].isEmpty());
                 var multicursorText = (Array.isArray(rawWhatToCopy) ? rawWhatToCopy : null);
@@ -134,6 +137,9 @@ var TextAreaHandler = /** @class */ (function (_super) {
                 return whatToCopy;
             },
             getHTMLToCopy: function () {
+                if (!_this._copyWithSyntaxHighlighting && !CopyOptions.forceCopyWithSyntaxHighlighting) {
+                    return null;
+                }
                 return _this._context.model.getHTMLToCopy(_this._selections, _this._emptySelectionClipboard);
             },
             getScreenReaderContent: function (currentState) {
@@ -290,6 +296,9 @@ var TextAreaHandler = /** @class */ (function (_super) {
         if (e.emptySelectionClipboard) {
             this._emptySelectionClipboard = conf.emptySelectionClipboard;
         }
+        if (e.copyWithSyntaxHighlighting) {
+            this._copyWithSyntaxHighlighting = conf.copyWithSyntaxHighlighting;
+        }
         return true;
     };
     TextAreaHandler.prototype.onCursorStateChanged = function (e) {
@@ -405,13 +414,13 @@ var TextAreaHandler = /** @class */ (function (_super) {
             return;
         }
         // (in WebKit the textarea is 1px by 1px because it cannot handle input to a 0x0 textarea)
-        // specifically, when doing Korean IME, setting the textare to 0x0 breaks IME badly.
+        // specifically, when doing Korean IME, setting the textarea to 0x0 breaks IME badly.
         ta.setWidth(1);
         ta.setHeight(1);
         tac.setWidth(1);
         tac.setHeight(1);
         if (this._context.configuration.editor.viewInfo.glyphMargin) {
-            tac.setClassName('monaco-editor-background textAreaCover ' + Margin.CLASS_NAME);
+            tac.setClassName('monaco-editor-background textAreaCover ' + Margin.OUTER_CLASS_NAME);
         }
         else {
             if (this._context.configuration.editor.viewInfo.renderLineNumbers !== 0 /* Off */) {

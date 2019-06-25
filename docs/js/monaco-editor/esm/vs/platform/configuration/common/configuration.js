@@ -1,62 +1,7 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-import * as objects from '../../../base/common/objects.js';
-import * as types from '../../../base/common/types.js';
-import URI from '../../../base/common/uri.js';
 import { Registry } from '../../registry/common/platform.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
-import { Extensions, OVERRIDE_PROPERTY_PATTERN } from './configurationRegistry.js';
+import { Extensions } from './configurationRegistry.js';
 export var IConfigurationService = createDecorator('configurationService');
-export function isConfigurationOverrides(thing) {
-    return thing
-        && typeof thing === 'object'
-        && (!thing.overrideIdentifier || typeof thing.overrideIdentifier === 'string')
-        && (!thing.resource || thing.resource instanceof URI);
-}
-export var ConfigurationTarget;
-(function (ConfigurationTarget) {
-    ConfigurationTarget[ConfigurationTarget["USER"] = 1] = "USER";
-    ConfigurationTarget[ConfigurationTarget["WORKSPACE"] = 2] = "WORKSPACE";
-    ConfigurationTarget[ConfigurationTarget["WORKSPACE_FOLDER"] = 3] = "WORKSPACE_FOLDER";
-    ConfigurationTarget[ConfigurationTarget["DEFAULT"] = 4] = "DEFAULT";
-    ConfigurationTarget[ConfigurationTarget["MEMORY"] = 5] = "MEMORY";
-})(ConfigurationTarget || (ConfigurationTarget = {}));
-export function compare(from, to) {
-    var added = to.keys.filter(function (key) { return from.keys.indexOf(key) === -1; });
-    var removed = from.keys.filter(function (key) { return to.keys.indexOf(key) === -1; });
-    var updated = [];
-    for (var _i = 0, _a = from.keys; _i < _a.length; _i++) {
-        var key = _a[_i];
-        var value1 = getConfigurationValue(from.contents, key);
-        var value2 = getConfigurationValue(to.contents, key);
-        if (!objects.equals(value1, value2)) {
-            updated.push(key);
-        }
-    }
-    return { added: added, removed: removed, updated: updated };
-}
-export function toOverrides(raw, conflictReporter) {
-    var overrides = [];
-    var configurationProperties = Registry.as(Extensions.Configuration).getConfigurationProperties();
-    for (var _i = 0, _a = Object.keys(raw); _i < _a.length; _i++) {
-        var key = _a[_i];
-        if (OVERRIDE_PROPERTY_PATTERN.test(key)) {
-            var overrideRaw = {};
-            for (var keyInOverrideRaw in raw[key]) {
-                if (configurationProperties[keyInOverrideRaw] && configurationProperties[keyInOverrideRaw].overridable) {
-                    overrideRaw[keyInOverrideRaw] = raw[key][keyInOverrideRaw];
-                }
-            }
-            overrides.push({
-                identifiers: [overrideIdentifierFromKey(key).trim()],
-                contents: toValuesTree(overrideRaw, conflictReporter)
-            });
-        }
-    }
-    return overrides;
-}
 export function toValuesTree(properties, conflictReporter) {
     var root = Object.create(null);
     for (var key in properties) {
@@ -117,32 +62,18 @@ function doRemoveFromValueTree(valueTree, segments) {
 export function getConfigurationValue(config, settingPath, defaultValue) {
     function accessSetting(config, path) {
         var current = config;
-        for (var i = 0; i < path.length; i++) {
+        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+            var component = path_1[_i];
             if (typeof current !== 'object' || current === null) {
                 return undefined;
             }
-            current = current[path[i]];
+            current = current[component];
         }
         return current;
     }
     var path = settingPath.split('.');
     var result = accessSetting(config, path);
     return typeof result === 'undefined' ? defaultValue : result;
-}
-export function merge(base, add, overwrite) {
-    Object.keys(add).forEach(function (key) {
-        if (key in base) {
-            if (types.isObject(base[key]) && types.isObject(add[key])) {
-                merge(base[key], add[key], overwrite);
-            }
-            else if (overwrite) {
-                base[key] = add[key];
-            }
-        }
-        else {
-            base[key] = add[key];
-        }
-    });
 }
 export function getConfigurationKeys() {
     var properties = Registry.as(Extensions.Configuration).getConfigurationProperties();
@@ -160,6 +91,16 @@ export function getDefaultValues() {
 export function overrideIdentifierFromKey(key) {
     return key.substring(1, key.length - 1);
 }
-export function keyFromOverrideIdentifier(overrideIdentifier) {
-    return "[" + overrideIdentifier + "]";
+export function getMigratedSettingValue(configurationService, currentSettingName, legacySettingName) {
+    var setting = configurationService.inspect(currentSettingName);
+    var legacySetting = configurationService.inspect(legacySettingName);
+    if (typeof setting.user !== 'undefined' || typeof setting.workspace !== 'undefined' || typeof setting.workspaceFolder !== 'undefined') {
+        return setting.value;
+    }
+    else if (typeof legacySetting.user !== 'undefined' || typeof legacySetting.workspace !== 'undefined' || typeof legacySetting.workspaceFolder !== 'undefined') {
+        return legacySetting.value;
+    }
+    else {
+        return setting.default;
+    }
 }

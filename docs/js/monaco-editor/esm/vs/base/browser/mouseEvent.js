@@ -2,20 +2,22 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import * as platform from '../common/platform.js';
 import * as browser from './browser.js';
 import { IframeUtils } from './iframe.js';
+import * as platform from '../common/platform.js';
 var StandardMouseEvent = /** @class */ (function () {
     function StandardMouseEvent(e) {
         this.timestamp = Date.now();
@@ -69,8 +71,8 @@ var DragMouseEvent = /** @class */ (function (_super) {
     return DragMouseEvent;
 }(StandardMouseEvent));
 export { DragMouseEvent };
-var StandardMouseWheelEvent = /** @class */ (function () {
-    function StandardMouseWheelEvent(e, deltaX, deltaY) {
+var StandardWheelEvent = /** @class */ (function () {
+    function StandardWheelEvent(e, deltaX, deltaY) {
         if (deltaX === void 0) { deltaX = 0; }
         if (deltaY === void 0) { deltaY = 0; }
         this.browserEvent = e || null;
@@ -105,20 +107,20 @@ var StandardMouseWheelEvent = /** @class */ (function () {
             }
         }
     }
-    StandardMouseWheelEvent.prototype.preventDefault = function () {
+    StandardWheelEvent.prototype.preventDefault = function () {
         if (this.browserEvent) {
             if (this.browserEvent.preventDefault) {
                 this.browserEvent.preventDefault();
             }
         }
     };
-    StandardMouseWheelEvent.prototype.stopPropagation = function () {
+    StandardWheelEvent.prototype.stopPropagation = function () {
         if (this.browserEvent) {
             if (this.browserEvent.stopPropagation) {
                 this.browserEvent.stopPropagation();
             }
         }
     };
-    return StandardMouseWheelEvent;
+    return StandardWheelEvent;
 }());
-export { StandardMouseWheelEvent };
+export { StandardWheelEvent };

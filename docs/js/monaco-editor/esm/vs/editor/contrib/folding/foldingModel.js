@@ -61,7 +61,7 @@ var FoldingModel = /** @class */ (function () {
         var isBlocked = function (startLineNumber, endLineNumber) {
             for (var _i = 0, blockedLineNumers_1 = blockedLineNumers; _i < blockedLineNumers_1.length; _i++) {
                 var blockedLineNumber = blockedLineNumers_1[_i];
-                if (startLineNumber < blockedLineNumber && blockedLineNumber <= endLineNumber) {
+                if (startLineNumber < blockedLineNumber && blockedLineNumber <= endLineNumber) { // first line is visible
                     return true;
                 }
             }
@@ -100,7 +100,7 @@ var FoldingModel = /** @class */ (function () {
             var decRange = this._textModel.getDecorationRange(this._editorDecorationIds[collapsedIndex]);
             if (decRange) {
                 var collapsedStartLineNumber = decRange.startLineNumber;
-                if (this._textModel.getLineMaxColumn(collapsedStartLineNumber) === decRange.startColumn) {
+                if (this._textModel.getLineMaxColumn(collapsedStartLineNumber) === decRange.startColumn) { // test that the decoration is still at the end otherwise it got deleted
                     while (k < newRegions.length) {
                         var startLineNumber = newRegions.getStartLineNumber(k);
                         if (collapsedStartLineNumber >= startLineNumber) {
@@ -142,7 +142,7 @@ var FoldingModel = /** @class */ (function () {
         if (collapsedRanges.length > 0) {
             return collapsedRanges;
         }
-        return null;
+        return undefined;
     };
     /**
      * Apply persisted state, for persistence only
@@ -191,14 +191,13 @@ var FoldingModel = /** @class */ (function () {
     };
     FoldingModel.prototype.getRegionsInside = function (region, filter) {
         var result = [];
-        var trackLevel = filter && filter.length === 2;
-        var levelStack = trackLevel ? [] : null;
         var index = region ? region.regionIndex + 1 : 0;
         var endLineNumber = region ? region.endLineNumber : Number.MAX_VALUE;
-        for (var i = index, len = this._regions.length; i < len; i++) {
-            var current = this._regions.toRegion(i);
-            if (this._regions.getStartLineNumber(i) < endLineNumber) {
-                if (trackLevel) {
+        if (filter && filter.length === 2) {
+            var levelStack = [];
+            for (var i = index, len = this._regions.length; i < len; i++) {
+                var current = this._regions.toRegion(i);
+                if (this._regions.getStartLineNumber(i) < endLineNumber) {
                     while (levelStack.length > 0 && !current.containedBy(levelStack[levelStack.length - 1])) {
                         levelStack.pop();
                     }
@@ -207,12 +206,22 @@ var FoldingModel = /** @class */ (function () {
                         result.push(current);
                     }
                 }
-                else if (!filter || filter(current)) {
-                    result.push(current);
+                else {
+                    break;
                 }
             }
-            else {
-                break;
+        }
+        else {
+            for (var i = index, len = this._regions.length; i < len; i++) {
+                var current = this._regions.toRegion(i);
+                if (this._regions.getStartLineNumber(i) < endLineNumber) {
+                    if (!filter || filter(current)) {
+                        result.push(current);
+                    }
+                }
+                else {
+                    break;
+                }
             }
         }
         return result;
@@ -269,7 +278,6 @@ export function setCollapseStateLevelsUp(foldingModel, doCollapse, levels, lineN
  * Folds or unfolds all regions that have a given level, except if they contain one of the blocked lines.
  * @param foldLevel level. Level == 1 is the top level
  * @param doCollapse Wheter to collase or expand
-* @param blockedLineNumbers
 */
 export function setCollapseStateAtLevel(foldingModel, foldLevel, doCollapse, blockedLineNumbers) {
     var filter = function (region, level) { return level === foldLevel && region.isCollapsed !== doCollapse && !blockedLineNumbers.some(function (line) { return region.containsLine(line); }); };

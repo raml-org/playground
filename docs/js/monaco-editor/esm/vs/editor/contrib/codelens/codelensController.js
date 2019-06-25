@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -12,22 +11,24 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
-import { RunOnceScheduler, asWinJsPromise } from '../../../base/common/async.js';
-import { onUnexpectedError } from '../../../base/common/errors.js';
-import { dispose } from '../../../base/common/lifecycle.js';
-import { TPromise } from '../../../base/common/winjs.base.js';
-import { ICommandService } from '../../../platform/commands/common/commands.js';
-import { CodeLensProviderRegistry } from '../../common/modes.js';
+import { RunOnceScheduler, createCancelablePromise, disposableTimeout } from '../../../base/common/async.js';
+import { onUnexpectedError, onUnexpectedExternalError } from '../../../base/common/errors.js';
+import { dispose, toDisposable } from '../../../base/common/lifecycle.js';
+import { StableEditorScrollState } from '../../browser/core/editorState.js';
 import { registerEditorContribution } from '../../browser/editorExtensions.js';
+import { CodeLensProviderRegistry } from '../../common/modes.js';
 import { getCodeLensData } from './codelens.js';
 import { CodeLens, CodeLensHelper } from './codelensWidget.js';
+import { ICommandService } from '../../../platform/commands/common/commands.js';
 import { INotificationService } from '../../../platform/notification/common/notification.js';
+import { ICodeLensCache } from './codeLensCache.js';
 var CodeLensContribution = /** @class */ (function () {
-    function CodeLensContribution(_editor, _commandService, _notificationService) {
+    function CodeLensContribution(_editor, _commandService, _notificationService, _codeLensCache) {
         var _this = this;
         this._editor = _editor;
         this._commandService = _commandService;
         this._notificationService = _notificationService;
+        this._codeLensCache = _codeLensCache;
         this._isEnabled = this._editor.getConfiguration().contribInfo.codeLens;
         this._globalToDispose = [];
         this._localToDispose = [];
@@ -56,9 +57,9 @@ var CodeLensContribution = /** @class */ (function () {
             this._currentFindCodeLensSymbolsPromise = null;
             this._modelChangeCounter++;
         }
-        if (this._currentFindOccPromise) {
-            this._currentFindOccPromise.cancel();
-            this._currentFindOccPromise = null;
+        if (this._currentResolveCodeLensSymbolsPromise) {
+            this._currentResolveCodeLensSymbolsPromise.cancel();
+            this._currentResolveCodeLensSymbolsPromise = null;
         }
         this._localToDispose = dispose(this._localToDispose);
     };
@@ -75,7 +76,22 @@ var CodeLensContribution = /** @class */ (function () {
         if (!this._isEnabled) {
             return;
         }
+        var cachedLenses = this._codeLensCache.get(model);
+        if (cachedLenses) {
+            this._renderCodeLensSymbols(cachedLenses);
+        }
         if (!CodeLensProviderRegistry.has(model)) {
+            // no provider -> return but check with
+            // cached lenses. they expire after 30 seconds
+            if (cachedLenses) {
+                this._localToDispose.push(disposableTimeout(function () {
+                    var cachedLensesNow = _this._codeLensCache.get(model);
+                    if (cachedLenses === cachedLensesNow) {
+                        _this._codeLensCache.delete(model);
+                        _this._onModelChange();
+                    }
+                }, 30 * 1000));
+            }
             return;
         }
         for (var _i = 0, _a = CodeLensProviderRegistry.all(model); _i < _a.length; _i++) {
@@ -87,15 +103,16 @@ var CodeLensContribution = /** @class */ (function () {
         }
         this._detectVisibleLenses = new RunOnceScheduler(function () {
             _this._onViewportChanged();
-        }, 500);
+        }, 250);
         var scheduler = new RunOnceScheduler(function () {
             var counterValue = ++_this._modelChangeCounter;
             if (_this._currentFindCodeLensSymbolsPromise) {
                 _this._currentFindCodeLensSymbolsPromise.cancel();
             }
-            _this._currentFindCodeLensSymbolsPromise = getCodeLensData(model);
+            _this._currentFindCodeLensSymbolsPromise = createCancelablePromise(function (token) { return getCodeLensData(model, token); });
             _this._currentFindCodeLensSymbolsPromise.then(function (result) {
-                if (counterValue === _this._modelChangeCounter) {
+                if (counterValue === _this._modelChangeCounter) { // only the last one wins
+                    _this._codeLensCache.put(model, result);
                     _this._renderCodeLensSymbols(result);
                     _this._detectVisibleLenses.schedule();
                 }
@@ -140,21 +157,42 @@ var CodeLensContribution = /** @class */ (function () {
         this._localToDispose.push(this._editor.onDidLayoutChange(function (e) {
             _this._detectVisibleLenses.schedule();
         }));
-        this._localToDispose.push({
-            dispose: function () {
-                if (_this._editor.getModel()) {
-                    _this._editor.changeDecorations(function (changeAccessor) {
-                        _this._editor.changeViewZones(function (accessor) {
-                            _this._disposeAllLenses(changeAccessor, accessor);
-                        });
+        this._localToDispose.push(toDisposable(function () {
+            if (_this._editor.getModel()) {
+                var scrollState = StableEditorScrollState.capture(_this._editor);
+                _this._editor.changeDecorations(function (changeAccessor) {
+                    _this._editor.changeViewZones(function (accessor) {
+                        _this._disposeAllLenses(changeAccessor, accessor);
                     });
-                }
-                else {
-                    // No accessors available
-                    _this._disposeAllLenses(null, null);
+                });
+                scrollState.restore(_this._editor);
+            }
+            else {
+                // No accessors available
+                _this._disposeAllLenses(undefined, undefined);
+            }
+        }));
+        this._localToDispose.push(this._editor.onDidChangeConfiguration(function (e) {
+            if (e.fontInfo) {
+                for (var _i = 0, _a = _this._lenses; _i < _a.length; _i++) {
+                    var lens = _a[_i];
+                    lens.updateHeight();
                 }
             }
-        });
+        }));
+        this._localToDispose.push(this._editor.onMouseUp(function (e) {
+            var _a;
+            if (e.target.type === 9 /* CONTENT_WIDGET */ && e.target.element && e.target.element.tagName === 'A') {
+                for (var _i = 0, _b = _this._lenses; _i < _b.length; _i++) {
+                    var lens = _b[_i];
+                    var command = lens.getCommand(e.target.element);
+                    if (command) {
+                        (_a = _this._commandService).executeCommand.apply(_a, [command.id].concat((command.arguments || []))).catch(function (err) { return _this._notificationService.error(err); });
+                        break;
+                    }
+                }
+            }
+        }));
         scheduler.schedule();
     };
     CodeLensContribution.prototype._disposeAllLenses = function (decChangeAccessor, viewZoneChangeAccessor) {
@@ -167,7 +205,7 @@ var CodeLensContribution = /** @class */ (function () {
     };
     CodeLensContribution.prototype._renderCodeLensSymbols = function (symbols) {
         var _this = this;
-        if (!this._editor.getModel()) {
+        if (!this._editor.hasModel()) {
             return;
         }
         var maxLineNumber = this._editor.getModel().getLineCount();
@@ -190,13 +228,7 @@ var CodeLensContribution = /** @class */ (function () {
                 groups.push(lastGroup);
             }
         }
-        var visibleRanges = this._editor.getVisibleRanges();
-        var visiblePosition = (visibleRanges.length > 0 ? visibleRanges[0].getStartPosition() : null);
-        var visiblePositionScrollDelta = 0;
-        if (visiblePosition) {
-            var visiblePositionScrollTop = this._editor.getTopForPosition(visiblePosition.lineNumber, visiblePosition.column);
-            visiblePositionScrollDelta = this._editor.getScrollTop() - visiblePositionScrollTop;
-        }
+        var scrollState = StableEditorScrollState.capture(this._editor);
         this._editor.changeDecorations(function (changeAccessor) {
             _this._editor.changeViewZones(function (accessor) {
                 var codeLensIndex = 0, groupsIndex = 0, helper = new CodeLensHelper();
@@ -213,7 +245,7 @@ var CodeLensContribution = /** @class */ (function () {
                         codeLensIndex++;
                     }
                     else {
-                        _this._lenses.splice(codeLensIndex, 0, new CodeLens(groups[groupsIndex], _this._editor, helper, accessor, _this._commandService, _this._notificationService, function () { return _this._detectVisibleLenses.schedule(); }));
+                        _this._lenses.splice(codeLensIndex, 0, new CodeLens(groups[groupsIndex], _this._editor, helper, accessor, function () { return _this._detectVisibleLenses.schedule(); }));
                         codeLensIndex++;
                         groupsIndex++;
                     }
@@ -225,22 +257,19 @@ var CodeLensContribution = /** @class */ (function () {
                 }
                 // Create extra symbols
                 while (groupsIndex < groups.length) {
-                    _this._lenses.push(new CodeLens(groups[groupsIndex], _this._editor, helper, accessor, _this._commandService, _this._notificationService, function () { return _this._detectVisibleLenses.schedule(); }));
+                    _this._lenses.push(new CodeLens(groups[groupsIndex], _this._editor, helper, accessor, function () { return _this._detectVisibleLenses.schedule(); }));
                     groupsIndex++;
                 }
                 helper.commit(changeAccessor);
             });
         });
-        if (visiblePosition) {
-            var visiblePositionScrollTop = this._editor.getTopForPosition(visiblePosition.lineNumber, visiblePosition.column);
-            this._editor.setScrollTop(visiblePositionScrollTop + visiblePositionScrollDelta);
-        }
+        scrollState.restore(this._editor);
     };
     CodeLensContribution.prototype._onViewportChanged = function () {
         var _this = this;
-        if (this._currentFindOccPromise) {
-            this._currentFindOccPromise.cancel();
-            this._currentFindOccPromise = null;
+        if (this._currentResolveCodeLensSymbolsPromise) {
+            this._currentResolveCodeLensSymbolsPromise.cancel();
+            this._currentResolveCodeLensSymbolsPromise = null;
         }
         var model = this._editor.getModel();
         if (!model) {
@@ -258,27 +287,38 @@ var CodeLensContribution = /** @class */ (function () {
         if (toResolve.length === 0) {
             return;
         }
-        var promises = toResolve.map(function (request, i) {
-            var resolvedSymbols = new Array(request.length);
-            var promises = request.map(function (request, i) {
-                return asWinJsPromise(function (token) {
-                    return request.provider.resolveCodeLens(model, request.symbol, token);
-                }).then(function (symbol) {
-                    resolvedSymbols[i] = symbol;
+        this._currentResolveCodeLensSymbolsPromise = createCancelablePromise(function (token) {
+            var promises = toResolve.map(function (request, i) {
+                var resolvedSymbols = new Array(request.length);
+                var promises = request.map(function (request, i) {
+                    if (!request.symbol.command && typeof request.provider.resolveCodeLens === 'function') {
+                        return Promise.resolve(request.provider.resolveCodeLens(model, request.symbol, token)).then(function (symbol) {
+                            resolvedSymbols[i] = symbol;
+                        }, onUnexpectedExternalError);
+                    }
+                    else {
+                        resolvedSymbols[i] = request.symbol;
+                        return Promise.resolve(undefined);
+                    }
+                });
+                return Promise.all(promises).then(function () {
+                    lenses[i].updateCommands(resolvedSymbols);
                 });
             });
-            return TPromise.join(promises).then(function () {
-                lenses[i].updateCommands(resolvedSymbols);
-            });
+            return Promise.all(promises);
         });
-        this._currentFindOccPromise = TPromise.join(promises).then(function () {
-            _this._currentFindOccPromise = null;
+        this._currentResolveCodeLensSymbolsPromise.then(function () {
+            _this._currentResolveCodeLensSymbolsPromise = null;
+        }).catch(function (err) {
+            _this._currentResolveCodeLensSymbolsPromise = null;
+            onUnexpectedError(err);
         });
     };
     CodeLensContribution.ID = 'css.editor.codeLens';
     CodeLensContribution = __decorate([
         __param(1, ICommandService),
-        __param(2, INotificationService)
+        __param(2, INotificationService),
+        __param(3, ICodeLensCache)
     ], CodeLensContribution);
     return CodeLensContribution;
 }());

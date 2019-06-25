@@ -2,11 +2,9 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { Range } from '../../common/core/range.js';
-import { Position } from '../../common/core/position.js';
-import { EndOfLinePreference } from '../../common/model.js';
 import * as strings from '../../../base/common/strings.js';
+import { Position } from '../../common/core/position.js';
+import { Range } from '../../common/core/range.js';
 var TextAreaState = /** @class */ (function () {
     function TextAreaState(value, selectionStart, selectionEnd, selectionStartPosition, selectionEndPosition) {
         this.value = value;
@@ -18,14 +16,14 @@ var TextAreaState = /** @class */ (function () {
     TextAreaState.prototype.toString = function () {
         return '[ <' + this.value + '>, selectionStart: ' + this.selectionStart + ', selectionEnd: ' + this.selectionEnd + ']';
     };
-    TextAreaState.prototype.readFromTextArea = function (textArea) {
+    TextAreaState.readFromTextArea = function (textArea) {
         return new TextAreaState(textArea.getValue(), textArea.getSelectionStart(), textArea.getSelectionEnd(), null, null);
     };
     TextAreaState.prototype.collapseSelection = function () {
         return new TextAreaState(this.value, this.value.length, this.value.length, null, null);
     };
     TextAreaState.prototype.writeToTextArea = function (reason, textArea, select) {
-        // console.log(Date.now() + ': applyToTextArea ' + reason + ': ' + this.toString());
+        // console.log(Date.now() + ': writeToTextArea ' + reason + ': ' + this.toString());
         textArea.setValue(reason, this.value);
         if (select) {
             textArea.setSelectionRange(reason, this.selectionStart, this.selectionEnd);
@@ -58,7 +56,7 @@ var TextAreaState = /** @class */ (function () {
     TextAreaState.selectedText = function (text) {
         return new TextAreaState(text, 0, text.length, null, null);
     };
-    TextAreaState.deduceInput = function (previousState, currentState, couldBeEmojiInput) {
+    TextAreaState.deduceInput = function (previousState, currentState, couldBeEmojiInput, couldBeTypingAtOffset0) {
         if (!previousState) {
             // This is the EMPTY state
             return {
@@ -75,6 +73,17 @@ var TextAreaState = /** @class */ (function () {
         var currentValue = currentState.value;
         var currentSelectionStart = currentState.selectionStart;
         var currentSelectionEnd = currentState.selectionEnd;
+        if (couldBeTypingAtOffset0 && previousValue.length > 0 && previousSelectionStart === previousSelectionEnd && currentSelectionStart === currentSelectionEnd) {
+            // See https://github.com/Microsoft/vscode/issues/42251
+            // where typing always happens at offset 0 in the textarea
+            // when using a custom title area in OSX and moving the window
+            if (!strings.startsWith(currentValue, previousValue) && strings.endsWith(currentValue, previousValue)) {
+                // Looks like something was typed at offset 0
+                // ==> pretend we placed the cursor at offset 0 to begin with...
+                previousSelectionStart = 0;
+                previousSelectionEnd = 0;
+            }
+        }
         // Strip the previous suffix from the value (without interfering with the current selection)
         var previousSuffix = previousValue.substring(previousSelectionEnd);
         var currentSuffix = currentValue.substring(currentSelectionEnd);
@@ -180,22 +189,22 @@ var PagedScreenReaderStrategy = /** @class */ (function () {
         var selectionEndPage = PagedScreenReaderStrategy._getPageOfLine(selection.endLineNumber);
         var selectionEndPageRange = PagedScreenReaderStrategy._getRangeForPage(selectionEndPage);
         var pretextRange = selectionStartPageRange.intersectRanges(new Range(1, 1, selection.startLineNumber, selection.startColumn));
-        var pretext = model.getValueInRange(pretextRange, EndOfLinePreference.LF);
+        var pretext = model.getValueInRange(pretextRange, 1 /* LF */);
         var lastLine = model.getLineCount();
         var lastLineMaxColumn = model.getLineMaxColumn(lastLine);
         var posttextRange = selectionEndPageRange.intersectRanges(new Range(selection.endLineNumber, selection.endColumn, lastLine, lastLineMaxColumn));
-        var posttext = model.getValueInRange(posttextRange, EndOfLinePreference.LF);
-        var text = null;
+        var posttext = model.getValueInRange(posttextRange, 1 /* LF */);
+        var text;
         if (selectionStartPage === selectionEndPage || selectionStartPage + 1 === selectionEndPage) {
             // take full selection
-            text = model.getValueInRange(selection, EndOfLinePreference.LF);
+            text = model.getValueInRange(selection, 1 /* LF */);
         }
         else {
             var selectionRange1 = selectionStartPageRange.intersectRanges(selection);
             var selectionRange2 = selectionEndPageRange.intersectRanges(selection);
-            text = (model.getValueInRange(selectionRange1, EndOfLinePreference.LF)
+            text = (model.getValueInRange(selectionRange1, 1 /* LF */)
                 + String.fromCharCode(8230)
-                + model.getValueInRange(selectionRange2, EndOfLinePreference.LF));
+                + model.getValueInRange(selectionRange2, 1 /* LF */));
         }
         // Chromium handles very poorly text even of a few thousand chars
         // Cut text to avoid stalling the entire UI

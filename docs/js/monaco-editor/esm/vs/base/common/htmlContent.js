@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import { equals } from './arrays.js';
 var MarkdownString = /** @class */ (function () {
     function MarkdownString(value) {
@@ -12,10 +11,6 @@ var MarkdownString = /** @class */ (function () {
     MarkdownString.prototype.appendText = function (value) {
         // escape markdown syntax tokens: http://daringfireball.net/projects/markdown/syntax#backslash
         this.value += value.replace(/[\\`*_{}[\]()#+\-.!]/g, '\\$&');
-        return this;
-    };
-    MarkdownString.prototype.appendMarkdown = function (value) {
-        this.value += value;
         return this;
     };
     MarkdownString.prototype.appendCodeblock = function (langId, code) {
@@ -46,7 +41,7 @@ export function isMarkdownString(thing) {
     }
     else if (thing && typeof thing === 'object') {
         return typeof thing.value === 'string'
-            && (typeof thing.isTrusted === 'boolean' || thing.isTrusted === void 0);
+            && (typeof thing.isTrusted === 'boolean' || thing.isTrusted === undefined);
     }
     return false;
 }

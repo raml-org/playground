@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 import { Emitter } from '../../../base/common/event.js';
 import { Range } from '../../common/core/range.js';
-import { findFirst } from '../../../base/common/arrays.js';
+import { findFirstInSorted } from '../../../base/common/arrays.js';
 var HiddenRangeModel = /** @class */ (function () {
     function HiddenRangeModel(model) {
         var _this = this;
@@ -138,7 +138,7 @@ function isInside(line, range) {
     return line >= range.startLineNumber && line <= range.endLineNumber;
 }
 function findRange(ranges, line) {
-    var i = findFirst(ranges, function (r) { return line < r.startLineNumber; }) - 1;
+    var i = findFirstInSorted(ranges, function (r) { return line < r.startLineNumber; }) - 1;
     if (i >= 0 && ranges[i].endLineNumber >= line) {
         return ranges[i];
     }

@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import * as strings from '../../../../base/common/strings.js';
 import { Range } from '../../core/range.js';
 var RichEditBracket = /** @class */ (function () {
@@ -51,10 +50,10 @@ function once(keyFn, computeFn) {
     };
 }
 var getRegexForBracketPair = once(function (input) { return input.open + ";" + input.close; }, function (input) {
-    return createOrRegex([input.open, input.close]);
+    return createBracketOrRegExp([input.open, input.close]);
 });
 var getReversedRegexForBracketPair = once(function (input) { return input.open + ";" + input.close; }, function (input) {
-    return createOrRegex([toReversedString(input.open), toReversedString(input.close)]);
+    return createBracketOrRegExp([toReversedString(input.open), toReversedString(input.close)]);
 });
 var getRegexForBrackets = once(function (input) { return input.map(function (b) { return b.open + ";" + b.close; }).join(';'); }, function (input) {
     var pieces = [];
@@ -62,7 +61,7 @@ var getRegexForBrackets = once(function (input) { return input.map(function (b) 
         pieces.push(b.open);
         pieces.push(b.close);
     });
-    return createOrRegex(pieces);
+    return createBracketOrRegExp(pieces);
 });
 var getReversedRegexForBrackets = once(function (input) { return input.map(function (b) { return b.open + ";" + b.close; }).join(';'); }, function (input) {
     var pieces = [];
@@ -70,10 +69,16 @@ var getReversedRegexForBrackets = once(function (input) { return input.map(funct
         pieces.push(toReversedString(b.open));
         pieces.push(toReversedString(b.close));
     });
-    return createOrRegex(pieces);
+    return createBracketOrRegExp(pieces);
 });
-function createOrRegex(pieces) {
-    var regexStr = "(" + pieces.map(strings.escapeRegExpCharacters).join(')|(') + ")";
+function prepareBracketForRegExp(str) {
+    // This bracket pair uses letters like e.g. "begin" - "end"
+    var insertWordBoundaries = (/^[\w]+$/.test(str));
+    str = strings.escapeRegExpCharacters(str);
+    return (insertWordBoundaries ? "\\b" + str + "\\b" : str);
+}
+function createBracketOrRegExp(pieces) {
+    var regexStr = "(" + pieces.map(prepareBracketForRegExp).join(')|(') + ")";
     return strings.createRegExp(regexStr, true);
 }
 var toReversedString = (function () {
@@ -102,7 +107,7 @@ var BracketsUtils = /** @class */ (function () {
         if (!m) {
             return null;
         }
-        var matchOffset = reversedText.length - m.index;
+        var matchOffset = reversedText.length - (m.index || 0);
         var matchLength = m[0].length;
         var absoluteMatchOffset = offset + matchOffset;
         return new Range(lineNumber, absoluteMatchOffset - matchLength + 1, lineNumber, absoluteMatchOffset + 1);
@@ -118,8 +123,11 @@ var BracketsUtils = /** @class */ (function () {
         if (!m) {
             return null;
         }
-        var matchOffset = m.index;
+        var matchOffset = m.index || 0;
         var matchLength = m[0].length;
+        if (matchLength === 0) {
+            return null;
+        }
         var absoluteMatchOffset = offset + matchOffset;
         return new Range(lineNumber, absoluteMatchOffset + 1, lineNumber, absoluteMatchOffset + 1 + matchLength);
     };

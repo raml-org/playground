@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -30,7 +32,6 @@ var DecorationsOverlay = /** @class */ (function (_super) {
     }
     DecorationsOverlay.prototype.dispose = function () {
         this._context.removeEventHandler(this);
-        this._context = null;
         this._renderResult = null;
         _super.prototype.dispose.call(this);
     };
@@ -78,6 +79,12 @@ var DecorationsOverlay = /** @class */ (function (_super) {
         }
         // Sort decorations for consistent render output
         decorations = decorations.sort(function (a, b) {
+            if (a.options.zIndex < b.options.zIndex) {
+                return -1;
+            }
+            if (a.options.zIndex > b.options.zIndex) {
+                return 1;
+            }
             var aClassName = a.options.className;
             var bClassName = b.options.className;
             if (aClassName < bClassName) {
@@ -125,44 +132,64 @@ var DecorationsOverlay = /** @class */ (function (_super) {
     DecorationsOverlay.prototype._renderNormalDecorations = function (ctx, decorations, output) {
         var lineHeight = String(this._lineHeight);
         var visibleStartLineNumber = ctx.visibleRange.startLineNumber;
+        var prevClassName = null;
+        var prevShowIfCollapsed = false;
+        var prevRange = null;
         for (var i = 0, lenI = decorations.length; i < lenI; i++) {
             var d = decorations[i];
             if (d.options.isWholeLine) {
                 continue;
             }
             var className = d.options.className;
-            var showIfCollapsed = d.options.showIfCollapsed;
+            var showIfCollapsed = Boolean(d.options.showIfCollapsed);
             var range = d.range;
             if (showIfCollapsed && range.endColumn === 1 && range.endLineNumber !== range.startLineNumber) {
                 range = new Range(range.startLineNumber, range.startColumn, range.endLineNumber - 1, this._context.model.getLineMaxColumn(range.endLineNumber - 1));
             }
-            var linesVisibleRanges = ctx.linesVisibleRangesForRange(range, /*TODO@Alex*/ className === 'findMatch');
-            if (!linesVisibleRanges) {
+            if (prevClassName === className && prevShowIfCollapsed === showIfCollapsed && Range.areIntersectingOrTouching(prevRange, range)) {
+                // merge into previous decoration
+                prevRange = Range.plusRange(prevRange, range);
                 continue;
             }
-            for (var j = 0, lenJ = linesVisibleRanges.length; j < lenJ; j++) {
-                var lineVisibleRanges = linesVisibleRanges[j];
-                var lineIndex = lineVisibleRanges.lineNumber - visibleStartLineNumber;
-                if (showIfCollapsed && lineVisibleRanges.ranges.length === 1) {
-                    var singleVisibleRange = lineVisibleRanges.ranges[0];
-                    if (singleVisibleRange.width === 0) {
-                        // collapsed range case => make the decoration visible by faking its width
-                        lineVisibleRanges.ranges[0] = new HorizontalRange(singleVisibleRange.left, this._typicalHalfwidthCharacterWidth);
-                    }
+            // flush previous decoration
+            if (prevClassName !== null) {
+                this._renderNormalDecoration(ctx, prevRange, prevClassName, prevShowIfCollapsed, lineHeight, visibleStartLineNumber, output);
+            }
+            prevClassName = className;
+            prevShowIfCollapsed = showIfCollapsed;
+            prevRange = range;
+        }
+        if (prevClassName !== null) {
+            this._renderNormalDecoration(ctx, prevRange, prevClassName, prevShowIfCollapsed, lineHeight, visibleStartLineNumber, output);
+        }
+    };
+    DecorationsOverlay.prototype._renderNormalDecoration = function (ctx, range, className, showIfCollapsed, lineHeight, visibleStartLineNumber, output) {
+        var linesVisibleRanges = ctx.linesVisibleRangesForRange(range, /*TODO@Alex*/ className === 'findMatch');
+        if (!linesVisibleRanges) {
+            return;
+        }
+        for (var j = 0, lenJ = linesVisibleRanges.length; j < lenJ; j++) {
+            var lineVisibleRanges = linesVisibleRanges[j];
+            var lineIndex = lineVisibleRanges.lineNumber - visibleStartLineNumber;
+            if (showIfCollapsed && lineVisibleRanges.ranges.length === 1) {
+                var singleVisibleRange = lineVisibleRanges.ranges[0];
+                if (singleVisibleRange.width === 0) {
+                    // collapsed range case => make the decoration visible by faking its width
+                    lineVisibleRanges.ranges[0] = new HorizontalRange(singleVisibleRange.left, this._typicalHalfwidthCharacterWidth);
                 }
-                for (var k = 0, lenK = lineVisibleRanges.ranges.length; k < lenK; k++) {
-                    var visibleRange = lineVisibleRanges.ranges[k];
-                    var decorationOutput = ('<div class="cdr '
-                        + className
-                        + '" style="left:'
-                        + String(visibleRange.left)
-                        + 'px;width:'
-                        + String(visibleRange.width)
-                        + 'px;height:'
-                        + lineHeight
-                        + 'px;"></div>');
-                    output[lineIndex] += decorationOutput;
-                }
+            }
+            for (var k = 0, lenK = lineVisibleRanges.ranges.length; k < lenK; k++) {
+                var visibleRange = lineVisibleRanges.ranges[k];
+                var decorationOutput = ('<div class="cdr '
+                    + className
+                    + '" style="left:'
+                    + String(visibleRange.left)
+                    + 'px;width:'
+                    + String(visibleRange.width)
+                    + 'px;height:'
+                    + lineHeight
+                    + 'px;"></div>');
+                output[lineIndex] += decorationOutput;
             }
         }
     };

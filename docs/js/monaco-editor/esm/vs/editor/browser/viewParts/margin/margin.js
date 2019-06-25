@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -34,7 +36,7 @@ var Margin = /** @class */ (function (_super) {
     };
     Margin.prototype._createDomNode = function () {
         var domNode = createFastDomNode(document.createElement('div'));
-        domNode.setClassName('margin');
+        domNode.setClassName(Margin.OUTER_CLASS_NAME);
         domNode.setPosition('absolute');
         domNode.setAttribute('role', 'presentation');
         domNode.setAttribute('aria-hidden', 'true');
@@ -74,6 +76,7 @@ var Margin = /** @class */ (function (_super) {
         this._glyphMarginBackgroundDomNode.setHeight(height);
     };
     Margin.CLASS_NAME = 'glyph-margin';
+    Margin.OUTER_CLASS_NAME = 'margin';
     return Margin;
 }(ViewPart));
 export { Margin };

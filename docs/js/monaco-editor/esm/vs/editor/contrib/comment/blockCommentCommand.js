@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import { EditOperation } from '../../common/core/editOperation.js';
 import { Position } from '../../common/core/position.js';
 import { Range } from '../../common/core/range.js';
@@ -40,15 +39,13 @@ var BlockCommentCommand = /** @class */ (function () {
         }
         return true;
     };
-    BlockCommentCommand.prototype._createOperationsForBlockComment = function (selection, config, model, builder) {
+    BlockCommentCommand.prototype._createOperationsForBlockComment = function (selection, startToken, endToken, model, builder) {
         var startLineNumber = selection.startLineNumber;
         var startColumn = selection.startColumn;
         var endLineNumber = selection.endLineNumber;
         var endColumn = selection.endColumn;
         var startLineText = model.getLineContent(startLineNumber);
         var endLineText = model.getLineContent(endLineNumber);
-        var startToken = config.blockCommentStartToken;
-        var endToken = config.blockCommentEndToken;
         var startTokenIndex = startLineText.lastIndexOf(startToken, startColumn - 1 + startToken.length);
         var endTokenIndex = endLineText.indexOf(endToken, endColumn - 1 - endToken.length);
         if (startTokenIndex !== -1 && endTokenIndex !== -1) {
@@ -92,8 +89,9 @@ var BlockCommentCommand = /** @class */ (function () {
             ops = BlockCommentCommand._createAddBlockCommentOperations(selection, startToken, endToken);
             this._usedEndToken = ops.length === 1 ? endToken : null;
         }
-        for (var i = 0; i < ops.length; i++) {
-            builder.addTrackedEditOperation(ops[i].range, ops[i].text);
+        for (var _i = 0, ops_1 = ops; _i < ops_1.length; _i++) {
+            var op = ops_1[_i];
+            builder.addTrackedEditOperation(op.range, op.text);
         }
     };
     BlockCommentCommand._createRemoveBlockCommentOperations = function (r, startToken, endToken) {
@@ -134,7 +132,7 @@ var BlockCommentCommand = /** @class */ (function () {
             // Mode does not support block comments
             return;
         }
-        this._createOperationsForBlockComment(this._selection, config, model, builder);
+        this._createOperationsForBlockComment(this._selection, config.blockCommentStartToken, config.blockCommentEndToken, model, builder);
     };
     BlockCommentCommand.prototype.computeCursorState = function (model, helper) {
         var inverseEditOperations = helper.getInverseEditOperations();

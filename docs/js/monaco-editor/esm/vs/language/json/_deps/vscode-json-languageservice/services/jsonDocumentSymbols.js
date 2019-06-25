@@ -2,7 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
+import * as Parser from '../parser/jsonParser.js';
 import * as Strings from '../utils/strings.js';
 import { colorFromHex } from '../utils/colors.js';
 import { SymbolKind, Range, Location, TextEdit } from '../../vscode-languageserver-types/main.js';
@@ -23,10 +23,17 @@ var JSONDocumentSymbols = /** @class */ (function () {
                 var result_1 = [];
                 root.items.forEach(function (item) {
                     if (item.type === 'object') {
-                        var property = item.getFirstProperty('key');
-                        if (property && property.value) {
-                            var location = Location.create(document.uri, Range.create(document.positionAt(item.start), document.positionAt(item.end)));
-                            result_1.push({ name: property.value.getValue(), kind: SymbolKind.Function, location: location });
+                        for (var _i = 0, _a = item.properties; _i < _a.length; _i++) {
+                            var property = _a[_i];
+                            if (property.keyNode.value === 'key') {
+                                if (property.valueNode) {
+                                    if (property.valueNode) {
+                                        var location = Location.create(document.uri, getRange(document, item));
+                                        result_1.push({ name: Parser.getNodeValue(property.valueNode), kind: SymbolKind.Function, location: location });
+                                    }
+                                    return;
+                                }
+                            }
                         }
                     }
                 });
@@ -35,18 +42,15 @@ var JSONDocumentSymbols = /** @class */ (function () {
         }
         var collectOutlineEntries = function (result, node, containerName) {
             if (node.type === 'array') {
-                node.items.forEach(function (node) {
-                    collectOutlineEntries(result, node, containerName);
-                });
+                node.items.forEach(function (node) { return collectOutlineEntries(result, node, containerName); });
             }
             else if (node.type === 'object') {
-                var objectNode = node;
-                objectNode.properties.forEach(function (property) {
-                    var location = Location.create(document.uri, Range.create(document.positionAt(property.start), document.positionAt(property.end)));
-                    var valueNode = property.value;
+                node.properties.forEach(function (property) {
+                    var location = Location.create(document.uri, getRange(document, property));
+                    var valueNode = property.valueNode;
                     if (valueNode) {
-                        var childContainerName = containerName ? containerName + '.' + property.key.value : property.key.value;
-                        result.push({ name: property.key.getValue(), kind: _this.getSymbolKind(valueNode.type), location: location, containerName: containerName });
+                        var childContainerName = containerName ? containerName + '.' + property.keyNode.value : property.keyNode.value;
+                        result.push({ name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), location: location, containerName: containerName });
                         collectOutlineEntries(result, valueNode, childContainerName);
                     }
                 });
@@ -54,6 +58,63 @@ var JSONDocumentSymbols = /** @class */ (function () {
             return result;
         };
         var result = collectOutlineEntries([], root, void 0);
+        return result;
+    };
+    JSONDocumentSymbols.prototype.findDocumentSymbols2 = function (document, doc) {
+        var _this = this;
+        var root = doc.root;
+        if (!root) {
+            return null;
+        }
+        // special handling for key bindings
+        var resourceString = document.uri;
+        if ((resourceString === 'vscode://defaultsettings/keybindings.json') || Strings.endsWith(resourceString.toLowerCase(), '/user/keybindings.json')) {
+            if (root.type === 'array') {
+                var result_2 = [];
+                root.items.forEach(function (item) {
+                    if (item.type === 'object') {
+                        for (var _i = 0, _a = item.properties; _i < _a.length; _i++) {
+                            var property = _a[_i];
+                            if (property.keyNode.value === 'key') {
+                                if (property.valueNode) {
+                                    var range = getRange(document, item);
+                                    var selectionRange = getRange(document, property.keyNode);
+                                    result_2.push({ name: Parser.getNodeValue(property.valueNode), kind: SymbolKind.Function, range: range, selectionRange: selectionRange });
+                                }
+                                return;
+                            }
+                        }
+                    }
+                });
+                return result_2;
+            }
+        }
+        var collectOutlineEntries = function (result, node) {
+            if (node.type === 'array') {
+                node.items.forEach(function (node, index) {
+                    if (node) {
+                        var range = getRange(document, node);
+                        var selectionRange = range;
+                        var name = String(index);
+                        var children = collectOutlineEntries([], node);
+                        result.push({ name: name, kind: _this.getSymbolKind(node.type), range: range, selectionRange: selectionRange, children: children });
+                    }
+                });
+            }
+            else if (node.type === 'object') {
+                node.properties.forEach(function (property) {
+                    var valueNode = property.valueNode;
+                    if (valueNode) {
+                        var range = getRange(document, property);
+                        var selectionRange = getRange(document, property.keyNode);
+                        var children = collectOutlineEntries([], valueNode);
+                        result.push({ name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), range: range, selectionRange: selectionRange, children: children });
+                    }
+                });
+            }
+            return result;
+        };
+        var result = collectOutlineEntries([], root);
         return result;
     };
     JSONDocumentSymbols.prototype.getSymbolKind = function (nodeType) {
@@ -68,9 +129,19 @@ var JSONDocumentSymbols = /** @class */ (function () {
                 return SymbolKind.Array;
             case 'boolean':
                 return SymbolKind.Boolean;
-            default:// 'null'
+            default: // 'null'
                 return SymbolKind.Variable;
         }
+    };
+    JSONDocumentSymbols.prototype.getKeyLabel = function (property) {
+        var name = property.keyNode.value;
+        if (name) {
+            name = name.replace(/[\n]/g, '↵');
+        }
+        if (name && name.trim()) {
+            return name;
+        }
+        return "\"" + name + "\"";
     };
     JSONDocumentSymbols.prototype.findDocumentColors = function (document, doc) {
         return this.schemaService.getSchemaForResource(document.uri, doc).then(function (schema) {
@@ -81,11 +152,11 @@ var JSONDocumentSymbols = /** @class */ (function () {
                 for (var _i = 0, matchingSchemas_1 = matchingSchemas; _i < matchingSchemas_1.length; _i++) {
                     var s = matchingSchemas_1[_i];
                     if (!s.inverted && s.schema && (s.schema.format === 'color' || s.schema.format === 'color-hex') && s.node && s.node.type === 'string') {
-                        var nodeId = String(s.node.start);
+                        var nodeId = String(s.node.offset);
                         if (!visitedNode[nodeId]) {
-                            var color = colorFromHex(s.node.getValue());
+                            var color = colorFromHex(Parser.getNodeValue(s.node));
                             if (color) {
-                                var range = Range.create(document.positionAt(s.node.start), document.positionAt(s.node.end));
+                                var range = getRange(document, s.node);
                                 result.push({ color: color, range: range });
                             }
                             visitedNode[nodeId] = true;
@@ -116,4 +187,6 @@ var JSONDocumentSymbols = /** @class */ (function () {
     return JSONDocumentSymbols;
 }());
 export { JSONDocumentSymbols };
-//# sourceMappingURL=jsonDocumentSymbols.js.map
+function getRange(document, node) {
+    return Range.create(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
+}

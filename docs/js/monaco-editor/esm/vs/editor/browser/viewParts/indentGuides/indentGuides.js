@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -15,24 +17,25 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import './indentGuides.css';
 import { DynamicViewOverlay } from '../../view/dynamicViewOverlay.js';
-import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
-import { editorIndentGuides } from '../../../common/view/editorColorRegistry.js';
 import { Position } from '../../../common/core/position.js';
+import { editorActiveIndentGuides, editorIndentGuides } from '../../../common/view/editorColorRegistry.js';
+import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 var IndentGuidesOverlay = /** @class */ (function (_super) {
     __extends(IndentGuidesOverlay, _super);
     function IndentGuidesOverlay(context) {
         var _this = _super.call(this) || this;
         _this._context = context;
+        _this._primaryLineNumber = 0;
         _this._lineHeight = _this._context.configuration.editor.lineHeight;
         _this._spaceWidth = _this._context.configuration.editor.fontInfo.spaceWidth;
         _this._enabled = _this._context.configuration.editor.viewInfo.renderIndentGuides;
+        _this._activeIndentEnabled = _this._context.configuration.editor.viewInfo.highlightActiveIndentGuide;
         _this._renderResult = null;
         _this._context.addEventHandler(_this);
         return _this;
     }
     IndentGuidesOverlay.prototype.dispose = function () {
         this._context.removeEventHandler(this);
-        this._context = null;
         this._renderResult = null;
         _super.prototype.dispose.call(this);
     };
@@ -46,8 +49,18 @@ var IndentGuidesOverlay = /** @class */ (function (_super) {
         }
         if (e.viewInfo) {
             this._enabled = this._context.configuration.editor.viewInfo.renderIndentGuides;
+            this._activeIndentEnabled = this._context.configuration.editor.viewInfo.highlightActiveIndentGuide;
         }
         return true;
+    };
+    IndentGuidesOverlay.prototype.onCursorStateChanged = function (e) {
+        var selection = e.selections[0];
+        var newPrimaryLineNumber = selection.isEmpty() ? selection.positionLineNumber : 0;
+        if (this._primaryLineNumber !== newPrimaryLineNumber) {
+            this._primaryLineNumber = newPrimaryLineNumber;
+            return true;
+        }
+        return false;
     };
     IndentGuidesOverlay.prototype.onDecorationsChanged = function (e) {
         // true for inline decorations
@@ -82,21 +95,35 @@ var IndentGuidesOverlay = /** @class */ (function (_super) {
         }
         var visibleStartLineNumber = ctx.visibleRange.startLineNumber;
         var visibleEndLineNumber = ctx.visibleRange.endLineNumber;
-        var tabSize = this._context.model.getTabSize();
-        var tabWidth = tabSize * this._spaceWidth;
+        var indentSize = this._context.model.getOptions().indentSize;
+        var indentWidth = indentSize * this._spaceWidth;
+        var scrollWidth = ctx.scrollWidth;
         var lineHeight = this._lineHeight;
-        var indentGuideWidth = tabWidth;
         var indents = this._context.model.getLinesIndentGuides(visibleStartLineNumber, visibleEndLineNumber);
+        var activeIndentStartLineNumber = 0;
+        var activeIndentEndLineNumber = 0;
+        var activeIndentLevel = 0;
+        if (this._activeIndentEnabled && this._primaryLineNumber) {
+            var activeIndentInfo = this._context.model.getActiveIndentGuide(this._primaryLineNumber, visibleStartLineNumber, visibleEndLineNumber);
+            activeIndentStartLineNumber = activeIndentInfo.startLineNumber;
+            activeIndentEndLineNumber = activeIndentInfo.endLineNumber;
+            activeIndentLevel = activeIndentInfo.indent;
+        }
         var output = [];
         for (var lineNumber = visibleStartLineNumber; lineNumber <= visibleEndLineNumber; lineNumber++) {
+            var containsActiveIndentGuide = (activeIndentStartLineNumber <= lineNumber && lineNumber <= activeIndentEndLineNumber);
             var lineIndex = lineNumber - visibleStartLineNumber;
             var indent = indents[lineIndex];
             var result = '';
             var leftMostVisiblePosition = ctx.visibleRangeForPosition(new Position(lineNumber, 1));
             var left = leftMostVisiblePosition ? leftMostVisiblePosition.left : 0;
-            for (var i = 0; i < indent; i++) {
-                result += "<div class=\"cigr\" style=\"left:" + left + "px;height:" + lineHeight + "px;width:" + indentGuideWidth + "px\"></div>";
-                left += tabWidth;
+            for (var i = 1; i <= indent; i++) {
+                var className = (containsActiveIndentGuide && i === activeIndentLevel ? 'cigra' : 'cigr');
+                result += "<div class=\"" + className + "\" style=\"left:" + left + "px;height:" + lineHeight + "px;width:" + indentWidth + "px\"></div>";
+                left += indentWidth;
+                if (left > scrollWidth) {
+                    break;
+                }
             }
             output[lineIndex] = result;
         }
@@ -116,8 +143,12 @@ var IndentGuidesOverlay = /** @class */ (function (_super) {
 }(DynamicViewOverlay));
 export { IndentGuidesOverlay };
 registerThemingParticipant(function (theme, collector) {
-    var editorGuideColor = theme.getColor(editorIndentGuides);
-    if (editorGuideColor) {
-        collector.addRule(".monaco-editor .lines-content .cigr { box-shadow: 1px 0 0 0 " + editorGuideColor + " inset; }");
+    var editorIndentGuidesColor = theme.getColor(editorIndentGuides);
+    if (editorIndentGuidesColor) {
+        collector.addRule(".monaco-editor .lines-content .cigr { box-shadow: 1px 0 0 0 " + editorIndentGuidesColor + " inset; }");
+    }
+    var editorActiveIndentGuidesColor = theme.getColor(editorActiveIndentGuides) || editorIndentGuidesColor;
+    if (editorActiveIndentGuidesColor) {
+        collector.addRule(".monaco-editor .lines-content .cigra { box-shadow: 1px 0 0 0 " + editorActiveIndentGuidesColor + " inset; }");
     }
 });

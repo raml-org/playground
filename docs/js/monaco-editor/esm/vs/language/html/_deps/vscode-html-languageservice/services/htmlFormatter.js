@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import { Range, Position } from '../../vscode-languageserver-types/main.js';
 import { html_beautify } from '../beautify/beautify-html.js';
 import { repeat } from '../utils/strings.js';
@@ -37,6 +36,17 @@ export function format(document, range, options) {
             endOffset = extendedEnd;
         }
         range = Range.create(document.positionAt(startOffset), document.positionAt(endOffset));
+        // Do not modify if substring starts in inside an element
+        // Ending inside an element is fine as it doesn't cause formatting errors
+        var firstHalf = value.substring(0, startOffset);
+        if (new RegExp(/.*[<][^>]*$/).test(firstHalf)) {
+            //return without modification
+            value = value.substring(startOffset, endOffset);
+            return [{
+                    range: range,
+                    newText: value
+                }];
+        }
         includesEnd = endOffset === value.length;
         value = value.substring(startOffset, endOffset);
         if (startOffset !== 0) {
@@ -48,7 +58,7 @@ export function format(document, range, options) {
         range = Range.create(Position.create(0, 0), document.positionAt(value.length));
     }
     var htmlOptions = {
-        indent_size: options.insertSpaces ? tabSize : 1,
+        indent_size: tabSize,
         indent_char: options.insertSpaces ? ' ' : '\t',
         wrap_line_length: getFormatOption(options, 'wrapLineLength', 120),
         unformatted: getTagsFormatOption(options, 'unformatted', void 0),
@@ -60,9 +70,10 @@ export function format(document, range, options) {
         end_with_newline: includesEnd && getFormatOption(options, 'endWithNewline', false),
         extra_liners: getTagsFormatOption(options, 'extraLiners', void 0),
         wrap_attributes: getFormatOption(options, 'wrapAttributes', 'auto'),
+        wrap_attributes_indent_size: getFormatOption(options, 'wrapAttributesIndentSize', void 0),
         eol: '\n'
     };
-    var result = html_beautify(value, htmlOptions);
+    var result = html_beautify(trimLeft(value), htmlOptions);
     if (initialIndentLevel > 0) {
         var indent = options.insertSpaces ? repeat(' ', tabSize * initialIndentLevel) : repeat('\t', initialIndentLevel);
         result = result.split('\n').join('\n' + indent);
@@ -74,6 +85,9 @@ export function format(document, range, options) {
             range: range,
             newText: result
         }];
+}
+function trimLeft(str) {
+    return str.replace(/^\s+/, '');
 }
 function getFormatOption(options, key, dflt) {
     if (options && options.hasOwnProperty(key)) {

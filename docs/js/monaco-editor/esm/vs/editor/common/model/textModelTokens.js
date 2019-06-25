@@ -2,11 +2,11 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { LineTokens } from '../core/lineTokens.js';
 import * as arrays from '../../../base/common/arrays.js';
-import { Position } from '../core/position.js';
 import { onUnexpectedError } from '../../../base/common/errors.js';
+import { LineTokens } from '../core/lineTokens.js';
+import { Position } from '../core/position.js';
+import { TokenMetadata } from '../modes.js';
 import { nullTokenize2 } from '../modes/nullMode.js';
 function getDefaultMetadata(topLevelLanguageId) {
     return ((topLevelLanguageId << 0 /* LANGUAGEID_OFFSET */)
@@ -124,7 +124,7 @@ var ModelLineTokens = /** @class */ (function () {
         var tokensCount = (tokens.length >>> 1);
         var fromTokenIndex = LineTokens.findIndexInTokensArray(tokens, chIndex);
         if (fromTokenIndex > 0) {
-            var fromTokenStartOffset = (fromTokenIndex > 0 ? tokens[(fromTokenIndex - 1) << 1] : 0);
+            var fromTokenStartOffset = tokens[(fromTokenIndex - 1) << 1];
             if (fromTokenStartOffset === chIndex) {
                 fromTokenIndex--;
             }
@@ -217,8 +217,14 @@ var ModelLinesTokens = /** @class */ (function () {
             this._tokens[lineIndex] = target;
         }
         if (lineTextLength === 0) {
-            target._lineTokens = EMPTY_LINE_TOKENS;
-            return;
+            var hasDifferentLanguageId = false;
+            if (tokens && tokens.length > 1) {
+                hasDifferentLanguageId = (TokenMetadata.getLanguageId(tokens[1]) !== topLevelLanguageId);
+            }
+            if (!hasDifferentLanguageId) {
+                target._lineTokens = EMPTY_LINE_TOKENS;
+                return;
+            }
         }
         if (!tokens || tokens.length === 0) {
             tokens = new Uint32Array(2);
@@ -310,11 +316,13 @@ var ModelLinesTokens = /** @class */ (function () {
     };
     ModelLinesTokens.prototype._tokenizeText = function (buffer, text, state) {
         var r = null;
-        try {
-            r = this.tokenizationSupport.tokenize2(text, state, 0);
-        }
-        catch (e) {
-            onUnexpectedError(e);
+        if (this.tokenizationSupport) {
+            try {
+                r = this.tokenizationSupport.tokenize2(text, state, 0);
+            }
+            catch (e) {
+                onUnexpectedError(e);
+            }
         }
         if (!r) {
             r = nullTokenize2(this.languageIdentifier.id, text, state, 0);
@@ -331,24 +339,26 @@ var ModelLinesTokens = /** @class */ (function () {
         // Validate all states up to and including endLineIndex
         for (var lineIndex = this._invalidLineStartIndex; lineIndex <= endLineIndex; lineIndex++) {
             var endStateIndex = lineIndex + 1;
-            var r = null;
             var text = buffer.getLineContent(lineIndex + 1);
+            var lineStartState = this._getState(lineIndex);
+            var r = null;
             try {
                 // Tokenize only the first X characters
-                var freshState = this._getState(lineIndex).clone();
+                var freshState = lineStartState.clone();
                 r = this.tokenizationSupport.tokenize2(text, freshState, 0);
             }
             catch (e) {
                 onUnexpectedError(e);
             }
             if (!r) {
-                r = nullTokenize2(this.languageIdentifier.id, text, this._getState(lineIndex), 0);
+                r = nullTokenize2(this.languageIdentifier.id, text, lineStartState, 0);
             }
             this._setTokens(this.languageIdentifier.id, lineIndex, text.length, r.tokens);
             eventBuilder.registerChangedTokens(lineIndex + 1);
             this._setIsInvalid(lineIndex, false);
             if (endStateIndex < linesLength) {
-                if (this._getState(endStateIndex) !== null && r.endState.equals(this._getState(endStateIndex))) {
+                var previousEndState = this._getState(endStateIndex);
+                if (previousEndState !== null && r.endState.equals(previousEndState)) {
                     // The end state of this line remains the same
                     var nextInvalidLineIndex = lineIndex + 1;
                     while (nextInvalidLineIndex < linesLength) {
@@ -408,6 +418,7 @@ var ModelTokensChangedEventBuilder = /** @class */ (function () {
             return null;
         }
         return {
+            tokenizationSupportChanged: false,
             ranges: this._ranges
         };
     };

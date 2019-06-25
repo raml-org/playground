@@ -2,11 +2,9 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var Digit0 = 48;
 var Digit9 = 57;
 var A = 65;
-var F = 70;
 var a = 97;
 var f = 102;
 export function hexDigit(charCode) {
@@ -69,4 +67,3 @@ export function colorFrom256RGB(red, green, blue, alpha) {
         alpha: alpha
     };
 }
-//# sourceMappingURL=colors.js.map

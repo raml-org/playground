@@ -2,31 +2,33 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+import { Color } from '../../../base/common/color.js';
 import * as strings from '../../../base/common/strings.js';
 import { Position } from '../core/position.js';
 import { Range } from '../core/range.js';
 import { TokenizationRegistry } from '../modes.js';
 import { tokenizeLineToHTML } from '../modes/textToHtmlTokenizer.js';
-import { ViewModelDecorations } from './viewModelDecorations.js';
-import { MinimapLinesRenderingData, ViewLineRenderingData } from './viewModel.js';
-import { SplitLinesCollection, IdentityLinesCollection } from './splitLinesCollection.js';
-import * as viewEvents from '../view/viewEvents.js';
 import { MinimapTokensColorTracker } from '../view/minimapCharRenderer.js';
-import { CharacterHardWrappingLineMapperFactory } from './characterHardWrappingLineMapper.js';
+import * as viewEvents from '../view/viewEvents.js';
 import { ViewLayout } from '../viewLayout/viewLayout.js';
-import { Color } from '../../../base/common/color.js';
-import { EndOfLinePreference, TrackedRangeStickiness } from '../model.js';
+import { CharacterHardWrappingLineMapperFactory } from './characterHardWrappingLineMapper.js';
+import { IdentityLinesCollection, SplitLinesCollection } from './splitLinesCollection.js';
+import { MinimapLinesRenderingData, ViewLineRenderingData } from './viewModel.js';
+import { ViewModelDecorations } from './viewModelDecorations.js';
+import { RunOnceScheduler } from '../../../base/common/async.js';
 var USE_IDENTITY_LINES_COLLECTION = true;
 var ViewModel = /** @class */ (function (_super) {
     __extends(ViewModel, _super);
@@ -35,9 +37,11 @@ var ViewModel = /** @class */ (function (_super) {
         _this.editorId = editorId;
         _this.configuration = configuration;
         _this.model = model;
+        _this._tokenizeViewportSoon = _this._register(new RunOnceScheduler(function () { return _this.tokenizeViewport(); }, 50));
         _this.hasFocus = false;
+        _this.viewportStartLine = -1;
         _this.viewportStartLineTrackedRange = null;
-        _this.viewportStartLineTop = 0;
+        _this.viewportStartLineDelta = 0;
         if (USE_IDENTITY_LINES_COLLECTION && _this.model.isTooLargeForTokenization()) {
             _this.lines = new IdentityLinesCollection(_this.model);
         }
@@ -49,6 +53,9 @@ var ViewModel = /** @class */ (function (_super) {
         _this.coordinatesConverter = _this.lines.createCoordinatesConverter();
         _this.viewLayout = _this._register(new ViewLayout(_this.configuration, _this.getLineCount(), scheduleAtNextAnimationFrame));
         _this._register(_this.viewLayout.onDidScroll(function (e) {
+            if (e.scrollTopChanged) {
+                _this._tokenizeViewportSoon.schedule();
+            }
             try {
                 var eventsCollector = _this._beginEmit();
                 eventsCollector.emit(new viewEvents.ViewScrollChangedEvent(e));
@@ -57,7 +64,6 @@ var ViewModel = /** @class */ (function (_super) {
                 _this._endEmit();
             }
         }));
-        _this._centeredViewLine = -1;
         _this.decorations = new ViewModelDecorations(_this.editorId, _this.model, _this.configuration, _this.lines, _this.coordinatesConverter);
         _this._registerModelEvents();
         _this._register(_this.configuration.onDidChange(function (e) {
@@ -86,15 +92,25 @@ var ViewModel = /** @class */ (function (_super) {
         _super.prototype.dispose.call(this);
         this.decorations.dispose();
         this.lines.dispose();
-        this.viewportStartLineTrackedRange = this.model._setTrackedRange(this.viewportStartLineTrackedRange, null, TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges);
+        this.viewportStartLineTrackedRange = this.model._setTrackedRange(this.viewportStartLineTrackedRange, null, 1 /* NeverGrowsWhenTypingAtEdges */);
+    };
+    ViewModel.prototype.tokenizeViewport = function () {
+        var linesViewportData = this.viewLayout.getLinesViewportData();
+        var startPosition = this.coordinatesConverter.convertViewPositionToModelPosition(new Position(linesViewportData.startLineNumber, 1));
+        var endPosition = this.coordinatesConverter.convertViewPositionToModelPosition(new Position(linesViewportData.endLineNumber, 1));
+        this.model.tokenizeViewport(startPosition.lineNumber, endPosition.lineNumber);
     };
     ViewModel.prototype.setHasFocus = function (hasFocus) {
         this.hasFocus = hasFocus;
     };
     ViewModel.prototype._onConfigurationChanged = function (eventsCollector, e) {
         // We might need to restore the current centered view range, so save it (if available)
-        var previousCenteredModelRange = this.getCenteredRangeInViewport();
-        var revealPreviousCenteredModelRange = false;
+        var previousViewportStartModelPosition = null;
+        if (this.viewportStartLine !== -1) {
+            var previousViewportStartViewPosition = new Position(this.viewportStartLine, this.getLineMinColumn(this.viewportStartLine));
+            previousViewportStartModelPosition = this.coordinatesConverter.convertViewPositionToModelPosition(previousViewportStartViewPosition);
+        }
+        var restorePreviousViewportStart = false;
         var conf = this.configuration.editor;
         if (this.lines.setWrappingSettings(conf.wrappingInfo.wrappingIndent, conf.wrappingInfo.wrappingColumn, conf.fontInfo.typicalFullwidthCharacterWidth / conf.fontInfo.typicalHalfwidthCharacterWidth)) {
             eventsCollector.emit(new viewEvents.ViewFlushedEvent());
@@ -104,7 +120,7 @@ var ViewModel = /** @class */ (function (_super) {
             this.viewLayout.onFlushed(this.getLineCount());
             if (this.viewLayout.getCurrentScrollTop() !== 0) {
                 // Never change the scroll position from 0 to something else...
-                revealPreviousCenteredModelRange = true;
+                restorePreviousViewportStart = true;
             }
         }
         if (e.readOnly) {
@@ -114,11 +130,10 @@ var ViewModel = /** @class */ (function (_super) {
         }
         eventsCollector.emit(new viewEvents.ViewConfigurationChangedEvent(e));
         this.viewLayout.onConfigurationChanged(e);
-        if (revealPreviousCenteredModelRange && previousCenteredModelRange) {
-            // modelLine -> viewLine
-            var newCenteredViewRange = this.coordinatesConverter.convertModelRangeToViewRange(previousCenteredModelRange);
-            // Send a reveal event to restore the centered content
-            eventsCollector.emit(new viewEvents.ViewRevealRangeRequestEvent(newCenteredViewRange, 1 /* Center */, false, 1 /* Immediate */));
+        if (restorePreviousViewportStart && previousViewportStartModelPosition) {
+            var viewPosition = this.coordinatesConverter.convertModelPositionToViewPosition(previousViewportStartModelPosition);
+            var viewPositionTop = this.viewLayout.getVerticalOffsetForLineNumber(viewPosition.lineNumber);
+            this.viewLayout.setScrollPositionNow({ scrollTop: viewPositionTop + this.viewportStartLineDelta });
         }
     };
     ViewModel.prototype._registerModelEvents = function () {
@@ -182,6 +197,7 @@ var ViewModel = /** @class */ (function (_super) {
                     }
                 }
                 _this.lines.acceptVersionId(versionId);
+                _this.viewLayout.onHeightMaybeChanged();
                 if (!hadOtherModelChange && hadModelLineChangeThatChangedLineMapping) {
                     eventsCollector.emit(new viewEvents.ViewLineMappingChangedEvent());
                     eventsCollector.emit(new viewEvents.ViewDecorationsChangedEvent());
@@ -192,7 +208,7 @@ var ViewModel = /** @class */ (function (_super) {
                 _this._endEmit();
             }
             // Update the configuration and reset the centered view line
-            _this._centeredViewLine = -1;
+            _this.viewportStartLine = -1;
             _this.configuration.setMaxLineNumber(_this.model.getLineCount());
             // Recover viewport
             if (!_this.hasFocus && _this.model.getAttachedEditorCount() >= 2 && _this.viewportStartLineTrackedRange) {
@@ -200,7 +216,7 @@ var ViewModel = /** @class */ (function (_super) {
                 if (modelRange) {
                     var viewPosition = _this.coordinatesConverter.convertModelPositionToViewPosition(modelRange.getStartPosition());
                     var viewPositionTop = _this.viewLayout.getVerticalOffsetForLineNumber(viewPosition.lineNumber);
-                    _this.viewLayout.deltaScrollNow(0, viewPositionTop - _this.viewportStartLineTop);
+                    _this.viewLayout.setScrollPositionNow({ scrollTop: viewPositionTop + _this.viewportStartLineDelta });
                 }
             }
         }));
@@ -221,6 +237,9 @@ var ViewModel = /** @class */ (function (_super) {
             }
             finally {
                 _this._endEmit();
+            }
+            if (e.tokenizationSupportChanged) {
+                _this._tokenizeViewportSoon.schedule();
             }
         }));
         this._register(this.model.onDidChangeLanguageConfiguration(function (e) {
@@ -269,20 +288,12 @@ var ViewModel = /** @class */ (function (_super) {
                 eventsCollector.emit(new viewEvents.ViewDecorationsChangedEvent());
                 this.decorations.onLineMappingChanged();
                 this.viewLayout.onFlushed(this.getLineCount());
+                this.viewLayout.onHeightMaybeChanged();
             }
         }
         finally {
             this._endEmit();
         }
-    };
-    ViewModel.prototype.getCenteredRangeInViewport = function () {
-        if (this._centeredViewLine === -1) {
-            // Never got rendered or not rendered since last content change event
-            return null;
-        }
-        var viewLineNumber = this._centeredViewLine;
-        var currentCenteredViewRange = new Range(viewLineNumber, this.getLineMinColumn(viewLineNumber), viewLineNumber, this.getLineMaxColumn(viewLineNumber));
-        return this.coordinatesConverter.convertViewRangeToModelRange(currentCenteredViewRange);
     };
     ViewModel.prototype.getVisibleRanges = function () {
         var visibleViewRange = this.getCompletelyVisibleViewRange();
@@ -362,6 +373,9 @@ var ViewModel = /** @class */ (function (_super) {
     ViewModel.prototype.getTabSize = function () {
         return this.model.getOptions().tabSize;
     };
+    ViewModel.prototype.getOptions = function () {
+        return this.model.getOptions();
+    };
     ViewModel.prototype.getLineCount = function () {
         return this.lines.getViewLineCount();
     };
@@ -369,17 +383,25 @@ var ViewModel = /** @class */ (function (_super) {
      * Gives a hint that a lot of requests are about to come in for these line numbers.
      */
     ViewModel.prototype.setViewport = function (startLineNumber, endLineNumber, centeredLineNumber) {
-        this._centeredViewLine = centeredLineNumber;
         this.lines.warmUpLookupCache(startLineNumber, endLineNumber);
+        this.viewportStartLine = startLineNumber;
         var position = this.coordinatesConverter.convertViewPositionToModelPosition(new Position(startLineNumber, this.getLineMinColumn(startLineNumber)));
-        this.viewportStartLineTrackedRange = this.model._setTrackedRange(this.viewportStartLineTrackedRange, new Range(position.lineNumber, position.column, position.lineNumber, position.column), TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges);
-        this.viewportStartLineTop = this.viewLayout.getVerticalOffsetForLineNumber(startLineNumber);
+        this.viewportStartLineTrackedRange = this.model._setTrackedRange(this.viewportStartLineTrackedRange, new Range(position.lineNumber, position.column, position.lineNumber, position.column), 1 /* NeverGrowsWhenTypingAtEdges */);
+        var viewportStartLineTop = this.viewLayout.getVerticalOffsetForLineNumber(startLineNumber);
+        var scrollTop = this.viewLayout.getCurrentScrollTop();
+        this.viewportStartLineDelta = scrollTop - viewportStartLineTop;
+    };
+    ViewModel.prototype.getActiveIndentGuide = function (lineNumber, minLineNumber, maxLineNumber) {
+        return this.lines.getActiveIndentGuide(lineNumber, minLineNumber, maxLineNumber);
     };
     ViewModel.prototype.getLinesIndentGuides = function (startLineNumber, endLineNumber) {
         return this.lines.getViewLinesIndentGuides(startLineNumber, endLineNumber);
     };
     ViewModel.prototype.getLineContent = function (lineNumber) {
         return this.lines.getViewLineContent(lineNumber);
+    };
+    ViewModel.prototype.getLineLength = function (lineNumber) {
+        return this.lines.getViewLineLength(lineNumber);
     };
     ViewModel.prototype.getLineMinColumn = function (lineNumber) {
         return this.lines.getViewLineMinColumn(lineNumber);
@@ -411,7 +433,10 @@ var ViewModel = /** @class */ (function (_super) {
         var lineData = this.lines.getViewLineData(lineNumber);
         var allInlineDecorations = this.decorations.getDecorationsViewportData(visibleRange).inlineDecorations;
         var inlineDecorations = allInlineDecorations[lineNumber - visibleRange.startLineNumber];
-        return new ViewLineRenderingData(lineData.minColumn, lineData.maxColumn, lineData.content, mightContainRTL, mightContainNonBasicASCII, lineData.tokens, inlineDecorations, tabSize);
+        return new ViewLineRenderingData(lineData.minColumn, lineData.maxColumn, lineData.content, lineData.continuesWithWrappedLine, mightContainRTL, mightContainNonBasicASCII, lineData.tokens, inlineDecorations, tabSize);
+    };
+    ViewModel.prototype.getViewLineData = function (lineNumber) {
+        return this.lines.getViewLineData(lineNumber);
     };
     ViewModel.prototype.getMinimapLinesRenderingData = function (startLineNumber, endLineNumber, needed) {
         var result = this.lines.getViewLinesData(startLineNumber, endLineNumber, needed);
@@ -422,10 +447,12 @@ var ViewModel = /** @class */ (function (_super) {
     };
     ViewModel.prototype.invalidateOverviewRulerColorCache = function () {
         var decorations = this.model.getOverviewRulerDecorations();
-        for (var i = 0, len = decorations.length; i < len; i++) {
-            var decoration = decorations[i];
+        for (var _i = 0, decorations_1 = decorations; _i < decorations_1.length; _i++) {
+            var decoration = decorations_1[_i];
             var opts = decoration.options.overviewRuler;
-            opts._resolvedColor = null;
+            if (opts) {
+                opts.invalidateCachedColor();
+            }
         }
     };
     ViewModel.prototype.getValueInRange = function (range, eol) {
@@ -437,6 +464,9 @@ var ViewModel = /** @class */ (function (_super) {
     };
     ViewModel.prototype.validateModelPosition = function (position) {
         return this.model.validatePosition(position);
+    };
+    ViewModel.prototype.validateModelRange = function (range) {
+        return this.model.validateRange(range);
     };
     ViewModel.prototype.deduceModelPositionRelativeToViewPosition = function (viewAnchorPosition, deltaOffset, lineFeedCnt) {
         var modelAnchor = this.coordinatesConverter.convertViewPositionToModelPosition(viewAnchorPosition);
@@ -456,9 +486,9 @@ var ViewModel = /** @class */ (function (_super) {
     ViewModel.prototype.getEOL = function () {
         return this.model.getEOL();
     };
-    ViewModel.prototype.getPlainTextToCopy = function (ranges, emptySelectionClipboard) {
+    ViewModel.prototype.getPlainTextToCopy = function (ranges, emptySelectionClipboard, forceCRLF) {
         var _this = this;
-        var newLineCharacter = this.model.getEOL();
+        var newLineCharacter = forceCRLF ? '\r\n' : this.model.getEOL();
         ranges = ranges.slice(0);
         ranges.sort(Range.compareRangesUsingStarts);
         var nonEmptyRanges = ranges.filter(function (r) { return !r.isEmpty(); });
@@ -480,8 +510,9 @@ var ViewModel = /** @class */ (function (_super) {
             return result_1;
         }
         var result = [];
-        for (var i = 0; i < nonEmptyRanges.length; i++) {
-            result.push(this.getValueInRange(nonEmptyRanges[i], EndOfLinePreference.TextDefined));
+        for (var _i = 0, nonEmptyRanges_1 = nonEmptyRanges; _i < nonEmptyRanges_1.length; _i++) {
+            var nonEmptyRange = nonEmptyRanges_1[_i];
+            result.push(this.getValueInRange(nonEmptyRange, forceCRLF ? 2 /* CRLF */ : 0 /* TextDefined */));
         }
         return result.length === 1 ? result[0] : result;
     };
@@ -539,9 +570,11 @@ var ViewModel = /** @class */ (function (_super) {
     };
     ViewModel.prototype._getColorMap = function () {
         var colorMap = TokenizationRegistry.getColorMap();
-        var result = [null];
-        for (var i = 1, len = colorMap.length; i < len; i++) {
-            result[i] = Color.Format.CSS.formatHex(colorMap[i]);
+        var result = ['#000000'];
+        if (colorMap) {
+            for (var i = 1, len = colorMap.length; i < len; i++) {
+                result[i] = Color.Format.CSS.formatHex(colorMap[i]);
+            }
         }
         return result;
     };

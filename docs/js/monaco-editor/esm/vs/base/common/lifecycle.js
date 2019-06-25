@@ -1,12 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { once } from './functional.js';
-export var empty = Object.freeze({
-    dispose: function () { }
-});
 export function isDisposable(thing) {
     return typeof thing.dispose === 'function'
         && thing.dispose.length === 0;
@@ -36,57 +27,32 @@ export function dispose(first) {
 export function combinedDisposable(disposables) {
     return { dispose: function () { return dispose(disposables); } };
 }
-export function toDisposable() {
-    var fns = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        fns[_i] = arguments[_i];
-    }
-    return {
-        dispose: function () {
-            for (var _i = 0, fns_1 = fns; _i < fns_1.length; _i++) {
-                var fn = fns_1[_i];
-                fn();
-            }
-        }
-    };
+export function toDisposable(fn) {
+    return { dispose: function () { fn(); } };
 }
 var Disposable = /** @class */ (function () {
     function Disposable() {
         this._toDispose = [];
+        this._lifecycle_disposable_isDisposed = false;
     }
     Disposable.prototype.dispose = function () {
+        this._lifecycle_disposable_isDisposed = true;
         this._toDispose = dispose(this._toDispose);
     };
     Disposable.prototype._register = function (t) {
-        this._toDispose.push(t);
+        if (this._lifecycle_disposable_isDisposed) {
+            console.warn('Registering disposable on object that has already been disposed.');
+            t.dispose();
+        }
+        else {
+            this._toDispose.push(t);
+        }
         return t;
     };
+    Disposable.None = Object.freeze({ dispose: function () { } });
     return Disposable;
 }());
 export { Disposable };
-var ReferenceCollection = /** @class */ (function () {
-    function ReferenceCollection() {
-        this.references = Object.create(null);
-    }
-    ReferenceCollection.prototype.acquire = function (key) {
-        var _this = this;
-        var reference = this.references[key];
-        if (!reference) {
-            reference = this.references[key] = { counter: 0, object: this.createReferencedObject(key) };
-        }
-        var object = reference.object;
-        var dispose = once(function () {
-            if (--reference.counter === 0) {
-                _this.destroyReferencedObject(reference.object);
-                delete _this.references[key];
-            }
-        });
-        reference.counter++;
-        return { object: object, dispose: dispose };
-    };
-    return ReferenceCollection;
-}());
-export { ReferenceCollection };
 var ImmortalReference = /** @class */ (function () {
     function ImmortalReference(object) {
         this.object = object;

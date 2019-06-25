@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,26 +16,27 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import './gotoLine.css';
-import * as nls from '../../../../nls.js';
+import * as strings from '../../../../base/common/strings.js';
 import { QuickOpenEntry, QuickOpenModel } from '../../../../base/parts/quickopen/browser/quickOpenModel.js';
-import { Mode } from '../../../../base/parts/quickopen/common/quickOpen.js';
-import { EditorContextKeys } from '../../../common/editorContextKeys.js';
 import { isCodeEditor } from '../../../browser/editorBrowser.js';
-import { BaseEditorQuickOpenAction } from './editorQuickOpen.js';
 import { registerEditorAction } from '../../../browser/editorExtensions.js';
 import { Position } from '../../../common/core/position.js';
 import { Range } from '../../../common/core/range.js';
+import { EditorContextKeys } from '../../../common/editorContextKeys.js';
+import { BaseEditorQuickOpenAction } from './editorQuickOpen.js';
+import { GoToLineNLS } from '../../../common/standaloneStrings.js';
 var GotoLineEntry = /** @class */ (function (_super) {
     __extends(GotoLineEntry, _super);
     function GotoLineEntry(line, editor, decorator) {
         var _this = _super.call(this) || this;
         _this.editor = editor;
         _this.decorator = decorator;
-        _this._parseResult = _this._parseInput(line);
+        _this.parseResult = _this.parseInput(line);
         return _this;
     }
-    GotoLineEntry.prototype._parseInput = function (line) {
-        var numbers = line.split(',').map(function (part) { return parseInt(part, 10); }).filter(function (part) { return !isNaN(part); }), position;
+    GotoLineEntry.prototype.parseInput = function (line) {
+        var numbers = line.split(',').map(function (part) { return parseInt(part, 10); }).filter(function (part) { return !isNaN(part); });
+        var position;
         if (numbers.length === 0) {
             position = new Position(-1, -1);
         }
@@ -48,22 +51,24 @@ var GotoLineEntry = /** @class */ (function (_super) {
             model = this.editor.getModel();
         }
         else {
-            model = this.editor.getModel().modified;
+            var diffModel = this.editor.getModel();
+            model = diffModel ? diffModel.modified : null;
         }
-        var isValid = model.validatePosition(position).equals(position), label;
+        var isValid = model ? model.validatePosition(position).equals(position) : false;
+        var label;
         if (isValid) {
             if (position.column && position.column > 1) {
-                label = nls.localize('gotoLineLabelValidLineAndColumn', "Go to line {0} and character {1}", position.lineNumber, position.column);
+                label = strings.format(GoToLineNLS.gotoLineLabelValidLineAndColumn, position.lineNumber, position.column);
             }
             else {
-                label = nls.localize('gotoLineLabelValidLine', "Go to line {0}", position.lineNumber, position.column);
+                label = strings.format(GoToLineNLS.gotoLineLabelValidLine, position.lineNumber);
             }
         }
-        else if (position.lineNumber < 1 || position.lineNumber > model.getLineCount()) {
-            label = nls.localize('gotoLineLabelEmptyWithLineLimit', "Type a line number between 1 and {0} to navigate to", model.getLineCount());
+        else if (position.lineNumber < 1 || position.lineNumber > (model ? model.getLineCount() : 0)) {
+            label = strings.format(GoToLineNLS.gotoLineLabelEmptyWithLineLimit, model ? model.getLineCount() : 0);
         }
         else {
-            label = nls.localize('gotoLineLabelEmptyWithLineAndColumnLimit', "Type a character between 1 and {0} to navigate to", model.getLineMaxColumn(position.lineNumber));
+            label = strings.format(GoToLineNLS.gotoLineLabelEmptyWithLineAndColumnLimit, model ? model.getLineMaxColumn(position.lineNumber) : 0);
         }
         return {
             position: position,
@@ -72,20 +77,22 @@ var GotoLineEntry = /** @class */ (function (_super) {
         };
     };
     GotoLineEntry.prototype.getLabel = function () {
-        return this._parseResult.label;
+        return this.parseResult.label;
     };
     GotoLineEntry.prototype.getAriaLabel = function () {
-        return nls.localize('gotoLineAriaLabel', "Go to line {0}", this._parseResult.label);
+        var position = this.editor.getPosition();
+        var currentLine = position ? position.lineNumber : 0;
+        return strings.format(GoToLineNLS.gotoLineAriaLabel, currentLine, this.parseResult.label);
     };
-    GotoLineEntry.prototype.run = function (mode, context) {
-        if (mode === Mode.OPEN) {
+    GotoLineEntry.prototype.run = function (mode, _context) {
+        if (mode === 1 /* OPEN */) {
             return this.runOpen();
         }
         return this.runPreview();
     };
     GotoLineEntry.prototype.runOpen = function () {
         // No-op if range is not valid
-        if (!this._parseResult.isValid) {
+        if (!this.parseResult.isValid) {
             return false;
         }
         // Apply selection and focus
@@ -97,7 +104,7 @@ var GotoLineEntry = /** @class */ (function (_super) {
     };
     GotoLineEntry.prototype.runPreview = function () {
         // No-op if range is not valid
-        if (!this._parseResult.isValid) {
+        if (!this.parseResult.isValid) {
             this.decorator.clearDecorations();
             return false;
         }
@@ -109,7 +116,7 @@ var GotoLineEntry = /** @class */ (function (_super) {
         return false;
     };
     GotoLineEntry.prototype.toSelection = function () {
-        return new Range(this._parseResult.position.lineNumber, this._parseResult.position.column, this._parseResult.position.lineNumber, this._parseResult.position.column);
+        return new Range(this.parseResult.position.lineNumber, this.parseResult.position.column, this.parseResult.position.lineNumber, this.parseResult.position.column);
     };
     return GotoLineEntry;
 }(QuickOpenEntry));
@@ -117,15 +124,16 @@ export { GotoLineEntry };
 var GotoLineAction = /** @class */ (function (_super) {
     __extends(GotoLineAction, _super);
     function GotoLineAction() {
-        return _super.call(this, nls.localize('gotoLineActionInput', "Type a line number, followed by an optional colon and a character number to navigate to"), {
+        return _super.call(this, GoToLineNLS.gotoLineActionInput, {
             id: 'editor.action.gotoLine',
-            label: nls.localize('GotoLineAction.label', "Go to Line..."),
+            label: GoToLineNLS.gotoLineActionLabel,
             alias: 'Go to Line...',
             precondition: null,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
                 primary: 2048 /* CtrlCmd */ | 37 /* KEY_G */,
-                mac: { primary: 256 /* WinCtrl */ | 37 /* KEY_G */ }
+                mac: { primary: 256 /* WinCtrl */ | 37 /* KEY_G */ },
+                weight: 100 /* EditorContrib */
             }
         }) || this;
     }

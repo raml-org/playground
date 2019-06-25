@@ -2,12 +2,10 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import * as paths from './paths.js';
-import * as strings from './strings.js';
+import { basename, posix } from './path.js';
+import { endsWith, startsWithUTF8BOM } from './strings.js';
 import { match } from './glob.js';
 export var MIME_TEXT = 'text/plain';
-export var MIME_BINARY = 'application/octet-stream';
 export var MIME_UNKNOWN = 'application/unknown';
 var registeredAssociations = [];
 var nonUserRegisteredAssociations = [];
@@ -56,25 +54,11 @@ function toTextMimeAssociationItem(association) {
         filepattern: association.filepattern,
         firstline: association.firstline,
         userConfigured: association.userConfigured,
-        filenameLowercase: association.filename ? association.filename.toLowerCase() : void 0,
-        extensionLowercase: association.extension ? association.extension.toLowerCase() : void 0,
-        filepatternLowercase: association.filepattern ? association.filepattern.toLowerCase() : void 0,
-        filepatternOnPath: association.filepattern ? association.filepattern.indexOf(paths.sep) >= 0 : false
+        filenameLowercase: association.filename ? association.filename.toLowerCase() : undefined,
+        extensionLowercase: association.extension ? association.extension.toLowerCase() : undefined,
+        filepatternLowercase: association.filepattern ? association.filepattern.toLowerCase() : undefined,
+        filepatternOnPath: association.filepattern ? association.filepattern.indexOf(posix.sep) >= 0 : false
     };
-}
-/**
- * Clear text mimes from the registry.
- */
-export function clearTextMimes(onlyUserConfigured) {
-    if (!onlyUserConfigured) {
-        registeredAssociations = [];
-        nonUserRegisteredAssociations = [];
-        userRegisteredAssociations = [];
-    }
-    else {
-        registeredAssociations = registeredAssociations.filter(function (a) { return !a.userConfigured; });
-        userRegisteredAssociations = [];
-    }
 }
 /**
  * Given a file, return the best matching mime type for it
@@ -84,7 +68,7 @@ export function guessMimeTypes(path, firstLine) {
         return [MIME_UNKNOWN];
     }
     path = path.toLowerCase();
-    var filename = paths.basename(path);
+    var filename = basename(path);
     // 1.) User configured mappings have highest priority
     var configuredMime = guessMimeTypeByPath(path, filename, userRegisteredAssociations);
     if (configuredMime) {
@@ -105,9 +89,9 @@ export function guessMimeTypes(path, firstLine) {
     return [MIME_UNKNOWN];
 }
 function guessMimeTypeByPath(path, filename, associations) {
-    var filenameMatch;
-    var patternMatch;
-    var extensionMatch;
+    var filenameMatch = null;
+    var patternMatch = null;
+    var extensionMatch = null;
     // We want to prioritize associations based on the order they are registered so that the last registered
     // association wins over all other. This is for https://github.com/Microsoft/vscode/issues/20074
     for (var i = associations.length - 1; i >= 0; i--) {
@@ -129,7 +113,7 @@ function guessMimeTypeByPath(path, filename, associations) {
         // Longest extension match
         if (association.extension) {
             if (!extensionMatch || association.extension.length > extensionMatch.extension.length) {
-                if (strings.endsWith(filename, association.extensionLowercase)) {
+                if (endsWith(filename, association.extensionLowercase)) {
                     extensionMatch = association;
                 }
             }
@@ -150,12 +134,12 @@ function guessMimeTypeByPath(path, filename, associations) {
     return null;
 }
 function guessMimeTypeByFirstline(firstLine) {
-    if (strings.startsWithUTF8BOM(firstLine)) {
+    if (startsWithUTF8BOM(firstLine)) {
         firstLine = firstLine.substr(1);
     }
     if (firstLine.length > 0) {
-        for (var i = 0; i < registeredAssociations.length; ++i) {
-            var association = registeredAssociations[i];
+        for (var _i = 0, registeredAssociations_1 = registeredAssociations; _i < registeredAssociations_1.length; _i++) {
+            var association = registeredAssociations_1[_i];
             if (!association.firstline) {
                 continue;
             }
@@ -166,25 +150,4 @@ function guessMimeTypeByFirstline(firstLine) {
         }
     }
     return null;
-}
-export function isUnspecific(mime) {
-    if (!mime) {
-        return true;
-    }
-    if (typeof mime === 'string') {
-        return mime === MIME_BINARY || mime === MIME_TEXT || mime === MIME_UNKNOWN;
-    }
-    return mime.length === 1 && isUnspecific(mime[0]);
-}
-export function suggestFilename(langId, prefix) {
-    for (var i = 0; i < registeredAssociations.length; i++) {
-        var association = registeredAssociations[i];
-        if (association.userConfigured) {
-            continue; // only support registered ones
-        }
-        if (association.id === langId && association.extension) {
-            return prefix + association.extension;
-        }
-    }
-    return prefix; // without any known extension, just return the prefix
 }

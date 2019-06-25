@@ -2,30 +2,37 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import * as platform from '../common/platform.js';
-import { TPromise } from '../common/winjs.base.js';
-import { TimeoutTimer } from '../common/async.js';
-import { onUnexpectedError } from '../common/errors.js';
-import { Disposable, dispose } from '../common/lifecycle.js';
 import * as browser from './browser.js';
+import { domEvent } from './event.js';
 import { StandardKeyboardEvent } from './keyboardEvent.js';
 import { StandardMouseEvent } from './mouseEvent.js';
+import { TimeoutTimer } from '../common/async.js';
+import { onUnexpectedError } from '../common/errors.js';
 import { Emitter } from '../common/event.js';
-import { domEvent } from './event.js';
+import { Disposable, dispose, toDisposable } from '../common/lifecycle.js';
+import * as platform from '../common/platform.js';
+import { coalesce } from '../common/arrays.js';
 export function clearNode(node) {
     while (node.firstChild) {
         node.removeChild(node.firstChild);
+    }
+}
+export function removeNode(node) {
+    if (node.parentNode) {
+        node.parentNode.removeChild(node);
     }
 }
 export function isInDOM(node) {
@@ -89,8 +96,16 @@ var _manualClassList = new /** @class */ (function () {
         this._findClassName(node, className);
         return this._lastStart !== -1;
     };
+    class_1.prototype.addClasses = function (node) {
+        var _this = this;
+        var classNames = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            classNames[_i - 1] = arguments[_i];
+        }
+        classNames.forEach(function (nameValue) { return nameValue.split(' ').forEach(function (name) { return _this.addClass(node, name); }); });
+    };
     class_1.prototype.addClass = function (node, className) {
-        if (!node.className) {
+        if (!node.className) { // doesn't have it for sure
             node.className = className;
         }
         else {
@@ -109,12 +124,20 @@ var _manualClassList = new /** @class */ (function () {
             node.className = node.className.substring(0, this._lastStart) + node.className.substring(this._lastEnd);
         }
     };
+    class_1.prototype.removeClasses = function (node) {
+        var _this = this;
+        var classNames = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            classNames[_i - 1] = arguments[_i];
+        }
+        classNames.forEach(function (nameValue) { return nameValue.split(' ').forEach(function (name) { return _this.removeClass(node, name); }); });
+    };
     class_1.prototype.toggleClass = function (node, className, shouldHaveIt) {
         this._findClassName(node, className);
-        if (this._lastStart !== -1 && (shouldHaveIt === void 0 || !shouldHaveIt)) {
+        if (this._lastStart !== -1 && (shouldHaveIt === undefined || !shouldHaveIt)) {
             this.removeClass(node, className);
         }
-        if (this._lastStart === -1 && (shouldHaveIt === void 0 || shouldHaveIt)) {
+        if (this._lastStart === -1 && (shouldHaveIt === undefined || shouldHaveIt)) {
             this.addClass(node, className);
         }
     };
@@ -124,7 +147,15 @@ var _nativeClassList = new /** @class */ (function () {
     function class_2() {
     }
     class_2.prototype.hasClass = function (node, className) {
-        return className && node.classList && node.classList.contains(className);
+        return Boolean(className) && node.classList && node.classList.contains(className);
+    };
+    class_2.prototype.addClasses = function (node) {
+        var _this = this;
+        var classNames = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            classNames[_i - 1] = arguments[_i];
+        }
+        classNames.forEach(function (nameValue) { return nameValue.split(' ').forEach(function (name) { return _this.addClass(node, name); }); });
     };
     class_2.prototype.addClass = function (node, className) {
         if (className && node.classList) {
@@ -135,6 +166,14 @@ var _nativeClassList = new /** @class */ (function () {
         if (className && node.classList) {
             node.classList.remove(className);
         }
+    };
+    class_2.prototype.removeClasses = function (node) {
+        var _this = this;
+        var classNames = [];
+        for (var _i = 1; _i < arguments.length; _i++) {
+            classNames[_i - 1] = arguments[_i];
+        }
+        classNames.forEach(function (nameValue) { return nameValue.split(' ').forEach(function (name) { return _this.removeClass(node, name); }); });
     };
     class_2.prototype.toggleClass = function (node, className, shouldHaveIt) {
         if (node.classList) {
@@ -148,7 +187,9 @@ var _nativeClassList = new /** @class */ (function () {
 var _classList = browser.isIE ? _manualClassList : _nativeClassList;
 export var hasClass = _classList.hasClass.bind(_classList);
 export var addClass = _classList.addClass.bind(_classList);
+export var addClasses = _classList.addClasses.bind(_classList);
 export var removeClass = _classList.removeClass.bind(_classList);
+export var removeClasses = _classList.removeClasses.bind(_classList);
 export var toggleClass = _classList.toggleClass.bind(_classList);
 var DomListener = /** @class */ (function () {
     function DomListener(node, type, handler, useCapture) {
@@ -196,7 +237,7 @@ export var addStandardDisposableListener = function addStandardDisposableListene
 export function addDisposableNonBubblingMouseOutListener(node, handler) {
     return addDisposableListener(node, 'mouseout', function (e) {
         // Mouse out bubbles, so this is an attempt to ignore faux mouse outs coming from children elements
-        var toElement = (e.relatedTarget || e.toElement);
+        var toElement = (e.relatedTarget || e.target);
         while (toElement && toElement !== node) {
             toElement = toElement.parentNode;
         }
@@ -219,7 +260,7 @@ function doRequestAnimationFrame(callback) {
             || self.oRequestAnimationFrame
             || emulatedRequestAnimationFrame);
     }
-    return _animationFrame(callback);
+    return _animationFrame.call(self, callback);
 }
 /**
  * Schedule a callback to be run at the next animation frame.
@@ -237,6 +278,7 @@ export var runAtThisOrScheduleAtNextAnimationFrame;
 export var scheduleAtNextAnimationFrame;
 var AnimationFrameQueueItem = /** @class */ (function () {
     function AnimationFrameQueueItem(runner, priority) {
+        if (priority === void 0) { priority = 0; }
         this._runner = runner;
         this.priority = priority;
         this._canceled = false;
@@ -350,68 +392,76 @@ export function addDisposableThrottledListener(node, type, handler, eventMerger,
 export function getComputedStyle(el) {
     return document.defaultView.getComputedStyle(el, null);
 }
-// Adapted from WinJS
-// Converts a CSS positioning string for the specified element to pixels.
-var convertToPixels = (function () {
-    return function (element, value) {
+var SizeUtils = /** @class */ (function () {
+    function SizeUtils() {
+    }
+    // Adapted from WinJS
+    // Converts a CSS positioning string for the specified element to pixels.
+    SizeUtils.convertToPixels = function (element, value) {
         return parseFloat(value) || 0;
     };
-})();
-function getDimension(element, cssPropertyName, jsPropertyName) {
-    var computedStyle = getComputedStyle(element);
-    var value = '0';
-    if (computedStyle) {
-        if (computedStyle.getPropertyValue) {
-            value = computedStyle.getPropertyValue(cssPropertyName);
+    SizeUtils.getDimension = function (element, cssPropertyName, jsPropertyName) {
+        var computedStyle = getComputedStyle(element);
+        var value = '0';
+        if (computedStyle) {
+            if (computedStyle.getPropertyValue) {
+                value = computedStyle.getPropertyValue(cssPropertyName);
+            }
+            else {
+                // IE8
+                value = computedStyle.getAttribute(jsPropertyName);
+            }
         }
-        else {
-            // IE8
-            value = computedStyle.getAttribute(jsPropertyName);
-        }
-    }
-    return convertToPixels(element, value);
-}
-var sizeUtils = {
-    getBorderLeftWidth: function (element) {
-        return getDimension(element, 'border-left-width', 'borderLeftWidth');
-    },
-    getBorderRightWidth: function (element) {
-        return getDimension(element, 'border-right-width', 'borderRightWidth');
-    },
-    getBorderTopWidth: function (element) {
-        return getDimension(element, 'border-top-width', 'borderTopWidth');
-    },
-    getBorderBottomWidth: function (element) {
-        return getDimension(element, 'border-bottom-width', 'borderBottomWidth');
-    },
-    getPaddingLeft: function (element) {
-        return getDimension(element, 'padding-left', 'paddingLeft');
-    },
-    getPaddingRight: function (element) {
-        return getDimension(element, 'padding-right', 'paddingRight');
-    },
-    getPaddingTop: function (element) {
-        return getDimension(element, 'padding-top', 'paddingTop');
-    },
-    getPaddingBottom: function (element) {
-        return getDimension(element, 'padding-bottom', 'paddingBottom');
-    },
-    getMarginLeft: function (element) {
-        return getDimension(element, 'margin-left', 'marginLeft');
-    },
-    getMarginTop: function (element) {
-        return getDimension(element, 'margin-top', 'marginTop');
-    },
-    getMarginRight: function (element) {
-        return getDimension(element, 'margin-right', 'marginRight');
-    },
-    getMarginBottom: function (element) {
-        return getDimension(element, 'margin-bottom', 'marginBottom');
-    },
-    __commaSentinel: false
-};
+        return SizeUtils.convertToPixels(element, value);
+    };
+    SizeUtils.getBorderLeftWidth = function (element) {
+        return SizeUtils.getDimension(element, 'border-left-width', 'borderLeftWidth');
+    };
+    SizeUtils.getBorderRightWidth = function (element) {
+        return SizeUtils.getDimension(element, 'border-right-width', 'borderRightWidth');
+    };
+    SizeUtils.getBorderTopWidth = function (element) {
+        return SizeUtils.getDimension(element, 'border-top-width', 'borderTopWidth');
+    };
+    SizeUtils.getBorderBottomWidth = function (element) {
+        return SizeUtils.getDimension(element, 'border-bottom-width', 'borderBottomWidth');
+    };
+    SizeUtils.getPaddingLeft = function (element) {
+        return SizeUtils.getDimension(element, 'padding-left', 'paddingLeft');
+    };
+    SizeUtils.getPaddingRight = function (element) {
+        return SizeUtils.getDimension(element, 'padding-right', 'paddingRight');
+    };
+    SizeUtils.getPaddingTop = function (element) {
+        return SizeUtils.getDimension(element, 'padding-top', 'paddingTop');
+    };
+    SizeUtils.getPaddingBottom = function (element) {
+        return SizeUtils.getDimension(element, 'padding-bottom', 'paddingBottom');
+    };
+    SizeUtils.getMarginLeft = function (element) {
+        return SizeUtils.getDimension(element, 'margin-left', 'marginLeft');
+    };
+    SizeUtils.getMarginTop = function (element) {
+        return SizeUtils.getDimension(element, 'margin-top', 'marginTop');
+    };
+    SizeUtils.getMarginRight = function (element) {
+        return SizeUtils.getDimension(element, 'margin-right', 'marginRight');
+    };
+    SizeUtils.getMarginBottom = function (element) {
+        return SizeUtils.getDimension(element, 'margin-bottom', 'marginBottom');
+    };
+    return SizeUtils;
+}());
 // ----------------------------------------------------------------------------------------
 // Position & Dimension
+var Dimension = /** @class */ (function () {
+    function Dimension(width, height) {
+        this.width = width;
+        this.height = height;
+    }
+    return Dimension;
+}());
+export { Dimension };
 export function getTopLeftOffset(element) {
     // Adapted from WinJS.Utilities.getPosition
     // and added borders to the mix
@@ -423,8 +473,8 @@ export function getTopLeftOffset(element) {
             left -= c.direction !== 'rtl' ? element.scrollLeft : -element.scrollLeft;
         }
         if (element === offsetParent) {
-            left += sizeUtils.getBorderLeftWidth(element);
-            top += sizeUtils.getBorderTopWidth(element);
+            left += SizeUtils.getBorderLeftWidth(element);
+            top += SizeUtils.getBorderTopWidth(element);
             top += element.offsetTop;
             left += element.offsetLeft;
             offsetParent = element.offsetParent;
@@ -481,46 +531,26 @@ export var StandardWindow = new /** @class */ (function () {
 // Adapted from WinJS
 // Gets the width of the element, including margins.
 export function getTotalWidth(element) {
-    var margin = sizeUtils.getMarginLeft(element) + sizeUtils.getMarginRight(element);
+    var margin = SizeUtils.getMarginLeft(element) + SizeUtils.getMarginRight(element);
     return element.offsetWidth + margin;
 }
 export function getContentWidth(element) {
-    var border = sizeUtils.getBorderLeftWidth(element) + sizeUtils.getBorderRightWidth(element);
-    var padding = sizeUtils.getPaddingLeft(element) + sizeUtils.getPaddingRight(element);
+    var border = SizeUtils.getBorderLeftWidth(element) + SizeUtils.getBorderRightWidth(element);
+    var padding = SizeUtils.getPaddingLeft(element) + SizeUtils.getPaddingRight(element);
     return element.offsetWidth - border - padding;
-}
-export function getTotalScrollWidth(element) {
-    var margin = sizeUtils.getMarginLeft(element) + sizeUtils.getMarginRight(element);
-    return element.scrollWidth + margin;
 }
 // Adapted from WinJS
 // Gets the height of the content of the specified element. The content height does not include borders or padding.
 export function getContentHeight(element) {
-    var border = sizeUtils.getBorderTopWidth(element) + sizeUtils.getBorderBottomWidth(element);
-    var padding = sizeUtils.getPaddingTop(element) + sizeUtils.getPaddingBottom(element);
+    var border = SizeUtils.getBorderTopWidth(element) + SizeUtils.getBorderBottomWidth(element);
+    var padding = SizeUtils.getPaddingTop(element) + SizeUtils.getPaddingBottom(element);
     return element.offsetHeight - border - padding;
 }
 // Adapted from WinJS
 // Gets the height of the element, including its margins.
 export function getTotalHeight(element) {
-    var margin = sizeUtils.getMarginTop(element) + sizeUtils.getMarginBottom(element);
+    var margin = SizeUtils.getMarginTop(element) + SizeUtils.getMarginBottom(element);
     return element.offsetHeight + margin;
-}
-// Gets the left coordinate of the specified element relative to the specified parent.
-function getRelativeLeft(element, parent) {
-    if (element === null) {
-        return 0;
-    }
-    var elementPosition = getTopLeftOffset(element);
-    var parentPosition = getTopLeftOffset(parent);
-    return elementPosition.left - parentPosition.left;
-}
-export function getLargestChildWidth(parent, children) {
-    var childWidths = children.map(function (child) {
-        return Math.max(getTotalScrollWidth(child), getTotalWidth(child)) + getRelativeLeft(child, parent) || 0;
-    });
-    var maxWidth = Math.max.apply(Math, childWidths);
-    return maxWidth;
 }
 // ----------------------------------------------------------------------------------------
 export function isAncestor(testChild, testAncestor) {
@@ -532,13 +562,22 @@ export function isAncestor(testChild, testAncestor) {
     }
     return false;
 }
-export function findParentWithClass(node, clazz, stopAtClazz) {
+export function findParentWithClass(node, clazz, stopAtClazzOrNode) {
     while (node) {
         if (hasClass(node, clazz)) {
             return node;
         }
-        if (stopAtClazz && hasClass(node, stopAtClazz)) {
-            return null;
+        if (stopAtClazzOrNode) {
+            if (typeof stopAtClazzOrNode === 'string') {
+                if (hasClass(node, stopAtClazzOrNode)) {
+                    return null;
+                }
+            }
+            else {
+                if (node === stopAtClazzOrNode) {
+                    return null;
+                }
+            }
         }
         node = node.parentNode;
     }
@@ -603,13 +642,14 @@ export function isHTMLElement(o) {
 export var EventType = {
     // Mouse
     CLICK: 'click',
-    AUXCLICK: 'auxclick',
     DBLCLICK: 'dblclick',
     MOUSE_UP: 'mouseup',
     MOUSE_DOWN: 'mousedown',
     MOUSE_OVER: 'mouseover',
     MOUSE_MOVE: 'mousemove',
     MOUSE_OUT: 'mouseout',
+    MOUSE_ENTER: 'mouseenter',
+    MOUSE_LEAVE: 'mouseleave',
     CONTEXT_MENU: 'contextmenu',
     WHEEL: 'wheel',
     // Keyboard
@@ -629,6 +669,8 @@ export var EventType = {
     SUBMIT: 'submit',
     RESET: 'reset',
     FOCUS: 'focus',
+    FOCUS_IN: 'focusin',
+    FOCUS_OUT: 'focusout',
     BLUR: 'blur',
     INPUT: 'input',
     // Local Storage
@@ -690,7 +732,7 @@ var FocusTracker = /** @class */ (function () {
         this._onDidBlur = new Emitter();
         this.onDidBlur = this._onDidBlur.event;
         this.disposables = [];
-        var hasFocus = false;
+        var hasFocus = isAncestor(document.activeElement, element);
         var loosingFocus = false;
         var onFocus = function () {
             loosingFocus = false;
@@ -732,12 +774,7 @@ export function append(parent) {
     children.forEach(function (child) { return parent.appendChild(child); });
     return children[children.length - 1];
 }
-export function prepend(parent, child) {
-    parent.insertBefore(child, parent.firstChild);
-    return child;
-}
 var SELECTOR_REGEX = /([\w\-]+)?(#([\w\-]+))?((.([\w\-]+))*)/;
-// Similar to builder, but much more lightweight
 export function $(description, attrs) {
     var children = [];
     for (var _i = 2; _i < arguments.length; _i++) {
@@ -754,22 +791,22 @@ export function $(description, attrs) {
     if (match[4]) {
         result.className = match[4].replace(/\./g, ' ').trim();
     }
-    Object.keys(attrs || {}).forEach(function (name) {
+    attrs = attrs || {};
+    Object.keys(attrs).forEach(function (name) {
+        var value = attrs[name];
         if (/^on\w+$/.test(name)) {
-            result[name] = attrs[name];
+            result[name] = value;
         }
         else if (name === 'selected') {
-            var value = attrs[name];
             if (value) {
                 result.setAttribute(name, 'true');
             }
         }
         else {
-            result.setAttribute(name, attrs[name]);
+            result.setAttribute(name, value);
         }
     });
-    children
-        .filter(function (child) { return !!child; })
+    coalesce(children)
         .forEach(function (child) {
         if (child instanceof Node) {
             result.appendChild(child);
@@ -777,21 +814,6 @@ export function $(description, attrs) {
         else {
             result.appendChild(document.createTextNode(child));
         }
-    });
-    return result;
-}
-export function join(nodes, separator) {
-    var result = [];
-    nodes.forEach(function (node, index) {
-        if (index > 0) {
-            if (separator instanceof Node) {
-                result.push(separator.cloneNode());
-            }
-            else {
-                result.push(document.createTextNode(separator));
-            }
-        }
-        result.push(node);
     });
     return result;
 }
@@ -803,6 +825,7 @@ export function show() {
     for (var _a = 0, elements_1 = elements; _a < elements_1.length; _a++) {
         var element = elements_1[_a];
         element.style.display = '';
+        element.removeAttribute('aria-hidden');
     }
 }
 export function hide() {
@@ -813,6 +836,7 @@ export function hide() {
     for (var _a = 0, elements_2 = elements; _a < elements_2.length; _a++) {
         var element = elements_2[_a];
         element.style.display = 'none';
+        element.setAttribute('aria-hidden', 'true');
     }
 }
 function findParentWithAttribute(node, attribute) {
@@ -843,24 +867,6 @@ export function removeTabIndexAndUpdateFocus(node) {
 export function getElementsByTagName(tag) {
     return Array.prototype.slice.call(document.getElementsByTagName(tag), 0);
 }
-export function finalHandler(fn) {
-    return function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        fn(e);
-    };
-}
-export function domContentLoaded() {
-    return new TPromise(function (c, e) {
-        var readyState = document.readyState;
-        if (readyState === 'complete' || (document && document.body !== null)) {
-            platform.setImmediate(c);
-        }
-        else {
-            window.addEventListener('DOMContentLoaded', c, false);
-        }
-    });
-}
 /**
  * Find a value usable for a dom node size such that the likelihood that it would be
  * displayed with constant screen pixels size is as high as possible.
@@ -881,8 +887,9 @@ export function computeScreenAwareSize(cssPx) {
  * See https://mathiasbynens.github.io/rel-noopener/
  */
 export function windowOpenNoOpener(url) {
-    if (platform.isNative) {
+    if (platform.isNative || browser.isEdgeWebView) {
         // In VSCode, window.open() always returns null...
+        // The same is true for a WebView (see https://github.com/Microsoft/monaco-editor/issues/628)
         window.open(url);
     }
     else {
@@ -892,4 +899,12 @@ export function windowOpenNoOpener(url) {
             newTab.location.href = url;
         }
     }
+}
+export function animate(fn) {
+    var step = function () {
+        fn();
+        stepDisposable = scheduleAtNextAnimationFrame(step);
+    };
+    var stepDisposable = scheduleAtNextAnimationFrame(step);
+    return toDisposable(function () { return stepDisposable.dispose(); });
 }

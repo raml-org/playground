@@ -2,35 +2,12 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import * as nls from '../../../nls.js';
-import { basename, dirname } from '../../../base/common/paths.js';
+import { basename, dirname } from '../../../base/common/path.js';
 import { Text } from './snippetParser.js';
-import { getLeadingWhitespace, commonPrefixLength, isFalsyOrWhitespace, pad } from '../../../base/common/strings.js';
-export var KnownSnippetVariableNames = Object.freeze({
-    'CURRENT_YEAR': true,
-    'CURRENT_YEAR_SHORT': true,
-    'CURRENT_MONTH': true,
-    'CURRENT_DATE': true,
-    'CURRENT_HOUR': true,
-    'CURRENT_MINUTE': true,
-    'CURRENT_SECOND': true,
-    'CURRENT_DAY_NAME': true,
-    'CURRENT_DAY_NAME_SHORT': true,
-    'CURRENT_MONTH_NAME': true,
-    'CURRENT_MONTH_NAME_SHORT': true,
-    'SELECTION': true,
-    'CLIPBOARD': true,
-    'TM_SELECTED_TEXT': true,
-    'TM_CURRENT_LINE': true,
-    'TM_CURRENT_WORD': true,
-    'TM_LINE_INDEX': true,
-    'TM_LINE_NUMBER': true,
-    'TM_FILENAME': true,
-    'TM_FILENAME_BASE': true,
-    'TM_DIRECTORY': true,
-    'TM_FILEPATH': true,
-});
+import { LanguageConfigurationRegistry } from '../../common/modes/languageConfigurationRegistry.js';
+import { getLeadingWhitespace, commonPrefixLength, isFalsyOrWhitespace, pad, endsWith } from '../../../base/common/strings.js';
+import { isSingleFolderWorkspaceIdentifier, toWorkspaceIdentifier, WORKSPACE_EXTENSION } from '../../../platform/workspaces/common/workspaces.js';
 var CompositeSnippetVariableResolver = /** @class */ (function () {
     function CompositeSnippetVariableResolver(_delegates) {
         this._delegates = _delegates;
@@ -40,7 +17,7 @@ var CompositeSnippetVariableResolver = /** @class */ (function () {
         for (var _i = 0, _a = this._delegates; _i < _a.length; _i++) {
             var delegate = _a[_i];
             var value = delegate.resolve(variable);
-            if (value !== void 0) {
+            if (value !== undefined) {
                 return value;
             }
         }
@@ -59,7 +36,7 @@ var SelectionBasedVariableResolver = /** @class */ (function () {
         var name = variable.name;
         if (name === 'SELECTION' || name === 'TM_SELECTED_TEXT') {
             var value = this._model.getValueInRange(this._selection) || undefined;
-            if (value && this._selection.startLineNumber !== this._selection.endLineNumber) {
+            if (value && this._selection.startLineNumber !== this._selection.endLineNumber && variable.snippet) {
                 // Selection is a multiline string which we indentation we now
                 // need to adjust. We compare the indentation of this variable
                 // with the indentation at the editor position and add potential
@@ -160,6 +137,32 @@ var ClipboardBasedVariableResolver = /** @class */ (function () {
     return ClipboardBasedVariableResolver;
 }());
 export { ClipboardBasedVariableResolver };
+var CommentBasedVariableResolver = /** @class */ (function () {
+    function CommentBasedVariableResolver(_model) {
+        this._model = _model;
+        //
+    }
+    CommentBasedVariableResolver.prototype.resolve = function (variable) {
+        var name = variable.name;
+        var language = this._model.getLanguageIdentifier();
+        var config = LanguageConfigurationRegistry.getComments(language.id);
+        if (!config) {
+            return undefined;
+        }
+        if (name === 'LINE_COMMENT') {
+            return config.lineCommentToken || undefined;
+        }
+        else if (name === 'BLOCK_COMMENT_START') {
+            return config.blockCommentStartToken || undefined;
+        }
+        else if (name === 'BLOCK_COMMENT_END') {
+            return config.blockCommentEndToken || undefined;
+        }
+        return undefined;
+    };
+    return CommentBasedVariableResolver;
+}());
+export { CommentBasedVariableResolver };
 var TimeBasedVariableResolver = /** @class */ (function () {
     function TimeBasedVariableResolver() {
     }
@@ -207,3 +210,28 @@ var TimeBasedVariableResolver = /** @class */ (function () {
     return TimeBasedVariableResolver;
 }());
 export { TimeBasedVariableResolver };
+var WorkspaceBasedVariableResolver = /** @class */ (function () {
+    function WorkspaceBasedVariableResolver(_workspaceService) {
+        this._workspaceService = _workspaceService;
+        //
+    }
+    WorkspaceBasedVariableResolver.prototype.resolve = function (variable) {
+        if (variable.name !== 'WORKSPACE_NAME' || !this._workspaceService) {
+            return undefined;
+        }
+        var workspaceIdentifier = toWorkspaceIdentifier(this._workspaceService.getWorkspace());
+        if (!workspaceIdentifier) {
+            return undefined;
+        }
+        if (isSingleFolderWorkspaceIdentifier(workspaceIdentifier)) {
+            return basename(workspaceIdentifier.path);
+        }
+        var filename = basename(workspaceIdentifier.configPath.path);
+        if (endsWith(filename, WORKSPACE_EXTENSION)) {
+            filename = filename.substr(0, filename.length - WORKSPACE_EXTENSION.length - 1);
+        }
+        return filename;
+    };
+    return WorkspaceBasedVariableResolver;
+}());
+export { WorkspaceBasedVariableResolver };

@@ -2,26 +2,28 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import * as nls from '../../../../nls.js';
-import { registerEditorAction, EditorAction } from '../../../browser/editorExtensions.js';
+import { EditorAction, registerEditorAction } from '../../../browser/editorExtensions.js';
 import { IStandaloneThemeService } from '../../common/standaloneThemeService.js';
+import { ToggleHighContrastNLS } from '../../../common/standaloneStrings.js';
 var ToggleHighContrast = /** @class */ (function (_super) {
     __extends(ToggleHighContrast, _super);
     function ToggleHighContrast() {
         var _this = _super.call(this, {
             id: 'editor.action.toggleHighContrast',
-            label: nls.localize('toggleHighContrast', "Toggle High Contrast Theme"),
+            label: ToggleHighContrastNLS.toggleHighContrast,
             alias: 'Toggle High Contrast Theme',
             precondition: null
         }) || this;

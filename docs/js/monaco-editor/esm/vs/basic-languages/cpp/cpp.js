@@ -251,6 +251,7 @@ export var language = {
             { include: '@whitespace' },
             // [[ attributes ]].
             [/\[\[.*\]\]/, 'annotation'],
+            [/^\s*#include/, { token: 'keyword.directive.include', next: '@include' }],
             // Preprocessor directive
             [/^\s*#\s*\w+/, 'keyword'],
             // delimiters and operators
@@ -312,6 +313,10 @@ export var language = {
                 }
             ],
             [/.*/, 'string.raw']
+        ],
+        include: [
+            [/(\s*)(<)([^<>]*)(>)/, ['', 'keyword.directive.include.begin', 'string.include.identifier', { token: 'keyword.directive.include.end', next: '@pop' }]],
+            [/(\s*)(")([^"]*)(")/, ['', 'keyword.directive.include.begin', 'string.include.identifier', { token: 'keyword.directive.include.end', next: '@pop' }]]
         ]
     },
 };

@@ -4,9 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -91,6 +94,7 @@ export var NodeType;
     NodeType[NodeType["NamespacePrefix"] = 69] = "NamespacePrefix";
     NodeType[NodeType["GridLine"] = 70] = "GridLine";
     NodeType[NodeType["Plugin"] = 71] = "Plugin";
+    NodeType[NodeType["UnknownAtRule"] = 72] = "UnknownAtRule";
 })(NodeType || (NodeType = {}));
 export var ReferenceType;
 (function (ReferenceType) {
@@ -125,7 +129,8 @@ export function getNodeAtOffset(node, offset) {
     return candidate;
 }
 export function getNodePath(node, offset) {
-    var candidate = getNodeAtOffset(node, offset), path = [];
+    var candidate = getNodeAtOffset(node, offset);
+    var path = [];
     while (candidate) {
         path.unshift(candidate);
         candidate = candidate.parent;
@@ -238,14 +243,14 @@ var Node = /** @class */ (function () {
         this.issues.push(issue);
     };
     Node.prototype.hasIssue = function (rule) {
-        return this.issues && this.issues.some(function (i) { return i.getRule() === rule; });
+        return Array.isArray(this.issues) && this.issues.some(function (i) { return i.getRule() === rule; });
     };
     Node.prototype.isErroneous = function (recursive) {
         if (recursive === void 0) { recursive = false; }
         if (this.issues && this.issues.length > 0) {
             return true;
         }
-        return recursive && this.children && this.children.some(function (c) { return c.isErroneous(true); });
+        return recursive && Array.isArray(this.children) && this.children.some(function (c) { return c.isErroneous(true); });
     };
     Node.prototype.setNode = function (field, node, index) {
         if (index === void 0) { index = -1; }
@@ -330,6 +335,17 @@ var Node = /** @class */ (function () {
     Node.prototype.findParent = function (type) {
         var result = this;
         while (result && result.type !== type) {
+            result = result.parent;
+        }
+        return result;
+    };
+    Node.prototype.findAParent = function () {
+        var types = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            types[_i] = arguments[_i];
+        }
+        var result = this;
+        while (result && !types.some(function (t) { return result.type === t; })) {
             result = result.parent;
         }
         return result;
@@ -448,7 +464,7 @@ var RuleSet = /** @class */ (function (_super) {
         return this.selectors;
     };
     RuleSet.prototype.isNested = function () {
-        return this.parent && this.parent.findParent(NodeType.Declarations) !== null;
+        return !!this.parent && this.parent.findParent(NodeType.Declarations) !== null;
     };
     return RuleSet;
 }(BodyDeclaration));
@@ -608,10 +624,10 @@ var Declaration = /** @class */ (function (_super) {
         return this.value;
     };
     Declaration.prototype.setNestedProperties = function (value) {
-        return this.setNode('nestedProprties', value);
+        return this.setNode('nestedProperties', value);
     };
     Declaration.prototype.getNestedProperties = function () {
-        return this.nestedProprties;
+        return this.nestedProperties;
     };
     return Declaration;
 }(AbstractDeclaration));
@@ -1202,17 +1218,29 @@ var AttributeSelector = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    AttributeSelector.prototype.setExpression = function (value) {
-        return this.setNode('expression', value);
-    };
-    AttributeSelector.prototype.getExpression = function () {
-        return this.expression;
-    };
     AttributeSelector.prototype.setNamespacePrefix = function (value) {
         return this.setNode('namespacePrefix', value);
     };
     AttributeSelector.prototype.getNamespacePrefix = function () {
         return this.namespacePrefix;
+    };
+    AttributeSelector.prototype.setIdentifier = function (value) {
+        return this.setNode('identifier', value);
+    };
+    AttributeSelector.prototype.getIdentifier = function () {
+        return this.identifier;
+    };
+    AttributeSelector.prototype.setOperator = function (operator) {
+        return this.setNode('operator', operator);
+    };
+    AttributeSelector.prototype.getOperator = function () {
+        return this.operator;
+    };
+    AttributeSelector.prototype.setValue = function (value) {
+        return this.setNode('value', value);
+    };
+    AttributeSelector.prototype.getValue = function () {
+        return this.value;
     };
     return AttributeSelector;
 }(Node));
@@ -1247,6 +1275,7 @@ var HexColorValue = /** @class */ (function (_super) {
     return HexColorValue;
 }(Node));
 export { HexColorValue };
+var _dot = '.'.charCodeAt(0), _0 = '0'.charCodeAt(0), _9 = '9'.charCodeAt(0);
 var NumericValue = /** @class */ (function (_super) {
     __extends(NumericValue, _super);
     function NumericValue(offset, length) {
@@ -1261,7 +1290,8 @@ var NumericValue = /** @class */ (function (_super) {
     });
     NumericValue.prototype.getValue = function () {
         var raw = this.getText();
-        var unitIdx = 0, code, _dot = '.'.charCodeAt(0), _0 = '0'.charCodeAt(0), _9 = '9'.charCodeAt(0);
+        var unitIdx = 0;
+        var code;
         for (var i = 0, len = raw.length; i < len; i++) {
             code = raw.charCodeAt(i);
             if (!(_0 <= code && code <= _9 || code === _dot)) {
@@ -1280,7 +1310,9 @@ export { NumericValue };
 var VariableDeclaration = /** @class */ (function (_super) {
     __extends(VariableDeclaration, _super);
     function VariableDeclaration(offset, length) {
-        return _super.call(this, offset, length) || this;
+        var _this = _super.call(this, offset, length) || this;
+        _this.needsSemicolon = true;
+        return _this;
     }
     Object.defineProperty(VariableDeclaration.prototype, "type", {
         get: function () {
@@ -1450,6 +1482,48 @@ var MixinDeclaration = /** @class */ (function (_super) {
     return MixinDeclaration;
 }(BodyDeclaration));
 export { MixinDeclaration };
+var UnknownAtRule = /** @class */ (function (_super) {
+    __extends(UnknownAtRule, _super);
+    function UnknownAtRule(offset, length) {
+        return _super.call(this, offset, length) || this;
+    }
+    Object.defineProperty(UnknownAtRule.prototype, "type", {
+        get: function () {
+            return NodeType.UnknownAtRule;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    UnknownAtRule.prototype.setAtRuleName = function (atRuleName) {
+        this.atRuleName = atRuleName;
+    };
+    UnknownAtRule.prototype.getAtRuleName = function (atRuleName) {
+        return this.atRuleName;
+    };
+    return UnknownAtRule;
+}(BodyDeclaration));
+export { UnknownAtRule };
+var ListEntry = /** @class */ (function (_super) {
+    __extends(ListEntry, _super);
+    function ListEntry() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    Object.defineProperty(ListEntry.prototype, "type", {
+        get: function () {
+            return NodeType.ListEntry;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ListEntry.prototype.setKey = function (node) {
+        return this.setNode('key', node, 0);
+    };
+    ListEntry.prototype.setValue = function (node) {
+        return this.setNode('value', node, 1);
+    };
+    return ListEntry;
+}(Node));
+export { ListEntry };
 var LessGuard = /** @class */ (function (_super) {
     __extends(LessGuard, _super);
     function LessGuard() {
@@ -1691,4 +1765,3 @@ var ParseErrorCollector = /** @class */ (function () {
     return ParseErrorCollector;
 }());
 export { ParseErrorCollector };
-//# sourceMappingURL=cssNodes.js.map

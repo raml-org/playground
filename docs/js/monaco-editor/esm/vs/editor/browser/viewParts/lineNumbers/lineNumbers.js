@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,11 +16,11 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import './lineNumbers.css';
-import { editorLineNumbers, editorActiveLineNumber } from '../../../common/view/editorColorRegistry.js';
-import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 import * as platform from '../../../../base/common/platform.js';
 import { DynamicViewOverlay } from '../../view/dynamicViewOverlay.js';
 import { Position } from '../../../common/core/position.js';
+import { editorActiveLineNumber, editorLineNumbers } from '../../../common/view/editorColorRegistry.js';
+import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 var LineNumbersOverlay = /** @class */ (function (_super) {
     __extends(LineNumbersOverlay, _super);
     function LineNumbersOverlay(context) {
@@ -35,12 +37,12 @@ var LineNumbersOverlay = /** @class */ (function (_super) {
         this._lineHeight = config.lineHeight;
         this._renderLineNumbers = config.viewInfo.renderLineNumbers;
         this._renderCustomLineNumbers = config.viewInfo.renderCustomLineNumbers;
+        this._renderFinalNewline = config.viewInfo.renderFinalNewline;
         this._lineNumbersLeft = config.layoutInfo.lineNumbersLeft;
         this._lineNumbersWidth = config.layoutInfo.lineNumbersWidth;
     };
     LineNumbersOverlay.prototype.dispose = function () {
         this._context.removeEventHandler(this);
-        this._context = null;
         this._renderResult = null;
         _super.prototype.dispose.call(this);
     };
@@ -82,6 +84,13 @@ var LineNumbersOverlay = /** @class */ (function (_super) {
             return '';
         }
         var modelLineNumber = modelPosition.lineNumber;
+        if (!this._renderFinalNewline) {
+            var lineCount = this._context.model.getLineCount();
+            var lineContent = this._context.model.getLineContent(modelLineNumber);
+            if (modelLineNumber === lineCount && lineContent === '') {
+                return '';
+            }
+        }
         if (this._renderCustomLineNumbers) {
             return this._renderCustomLineNumbers(modelLineNumber);
         }

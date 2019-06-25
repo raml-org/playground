@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -31,6 +33,7 @@ var ViewOutgoingEvents = /** @class */ (function (_super) {
         _this.onMouseDown = null;
         _this.onMouseDrag = null;
         _this.onMouseDrop = null;
+        _this.onMouseWheel = null;
         _this._viewModel = viewModel;
         return _this;
     }
@@ -41,12 +44,12 @@ var ViewOutgoingEvents = /** @class */ (function (_super) {
     };
     ViewOutgoingEvents.prototype.emitViewFocusGained = function () {
         if (this.onDidGainFocus) {
-            this.onDidGainFocus(void 0);
+            this.onDidGainFocus(undefined);
         }
     };
     ViewOutgoingEvents.prototype.emitViewFocusLost = function () {
         if (this.onDidLoseFocus) {
-            this.onDidLoseFocus(void 0);
+            this.onDidLoseFocus(undefined);
         }
     };
     ViewOutgoingEvents.prototype.emitKeyDown = function (e) {
@@ -92,6 +95,11 @@ var ViewOutgoingEvents = /** @class */ (function (_super) {
     ViewOutgoingEvents.prototype.emitMouseDrop = function (e) {
         if (this.onMouseDrop) {
             this.onMouseDrop(this._convertViewToModelMouseEvent(e));
+        }
+    };
+    ViewOutgoingEvents.prototype.emitMouseWheel = function (e) {
+        if (this.onMouseWheel) {
+            this.onMouseWheel(e);
         }
     };
     ViewOutgoingEvents.prototype._convertViewToModelMouseEvent = function (e) {

@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -27,8 +26,8 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     function step(op) {
         if (f) throw new TypeError("Generator is already executing.");
         while (_) try {
-            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [0, t.value];
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
             switch (op[0]) {
                 case 0: case 1: t = op; break;
                 case 4: _.label++; return { value: op[1], done: false };
@@ -50,32 +49,24 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 import * as nls from '../../../nls.js';
 import { onUnexpectedError } from '../../../base/common/errors.js';
 import { dispose } from '../../../base/common/lifecycle.js';
-import { IEditorService } from '../../../platform/editor/common/editor.js';
-import { IInstantiationService, optional } from '../../../platform/instantiation/common/instantiation.js';
+import { ICodeEditorService } from '../../browser/services/codeEditorService.js';
+import { IInstantiationService } from '../../../platform/instantiation/common/instantiation.js';
 import { IContextKeyService, RawContextKey } from '../../../platform/contextkey/common/contextkey.js';
 import { IConfigurationService } from '../../../platform/configuration/common/configuration.js';
-import { IWorkspaceContextService } from '../../../platform/workspace/common/workspace.js';
 import { IStorageService } from '../../../platform/storage/common/storage.js';
-import { ReferenceWidget } from './referencesWidget.js';
+import { ReferenceWidget, LayoutData } from './referencesWidget.js';
 import { Range } from '../../common/core/range.js';
-import { ITextModelService } from '../../common/services/resolverService.js';
-import { IThemeService } from '../../../platform/theme/common/themeService.js';
 import { Position } from '../../common/core/position.js';
-import { IEnvironmentService } from '../../../platform/environment/common/environment.js';
 import { INotificationService } from '../../../platform/notification/common/notification.js';
 export var ctxReferenceSearchVisible = new RawContextKey('referenceSearchVisible', false);
 var ReferencesController = /** @class */ (function () {
-    function ReferencesController(_defaultTreeKeyboardSupport, editor, contextKeyService, _editorService, _textModelResolverService, _notificationService, _instantiationService, _contextService, _storageService, _themeService, _configurationService, _environmentService) {
+    function ReferencesController(_defaultTreeKeyboardSupport, editor, contextKeyService, _editorService, _notificationService, _instantiationService, _storageService, _configurationService) {
         this._defaultTreeKeyboardSupport = _defaultTreeKeyboardSupport;
         this._editorService = _editorService;
-        this._textModelResolverService = _textModelResolverService;
         this._notificationService = _notificationService;
         this._instantiationService = _instantiationService;
-        this._contextService = _contextService;
         this._storageService = _storageService;
-        this._themeService = _themeService;
         this._configurationService = _configurationService;
-        this._environmentService = _environmentService;
         this._requestIdPool = 0;
         this._disposables = [];
         this._ignoreModelChangeEvent = false;
@@ -89,11 +80,16 @@ var ReferencesController = /** @class */ (function () {
         return ReferencesController.ID;
     };
     ReferencesController.prototype.dispose = function () {
+        this._referenceSearchVisible.reset();
+        dispose(this._disposables);
         if (this._widget) {
-            this._widget.dispose();
+            dispose(this._widget);
             this._widget = null;
         }
-        this._editor = null;
+        if (this._model) {
+            dispose(this._model);
+            this._model = null;
+        }
     };
     ReferencesController.prototype.toggleWidget = function (range, modelPromise, options) {
         var _this = this;
@@ -104,7 +100,7 @@ var ReferencesController = /** @class */ (function () {
         }
         this.closeWidget();
         if (!!widgetPosition && range.containsPosition(widgetPosition)) {
-            return null;
+            return;
         }
         this._referenceSearchVisible.set(true);
         // close the widget on model/mode changes
@@ -115,14 +111,16 @@ var ReferencesController = /** @class */ (function () {
             }
         }));
         var storageKey = 'peekViewLayout';
-        var data = JSON.parse(this._storageService.get(storageKey, undefined, '{}'));
-        this._widget = new ReferenceWidget(this._editor, this._defaultTreeKeyboardSupport, data, this._textModelResolverService, this._contextService, this._themeService, this._instantiationService, this._environmentService);
+        var data = LayoutData.fromJSON(this._storageService.get(storageKey, 0 /* GLOBAL */, '{}'));
+        this._widget = this._instantiationService.createInstance(ReferenceWidget, this._editor, this._defaultTreeKeyboardSupport, data);
         this._widget.setTitle(nls.localize('labelLoading', "Loading..."));
         this._widget.show(range);
         this._disposables.push(this._widget.onDidClose(function () {
             modelPromise.cancel();
-            _this._storageService.store(storageKey, JSON.stringify(_this._widget.layoutData));
-            _this._widget = null;
+            if (_this._widget) {
+                _this._storageService.store(storageKey, JSON.stringify(_this._widget.layoutData), 0 /* GLOBAL */);
+                _this._widget = null;
+            }
             _this.closeWidget();
         }));
         this._disposables.push(this._widget.onDidSelectReference(function (event) {
@@ -136,14 +134,18 @@ var ReferencesController = /** @class */ (function () {
                         break;
                     }
                 case 'side':
-                    _this.openReference(element, kind === 'side');
+                    if (element) {
+                        _this.openReference(element, kind === 'side');
+                    }
                     break;
                 case 'goto':
-                    if (options.onGoto) {
-                        options.onGoto(element);
-                    }
-                    else {
-                        _this._gotoReference(element);
+                    if (element) {
+                        if (options.onGoto) {
+                            options.onGoto(element);
+                        }
+                        else {
+                            _this._gotoReference(element);
+                        }
                     }
                     break;
             }
@@ -160,14 +162,16 @@ var ReferencesController = /** @class */ (function () {
             _this._model = model;
             // show widget
             return _this._widget.setModel(_this._model).then(function () {
-                // set title
-                _this._widget.setMetaTitle(options.getMetaTitle(_this._model));
-                // set 'best' selection
-                var uri = _this._editor.getModel().uri;
-                var pos = new Position(range.startLineNumber, range.startColumn);
-                var selection = _this._model.nearestReference(uri, pos);
-                if (selection) {
-                    return _this._widget.setSelection(selection);
+                if (_this._widget && _this._model && _this._editor.hasModel()) { // might have been closed
+                    // set title
+                    _this._widget.setMetaTitle(options.getMetaTitle(_this._model));
+                    // set 'best' selection
+                    var uri = _this._editor.getModel().uri;
+                    var pos = new Position(range.startLineNumber, range.startColumn);
+                    var selection = _this._model.nearestReference(uri, pos);
+                    if (selection) {
+                        return _this._widget.setSelection(selection);
+                    }
                 }
                 return undefined;
             });
@@ -177,14 +181,24 @@ var ReferencesController = /** @class */ (function () {
     };
     ReferencesController.prototype.goToNextOrPreviousReference = function (fwd) {
         return __awaiter(this, void 0, void 0, function () {
-            var source, target, editorFocus;
+            var currentPosition, source, target, editorFocus;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        if (!this._model) return [3 /*break*/, 3];
-                        source = this._model.nearestReference(this._editor.getModel().uri, this._widget.position);
+                        if (!this._editor.hasModel() || !this._model || !this._widget) {
+                            // can be called while still resolving...
+                            return [2 /*return*/];
+                        }
+                        currentPosition = this._widget.position;
+                        if (!currentPosition) {
+                            return [2 /*return*/];
+                        }
+                        source = this._model.nearestReference(this._editor.getModel().uri, currentPosition);
+                        if (!source) {
+                            return [2 /*return*/];
+                        }
                         target = this._model.nextOrPreviousReference(source, fwd);
-                        editorFocus = this._editor.isFocused();
+                        editorFocus = this._editor.hasTextFocus();
                         return [4 /*yield*/, this._widget.setSelection(target)];
                     case 1:
                         _a.sent();
@@ -194,21 +208,20 @@ var ReferencesController = /** @class */ (function () {
                         if (editorFocus) {
                             this._editor.focus();
                         }
-                        _a.label = 3;
-                    case 3: return [2 /*return*/];
+                        return [2 /*return*/];
                 }
             });
         });
     };
     ReferencesController.prototype.closeWidget = function () {
         if (this._widget) {
-            this._widget.dispose();
+            dispose(this._widget);
             this._widget = null;
         }
         this._referenceSearchVisible.reset();
         this._disposables = dispose(this._disposables);
         if (this._model) {
-            this._model.dispose();
+            dispose(this._model);
             this._model = null;
         }
         this._editor.focus();
@@ -216,15 +229,17 @@ var ReferencesController = /** @class */ (function () {
     };
     ReferencesController.prototype._gotoReference = function (ref) {
         var _this = this;
-        this._widget.hide();
+        if (this._widget) {
+            this._widget.hide();
+        }
         this._ignoreModelChangeEvent = true;
         var range = Range.lift(ref.range).collapseToStart();
-        return this._editorService.openEditor({
+        return this._editorService.openCodeEditor({
             resource: ref.uri,
             options: { selection: range }
-        }).then(function (openedEditor) {
+        }, this._editor).then(function (openedEditor) {
             _this._ignoreModelChangeEvent = false;
-            if (!openedEditor || openedEditor.getControl() !== _this._editor) {
+            if (!openedEditor || openedEditor !== _this._editor) {
                 // TODO@Alex TODO@Joh
                 // when opening the current reference we might end up
                 // in a different editor instance. that means we also have
@@ -235,36 +250,34 @@ var ReferencesController = /** @class */ (function () {
                 _this.closeWidget();
                 return;
             }
-            _this._widget.show(range);
-            _this._widget.focus();
+            if (_this._widget) {
+                _this._widget.show(range);
+                _this._widget.focus();
+            }
         }, function (err) {
             _this._ignoreModelChangeEvent = false;
             onUnexpectedError(err);
         });
     };
     ReferencesController.prototype.openReference = function (ref, sideBySide) {
-        var uri = ref.uri, range = ref.range;
-        this._editorService.openEditor({
-            resource: uri,
-            options: { selection: range }
-        }, sideBySide);
         // clear stage
         if (!sideBySide) {
             this.closeWidget();
         }
+        var uri = ref.uri, range = ref.range;
+        this._editorService.openCodeEditor({
+            resource: uri,
+            options: { selection: range }
+        }, this._editor, sideBySide);
     };
     ReferencesController.ID = 'editor.contrib.referencesController';
     ReferencesController = __decorate([
         __param(2, IContextKeyService),
-        __param(3, IEditorService),
-        __param(4, ITextModelService),
-        __param(5, INotificationService),
-        __param(6, IInstantiationService),
-        __param(7, IWorkspaceContextService),
-        __param(8, IStorageService),
-        __param(9, IThemeService),
-        __param(10, IConfigurationService),
-        __param(11, optional(IEnvironmentService))
+        __param(3, ICodeEditorService),
+        __param(4, INotificationService),
+        __param(5, IInstantiationService),
+        __param(6, IStorageService),
+        __param(7, IConfigurationService)
     ], ReferencesController);
     return ReferencesController;
 }());

@@ -2,10 +2,9 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { TokenizationRegistry } from '../modes.js';
 import { Emitter } from '../../../base/common/event.js';
 import { RGBA8 } from '../core/rgba.js';
+import { TokenizationRegistry } from '../modes.js';
 var MinimapTokensColorTracker = /** @class */ (function () {
     function MinimapTokensColorTracker() {
         var _this = this;
@@ -27,11 +26,11 @@ var MinimapTokensColorTracker = /** @class */ (function () {
     MinimapTokensColorTracker.prototype._updateColorMap = function () {
         var colorMap = TokenizationRegistry.getColorMap();
         if (!colorMap) {
-            this._colors = [null];
+            this._colors = [RGBA8.Empty];
             this._backgroundIsLight = true;
             return;
         }
-        this._colors = [null];
+        this._colors = [RGBA8.Empty];
         for (var colorId = 1; colorId < colorMap.length; colorId++) {
             var source = colorMap[colorId].rgba;
             // Use a VM friendly data-type
@@ -39,7 +38,7 @@ var MinimapTokensColorTracker = /** @class */ (function () {
         }
         var backgroundLuminosity = colorMap[2 /* DefaultBackground */].getRelativeLuminance();
         this._backgroundIsLight = (backgroundLuminosity >= 0.5);
-        this._onDidChange.fire(void 0);
+        this._onDidChange.fire(undefined);
     };
     MinimapTokensColorTracker.prototype.getColor = function (colorId) {
         if (colorId < 1 || colorId >= this._colors.length) {

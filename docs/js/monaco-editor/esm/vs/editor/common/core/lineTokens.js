@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import { TokenMetadata } from '../modes.js';
 var LineTokens = /** @class */ (function () {
     function LineTokens(tokens, text) {
@@ -153,6 +152,9 @@ var SlicedLineTokens = /** @class */ (function () {
     };
     SlicedLineTokens.prototype.getInlineStyle = function (tokenIndex, colorMap) {
         return this._source.getInlineStyle(this._firstTokenIndex + tokenIndex, colorMap);
+    };
+    SlicedLineTokens.prototype.findTokenIndexAtOffset = function (offset) {
+        return this._source.findTokenIndexAtOffset(offset + this._startOffset - this._deltaOffset) - this._firstTokenIndex;
     };
     return SlicedLineTokens;
 }());

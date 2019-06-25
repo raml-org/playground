@@ -4,7 +4,8 @@
   "description": "",
   "main": "build.js",
   "scripts": {
-    "standard": "./node_modules/standard/bin/cmd.js --fix"
+    "standard": "./node_modules/standard/bin/cmd.js --fix",
+    "postinstall": "cp -R ./node_modules/monaco-editor/* ./docs/js/monaco-editor/"
   },
   "author": "",
   "license": "ISC",
@@ -15,7 +16,7 @@
     "jointjs": "^2.2.1",
     "jsonld": "^1.6.2",
     "knockout": "^3.4.2",
-    "monaco-editor": "^0.17.0",
+    "monaco-editor": "^0.17.1",
     "node-gyp": "^5.0.1",
     "webapi-parser": "^0.1.0"
   },

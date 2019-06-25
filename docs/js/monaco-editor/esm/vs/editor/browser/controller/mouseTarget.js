@@ -2,24 +2,25 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-import { Position } from '../../common/core/position.js';
-import { Range as EditorRange } from '../../common/core/range.js';
-import { MouseTargetType } from '../editorBrowser.js';
-import { PageCoordinates } from '../editorDom.js';
 import * as browser from '../../../base/browser/browser.js';
+import { PageCoordinates } from '../editorDom.js';
 import { PartFingerprints } from '../view/viewPart.js';
 import { ViewLine } from '../viewParts/lines/viewLine.js';
+import { Position } from '../../common/core/position.js';
+import { Range as EditorRange } from '../../common/core/range.js';
 var MouseTarget = /** @class */ (function () {
     function MouseTarget(element, type, mouseColumn, position, range, detail) {
         if (mouseColumn === void 0) { mouseColumn = 0; }
@@ -37,40 +38,40 @@ var MouseTarget = /** @class */ (function () {
         this.detail = detail;
     }
     MouseTarget._typeToString = function (type) {
-        if (type === MouseTargetType.TEXTAREA) {
+        if (type === 1 /* TEXTAREA */) {
             return 'TEXTAREA';
         }
-        if (type === MouseTargetType.GUTTER_GLYPH_MARGIN) {
+        if (type === 2 /* GUTTER_GLYPH_MARGIN */) {
             return 'GUTTER_GLYPH_MARGIN';
         }
-        if (type === MouseTargetType.GUTTER_LINE_NUMBERS) {
+        if (type === 3 /* GUTTER_LINE_NUMBERS */) {
             return 'GUTTER_LINE_NUMBERS';
         }
-        if (type === MouseTargetType.GUTTER_LINE_DECORATIONS) {
+        if (type === 4 /* GUTTER_LINE_DECORATIONS */) {
             return 'GUTTER_LINE_DECORATIONS';
         }
-        if (type === MouseTargetType.GUTTER_VIEW_ZONE) {
+        if (type === 5 /* GUTTER_VIEW_ZONE */) {
             return 'GUTTER_VIEW_ZONE';
         }
-        if (type === MouseTargetType.CONTENT_TEXT) {
+        if (type === 6 /* CONTENT_TEXT */) {
             return 'CONTENT_TEXT';
         }
-        if (type === MouseTargetType.CONTENT_EMPTY) {
+        if (type === 7 /* CONTENT_EMPTY */) {
             return 'CONTENT_EMPTY';
         }
-        if (type === MouseTargetType.CONTENT_VIEW_ZONE) {
+        if (type === 8 /* CONTENT_VIEW_ZONE */) {
             return 'CONTENT_VIEW_ZONE';
         }
-        if (type === MouseTargetType.CONTENT_WIDGET) {
+        if (type === 9 /* CONTENT_WIDGET */) {
             return 'CONTENT_WIDGET';
         }
-        if (type === MouseTargetType.OVERVIEW_RULER) {
+        if (type === 10 /* OVERVIEW_RULER */) {
             return 'OVERVIEW_RULER';
         }
-        if (type === MouseTargetType.SCROLLBAR) {
+        if (type === 11 /* SCROLLBAR */) {
             return 'SCROLLBAR';
         }
-        if (type === MouseTargetType.OVERLAY_WIDGET) {
+        if (type === 12 /* OVERLAY_WIDGET */) {
             return 'OVERLAY_WIDGET';
         }
         return 'UNKNOWN';
@@ -94,6 +95,11 @@ var ElementPath = /** @class */ (function () {
     };
     ElementPath.isChildOfViewLines = function (path) {
         return (path.length >= 4
+            && path[0] === 3 /* OverflowGuard */
+            && path[3] === 7 /* ViewLines */);
+    };
+    ElementPath.isStrictChildOfViewLines = function (path) {
+        return (path.length > 4
             && path[0] === 3 /* OverflowGuard */
             && path[3] === 7 /* ViewLines */);
     };
@@ -135,17 +141,20 @@ var HitTestContext = /** @class */ (function () {
         this._viewHelper = viewHelper;
     }
     HitTestContext.prototype.getZoneAtCoord = function (mouseVerticalOffset) {
+        return HitTestContext.getZoneAtCoord(this._context, mouseVerticalOffset);
+    };
+    HitTestContext.getZoneAtCoord = function (context, mouseVerticalOffset) {
         // The target is either a view zone or the empty space after the last view-line
-        var viewZoneWhitespace = this._context.viewLayout.getWhitespaceAtVerticalOffset(mouseVerticalOffset);
+        var viewZoneWhitespace = context.viewLayout.getWhitespaceAtVerticalOffset(mouseVerticalOffset);
         if (viewZoneWhitespace) {
-            var viewZoneMiddle = viewZoneWhitespace.verticalOffset + viewZoneWhitespace.height / 2, lineCount = this._context.model.getLineCount(), positionBefore = null, position = void 0, positionAfter = null;
+            var viewZoneMiddle = viewZoneWhitespace.verticalOffset + viewZoneWhitespace.height / 2, lineCount = context.model.getLineCount(), positionBefore = null, position = void 0, positionAfter = null;
             if (viewZoneWhitespace.afterLineNumber !== lineCount) {
                 // There are more lines after this view zone
                 positionAfter = new Position(viewZoneWhitespace.afterLineNumber + 1, 1);
             }
             if (viewZoneWhitespace.afterLineNumber > 0) {
                 // There are more lines above this view zone
-                positionBefore = new Position(viewZoneWhitespace.afterLineNumber, this._context.model.getLineMaxColumn(viewZoneWhitespace.afterLineNumber));
+                positionBefore = new Position(viewZoneWhitespace.afterLineNumber, context.model.getLineMaxColumn(viewZoneWhitespace.afterLineNumber));
             }
             if (positionAfter === null) {
                 position = positionBefore;
@@ -227,6 +236,7 @@ var HitTestContext = /** @class */ (function () {
     };
     return HitTestContext;
 }());
+export { HitTestContext };
 var BareHitTestRequest = /** @class */ (function () {
     function BareHitTestRequest(ctx, editorPos, pos) {
         this.editorPos = editorPos;
@@ -269,7 +279,12 @@ var HitTestRequest = /** @class */ (function (_super) {
     return HitTestRequest;
 }(BareHitTestRequest));
 var EMPTY_CONTENT_AFTER_LINES = { isAfterLines: true };
-var EMPTY_CONTENT_IN_LINES = { isAfterLines: false };
+function createEmptyContentDataInLines(horizontalDistanceToText) {
+    return {
+        isAfterLines: false,
+        horizontalDistanceToText: horizontalDistanceToText
+    };
+}
 var MouseTargetFactory = /** @class */ (function () {
     function MouseTargetFactory(context, viewHelper) {
         this._context = context;
@@ -298,7 +313,7 @@ var MouseTargetFactory = /** @class */ (function () {
         }
         catch (err) {
             // console.log(err);
-            return request.fulfill(MouseTargetType.UNKNOWN);
+            return request.fulfill(0 /* UNKNOWN */);
         }
     };
     MouseTargetFactory._createMouseTarget = function (ctx, request, domHitTestExecuted) {
@@ -307,7 +322,7 @@ var MouseTargetFactory = /** @class */ (function () {
         if (request.target === null) {
             if (domHitTestExecuted) {
                 // Still no target... and we have already executed hit test...
-                return request.fulfill(MouseTargetType.UNKNOWN);
+                return request.fulfill(0 /* UNKNOWN */);
             }
             var hitTestResult = MouseTargetFactory._doHitTest(ctx, request);
             if (hitTestResult.position) {
@@ -315,28 +330,30 @@ var MouseTargetFactory = /** @class */ (function () {
             }
             return this._createMouseTarget(ctx, request.withTarget(hitTestResult.hitTarget), true);
         }
+        // we know for a fact that request.target is not null
+        var resolvedRequest = request;
         var result = null;
-        result = result || MouseTargetFactory._hitTestContentWidget(ctx, request);
-        result = result || MouseTargetFactory._hitTestOverlayWidget(ctx, request);
-        result = result || MouseTargetFactory._hitTestMinimap(ctx, request);
-        result = result || MouseTargetFactory._hitTestScrollbarSlider(ctx, request);
-        result = result || MouseTargetFactory._hitTestViewZone(ctx, request);
-        result = result || MouseTargetFactory._hitTestMargin(ctx, request);
-        result = result || MouseTargetFactory._hitTestViewCursor(ctx, request);
-        result = result || MouseTargetFactory._hitTestTextArea(ctx, request);
-        result = result || MouseTargetFactory._hitTestViewLines(ctx, request, domHitTestExecuted);
-        result = result || MouseTargetFactory._hitTestScrollbar(ctx, request);
-        return (result || request.fulfill(MouseTargetType.UNKNOWN));
+        result = result || MouseTargetFactory._hitTestContentWidget(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestOverlayWidget(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestMinimap(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestScrollbarSlider(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestViewZone(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestMargin(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestViewCursor(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestTextArea(ctx, resolvedRequest);
+        result = result || MouseTargetFactory._hitTestViewLines(ctx, resolvedRequest, domHitTestExecuted);
+        result = result || MouseTargetFactory._hitTestScrollbar(ctx, resolvedRequest);
+        return (result || request.fulfill(0 /* UNKNOWN */));
     };
     MouseTargetFactory._hitTestContentWidget = function (ctx, request) {
         // Is it a content widget?
         if (ElementPath.isChildOfContentWidgets(request.targetPath) || ElementPath.isChildOfOverflowingContentWidgets(request.targetPath)) {
             var widgetId = ctx.findAttribute(request.target, 'widgetId');
             if (widgetId) {
-                return request.fulfill(MouseTargetType.CONTENT_WIDGET, null, null, widgetId);
+                return request.fulfill(9 /* CONTENT_WIDGET */, null, null, widgetId);
             }
             else {
-                return request.fulfill(MouseTargetType.UNKNOWN);
+                return request.fulfill(0 /* UNKNOWN */);
             }
         }
         return null;
@@ -346,10 +363,10 @@ var MouseTargetFactory = /** @class */ (function () {
         if (ElementPath.isChildOfOverlayWidgets(request.targetPath)) {
             var widgetId = ctx.findAttribute(request.target, 'widgetId');
             if (widgetId) {
-                return request.fulfill(MouseTargetType.OVERLAY_WIDGET, null, null, widgetId);
+                return request.fulfill(12 /* OVERLAY_WIDGET */, null, null, widgetId);
             }
             else {
-                return request.fulfill(MouseTargetType.UNKNOWN);
+                return request.fulfill(0 /* UNKNOWN */);
             }
         }
         return null;
@@ -358,10 +375,10 @@ var MouseTargetFactory = /** @class */ (function () {
         if (request.target) {
             // Check if we've hit a painted cursor
             var lastViewCursorsRenderData = ctx.lastViewCursorsRenderData;
-            for (var i = 0, len = lastViewCursorsRenderData.length; i < len; i++) {
-                var d = lastViewCursorsRenderData[i];
+            for (var _i = 0, lastViewCursorsRenderData_1 = lastViewCursorsRenderData; _i < lastViewCursorsRenderData_1.length; _i++) {
+                var d = lastViewCursorsRenderData_1[_i];
                 if (request.target === d.domNode) {
-                    return request.fulfill(MouseTargetType.CONTENT_TEXT, d.position);
+                    return request.fulfill(6 /* CONTENT_TEXT */, d.position);
                 }
             }
         }
@@ -373,8 +390,8 @@ var MouseTargetFactory = /** @class */ (function () {
             var lastViewCursorsRenderData = ctx.lastViewCursorsRenderData;
             var mouseContentHorizontalOffset = request.mouseContentHorizontalOffset;
             var mouseVerticalOffset = request.mouseVerticalOffset;
-            for (var i = 0, len = lastViewCursorsRenderData.length; i < len; i++) {
-                var d = lastViewCursorsRenderData[i];
+            for (var _a = 0, lastViewCursorsRenderData_2 = lastViewCursorsRenderData; _a < lastViewCursorsRenderData_2.length; _a++) {
+                var d = lastViewCursorsRenderData_2[_a];
                 if (mouseContentHorizontalOffset < d.contentLeft) {
                     // mouse position is to the left of the cursor
                     continue;
@@ -386,7 +403,7 @@ var MouseTargetFactory = /** @class */ (function () {
                 var cursorVerticalOffset = ctx.getVerticalOffsetForLineNumber(d.position.lineNumber);
                 if (cursorVerticalOffset <= mouseVerticalOffset
                     && mouseVerticalOffset <= cursorVerticalOffset + d.height) {
-                    return request.fulfill(MouseTargetType.CONTENT_TEXT, d.position);
+                    return request.fulfill(6 /* CONTENT_TEXT */, d.position);
                 }
             }
         }
@@ -395,7 +412,7 @@ var MouseTargetFactory = /** @class */ (function () {
     MouseTargetFactory._hitTestViewZone = function (ctx, request) {
         var viewZoneData = ctx.getZoneAtCoord(request.mouseVerticalOffset);
         if (viewZoneData) {
-            var mouseTargetType = (request.isInContentArea ? MouseTargetType.CONTENT_VIEW_ZONE : MouseTargetType.GUTTER_VIEW_ZONE);
+            var mouseTargetType = (request.isInContentArea ? 8 /* CONTENT_VIEW_ZONE */ : 5 /* GUTTER_VIEW_ZONE */);
             return request.fulfill(mouseTargetType, viewZoneData.position, null, viewZoneData);
         }
         return null;
@@ -403,7 +420,7 @@ var MouseTargetFactory = /** @class */ (function () {
     MouseTargetFactory._hitTestTextArea = function (ctx, request) {
         // Is it the textarea?
         if (ElementPath.isTextArea(request.targetPath)) {
-            return request.fulfill(MouseTargetType.TEXTAREA);
+            return request.fulfill(1 /* TEXTAREA */);
         }
         return null;
     };
@@ -414,6 +431,7 @@ var MouseTargetFactory = /** @class */ (function () {
             var offset = Math.abs(request.pos.x - request.editorPos.x);
             var detail = {
                 isAfterLines: res.isAfterLines,
+                glyphMarginLeft: ctx.layoutInfo.glyphMarginLeft,
                 glyphMarginWidth: ctx.layoutInfo.glyphMarginWidth,
                 lineNumbersWidth: ctx.layoutInfo.lineNumbersWidth,
                 offsetX: offset
@@ -421,16 +439,16 @@ var MouseTargetFactory = /** @class */ (function () {
             offset -= ctx.layoutInfo.glyphMarginLeft;
             if (offset <= ctx.layoutInfo.glyphMarginWidth) {
                 // On the glyph margin
-                return request.fulfill(MouseTargetType.GUTTER_GLYPH_MARGIN, pos, res.range, detail);
+                return request.fulfill(2 /* GUTTER_GLYPH_MARGIN */, pos, res.range, detail);
             }
             offset -= ctx.layoutInfo.glyphMarginWidth;
             if (offset <= ctx.layoutInfo.lineNumbersWidth) {
                 // On the line numbers
-                return request.fulfill(MouseTargetType.GUTTER_LINE_NUMBERS, pos, res.range, detail);
+                return request.fulfill(3 /* GUTTER_LINE_NUMBERS */, pos, res.range, detail);
             }
             offset -= ctx.layoutInfo.lineNumbersWidth;
             // On the line decorations
-            return request.fulfill(MouseTargetType.GUTTER_LINE_DECORATIONS, pos, res.range, detail);
+            return request.fulfill(4 /* GUTTER_LINE_DECORATIONS */, pos, res.range, detail);
         }
         return null;
     };
@@ -443,11 +461,21 @@ var MouseTargetFactory = /** @class */ (function () {
             // This most likely indicates it happened after the last view-line
             var lineCount = ctx.model.getLineCount();
             var maxLineColumn = ctx.model.getLineMaxColumn(lineCount);
-            return request.fulfill(MouseTargetType.CONTENT_EMPTY, new Position(lineCount, maxLineColumn), void 0, EMPTY_CONTENT_AFTER_LINES);
+            return request.fulfill(7 /* CONTENT_EMPTY */, new Position(lineCount, maxLineColumn), undefined, EMPTY_CONTENT_AFTER_LINES);
         }
         if (domHitTestExecuted) {
+            // Check if we are hitting a view-line (can happen in the case of inline decorations on empty lines)
+            // See https://github.com/Microsoft/vscode/issues/46942
+            if (ElementPath.isStrictChildOfViewLines(request.targetPath)) {
+                var lineNumber = ctx.getLineNumberAtVerticalOffset(request.mouseVerticalOffset);
+                if (ctx.model.getLineLength(lineNumber) === 0) {
+                    var lineWidth = ctx.getLineWidth(lineNumber);
+                    var detail = createEmptyContentDataInLines(request.mouseContentHorizontalOffset - lineWidth);
+                    return request.fulfill(7 /* CONTENT_EMPTY */, new Position(lineNumber, 1), undefined, detail);
+                }
+            }
             // We have already executed hit test...
-            return request.fulfill(MouseTargetType.UNKNOWN);
+            return request.fulfill(0 /* UNKNOWN */);
         }
         var hitTestResult = MouseTargetFactory._doHitTest(ctx, request);
         if (hitTestResult.position) {
@@ -459,7 +487,7 @@ var MouseTargetFactory = /** @class */ (function () {
         if (ElementPath.isChildOfMinimap(request.targetPath)) {
             var possibleLineNumber = ctx.getLineNumberAtVerticalOffset(request.mouseVerticalOffset);
             var maxColumn = ctx.model.getLineMaxColumn(possibleLineNumber);
-            return request.fulfill(MouseTargetType.SCROLLBAR, new Position(possibleLineNumber, maxColumn));
+            return request.fulfill(11 /* SCROLLBAR */, new Position(possibleLineNumber, maxColumn));
         }
         return null;
     };
@@ -470,7 +498,7 @@ var MouseTargetFactory = /** @class */ (function () {
                 if (className && /\b(slider|scrollbar)\b/.test(className)) {
                     var possibleLineNumber = ctx.getLineNumberAtVerticalOffset(request.mouseVerticalOffset);
                     var maxColumn = ctx.model.getLineMaxColumn(possibleLineNumber);
-                    return request.fulfill(MouseTargetType.SCROLLBAR, new Position(possibleLineNumber, maxColumn));
+                    return request.fulfill(11 /* SCROLLBAR */, new Position(possibleLineNumber, maxColumn));
                 }
             }
         }
@@ -482,7 +510,7 @@ var MouseTargetFactory = /** @class */ (function () {
         if (ElementPath.isChildOfScrollableElement(request.targetPath)) {
             var possibleLineNumber = ctx.getLineNumberAtVerticalOffset(request.mouseVerticalOffset);
             var maxColumn = ctx.model.getLineMaxColumn(possibleLineNumber);
-            return request.fulfill(MouseTargetType.SCROLLBAR, new Position(possibleLineNumber, maxColumn));
+            return request.fulfill(11 /* SCROLLBAR */, new Position(possibleLineNumber, maxColumn));
         }
         return null;
     };
@@ -504,17 +532,19 @@ var MouseTargetFactory = /** @class */ (function () {
         if (request.mouseContentHorizontalOffset > lineWidth) {
             if (browser.isEdge && pos.column === 1) {
                 // See https://github.com/Microsoft/vscode/issues/10875
-                return request.fulfill(MouseTargetType.CONTENT_EMPTY, new Position(lineNumber, ctx.model.getLineMaxColumn(lineNumber)), void 0, EMPTY_CONTENT_IN_LINES);
+                var detail_1 = createEmptyContentDataInLines(request.mouseContentHorizontalOffset - lineWidth);
+                return request.fulfill(7 /* CONTENT_EMPTY */, new Position(lineNumber, ctx.model.getLineMaxColumn(lineNumber)), undefined, detail_1);
             }
-            return request.fulfill(MouseTargetType.CONTENT_EMPTY, pos, void 0, EMPTY_CONTENT_IN_LINES);
+            var detail = createEmptyContentDataInLines(request.mouseContentHorizontalOffset - lineWidth);
+            return request.fulfill(7 /* CONTENT_EMPTY */, pos, undefined, detail);
         }
         var visibleRange = ctx.visibleRangeForPosition2(lineNumber, column);
         if (!visibleRange) {
-            return request.fulfill(MouseTargetType.UNKNOWN, pos);
+            return request.fulfill(0 /* UNKNOWN */, pos);
         }
         var columnHorizontalOffset = visibleRange.left;
         if (request.mouseContentHorizontalOffset === columnHorizontalOffset) {
-            return request.fulfill(MouseTargetType.CONTENT_TEXT, pos);
+            return request.fulfill(6 /* CONTENT_TEXT */, pos);
         }
         var points = [];
         points.push({ offset: visibleRange.left, column: column });
@@ -537,10 +567,10 @@ var MouseTargetFactory = /** @class */ (function () {
             var curr = points[i];
             if (prev.offset <= request.mouseContentHorizontalOffset && request.mouseContentHorizontalOffset <= curr.offset) {
                 var rng = new EditorRange(lineNumber, prev.column, lineNumber, curr.column);
-                return request.fulfill(MouseTargetType.CONTENT_TEXT, pos, rng);
+                return request.fulfill(6 /* CONTENT_TEXT */, pos, rng);
             }
         }
-        return request.fulfill(MouseTargetType.CONTENT_TEXT, pos);
+        return request.fulfill(6 /* CONTENT_TEXT */, pos);
     };
     /**
      * Most probably WebKit browsers and Edge
@@ -576,7 +606,7 @@ var MouseTargetFactory = /** @class */ (function () {
         }
         // Chrome always hits a TEXT_NODE, while Edge sometimes hits a token span
         var startContainer = range.startContainer;
-        var hitTarget;
+        var hitTarget = null;
         if (startContainer.nodeType === startContainer.TEXT_NODE) {
             // startContainer is expected to be the token text
             var parent1 = startContainer.parentNode; // expected to be the token span

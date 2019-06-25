@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,10 +16,8 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import { toggleClass } from '../../../base/browser/dom.js';
-import { Position } from '../../common/core/position.js';
-import * as editorBrowser from '../../browser/editorBrowser.js';
-import { Widget } from '../../../base/browser/ui/widget.js';
 import { DomScrollableElement } from '../../../base/browser/ui/scrollbar/scrollableElement.js';
+import { Widget } from '../../../base/browser/ui/widget.js';
 import { dispose } from '../../../base/common/lifecycle.js';
 var ContentHoverWidget = /** @class */ (function (_super) {
     __extends(ContentHoverWidget, _super);
@@ -47,10 +47,11 @@ var ContentHoverWidget = /** @class */ (function (_super) {
                 _this.updateFont();
             }
         }));
-        _this._editor.onDidLayoutChange(function (e) { return _this.updateMaxHeight(); });
-        _this.updateMaxHeight();
+        _this._editor.onDidLayoutChange(function (e) { return _this.layout(); });
+        _this.layout();
         _this._editor.addContentWidget(_this);
         _this._showAtPosition = null;
+        _this._showAtRange = null;
         return _this;
     }
     Object.defineProperty(ContentHoverWidget.prototype, "isVisible", {
@@ -70,9 +71,10 @@ var ContentHoverWidget = /** @class */ (function (_super) {
     ContentHoverWidget.prototype.getDomNode = function () {
         return this._containerDomNode;
     };
-    ContentHoverWidget.prototype.showAt = function (position, focus) {
+    ContentHoverWidget.prototype.showAt = function (position, range, focus) {
         // Position has changed
-        this._showAtPosition = new Position(position.lineNumber, position.column);
+        this._showAtPosition = position;
+        this._showAtRange = range;
         this.isVisible = true;
         this._editor.layoutContentWidget(this);
         // Simply force a synchronous render on the editor
@@ -97,9 +99,10 @@ var ContentHoverWidget = /** @class */ (function (_super) {
         if (this.isVisible) {
             return {
                 position: this._showAtPosition,
+                range: this._showAtRange,
                 preference: [
-                    editorBrowser.ContentWidgetPositionPreference.ABOVE,
-                    editorBrowser.ContentWidgetPositionPreference.BELOW
+                    1 /* ABOVE */,
+                    2 /* BELOW */
                 ]
             };
         }
@@ -125,12 +128,13 @@ var ContentHoverWidget = /** @class */ (function (_super) {
     ContentHoverWidget.prototype.onContentsChange = function () {
         this.scrollbar.scanDomNode();
     };
-    ContentHoverWidget.prototype.updateMaxHeight = function () {
+    ContentHoverWidget.prototype.layout = function () {
         var height = Math.max(this._editor.getLayoutInfo().height / 4, 250);
         var _a = this._editor.getConfiguration().fontInfo, fontSize = _a.fontSize, lineHeight = _a.lineHeight;
         this._domNode.style.fontSize = fontSize + "px";
         this._domNode.style.lineHeight = lineHeight + "px";
         this._domNode.style.maxHeight = height + "px";
+        this._domNode.style.maxWidth = Math.max(this._editor.getLayoutInfo().width * 0.66, 500) + "px";
     };
     return ContentHoverWidget;
 }(Widget));

@@ -2,44 +2,56 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { Position } from '../core/position.js';
-import * as strings from '../../../base/common/strings.js';
-import { TextModel } from '../model/textModel.js';
-import { Selection } from '../core/selection.js';
-import { Range } from '../core/range.js';
-import { LanguageConfigurationRegistry } from '../modes/languageConfigurationRegistry.js';
 import { onUnexpectedError } from '../../../base/common/errors.js';
+import * as strings from '../../../base/common/strings.js';
+import { Position } from '../core/position.js';
+import { Range } from '../core/range.js';
+import { Selection } from '../core/selection.js';
+import { TextModel } from '../model/textModel.js';
+import { LanguageConfigurationRegistry } from '../modes/languageConfigurationRegistry.js';
+var autoCloseAlways = function () { return true; };
+var autoCloseNever = function () { return false; };
+var autoCloseBeforeWhitespace = function (chr) { return (chr === ' ' || chr === '\t'); };
 var CursorConfiguration = /** @class */ (function () {
-    function CursorConfiguration(languageIdentifier, oneIndent, modelOptions, configuration) {
+    function CursorConfiguration(languageIdentifier, modelOptions, configuration) {
         this._languageIdentifier = languageIdentifier;
         var c = configuration.editor;
         this.readOnly = c.readOnly;
         this.tabSize = modelOptions.tabSize;
+        this.indentSize = modelOptions.indentSize;
         this.insertSpaces = modelOptions.insertSpaces;
-        this.oneIndent = oneIndent;
-        this.pageSize = Math.floor(c.layoutInfo.height / c.fontInfo.lineHeight) - 2;
+        this.pageSize = Math.max(1, Math.floor(c.layoutInfo.height / c.fontInfo.lineHeight) - 2);
         this.lineHeight = c.lineHeight;
         this.useTabStops = c.useTabStops;
         this.wordSeparators = c.wordSeparators;
         this.emptySelectionClipboard = c.emptySelectionClipboard;
+        this.copyWithSyntaxHighlighting = c.copyWithSyntaxHighlighting;
+        this.multiCursorMergeOverlapping = c.multiCursorMergeOverlapping;
         this.autoClosingBrackets = c.autoClosingBrackets;
+        this.autoClosingQuotes = c.autoClosingQuotes;
+        this.autoSurround = c.autoSurround;
         this.autoIndent = c.autoIndent;
         this.autoClosingPairsOpen = {};
         this.autoClosingPairsClose = {};
         this.surroundingPairs = {};
         this._electricChars = null;
+        this.shouldAutoCloseBefore = {
+            quote: CursorConfiguration._getShouldAutoClose(languageIdentifier, this.autoClosingQuotes),
+            bracket: CursorConfiguration._getShouldAutoClose(languageIdentifier, this.autoClosingBrackets)
+        };
         var autoClosingPairs = CursorConfiguration._getAutoClosingPairs(languageIdentifier);
         if (autoClosingPairs) {
-            for (var i = 0; i < autoClosingPairs.length; i++) {
-                this.autoClosingPairsOpen[autoClosingPairs[i].open] = autoClosingPairs[i].close;
-                this.autoClosingPairsClose[autoClosingPairs[i].close] = autoClosingPairs[i].open;
+            for (var _i = 0, autoClosingPairs_1 = autoClosingPairs; _i < autoClosingPairs_1.length; _i++) {
+                var pair = autoClosingPairs_1[_i];
+                this.autoClosingPairsOpen[pair.open] = pair.close;
+                this.autoClosingPairsClose[pair.close] = pair.open;
             }
         }
         var surroundingPairs = CursorConfiguration._getSurroundingPairs(languageIdentifier);
         if (surroundingPairs) {
-            for (var i = 0; i < surroundingPairs.length; i++) {
-                this.surroundingPairs[surroundingPairs[i].open] = surroundingPairs[i].close;
+            for (var _a = 0, surroundingPairs_1 = surroundingPairs; _a < surroundingPairs_1.length; _a++) {
+                var pair = surroundingPairs_1[_a];
+                this.surroundingPairs[pair.open] = pair.close;
             }
         }
     }
@@ -47,7 +59,10 @@ var CursorConfiguration = /** @class */ (function () {
         return (e.layoutInfo
             || e.wordSeparators
             || e.emptySelectionClipboard
+            || e.multiCursorMergeOverlapping
             || e.autoClosingBrackets
+            || e.autoClosingQuotes
+            || e.autoSurround
             || e.useTabStops
             || e.lineHeight
             || e.readOnly);
@@ -58,8 +73,9 @@ var CursorConfiguration = /** @class */ (function () {
                 this._electricChars = {};
                 var electricChars = CursorConfiguration._getElectricCharacters(this._languageIdentifier);
                 if (electricChars) {
-                    for (var i = 0; i < electricChars.length; i++) {
-                        this._electricChars[electricChars[i]] = true;
+                    for (var _i = 0, electricChars_1 = electricChars; _i < electricChars_1.length; _i++) {
+                        var char = electricChars_1[_i];
+                        this._electricChars[char] = true;
                     }
                 }
             }
@@ -69,7 +85,7 @@ var CursorConfiguration = /** @class */ (function () {
         configurable: true
     });
     CursorConfiguration.prototype.normalizeIndentation = function (str) {
-        return TextModel.normalizeIndentation(str, this.tabSize, this.insertSpaces);
+        return TextModel.normalizeIndentation(str, this.indentSize, this.insertSpaces);
     };
     CursorConfiguration._getElectricCharacters = function (languageIdentifier) {
         try {
@@ -87,6 +103,28 @@ var CursorConfiguration = /** @class */ (function () {
         catch (e) {
             onUnexpectedError(e);
             return null;
+        }
+    };
+    CursorConfiguration._getShouldAutoClose = function (languageIdentifier, autoCloseConfig) {
+        switch (autoCloseConfig) {
+            case 'beforeWhitespace':
+                return autoCloseBeforeWhitespace;
+            case 'languageDefined':
+                return CursorConfiguration._getLanguageDefinedShouldAutoClose(languageIdentifier);
+            case 'always':
+                return autoCloseAlways;
+            case 'never':
+                return autoCloseNever;
+        }
+    };
+    CursorConfiguration._getLanguageDefinedShouldAutoClose = function (languageIdentifier) {
+        try {
+            var autoCloseBeforeSet_1 = LanguageConfigurationRegistry.getAutoCloseBeforeSet(languageIdentifier.id);
+            return function (c) { return autoCloseBeforeSet_1.indexOf(c) !== -1; };
+        }
+        catch (e) {
+            onUnexpectedError(e);
+            return autoCloseNever;
         }
     };
     CursorConfiguration._getSurroundingPairs = function (languageIdentifier) {
@@ -162,7 +200,7 @@ var CursorContext = /** @class */ (function () {
     function CursorContext(configuration, model, viewModel) {
         this.model = model;
         this.viewModel = viewModel;
-        this.config = new CursorConfiguration(this.model.getLanguageIdentifier(), this.model.getOneIndent(), this.model.getOptions(), configuration);
+        this.config = new CursorConfiguration(this.model.getLanguageIdentifier(), this.model.getOptions(), configuration);
     }
     CursorContext.prototype.validateViewPosition = function (viewPosition, modelPosition) {
         return this.viewModel.coordinatesConverter.validateViewPosition(viewPosition, modelPosition);
@@ -201,16 +239,32 @@ var CursorContext = /** @class */ (function () {
     return CursorContext;
 }());
 export { CursorContext };
+var PartialModelCursorState = /** @class */ (function () {
+    function PartialModelCursorState(modelState) {
+        this.modelState = modelState;
+        this.viewState = null;
+    }
+    return PartialModelCursorState;
+}());
+export { PartialModelCursorState };
+var PartialViewCursorState = /** @class */ (function () {
+    function PartialViewCursorState(viewState) {
+        this.modelState = null;
+        this.viewState = viewState;
+    }
+    return PartialViewCursorState;
+}());
+export { PartialViewCursorState };
 var CursorState = /** @class */ (function () {
     function CursorState(modelState, viewState) {
         this.modelState = modelState;
         this.viewState = viewState;
     }
     CursorState.fromModelState = function (modelState) {
-        return new CursorState(modelState, null);
+        return new PartialModelCursorState(modelState);
     };
     CursorState.fromViewState = function (viewState) {
-        return new CursorState(null, viewState);
+        return new PartialViewCursorState(viewState);
     };
     CursorState.fromModelSelection = function (modelSelection) {
         var selectionStartLineNumber = modelSelection.selectionStartLineNumber;
@@ -275,7 +329,7 @@ var CursorColumns = /** @class */ (function () {
         for (var i = 0; i < endOffset; i++) {
             var charCode = lineContent.charCodeAt(i);
             if (charCode === 9 /* Tab */) {
-                result = this.nextTabStop(result, tabSize);
+                result = this.nextRenderTabStop(result, tabSize);
             }
             else if (strings.isFullWidthCharacter(charCode)) {
                 result = result + 2;
@@ -299,7 +353,7 @@ var CursorColumns = /** @class */ (function () {
             var charCode = lineContent.charCodeAt(i);
             var afterVisibleColumn = void 0;
             if (charCode === 9 /* Tab */) {
-                afterVisibleColumn = this.nextTabStop(beforeVisibleColumn, tabSize);
+                afterVisibleColumn = this.nextRenderTabStop(beforeVisibleColumn, tabSize);
             }
             else if (strings.isFullWidthCharacter(charCode)) {
                 afterVisibleColumn = beforeVisibleColumn + 2;
@@ -337,15 +391,30 @@ var CursorColumns = /** @class */ (function () {
     /**
      * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
      */
-    CursorColumns.nextTabStop = function (visibleColumn, tabSize) {
+    CursorColumns.nextRenderTabStop = function (visibleColumn, tabSize) {
         return visibleColumn + tabSize - visibleColumn % tabSize;
     };
     /**
      * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
      */
-    CursorColumns.prevTabStop = function (column, tabSize) {
+    CursorColumns.nextIndentTabStop = function (visibleColumn, indentSize) {
+        return visibleColumn + indentSize - visibleColumn % indentSize;
+    };
+    /**
+     * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
+     */
+    CursorColumns.prevRenderTabStop = function (column, tabSize) {
         return column - 1 - (column - 1) % tabSize;
+    };
+    /**
+     * ATTENTION: This works with 0-based columns (as oposed to the regular 1-based columns)
+     */
+    CursorColumns.prevIndentTabStop = function (column, indentSize) {
+        return column - 1 - (column - 1) % indentSize;
     };
     return CursorColumns;
 }());
 export { CursorColumns };
+export function isQuote(ch) {
+    return (ch === '\'' || ch === '"' || ch === '`');
+}

@@ -4,16 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 'use strict';
 import * as ts from './lib/typescriptServices.js';
-import { contents as libdts } from './lib/lib-ts.js';
-import { contents as libes6ts } from './lib/lib-es6-ts.js';
-var Promise = monaco.Promise;
+import { lib_dts, lib_es6_dts } from './lib/lib.js';
 var DEFAULT_LIB = {
     NAME: 'defaultLib:lib.d.ts',
-    CONTENTS: libdts
+    CONTENTS: lib_dts
 };
 var ES6_LIB = {
     NAME: 'defaultLib:lib.es6.d.ts',
-    CONTENTS: libes6ts
+    CONTENTS: lib_es6_dts
 };
 var TypeScriptWorker = /** @class */ (function () {
     function TypeScriptWorker(ctx, createData) {
@@ -45,9 +43,12 @@ var TypeScriptWorker = /** @class */ (function () {
         if (model) {
             return model.version.toString();
         }
-        else if (this.isDefaultLibFileName(fileName) || fileName in this._extraLibs) {
-            // extra lib and default lib are static
+        else if (this.isDefaultLibFileName(fileName)) {
+            // default lib is static
             return '1';
+        }
+        else if (fileName in this._extraLibs) {
+            return String(this._extraLibs[fileName].version);
         }
     };
     TypeScriptWorker.prototype.getScriptSnapshot = function (fileName) {
@@ -58,8 +59,8 @@ var TypeScriptWorker = /** @class */ (function () {
             text = model.getValue();
         }
         else if (fileName in this._extraLibs) {
-            // static extra lib
-            text = this._extraLibs[fileName];
+            // extra lib
+            text = this._extraLibs[fileName].content;
         }
         else if (fileName === DEFAULT_LIB.NAME) {
             text = DEFAULT_LIB.CONTENTS;
@@ -99,56 +100,70 @@ var TypeScriptWorker = /** @class */ (function () {
         return fileName === this.getDefaultLibFileName(this._compilerOptions);
     };
     // --- language features
+    TypeScriptWorker.clearFiles = function (diagnostics) {
+        // Clear the `file` field, which cannot be JSON'yfied because it
+        // contains cyclic data structures.
+        diagnostics.forEach(function (diag) {
+            diag.file = undefined;
+            var related = diag.relatedInformation;
+            if (related) {
+                related.forEach(function (diag2) { return diag2.file = undefined; });
+            }
+        });
+    };
     TypeScriptWorker.prototype.getSyntacticDiagnostics = function (fileName) {
         var diagnostics = this._languageService.getSyntacticDiagnostics(fileName);
-        diagnostics.forEach(function (diag) { return diag.file = undefined; }); // diag.file cannot be JSON'yfied
-        return Promise.as(diagnostics);
+        TypeScriptWorker.clearFiles(diagnostics);
+        return Promise.resolve(diagnostics);
     };
     TypeScriptWorker.prototype.getSemanticDiagnostics = function (fileName) {
         var diagnostics = this._languageService.getSemanticDiagnostics(fileName);
-        diagnostics.forEach(function (diag) { return diag.file = undefined; }); // diag.file cannot be JSON'yfied
-        return Promise.as(diagnostics);
+        TypeScriptWorker.clearFiles(diagnostics);
+        return Promise.resolve(diagnostics);
     };
     TypeScriptWorker.prototype.getCompilerOptionsDiagnostics = function (fileName) {
         var diagnostics = this._languageService.getCompilerOptionsDiagnostics();
-        diagnostics.forEach(function (diag) { return diag.file = undefined; }); // diag.file cannot be JSON'yfied
-        return Promise.as(diagnostics);
+        TypeScriptWorker.clearFiles(diagnostics);
+        return Promise.resolve(diagnostics);
     };
     TypeScriptWorker.prototype.getCompletionsAtPosition = function (fileName, position) {
-        return Promise.as(this._languageService.getCompletionsAtPosition(fileName, position, undefined));
+        return Promise.resolve(this._languageService.getCompletionsAtPosition(fileName, position, undefined));
     };
     TypeScriptWorker.prototype.getCompletionEntryDetails = function (fileName, position, entry) {
-        return Promise.as(this._languageService.getCompletionEntryDetails(fileName, position, entry, undefined, undefined));
+        return Promise.resolve(this._languageService.getCompletionEntryDetails(fileName, position, entry, undefined, undefined, undefined));
     };
     TypeScriptWorker.prototype.getSignatureHelpItems = function (fileName, position) {
-        return Promise.as(this._languageService.getSignatureHelpItems(fileName, position));
+        return Promise.resolve(this._languageService.getSignatureHelpItems(fileName, position, undefined));
     };
     TypeScriptWorker.prototype.getQuickInfoAtPosition = function (fileName, position) {
-        return Promise.as(this._languageService.getQuickInfoAtPosition(fileName, position));
+        return Promise.resolve(this._languageService.getQuickInfoAtPosition(fileName, position));
     };
     TypeScriptWorker.prototype.getOccurrencesAtPosition = function (fileName, position) {
-        return Promise.as(this._languageService.getOccurrencesAtPosition(fileName, position));
+        return Promise.resolve(this._languageService.getOccurrencesAtPosition(fileName, position));
     };
     TypeScriptWorker.prototype.getDefinitionAtPosition = function (fileName, position) {
-        return Promise.as(this._languageService.getDefinitionAtPosition(fileName, position));
+        return Promise.resolve(this._languageService.getDefinitionAtPosition(fileName, position));
     };
     TypeScriptWorker.prototype.getReferencesAtPosition = function (fileName, position) {
-        return Promise.as(this._languageService.getReferencesAtPosition(fileName, position));
+        return Promise.resolve(this._languageService.getReferencesAtPosition(fileName, position));
     };
     TypeScriptWorker.prototype.getNavigationBarItems = function (fileName) {
-        return Promise.as(this._languageService.getNavigationBarItems(fileName));
+        return Promise.resolve(this._languageService.getNavigationBarItems(fileName));
     };
     TypeScriptWorker.prototype.getFormattingEditsForDocument = function (fileName, options) {
-        return Promise.as(this._languageService.getFormattingEditsForDocument(fileName, options));
+        return Promise.resolve(this._languageService.getFormattingEditsForDocument(fileName, options));
     };
     TypeScriptWorker.prototype.getFormattingEditsForRange = function (fileName, start, end, options) {
-        return Promise.as(this._languageService.getFormattingEditsForRange(fileName, start, end, options));
+        return Promise.resolve(this._languageService.getFormattingEditsForRange(fileName, start, end, options));
     };
     TypeScriptWorker.prototype.getFormattingEditsAfterKeystroke = function (fileName, postion, ch, options) {
-        return Promise.as(this._languageService.getFormattingEditsAfterKeystroke(fileName, postion, ch, options));
+        return Promise.resolve(this._languageService.getFormattingEditsAfterKeystroke(fileName, postion, ch, options));
     };
     TypeScriptWorker.prototype.getEmitOutput = function (fileName) {
-        return Promise.as(this._languageService.getEmitOutput(fileName));
+        return Promise.resolve(this._languageService.getEmitOutput(fileName));
+    };
+    TypeScriptWorker.prototype.updateExtraLibs = function (extraLibs) {
+        this._extraLibs = extraLibs;
     };
     return TypeScriptWorker;
 }());

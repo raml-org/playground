@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var hasDifferentOriginAncestorFlag = false;
 var sameOriginWindowChainCache = null;
 function getParentWindowIfSameOrigin(w) {
@@ -46,7 +45,8 @@ var IframeUtils = /** @class */ (function () {
     IframeUtils.getSameOriginWindowChain = function () {
         if (!sameOriginWindowChainCache) {
             sameOriginWindowChainCache = [];
-            var w = window, parent_1;
+            var w = window;
+            var parent_1;
             do {
                 parent_1 = getParentWindowIfSameOrigin(w);
                 if (parent_1) {
@@ -88,8 +88,8 @@ var IframeUtils = /** @class */ (function () {
         }
         var top = 0, left = 0;
         var windowChain = this.getSameOriginWindowChain();
-        for (var i = 0; i < windowChain.length; i++) {
-            var windowChainEl = windowChain[i];
+        for (var _i = 0, windowChain_1 = windowChain; _i < windowChain_1.length; _i++) {
+            var windowChainEl = windowChain_1[_i];
             if (windowChainEl.window === ancestorWindow) {
                 break;
             }

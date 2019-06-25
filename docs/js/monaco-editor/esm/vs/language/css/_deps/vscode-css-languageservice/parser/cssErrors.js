@@ -45,4 +45,3 @@ export var ParseError = {
     WhitespaceExpected: new CSSIssueType('css-whitespaceexpected', localize('expected.whitespace', "whitespace expected")),
     MediaQueryExpected: new CSSIssueType('css-mediaqueryexpected', localize('expected.mediaquery', "media query expected"))
 };
-//# sourceMappingURL=cssErrors.js.map

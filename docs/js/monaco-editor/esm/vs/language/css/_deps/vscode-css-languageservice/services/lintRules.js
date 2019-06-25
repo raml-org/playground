@@ -19,6 +19,16 @@ var Rule = /** @class */ (function () {
     return Rule;
 }());
 export { Rule };
+var Setting = /** @class */ (function () {
+    function Setting(id, message, defaultValue) {
+        this.id = id;
+        this.message = message;
+        this.defaultValue = defaultValue;
+        // nothing to do
+    }
+    return Setting;
+}());
+export { Setting };
 export var Rules = {
     AllVendorPrefixes: new Rule('compatibleVendorPrefixes', localize('rule.vendorprefixes.all', "When using a vendor-specific prefix make sure to also include all other vendor-specific properties"), Ignore),
     IncludeStandardPropertyWhenUsingVendorPrefix: new Rule('vendorPrefix', localize('rule.standardvendorprefix.all', "When using a vendor-specific prefix also include the standard property"), Warning),
@@ -32,6 +42,7 @@ export var Rules = {
     HexColorLength: new Rule('hexColorLength', localize('rule.hexColor', "Hex colors must consist of three, four, six or eight hex numbers"), Error),
     ArgsInColorFunction: new Rule('argumentsInColorFunction', localize('rule.colorFunction', "Invalid number of parameters"), Error),
     UnknownProperty: new Rule('unknownProperties', localize('rule.unknownProperty', "Unknown property."), Warning),
+    UnknownAtRules: new Rule('unknownAtRules', localize('rule.unknownAtRules', "Unknown at-rule."), Warning),
     IEStarHack: new Rule('ieHack', localize('rule.ieHack', "IE hacks are only necessary when supporting IE7 and older"), Ignore),
     UnknownVendorSpecificProperty: new Rule('unknownVendorSpecificProperties', localize('rule.unknownVendorSpecificProperty', "Unknown vendor specific property."), Ignore),
     PropertyIgnoredDueToDisplay: new Rule('propertyIgnoredDueToDisplay', localize('rule.propertyIgnoredDueToDisplay', "Property is ignored due to the display."), Warning),
@@ -39,12 +50,15 @@ export var Rules = {
     AvoidFloat: new Rule('float', localize('rule.avoidFloat', "Avoid using 'float'. Floats lead to fragile CSS that is easy to break if one aspect of the layout changes."), Ignore),
     AvoidIdSelector: new Rule('idSelector', localize('rule.avoidIdSelector', "Selectors should not contain IDs because these rules are too tightly coupled with the HTML."), Ignore),
 };
+export var Settings = {
+    ValidProperties: new Setting('validProperties', localize('rule.validProperties', "A list of properties that are not validated against the `unknownProperties` rule."), [])
+};
 var LintConfigurationSettings = /** @class */ (function () {
     function LintConfigurationSettings(conf) {
         if (conf === void 0) { conf = {}; }
         this.conf = conf;
     }
-    LintConfigurationSettings.prototype.get = function (rule) {
+    LintConfigurationSettings.prototype.getRule = function (rule) {
         if (this.conf.hasOwnProperty(rule.id)) {
             var level = toLevel(this.conf[rule.id]);
             if (level) {
@@ -52,6 +66,9 @@ var LintConfigurationSettings = /** @class */ (function () {
             }
         }
         return rule.defaultValue;
+    };
+    LintConfigurationSettings.prototype.getSetting = function (setting) {
+        return this.conf[setting.id];
     };
     return LintConfigurationSettings;
 }());
@@ -64,4 +81,3 @@ function toLevel(level) {
     }
     return null;
 }
-//# sourceMappingURL=lintRules.js.map

@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var _typeof = {
     number: 'number',
     string: 'string',
@@ -30,12 +29,6 @@ export function isString(str) {
         return true;
     }
     return false;
-}
-/**
- * @returns whether the provided parameter is a JavaScript Array and each element in the array is a string.
- */
-export function isStringArray(value) {
-    return isArray(value) && value.every(function (elem) { return isString(elem); });
 }
 /**
  *
@@ -101,16 +94,6 @@ export function isEmptyObject(obj) {
 export function isFunction(obj) {
     return typeof obj === _typeof.function;
 }
-/**
- * @returns whether the provided parameters is are JavaScript Function or not.
- */
-export function areFunctions() {
-    var objects = [];
-    for (var _i = 0; _i < arguments.length; _i++) {
-        objects[_i] = arguments[_i];
-    }
-    return objects && objects.length > 0 && objects.every(isFunction);
-}
 export function validateConstraints(args, constraints) {
     var len = Math.min(args.length, constraints.length);
     for (var i = 0; i < len; i++) {
@@ -124,8 +107,13 @@ export function validateConstraint(arg, constraint) {
         }
     }
     else if (isFunction(constraint)) {
-        if (arg instanceof constraint) {
-            return;
+        try {
+            if (arg instanceof constraint) {
+                return;
+            }
+        }
+        catch (_a) {
+            // ignore
         }
         if (!isUndefinedOrNull(arg) && arg.constructor === constraint) {
             return;
@@ -136,16 +124,24 @@ export function validateConstraint(arg, constraint) {
         throw new Error("argument does not match one of these constraints: arg instanceof constraint, arg.constructor === constraint, nor constraint(arg) === true");
     }
 }
-/**
- * Creates a new object of the provided class and will call the constructor with
- * any additional argument supplied.
- */
-export function create(ctor) {
-    var args = [];
-    for (var _i = 1; _i < arguments.length; _i++) {
-        args[_i - 1] = arguments[_i];
+export function getAllPropertyNames(obj) {
+    var res = [];
+    var proto = Object.getPrototypeOf(obj);
+    while (Object.prototype !== proto) {
+        res = res.concat(Object.getOwnPropertyNames(proto));
+        proto = Object.getPrototypeOf(proto);
     }
-    var obj = Object.create(ctor.prototype);
-    ctor.apply(obj, args);
-    return obj;
+    return res;
+}
+/**
+ * Converts null to undefined, passes all other values through.
+ */
+export function withNullAsUndefined(x) {
+    return x === null ? undefined : x;
+}
+/**
+ * Converts undefined to null, passes all other values through.
+ */
+export function withUndefinedAsNull(x) {
+    return typeof x === 'undefined' ? null : x;
 }

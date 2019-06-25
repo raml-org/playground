@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -15,22 +17,23 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import './media/diffReview.css';
 import * as nls from '../../../nls.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
 import * as dom from '../../../base/browser/dom.js';
 import { createFastDomNode } from '../../../base/browser/fastDomNode.js';
-import { renderViewLine2 as renderViewLine, RenderLineInput } from '../../common/viewLayout/viewLineRenderer.js';
-import { LineTokens } from '../../common/core/lineTokens.js';
-import { Configuration } from '../config/configuration.js';
-import { Position } from '../../common/core/position.js';
-import { registerThemingParticipant } from '../../../platform/theme/common/themeService.js';
-import { scrollbarShadow } from '../../../platform/theme/common/colorRegistry.js';
-import { DomScrollableElement } from '../../../base/browser/ui/scrollbar/scrollableElement.js';
-import { editorLineNumbers } from '../../common/view/editorColorRegistry.js';
 import { ActionBar } from '../../../base/browser/ui/actionbar/actionbar.js';
+import { DomScrollableElement } from '../../../base/browser/ui/scrollbar/scrollableElement.js';
 import { Action } from '../../../base/common/actions.js';
-import { registerEditorAction, EditorAction } from '../editorExtensions.js';
-import { ContextKeyExpr } from '../../../platform/contextkey/common/contextkey.js';
+import { Disposable } from '../../../base/common/lifecycle.js';
+import { Configuration } from '../config/configuration.js';
+import { EditorAction, registerEditorAction } from '../editorExtensions.js';
 import { ICodeEditorService } from '../services/codeEditorService.js';
+import { LineTokens } from '../../common/core/lineTokens.js';
+import { Position } from '../../common/core/position.js';
+import { editorLineNumbers } from '../../common/view/editorColorRegistry.js';
+import { RenderLineInput, renderViewLine2 as renderViewLine } from '../../common/viewLayout/viewLineRenderer.js';
+import { ViewLineRenderingData } from '../../common/viewModel/viewModel.js';
+import { ContextKeyExpr } from '../../../platform/contextkey/common/contextkey.js';
+import { scrollbarShadow } from '../../../platform/theme/common/colorRegistry.js';
+import { registerThemingParticipant } from '../../../platform/theme/common/themeService.js';
 var DIFF_LINES_PADDING = 3;
 var DiffEntry = /** @class */ (function () {
     function DiffEntry(originalLineStart, originalLineEnd, modifiedLineStart, modifiedLineEnd) {
@@ -70,7 +73,7 @@ var DiffReview = /** @class */ (function (_super) {
         _this._actionBar = _this._register(new ActionBar(_this.actionBarContainer.domNode));
         _this._actionBar.push(new Action('diffreview.close', nls.localize('label.close', "Close"), 'close-diff-review', true, function () {
             _this.hide();
-            return null;
+            return Promise.resolve(null);
         }), { label: false, icon: true });
         _this.domNode = createFastDomNode(document.createElement('div'));
         _this.domNode.setClassName('diff-review monaco-editor-background');
@@ -91,12 +94,12 @@ var DiffReview = /** @class */ (function (_super) {
             }
             _this._render();
         }));
-        _this._register(diffEditor.getOriginalEditor().onDidFocusEditor(function () {
+        _this._register(diffEditor.getOriginalEditor().onDidFocusEditorWidget(function () {
             if (_this._isVisible) {
                 _this.hide();
             }
         }));
-        _this._register(diffEditor.getModifiedEditor().onDidFocusEditor(function () {
+        _this._register(diffEditor.getModifiedEditor().onDidFocusEditorWidget(function () {
             if (_this._isVisible) {
                 _this.hide();
             }
@@ -433,8 +436,7 @@ var DiffReview = /** @class */ (function (_super) {
             this.scrollbar.scanDomNode();
             return;
         }
-        var pos = this._diffEditor.getPosition();
-        var diffIndex = this._findDiffIndex(pos);
+        var diffIndex = this._findDiffIndex(this._diffEditor.getPosition());
         if (this._diffs[diffIndex] === this._currentDiff) {
             return;
         }
@@ -471,9 +473,34 @@ var DiffReview = /** @class */ (function (_super) {
         header.className = 'diff-review-row';
         var cell = document.createElement('div');
         cell.className = 'diff-review-cell diff-review-summary';
-        cell.appendChild(document.createTextNode(diffIndex + 1 + "/" + this._diffs.length + ": @@ -" + minOriginalLine + "," + (maxOriginalLine - minOriginalLine + 1) + " +" + minModifiedLine + "," + (maxModifiedLine - minModifiedLine + 1) + " @@"));
+        var originalChangedLinesCnt = maxOriginalLine - minOriginalLine + 1;
+        var modifiedChangedLinesCnt = maxModifiedLine - minModifiedLine + 1;
+        cell.appendChild(document.createTextNode(diffIndex + 1 + "/" + this._diffs.length + ": @@ -" + minOriginalLine + "," + originalChangedLinesCnt + " +" + minModifiedLine + "," + modifiedChangedLinesCnt + " @@"));
         header.setAttribute('data-line', String(minModifiedLine));
-        header.setAttribute('aria-label', nls.localize('header', "Difference {0} of {1}: original {2}, {3} lines, modified {4}, {5} lines", (diffIndex + 1), this._diffs.length, minOriginalLine, maxOriginalLine - minOriginalLine + 1, minModifiedLine, maxModifiedLine - minModifiedLine + 1));
+        var getAriaLines = function (lines) {
+            if (lines === 0) {
+                return nls.localize('no_lines', "no lines");
+            }
+            else if (lines === 1) {
+                return nls.localize('one_line', "1 line");
+            }
+            else {
+                return nls.localize('more_lines', "{0} lines", lines);
+            }
+        };
+        var originalChangedLinesCntAria = getAriaLines(originalChangedLinesCnt);
+        var modifiedChangedLinesCntAria = getAriaLines(modifiedChangedLinesCnt);
+        header.setAttribute('aria-label', nls.localize({
+            key: 'header',
+            comment: [
+                'This is the ARIA label for a git diff header.',
+                'A git diff header looks like this: @@ -154,12 +159,39 @@.',
+                'That encodes that at original line 154 (which is now line 159), 12 lines were removed/changed with 39 lines.',
+                'Variables 0 and 1 refer to the diff index out of total number of diffs.',
+                'Variables 2 and 4 will be numbers (a line number).',
+                'Variables 3 and 5 will be "no lines", "1 line" or "X lines", localized separately.'
+            ]
+        }, "Difference {0} of {1}: original {2}, {3}, modified {4}, {5}", (diffIndex + 1), this._diffs.length, minOriginalLine, originalChangedLinesCntAria, minModifiedLine, modifiedChangedLinesCntAria));
         header.appendChild(cell);
         // @@ -504,7 +517,7 @@
         header.setAttribute('role', 'listitem');
@@ -567,7 +594,7 @@ var DiffReview = /** @class */ (function (_super) {
             if (lineContent.length === 0) {
                 lineContent = nls.localize('blankLine', "blank");
             }
-            var ariaLabel = void 0;
+            var ariaLabel = '';
             switch (type) {
                 case 0 /* Equal */:
                     ariaLabel = nls.localize('equalLine', "original {0}, modified {1}: {2}", originalLine, modifiedLine, lineContent);
@@ -592,7 +619,9 @@ var DiffReview = /** @class */ (function (_super) {
         tokens[0] = lineContent.length;
         tokens[1] = defaultMetadata;
         var lineTokens = new LineTokens(tokens, lineContent);
-        var r = renderViewLine(new RenderLineInput((config.fontInfo.isMonospace && !config.viewInfo.disableMonospaceOptimizations), lineContent, model.mightContainRTL(), 0, lineTokens, [], tabSize, config.fontInfo.spaceWidth, config.viewInfo.stopRenderingLineAfter, config.viewInfo.renderWhitespace, config.viewInfo.renderControlCharacters, config.viewInfo.fontLigatures));
+        var isBasicASCII = ViewLineRenderingData.isBasicASCII(lineContent, model.mightContainNonBasicASCII());
+        var containsRTL = ViewLineRenderingData.containsRTL(lineContent, isBasicASCII, model.mightContainRTL());
+        var r = renderViewLine(new RenderLineInput((config.fontInfo.isMonospace && !config.viewInfo.disableMonospaceOptimizations), config.fontInfo.canUseHalfwidthRightwardsArrow, lineContent, false, isBasicASCII, containsRTL, 0, lineTokens, [], tabSize, config.fontInfo.spaceWidth, config.viewInfo.stopRenderingLineAfter, config.viewInfo.renderWhitespace, config.viewInfo.renderControlCharacters, config.viewInfo.fontLigatures));
         return r.html;
     };
     return DiffReview;
@@ -619,7 +648,8 @@ var DiffReviewNext = /** @class */ (function (_super) {
             precondition: ContextKeyExpr.has('isInDiffEditor'),
             kbOpts: {
                 kbExpr: null,
-                primary: 65 /* F7 */
+                primary: 65 /* F7 */,
+                weight: 100 /* EditorContrib */
             }
         }) || this;
     }
@@ -641,7 +671,8 @@ var DiffReviewPrev = /** @class */ (function (_super) {
             precondition: ContextKeyExpr.has('isInDiffEditor'),
             kbOpts: {
                 kbExpr: null,
-                primary: 1024 /* Shift */ | 65 /* F7 */
+                primary: 1024 /* Shift */ | 65 /* F7 */,
+                weight: 100 /* EditorContrib */
             }
         }) || this;
     }

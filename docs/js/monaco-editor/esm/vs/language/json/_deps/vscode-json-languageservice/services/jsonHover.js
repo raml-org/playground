@@ -2,7 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
+import * as Parser from '../parser/jsonParser.js';
 import { Range } from '../../vscode-languageserver-types/main.js';
 var JSONHover = /** @class */ (function () {
     function JSONHover(schemaService, contributions, promiseConstructor) {
@@ -14,22 +14,21 @@ var JSONHover = /** @class */ (function () {
     JSONHover.prototype.doHover = function (document, position, doc) {
         var offset = document.offsetAt(position);
         var node = doc.getNodeFromOffset(offset);
-        if (!node || (node.type === 'object' || node.type === 'array') && offset > node.start + 1 && offset < node.end - 1) {
+        if (!node || (node.type === 'object' || node.type === 'array') && offset > node.offset + 1 && offset < node.offset + node.length - 1) {
             return this.promise.resolve(null);
         }
         var hoverRangeNode = node;
         // use the property description when hovering over an object key
         if (node.type === 'string') {
-            var stringNode = node;
-            if (stringNode.isKey) {
-                var propertyNode = node.parent;
-                node = propertyNode.value;
+            var parent = node.parent;
+            if (parent && parent.type === 'property' && parent.keyNode === node) {
+                node = parent.valueNode;
                 if (!node) {
                     return this.promise.resolve(null);
                 }
             }
         }
-        var hoverRange = Range.create(document.positionAt(hoverRangeNode.start), document.positionAt(hoverRangeNode.end));
+        var hoverRange = Range.create(document.positionAt(hoverRangeNode.offset), document.positionAt(hoverRangeNode.offset + hoverRangeNode.length));
         var createHover = function (contents) {
             var result = {
                 contents: contents,
@@ -37,7 +36,7 @@ var JSONHover = /** @class */ (function () {
             };
             return result;
         };
-        var location = node.getPath();
+        var location = Parser.getNodePath(node);
         for (var i = this.contributions.length - 1; i >= 0; i--) {
             var contribution = this.contributions[i];
             var promise = contribution.getInfoContribution(document.uri, location);
@@ -47,7 +46,7 @@ var JSONHover = /** @class */ (function () {
         }
         return this.schemaService.getSchemaForResource(document.uri, doc).then(function (schema) {
             if (schema) {
-                var matchingSchemas = doc.getMatchingSchemas(schema.schema, node.start);
+                var matchingSchemas = doc.getMatchingSchemas(schema.schema, node.offset);
                 var title_1 = null;
                 var markdownDescription_1 = null;
                 var markdownEnumValueDescription_1 = null, enumValue_1 = null;
@@ -56,7 +55,7 @@ var JSONHover = /** @class */ (function () {
                         title_1 = title_1 || s.schema.title;
                         markdownDescription_1 = markdownDescription_1 || s.schema.markdownDescription || toMarkdown(s.schema.description);
                         if (s.schema.enum) {
-                            var idx = s.schema.enum.indexOf(node.getValue());
+                            var idx = s.schema.enum.indexOf(Parser.getNodeValue(node));
                             if (s.schema.markdownEnumDescriptions) {
                                 markdownEnumValueDescription_1 = s.schema.markdownEnumDescriptions[idx];
                             }
@@ -104,4 +103,3 @@ function toMarkdown(plain) {
     }
     return void 0;
 }
-//# sourceMappingURL=jsonHover.js.map

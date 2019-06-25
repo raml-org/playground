@@ -2,17 +2,15 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import './zoneWidget.css';
+import * as dom from '../../../base/browser/dom.js';
+import { Sash } from '../../../base/browser/ui/sash/sash.js';
+import { Color, RGBA } from '../../../base/common/color.js';
+import { IdGenerator } from '../../../base/common/idGenerator.js';
 import { dispose } from '../../../base/common/lifecycle.js';
 import * as objects from '../../../base/common/objects.js';
-import * as dom from '../../../base/browser/dom.js';
-import { Sash, Orientation } from '../../../base/browser/ui/sash/sash.js';
 import { Range } from '../../common/core/range.js';
-import { Color, RGBA } from '../../../base/common/color.js';
 import { ModelDecorationOptions } from '../../common/model/textModel.js';
-import { IdGenerator } from '../../../base/common/idGenerator.js';
-import { TrackedRangeStickiness } from '../../common/model.js';
 var defaultColor = new Color(new RGBA(0, 122, 204));
 var defaultOptions = {
     showArrow: true,
@@ -94,7 +92,7 @@ var Arrow = /** @class */ (function () {
         dom.createCSSRule(".monaco-editor " + this._ruleName, "border-style: solid; border-color: transparent; border-bottom-color: " + this._color + "; border-width: " + this._height + "px; bottom: -" + this._height + "px; margin-left: -" + this._height + "px; ");
     };
     Arrow.prototype.show = function (where) {
-        this._decorations = this._editor.deltaDecorations(this._decorations, [{ range: Range.fromPositions(where), options: { className: this._ruleName, stickiness: TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges } }]);
+        this._decorations = this._editor.deltaDecorations(this._decorations, [{ range: Range.fromPositions(where), options: { className: this._ruleName, stickiness: 1 /* NeverGrowsWhenTypingAtEdges */ } }]);
     };
     Arrow.prototype.hide = function () {
         this._editor.deltaDecorations(this._decorations, []);
@@ -104,8 +102,8 @@ var Arrow = /** @class */ (function () {
 }());
 var ZoneWidget = /** @class */ (function () {
     function ZoneWidget(editor, options) {
-        if (options === void 0) { options = {}; }
         var _this = this;
+        if (options === void 0) { options = {}; }
         this._positionMarkerId = [];
         this._disposables = [];
         this._isShowing = false;
@@ -133,15 +131,20 @@ var ZoneWidget = /** @class */ (function () {
         }
         if (this._viewZone) {
             this.editor.changeViewZones(function (accessor) {
-                accessor.removeZone(_this._viewZone.id);
+                if (_this._viewZone) {
+                    accessor.removeZone(_this._viewZone.id);
+                }
                 _this._viewZone = null;
             });
         }
         this.editor.deltaDecorations(this._positionMarkerId, []);
+        this._positionMarkerId = [];
     };
     ZoneWidget.prototype.create = function () {
         dom.addClass(this.domNode, 'zone-widget');
-        dom.addClass(this.domNode, this.options.className);
+        if (this.options.className) {
+            dom.addClass(this.domNode, this.options.className);
+        }
         this.container = document.createElement('div');
         dom.addClass(this.container, 'zone-widget-container');
         this.domNode.appendChild(this.container);
@@ -163,12 +166,12 @@ var ZoneWidget = /** @class */ (function () {
         this._applyStyles();
     };
     ZoneWidget.prototype._applyStyles = function () {
-        if (this.container) {
+        if (this.container && this.options.frameColor) {
             var frameColor = this.options.frameColor.toString();
             this.container.style.borderTopColor = frameColor;
             this.container.style.borderBottomColor = frameColor;
         }
-        if (this._arrow) {
+        if (this._arrow && this.options.arrowColor) {
             var arrowColor = this.options.arrowColor.toString();
             this._arrow.color = arrowColor;
         }
@@ -197,10 +200,18 @@ var ZoneWidget = /** @class */ (function () {
     Object.defineProperty(ZoneWidget.prototype, "position", {
         get: function () {
             var id = this._positionMarkerId[0];
-            if (id) {
-                return this.editor.getModel().getDecorationRange(id).getStartPosition();
+            if (!id) {
+                return undefined;
             }
-            return undefined;
+            var model = this.editor.getModel();
+            if (!model) {
+                return undefined;
+            }
+            var range = model.getDecorationRange(id);
+            if (!range) {
+                return undefined;
+            }
+            return range.getStartPosition();
         },
         enumerable: true,
         configurable: true
@@ -218,7 +229,9 @@ var ZoneWidget = /** @class */ (function () {
         var _this = this;
         if (this._viewZone) {
             this.editor.changeViewZones(function (accessor) {
-                accessor.removeZone(_this._viewZone.id);
+                if (_this._viewZone) {
+                    accessor.removeZone(_this._viewZone.id);
+                }
             });
             this._viewZone = null;
         }
@@ -258,7 +271,7 @@ var ZoneWidget = /** @class */ (function () {
         viewZoneDomNode.style.overflow = 'hidden';
         var lineHeight = this.editor.getConfiguration().lineHeight;
         // adjust heightInLines to viewport
-        var maxHeightInLines = (this.editor.getLayoutInfo().height / lineHeight) * .8;
+        var maxHeightInLines = (this.editor.getLayoutInfo().height / lineHeight) * 0.8;
         if (heightInLines >= maxHeightInLines) {
             heightInLines = maxHeightInLines;
         }
@@ -302,9 +315,12 @@ var ZoneWidget = /** @class */ (function () {
         if (!this.options.keepEditorSelection) {
             this.editor.setSelection(where);
         }
-        // Reveal the line above or below the zone widget, to get the zone widget in the viewport
-        var revealLineNumber = Math.min(this.editor.getModel().getLineCount(), Math.max(1, where.endLineNumber + 1));
-        this.revealLine(revealLineNumber);
+        var model = this.editor.getModel();
+        if (model) {
+            // Reveal the line above or below the zone widget, to get the zone widget in the viewport
+            var revealLineNumber = Math.min(model.getLineCount(), Math.max(1, where.endLineNumber + 1));
+            this.revealLine(revealLineNumber);
+        }
     };
     ZoneWidget.prototype.revealLine = function (lineNumber) {
         this.editor.revealLine(lineNumber, 0 /* Smooth */);
@@ -323,20 +339,22 @@ var ZoneWidget = /** @class */ (function () {
     };
     ZoneWidget.prototype._relayout = function (newHeightInLines) {
         var _this = this;
-        if (this._viewZone.heightInLines !== newHeightInLines) {
+        if (this._viewZone && this._viewZone.heightInLines !== newHeightInLines) {
             this.editor.changeViewZones(function (accessor) {
-                _this._viewZone.heightInLines = newHeightInLines;
-                accessor.layoutZone(_this._viewZone.id);
+                if (_this._viewZone) {
+                    _this._viewZone.heightInLines = newHeightInLines;
+                    accessor.layoutZone(_this._viewZone.id);
+                }
             });
         }
     };
     // --- sash
     ZoneWidget.prototype._initSash = function () {
         var _this = this;
-        this._resizeSash = new Sash(this.domNode, this, { orientation: Orientation.HORIZONTAL });
+        this._resizeSash = new Sash(this.domNode, this, { orientation: 1 /* HORIZONTAL */ });
         if (!this.options.isResizeable) {
             this._resizeSash.hide();
-            this._resizeSash.disable();
+            this._resizeSash.state = 0 /* Disabled */;
         }
         var data;
         this._disposables.push(this._resizeSash.onDidStart(function (e) {
@@ -365,7 +383,7 @@ var ZoneWidget = /** @class */ (function () {
         return 0;
     };
     ZoneWidget.prototype.getHorizontalSashTop = function () {
-        return parseInt(this.domNode.style.height) - (this._decoratingElementsHeight() / 2);
+        return (this.domNode.style.height === null ? 0 : parseInt(this.domNode.style.height)) - (this._decoratingElementsHeight() / 2);
     };
     ZoneWidget.prototype.getHorizontalSashWidth = function () {
         var layoutInfo = this.editor.getLayoutInfo();

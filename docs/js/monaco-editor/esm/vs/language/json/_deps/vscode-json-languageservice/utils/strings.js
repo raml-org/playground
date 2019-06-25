@@ -1,8 +1,7 @@
 /*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-'use strict';
+*  Copyright (c) Microsoft Corporation. All rights reserved.
+*  Licensed under the MIT License. See License.txt in the project root for license information.
+*--------------------------------------------------------------------------------------------*/
 export function startsWith(haystack, needle) {
     if (haystack.length < needle.length) {
         return false;
@@ -43,4 +42,3 @@ export function repeat(value, count) {
     }
     return s;
 }
-//# sourceMappingURL=strings.js.map

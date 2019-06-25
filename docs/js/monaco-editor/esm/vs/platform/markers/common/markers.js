@@ -2,7 +2,6 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { localize } from '../../../nls.js';
 import Severity from '../../../base/common/severity.js';
@@ -53,7 +52,7 @@ export var IMarkerData;
         else {
             result.push(emptyString);
         }
-        if (markerData.severity !== void 0 && markerData.severity !== null) {
+        if (markerData.severity !== undefined && markerData.severity !== null) {
             result.push(MarkerSeverity.toString(markerData.severity));
         }
         else {
@@ -65,25 +64,25 @@ export var IMarkerData;
         else {
             result.push(emptyString);
         }
-        if (markerData.startLineNumber !== void 0 && markerData.startLineNumber !== null) {
+        if (markerData.startLineNumber !== undefined && markerData.startLineNumber !== null) {
             result.push(markerData.startLineNumber.toString());
         }
         else {
             result.push(emptyString);
         }
-        if (markerData.startColumn !== void 0 && markerData.startColumn !== null) {
+        if (markerData.startColumn !== undefined && markerData.startColumn !== null) {
             result.push(markerData.startColumn.toString());
         }
         else {
             result.push(emptyString);
         }
-        if (markerData.endLineNumber !== void 0 && markerData.endLineNumber !== null) {
+        if (markerData.endLineNumber !== undefined && markerData.endLineNumber !== null) {
             result.push(markerData.endLineNumber.toString());
         }
         else {
             result.push(emptyString);
         }
-        if (markerData.endColumn !== void 0 && markerData.endColumn !== null) {
+        if (markerData.endColumn !== undefined && markerData.endColumn !== null) {
             result.push(markerData.endColumn.toString());
         }
         else {

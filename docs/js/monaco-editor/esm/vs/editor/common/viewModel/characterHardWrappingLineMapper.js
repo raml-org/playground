@@ -2,11 +2,13 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -14,11 +16,10 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import * as strings from '../../../base/common/strings.js';
-import { PrefixSumComputer } from './prefixSumComputer.js';
-import { OutputPosition } from './splitLinesCollection.js';
 import { CharacterClassifier } from '../core/characterClassifier.js';
 import { toUint32Array } from '../core/uint.js';
-import { WrappingIndent } from '../config/editorOptions.js';
+import { PrefixSumComputer } from './prefixSumComputer.js';
+import { OutputPosition } from './splitLinesCollection.js';
 var WrappingCharacterClassifier = /** @class */ (function (_super) {
     __extends(WrappingCharacterClassifier, _super);
     function WrappingCharacterClassifier(BREAK_BEFORE, BREAK_AFTER, BREAK_OBTRUSIVE) {
@@ -73,14 +74,23 @@ var CharacterHardWrappingLineMapperFactory = /** @class */ (function () {
         var wrappedTextIndentVisibleColumn = 0;
         var wrappedTextIndent = '';
         var firstNonWhitespaceIndex = -1;
-        if (hardWrappingIndent !== WrappingIndent.None) {
+        if (hardWrappingIndent !== 0 /* None */) {
             firstNonWhitespaceIndex = strings.firstNonWhitespaceIndex(lineText);
             if (firstNonWhitespaceIndex !== -1) {
+                // Track existing indent
                 wrappedTextIndent = lineText.substring(0, firstNonWhitespaceIndex);
                 for (var i = 0; i < firstNonWhitespaceIndex; i++) {
                     wrappedTextIndentVisibleColumn = CharacterHardWrappingLineMapperFactory.nextVisibleColumn(wrappedTextIndentVisibleColumn, tabSize, lineText.charCodeAt(i) === 9 /* Tab */, 1);
                 }
-                if (hardWrappingIndent === WrappingIndent.Indent) {
+                // Increase indent of continuation lines, if desired
+                var numberOfAdditionalTabs = 0;
+                if (hardWrappingIndent === 2 /* Indent */) {
+                    numberOfAdditionalTabs = 1;
+                }
+                else if (hardWrappingIndent === 3 /* DeepIndent */) {
+                    numberOfAdditionalTabs = 2;
+                }
+                for (var i = 0; i < numberOfAdditionalTabs; i++) {
                     wrappedTextIndent += '\t';
                     wrappedTextIndentVisibleColumn = CharacterHardWrappingLineMapperFactory.nextVisibleColumn(wrappedTextIndentVisibleColumn, tabSize, true, 1);
                 }
@@ -118,7 +128,7 @@ var CharacterHardWrappingLineMapperFactory = /** @class */ (function () {
             if (charCodeClass === 4 /* BREAK_IDEOGRAPHIC */ && i > 0) {
                 var prevCode = lineText.charCodeAt(i - 1);
                 var prevClass = classifier.get(prevCode);
-                if (prevClass !== 1 /* BREAK_BEFORE */) {
+                if (prevClass !== 1 /* BREAK_BEFORE */) { // Kinsoku Shori: Don't break after a leading character, like an open bracket
                     niceBreakOffset = i;
                     niceBreakVisibleColumn = wrappedTextIndentVisibleColumn;
                 }
@@ -171,7 +181,7 @@ var CharacterHardWrappingLineMapperFactory = /** @class */ (function () {
                 // Advance obtrusiveBreakVisibleColumn
                 obtrusiveBreakVisibleColumn = CharacterHardWrappingLineMapperFactory.nextVisibleColumn(obtrusiveBreakVisibleColumn, tabSize, charCodeIsTab, charColumnSize);
             }
-            if (charCodeClass === 2 /* BREAK_AFTER */ && (hardWrappingIndent === WrappingIndent.None || i >= firstNonWhitespaceIndex)) {
+            if (charCodeClass === 2 /* BREAK_AFTER */ && (hardWrappingIndent === 0 /* None */ || i >= firstNonWhitespaceIndex)) {
                 // This is a character that indicates that a break should happen after it
                 niceBreakOffset = i + 1;
                 niceBreakVisibleColumn = wrappedTextIndentVisibleColumn;
@@ -180,7 +190,7 @@ var CharacterHardWrappingLineMapperFactory = /** @class */ (function () {
             if (charCodeClass === 4 /* BREAK_IDEOGRAPHIC */ && i < len - 1) {
                 var nextCode = lineText.charCodeAt(i + 1);
                 var nextClass = classifier.get(nextCode);
-                if (nextClass !== 2 /* BREAK_AFTER */) {
+                if (nextClass !== 2 /* BREAK_AFTER */) { // Kinsoku Shori: Don't break before a trailing character, like a period
                     niceBreakOffset = i + 1;
                     niceBreakVisibleColumn = wrappedTextIndentVisibleColumn;
                 }

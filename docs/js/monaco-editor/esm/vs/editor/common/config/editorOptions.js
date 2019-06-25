@@ -2,92 +2,40 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-var __assign = (this && this.__assign) || Object.assign || function(t) {
-    for (var s, i = 1, n = arguments.length; i < n; i++) {
-        s = arguments[i];
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-            t[p] = s[p];
-    }
-    return t;
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
 };
 import * as nls from '../../../nls.js';
+import * as arrays from '../../../base/common/arrays.js';
+import * as objects from '../../../base/common/objects.js';
 import * as platform from '../../../base/common/platform.js';
-import { ScrollbarVisibility } from '../../../base/common/scrollable.js';
 import { USUAL_WORD_SEPARATORS } from '../model/wordHelper.js';
-export var RenderMinimap;
-(function (RenderMinimap) {
-    RenderMinimap[RenderMinimap["None"] = 0] = "None";
-    RenderMinimap[RenderMinimap["Small"] = 1] = "Small";
-    RenderMinimap[RenderMinimap["Large"] = 2] = "Large";
-    RenderMinimap[RenderMinimap["SmallBlocks"] = 3] = "SmallBlocks";
-    RenderMinimap[RenderMinimap["LargeBlocks"] = 4] = "LargeBlocks";
-})(RenderMinimap || (RenderMinimap = {}));
-/**
- * Describes how to indent wrapped lines.
- */
-export var WrappingIndent;
-(function (WrappingIndent) {
-    /**
-     * No indentation => wrapped lines begin at column 1.
-     */
-    WrappingIndent[WrappingIndent["None"] = 0] = "None";
-    /**
-     * Same => wrapped lines get the same indentation as the parent.
-     */
-    WrappingIndent[WrappingIndent["Same"] = 1] = "Same";
-    /**
-     * Indent => wrapped lines get +1 indentation as the parent.
-     */
-    WrappingIndent[WrappingIndent["Indent"] = 2] = "Indent";
-})(WrappingIndent || (WrappingIndent = {}));
-/**
- * The kind of animation in which the editor's cursor should be rendered.
- */
-export var TextEditorCursorBlinkingStyle;
-(function (TextEditorCursorBlinkingStyle) {
-    /**
-     * Hidden
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Hidden"] = 0] = "Hidden";
-    /**
-     * Blinking
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Blink"] = 1] = "Blink";
-    /**
-     * Blinking with smooth fading
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Smooth"] = 2] = "Smooth";
-    /**
-     * Blinking with prolonged filled state and smooth fading
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Phase"] = 3] = "Phase";
-    /**
-     * Expand collapse animation on the y axis
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Expand"] = 4] = "Expand";
-    /**
-     * No-Blinking
-     */
-    TextEditorCursorBlinkingStyle[TextEditorCursorBlinkingStyle["Solid"] = 5] = "Solid";
-})(TextEditorCursorBlinkingStyle || (TextEditorCursorBlinkingStyle = {}));
+import { isObject } from '../../../base/common/types.js';
 /**
  * @internal
  */
 export function blinkingStyleToString(blinkingStyle) {
-    if (blinkingStyle === TextEditorCursorBlinkingStyle.Blink) {
+    if (blinkingStyle === 1 /* Blink */) {
         return 'blink';
     }
-    else if (blinkingStyle === TextEditorCursorBlinkingStyle.Expand) {
+    else if (blinkingStyle === 4 /* Expand */) {
         return 'expand';
     }
-    else if (blinkingStyle === TextEditorCursorBlinkingStyle.Phase) {
+    else if (blinkingStyle === 3 /* Phase */) {
         return 'phase';
     }
-    else if (blinkingStyle === TextEditorCursorBlinkingStyle.Smooth) {
+    else if (blinkingStyle === 2 /* Smooth */) {
         return 'smooth';
     }
-    else if (blinkingStyle === TextEditorCursorBlinkingStyle.Solid) {
+    else if (blinkingStyle === 5 /* Solid */) {
         return 'solid';
     }
     else {
@@ -189,18 +137,23 @@ var InternalEditorOptions = /** @class */ (function () {
         this.readOnly = source.readOnly;
         this.accessibilitySupport = source.accessibilitySupport;
         this.multiCursorModifier = source.multiCursorModifier;
+        this.multiCursorMergeOverlapping = source.multiCursorMergeOverlapping;
         this.wordSeparators = source.wordSeparators;
         this.autoClosingBrackets = source.autoClosingBrackets;
+        this.autoClosingQuotes = source.autoClosingQuotes;
+        this.autoSurround = source.autoSurround;
         this.autoIndent = source.autoIndent;
         this.useTabStops = source.useTabStops;
         this.tabFocusMode = source.tabFocusMode;
         this.dragAndDrop = source.dragAndDrop;
         this.emptySelectionClipboard = source.emptySelectionClipboard;
+        this.copyWithSyntaxHighlighting = source.copyWithSyntaxHighlighting;
         this.layoutInfo = source.layoutInfo;
         this.fontInfo = source.fontInfo;
         this.viewInfo = source.viewInfo;
         this.wrappingInfo = source.wrappingInfo;
         this.contribInfo = source.contribInfo;
+        this.showUnused = source.showUnused;
     }
     /**
      * @internal
@@ -213,13 +166,18 @@ var InternalEditorOptions = /** @class */ (function () {
             && this.readOnly === other.readOnly
             && this.accessibilitySupport === other.accessibilitySupport
             && this.multiCursorModifier === other.multiCursorModifier
+            && this.multiCursorMergeOverlapping === other.multiCursorMergeOverlapping
             && this.wordSeparators === other.wordSeparators
             && this.autoClosingBrackets === other.autoClosingBrackets
+            && this.autoClosingQuotes === other.autoClosingQuotes
+            && this.autoSurround === other.autoSurround
             && this.autoIndent === other.autoIndent
             && this.useTabStops === other.useTabStops
             && this.tabFocusMode === other.tabFocusMode
             && this.dragAndDrop === other.dragAndDrop
+            && this.showUnused === other.showUnused
             && this.emptySelectionClipboard === other.emptySelectionClipboard
+            && this.copyWithSyntaxHighlighting === other.copyWithSyntaxHighlighting
             && InternalEditorOptions._equalsLayoutInfo(this.layoutInfo, other.layoutInfo)
             && this.fontInfo.equals(other.fontInfo)
             && InternalEditorOptions._equalsViewOptions(this.viewInfo, other.viewInfo)
@@ -238,13 +196,17 @@ var InternalEditorOptions = /** @class */ (function () {
             readOnly: (this.readOnly !== newOpts.readOnly),
             accessibilitySupport: (this.accessibilitySupport !== newOpts.accessibilitySupport),
             multiCursorModifier: (this.multiCursorModifier !== newOpts.multiCursorModifier),
+            multiCursorMergeOverlapping: (this.multiCursorMergeOverlapping !== newOpts.multiCursorMergeOverlapping),
             wordSeparators: (this.wordSeparators !== newOpts.wordSeparators),
             autoClosingBrackets: (this.autoClosingBrackets !== newOpts.autoClosingBrackets),
+            autoClosingQuotes: (this.autoClosingQuotes !== newOpts.autoClosingQuotes),
+            autoSurround: (this.autoSurround !== newOpts.autoSurround),
             autoIndent: (this.autoIndent !== newOpts.autoIndent),
             useTabStops: (this.useTabStops !== newOpts.useTabStops),
             tabFocusMode: (this.tabFocusMode !== newOpts.tabFocusMode),
             dragAndDrop: (this.dragAndDrop !== newOpts.dragAndDrop),
             emptySelectionClipboard: (this.emptySelectionClipboard !== newOpts.emptySelectionClipboard),
+            copyWithSyntaxHighlighting: (this.copyWithSyntaxHighlighting !== newOpts.copyWithSyntaxHighlighting),
             layoutInfo: (!InternalEditorOptions._equalsLayoutInfo(this.layoutInfo, newOpts.layoutInfo)),
             fontInfo: (!this.fontInfo.equals(newOpts.fontInfo)),
             viewInfo: (!InternalEditorOptions._equalsViewOptions(this.viewInfo, newOpts.viewInfo)),
@@ -293,10 +255,11 @@ var InternalEditorOptions = /** @class */ (function () {
     InternalEditorOptions._equalsViewOptions = function (a, b) {
         return (a.extraEditorClassName === b.extraEditorClassName
             && a.disableMonospaceOptimizations === b.disableMonospaceOptimizations
-            && this._equalsNumberArrays(a.rulers, b.rulers)
+            && arrays.equals(a.rulers, b.rulers)
             && a.ariaLabel === b.ariaLabel
             && a.renderLineNumbers === b.renderLineNumbers
             && a.renderCustomLineNumbers === b.renderCustomLineNumbers
+            && a.renderFinalNewline === b.renderFinalNewline
             && a.selectOnLineNumbers === b.selectOnLineNumbers
             && a.glyphMargin === b.glyphMargin
             && a.revealHorizontalRightPadding === b.revealHorizontalRightPadding
@@ -305,16 +268,19 @@ var InternalEditorOptions = /** @class */ (function () {
             && a.overviewRulerBorder === b.overviewRulerBorder
             && a.cursorBlinking === b.cursorBlinking
             && a.mouseWheelZoom === b.mouseWheelZoom
+            && a.cursorSmoothCaretAnimation === b.cursorSmoothCaretAnimation
             && a.cursorStyle === b.cursorStyle
             && a.cursorWidth === b.cursorWidth
             && a.hideCursorInOverviewRuler === b.hideCursorInOverviewRuler
             && a.scrollBeyondLastLine === b.scrollBeyondLastLine
+            && a.scrollBeyondLastColumn === b.scrollBeyondLastColumn
             && a.smoothScrolling === b.smoothScrolling
             && a.stopRenderingLineAfter === b.stopRenderingLineAfter
             && a.renderWhitespace === b.renderWhitespace
             && a.renderControlCharacters === b.renderControlCharacters
             && a.fontLigatures === b.fontLigatures
             && a.renderIndentGuides === b.renderIndentGuides
+            && a.highlightActiveIndentGuide === b.highlightActiveIndentGuide
             && a.renderLineHighlight === b.renderLineHighlight
             && this._equalsScrollbarOptions(a.scrollbar, b.scrollbar)
             && this._equalsMinimapOptions(a.minimap, b.minimap)
@@ -335,7 +301,8 @@ var InternalEditorOptions = /** @class */ (function () {
             && a.horizontalSliderSize === b.horizontalSliderSize
             && a.verticalScrollbarSize === b.verticalScrollbarSize
             && a.verticalSliderSize === b.verticalSliderSize
-            && a.mouseWheelScrollSensitivity === b.mouseWheelScrollSensitivity);
+            && a.mouseWheelScrollSensitivity === b.mouseWheelScrollSensitivity
+            && a.fastScrollSensitivity === b.fastScrollSensitivity);
     };
     /**
      * @internal
@@ -347,24 +314,61 @@ var InternalEditorOptions = /** @class */ (function () {
             && a.renderCharacters === b.renderCharacters
             && a.maxColumn === b.maxColumn);
     };
-    InternalEditorOptions._equalsNumberArrays = function (a, b) {
-        if (a.length !== b.length) {
-            return false;
-        }
-        for (var i = 0; i < a.length; i++) {
-            if (a[i] !== b[i]) {
-                return false;
-            }
-        }
-        return true;
-    };
     /**
      * @internal
      */
     InternalEditorOptions._equalFindOptions = function (a, b) {
         return (a.seedSearchStringFromSelection === b.seedSearchStringFromSelection
             && a.autoFindInSelection === b.autoFindInSelection
-            && a.globalFindClipboard === b.globalFindClipboard);
+            && a.globalFindClipboard === b.globalFindClipboard
+            && a.addExtraSpaceOnTop === b.addExtraSpaceOnTop);
+    };
+    /**
+     * @internal
+     */
+    InternalEditorOptions._equalsParameterHintOptions = function (a, b) {
+        return (a.enabled === b.enabled
+            && a.cycle === b.cycle);
+    };
+    /**
+     * @internal
+     */
+    InternalEditorOptions._equalsHoverOptions = function (a, b) {
+        return (a.enabled === b.enabled
+            && a.delay === b.delay
+            && a.sticky === b.sticky);
+    };
+    /**
+     * @internal
+     */
+    InternalEditorOptions._equalsSuggestOptions = function (a, b) {
+        if (a === b) {
+            return true;
+        }
+        else if (!a || !b) {
+            return false;
+        }
+        else {
+            return a.filterGraceful === b.filterGraceful
+                && a.snippets === b.snippets
+                && a.snippetsPreventQuickSuggestions === b.snippetsPreventQuickSuggestions
+                && a.localityBonus === b.localityBonus
+                && a.shareSuggestSelections === b.shareSuggestSelections
+                && a.showIcons === b.showIcons
+                && a.maxVisibleSuggestions === b.maxVisibleSuggestions
+                && objects.equals(a.filteredTypes, b.filteredTypes);
+        }
+    };
+    InternalEditorOptions._equalsGotoLocationOptions = function (a, b) {
+        if (a === b) {
+            return true;
+        }
+        else if (!a || !b) {
+            return false;
+        }
+        else {
+            return a.multiple === b.multiple;
+        }
     };
     /**
      * @internal
@@ -385,23 +389,24 @@ var InternalEditorOptions = /** @class */ (function () {
      */
     InternalEditorOptions._equalsContribOptions = function (a, b) {
         return (a.selectionClipboard === b.selectionClipboard
-            && a.hover === b.hover
+            && this._equalsHoverOptions(a.hover, b.hover)
             && a.links === b.links
             && a.contextmenu === b.contextmenu
             && InternalEditorOptions._equalsQuickSuggestions(a.quickSuggestions, b.quickSuggestions)
             && a.quickSuggestionsDelay === b.quickSuggestionsDelay
-            && a.parameterHints === b.parameterHints
-            && a.iconsInSuggestions === b.iconsInSuggestions
+            && this._equalsParameterHintOptions(a.parameterHints, b.parameterHints)
             && a.formatOnType === b.formatOnType
             && a.formatOnPaste === b.formatOnPaste
             && a.suggestOnTriggerCharacters === b.suggestOnTriggerCharacters
             && a.acceptSuggestionOnEnter === b.acceptSuggestionOnEnter
             && a.acceptSuggestionOnCommitCharacter === b.acceptSuggestionOnCommitCharacter
-            && a.snippetSuggestions === b.snippetSuggestions
             && a.wordBasedSuggestions === b.wordBasedSuggestions
             && a.suggestSelection === b.suggestSelection
             && a.suggestFontSize === b.suggestFontSize
             && a.suggestLineHeight === b.suggestLineHeight
+            && a.tabCompletion === b.tabCompletion
+            && this._equalsSuggestOptions(a.suggest, b.suggest)
+            && InternalEditorOptions._equalsGotoLocationOptions(a.gotoLocation, b.gotoLocation)
             && a.selectionHighlight === b.selectionHighlight
             && a.occurrencesHighlight === b.occurrencesHighlight
             && a.codeLens === b.codeLens
@@ -411,6 +416,8 @@ var InternalEditorOptions = /** @class */ (function () {
             && a.matchBrackets === b.matchBrackets
             && this._equalFindOptions(a.find, b.find)
             && a.colorDecorators === b.colorDecorators
+            && objects.equals(a.codeActionsOnSave, b.codeActionsOnSave)
+            && a.codeActionsOnSaveTimeout === b.codeActionsOnSaveTimeout
             && a.lightbulbEnabled === b.lightbulbEnabled);
     };
     InternalEditorOptions._equalsQuickSuggestions = function (a, b) {
@@ -439,6 +446,20 @@ function _boolean(value, defaultValue) {
         return false;
     }
     return Boolean(value);
+}
+function _booleanMap(value, defaultValue) {
+    if (!value) {
+        return defaultValue;
+    }
+    var out = Object.create(null);
+    for (var _i = 0, _a = Object.keys(value); _i < _a.length; _i++) {
+        var k = _a[_i];
+        var v = value[k];
+        if (typeof v === 'boolean') {
+            out[k] = v;
+        }
+    }
+    return out;
 }
 function _string(value, defaultValue) {
     if (typeof value !== 'string') {
@@ -481,14 +502,17 @@ function _wrappingIndentFromString(wrappingIndent, defaultValue) {
     if (typeof wrappingIndent !== 'string') {
         return defaultValue;
     }
-    if (wrappingIndent === 'indent') {
-        return WrappingIndent.Indent;
+    if (wrappingIndent === 'same') {
+        return 1 /* Same */;
     }
-    else if (wrappingIndent === 'same') {
-        return WrappingIndent.Same;
+    else if (wrappingIndent === 'indent') {
+        return 2 /* Indent */;
+    }
+    else if (wrappingIndent === 'deepIndent') {
+        return 3 /* DeepIndent */;
     }
     else {
-        return WrappingIndent.None;
+        return 0 /* None */;
     }
 }
 function _cursorBlinkingStyleFromString(cursorBlinkingStyle, defaultValue) {
@@ -497,18 +521,18 @@ function _cursorBlinkingStyleFromString(cursorBlinkingStyle, defaultValue) {
     }
     switch (cursorBlinkingStyle) {
         case 'blink':
-            return TextEditorCursorBlinkingStyle.Blink;
+            return 1 /* Blink */;
         case 'smooth':
-            return TextEditorCursorBlinkingStyle.Smooth;
+            return 2 /* Smooth */;
         case 'phase':
-            return TextEditorCursorBlinkingStyle.Phase;
+            return 3 /* Phase */;
         case 'expand':
-            return TextEditorCursorBlinkingStyle.Expand;
+            return 4 /* Expand */;
         case 'visible': // maintain compatibility
         case 'solid':
-            return TextEditorCursorBlinkingStyle.Solid;
+            return 5 /* Solid */;
     }
-    return TextEditorCursorBlinkingStyle.Blink;
+    return 1 /* Blink */;
 }
 function _scrollbarVisibilityFromString(visibility, defaultValue) {
     if (typeof visibility !== 'string') {
@@ -516,11 +540,11 @@ function _scrollbarVisibilityFromString(visibility, defaultValue) {
     }
     switch (visibility) {
         case 'hidden':
-            return ScrollbarVisibility.Hidden;
+            return 2 /* Hidden */;
         case 'visible':
-            return ScrollbarVisibility.Visible;
+            return 3 /* Visible */;
         default:
-            return ScrollbarVisibility.Auto;
+            return 1 /* Auto */;
     }
 }
 /**
@@ -547,7 +571,7 @@ var EditorOptionsValidator = /** @class */ (function () {
         }
         var viewInfo = this._sanitizeViewInfo(opts, defaults.viewInfo);
         var contribInfo = this._sanitizeContribInfo(opts, defaults.contribInfo);
-        var configuredMulticursorModifier;
+        var configuredMulticursorModifier = undefined;
         if (typeof opts.multiCursorModifier === 'string') {
             if (opts.multiCursorModifier === 'ctrlCmd') {
                 configuredMulticursorModifier = platform.isMacintosh ? 'metaKey' : 'ctrlKey';
@@ -557,6 +581,20 @@ var EditorOptionsValidator = /** @class */ (function () {
             }
         }
         var multiCursorModifier = _stringSet(configuredMulticursorModifier, defaults.multiCursorModifier, ['altKey', 'metaKey', 'ctrlKey']);
+        var autoClosingBrackets;
+        var autoClosingQuotes;
+        var autoSurround;
+        if (typeof opts.autoClosingBrackets === 'boolean' && opts.autoClosingBrackets === false) {
+            // backwards compatibility: disable all on boolean false
+            autoClosingBrackets = 'never';
+            autoClosingQuotes = 'never';
+            autoSurround = 'never';
+        }
+        else {
+            autoClosingBrackets = _stringSet(opts.autoClosingBrackets, defaults.autoClosingBrackets, ['always', 'languageDefined', 'beforeWhitespace', 'never']);
+            autoClosingQuotes = _stringSet(opts.autoClosingQuotes, defaults.autoClosingQuotes, ['always', 'languageDefined', 'beforeWhitespace', 'never']);
+            autoSurround = _stringSet(opts.autoSurround, defaults.autoSurround, ['languageDefined', 'brackets', 'quotes', 'never']);
+        }
         return {
             inDiffEditor: _boolean(opts.inDiffEditor, defaults.inDiffEditor),
             wordSeparators: _string(opts.wordSeparators, defaults.wordSeparators),
@@ -573,18 +611,23 @@ var EditorOptionsValidator = /** @class */ (function () {
             wordWrapBreakBeforeCharacters: _string(opts.wordWrapBreakBeforeCharacters, defaults.wordWrapBreakBeforeCharacters),
             wordWrapBreakAfterCharacters: _string(opts.wordWrapBreakAfterCharacters, defaults.wordWrapBreakAfterCharacters),
             wordWrapBreakObtrusiveCharacters: _string(opts.wordWrapBreakObtrusiveCharacters, defaults.wordWrapBreakObtrusiveCharacters),
-            autoClosingBrackets: _boolean(opts.autoClosingBrackets, defaults.autoClosingBrackets),
+            autoClosingBrackets: autoClosingBrackets,
+            autoClosingQuotes: autoClosingQuotes,
+            autoSurround: autoSurround,
             autoIndent: _boolean(opts.autoIndent, defaults.autoIndent),
             dragAndDrop: _boolean(opts.dragAndDrop, defaults.dragAndDrop),
             emptySelectionClipboard: _boolean(opts.emptySelectionClipboard, defaults.emptySelectionClipboard),
+            copyWithSyntaxHighlighting: _boolean(opts.copyWithSyntaxHighlighting, defaults.copyWithSyntaxHighlighting),
             useTabStops: _boolean(opts.useTabStops, defaults.useTabStops),
             multiCursorModifier: multiCursorModifier,
+            multiCursorMergeOverlapping: _boolean(opts.multiCursorMergeOverlapping, defaults.multiCursorMergeOverlapping),
             accessibilitySupport: _stringSet(opts.accessibilitySupport, defaults.accessibilitySupport, ['auto', 'on', 'off']),
+            showUnused: _boolean(opts.showUnused, defaults.showUnused),
             viewInfo: viewInfo,
             contribInfo: contribInfo,
         };
     };
-    EditorOptionsValidator._sanitizeScrollbarOpts = function (opts, defaults, mouseWheelScrollSensitivity) {
+    EditorOptionsValidator._sanitizeScrollbarOpts = function (opts, defaults, mouseWheelScrollSensitivity, fastScrollSensitivity) {
         if (typeof opts !== 'object') {
             return defaults;
         }
@@ -602,7 +645,8 @@ var EditorOptionsValidator = /** @class */ (function () {
             verticalScrollbarSize: verticalScrollbarSize,
             verticalSliderSize: _clampedInt(opts.verticalSliderSize, verticalScrollbarSize, 0, 1000),
             handleMouseWheel: _boolean(opts.handleMouseWheel, defaults.handleMouseWheel),
-            mouseWheelScrollSensitivity: mouseWheelScrollSensitivity
+            mouseWheelScrollSensitivity: mouseWheelScrollSensitivity,
+            fastScrollSensitivity: fastScrollSensitivity,
         };
     };
     EditorOptionsValidator._sanitizeMinimapOpts = function (opts, defaults) {
@@ -617,15 +661,74 @@ var EditorOptionsValidator = /** @class */ (function () {
             maxColumn: _clampedInt(opts.maxColumn, defaults.maxColumn, 1, 10000),
         };
     };
-    EditorOptionsValidator._santizeFindOpts = function (opts, defaults) {
+    EditorOptionsValidator._sanitizeFindOpts = function (opts, defaults) {
         if (typeof opts !== 'object') {
             return defaults;
         }
         return {
             seedSearchStringFromSelection: _boolean(opts.seedSearchStringFromSelection, defaults.seedSearchStringFromSelection),
             autoFindInSelection: _boolean(opts.autoFindInSelection, defaults.autoFindInSelection),
-            globalFindClipboard: _boolean(opts.globalFindClipboard, defaults.globalFindClipboard)
+            globalFindClipboard: _boolean(opts.globalFindClipboard, defaults.globalFindClipboard),
+            addExtraSpaceOnTop: _boolean(opts.addExtraSpaceOnTop, defaults.addExtraSpaceOnTop)
         };
+    };
+    EditorOptionsValidator._sanitizeParameterHintOpts = function (opts, defaults) {
+        if (typeof opts !== 'object') {
+            return defaults;
+        }
+        return {
+            enabled: _boolean(opts.enabled, defaults.enabled),
+            cycle: _boolean(opts.cycle, defaults.cycle)
+        };
+    };
+    EditorOptionsValidator._sanitizeHoverOpts = function (_opts, defaults) {
+        var opts;
+        if (typeof _opts === 'boolean') {
+            opts = {
+                enabled: _opts
+            };
+        }
+        else if (typeof _opts === 'object') {
+            opts = _opts;
+        }
+        else {
+            return defaults;
+        }
+        return {
+            enabled: _boolean(opts.enabled, defaults.enabled),
+            delay: _clampedInt(opts.delay, defaults.delay, 0, 10000),
+            sticky: _boolean(opts.sticky, defaults.sticky)
+        };
+    };
+    EditorOptionsValidator._sanitizeSuggestOpts = function (opts, defaults) {
+        var suggestOpts = opts.suggest || {};
+        return {
+            filterGraceful: _boolean(suggestOpts.filterGraceful, defaults.filterGraceful),
+            snippets: _stringSet(opts.snippetSuggestions, defaults.snippets, ['top', 'bottom', 'inline', 'none']),
+            snippetsPreventQuickSuggestions: _boolean(suggestOpts.snippetsPreventQuickSuggestions, defaults.filterGraceful),
+            localityBonus: _boolean(suggestOpts.localityBonus, defaults.localityBonus),
+            shareSuggestSelections: _boolean(suggestOpts.shareSuggestSelections, defaults.shareSuggestSelections),
+            showIcons: _boolean(suggestOpts.showIcons, defaults.showIcons),
+            maxVisibleSuggestions: _clampedInt(suggestOpts.maxVisibleSuggestions, defaults.maxVisibleSuggestions, 1, 15),
+            filteredTypes: isObject(suggestOpts.filteredTypes) ? suggestOpts.filteredTypes : Object.create(null)
+        };
+    };
+    EditorOptionsValidator._sanitizeGotoLocationOpts = function (opts, defaults) {
+        var gotoOpts = opts.gotoLocation || {};
+        return {
+            multiple: _stringSet(gotoOpts.multiple, defaults.multiple, ['peek', 'gotoAndPeek', 'goto'])
+        };
+    };
+    EditorOptionsValidator._sanitizeTabCompletionOpts = function (opts, defaults) {
+        if (opts === false) {
+            return 'off';
+        }
+        else if (opts === true) {
+            return 'onlySnippets';
+        }
+        else {
+            return _stringSet(opts, defaults, ['on', 'off', 'onlySnippets']);
+        }
     };
     EditorOptionsValidator._sanitizeViewInfo = function (opts, defaults) {
         var rulers = [];
@@ -674,7 +777,7 @@ var EditorOptionsValidator = /** @class */ (function () {
             else if (renderWhitespace === false) {
                 renderWhitespace = 'none';
             }
-            renderWhitespace = _stringSet(opts.renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'all']);
+            renderWhitespace = _stringSet(renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'all']);
         }
         var renderLineHighlight = opts.renderLineHighlight;
         {
@@ -685,14 +788,18 @@ var EditorOptionsValidator = /** @class */ (function () {
             else if (renderLineHighlight === false) {
                 renderLineHighlight = 'none';
             }
-            renderLineHighlight = _stringSet(opts.renderLineHighlight, defaults.renderLineHighlight, ['none', 'gutter', 'line', 'all']);
+            renderLineHighlight = _stringSet(renderLineHighlight, defaults.renderLineHighlight, ['none', 'gutter', 'line', 'all']);
         }
         var mouseWheelScrollSensitivity = _float(opts.mouseWheelScrollSensitivity, defaults.scrollbar.mouseWheelScrollSensitivity);
         if (mouseWheelScrollSensitivity === 0) {
             // Disallow 0, as it would prevent/block scrolling
             mouseWheelScrollSensitivity = 1;
         }
-        var scrollbar = this._sanitizeScrollbarOpts(opts.scrollbar, defaults.scrollbar, mouseWheelScrollSensitivity);
+        var fastScrollSensitivity = _float(opts.fastScrollSensitivity, defaults.scrollbar.fastScrollSensitivity);
+        if (fastScrollSensitivity <= 0) {
+            fastScrollSensitivity = defaults.scrollbar.fastScrollSensitivity;
+        }
+        var scrollbar = this._sanitizeScrollbarOpts(opts.scrollbar, defaults.scrollbar, mouseWheelScrollSensitivity, fastScrollSensitivity);
         var minimap = this._sanitizeMinimapOpts(opts.minimap, defaults.minimap);
         return {
             extraEditorClassName: _string(opts.extraEditorClassName, defaults.extraEditorClassName),
@@ -701,6 +808,7 @@ var EditorOptionsValidator = /** @class */ (function () {
             ariaLabel: _string(opts.ariaLabel, defaults.ariaLabel),
             renderLineNumbers: renderLineNumbers,
             renderCustomLineNumbers: renderCustomLineNumbers,
+            renderFinalNewline: _boolean(opts.renderFinalNewline, defaults.renderFinalNewline),
             selectOnLineNumbers: _boolean(opts.selectOnLineNumbers, defaults.selectOnLineNumbers),
             glyphMargin: _boolean(opts.glyphMargin, defaults.glyphMargin),
             revealHorizontalRightPadding: _clampedInt(opts.revealHorizontalRightPadding, defaults.revealHorizontalRightPadding, 0, 1000),
@@ -709,16 +817,19 @@ var EditorOptionsValidator = /** @class */ (function () {
             overviewRulerBorder: _boolean(opts.overviewRulerBorder, defaults.overviewRulerBorder),
             cursorBlinking: _cursorBlinkingStyleFromString(opts.cursorBlinking, defaults.cursorBlinking),
             mouseWheelZoom: _boolean(opts.mouseWheelZoom, defaults.mouseWheelZoom),
+            cursorSmoothCaretAnimation: _boolean(opts.cursorSmoothCaretAnimation, defaults.cursorSmoothCaretAnimation),
             cursorStyle: _cursorStyleFromString(opts.cursorStyle, defaults.cursorStyle),
             cursorWidth: _clampedInt(opts.cursorWidth, defaults.cursorWidth, 0, Number.MAX_VALUE),
             hideCursorInOverviewRuler: _boolean(opts.hideCursorInOverviewRuler, defaults.hideCursorInOverviewRuler),
             scrollBeyondLastLine: _boolean(opts.scrollBeyondLastLine, defaults.scrollBeyondLastLine),
+            scrollBeyondLastColumn: _clampedInt(opts.scrollBeyondLastColumn, defaults.scrollBeyondLastColumn, 0, 1073741824 /* MAX_SAFE_SMALL_INTEGER */),
             smoothScrolling: _boolean(opts.smoothScrolling, defaults.smoothScrolling),
             stopRenderingLineAfter: _clampedInt(opts.stopRenderingLineAfter, defaults.stopRenderingLineAfter, -1, 1073741824 /* MAX_SAFE_SMALL_INTEGER */),
             renderWhitespace: renderWhitespace,
             renderControlCharacters: _boolean(opts.renderControlCharacters, defaults.renderControlCharacters),
             fontLigatures: fontLigatures,
             renderIndentGuides: _boolean(opts.renderIndentGuides, defaults.renderIndentGuides),
+            highlightActiveIndentGuide: _boolean(opts.highlightActiveIndentGuide, defaults.highlightActiveIndentGuide),
             renderLineHighlight: renderLineHighlight,
             scrollbar: scrollbar,
             minimap: minimap,
@@ -737,36 +848,39 @@ var EditorOptionsValidator = /** @class */ (function () {
         if (typeof opts.acceptSuggestionOnEnter === 'boolean') {
             opts.acceptSuggestionOnEnter = opts.acceptSuggestionOnEnter ? 'on' : 'off';
         }
-        var find = this._santizeFindOpts(opts.find, defaults.find);
+        var find = this._sanitizeFindOpts(opts.find, defaults.find);
         return {
             selectionClipboard: _boolean(opts.selectionClipboard, defaults.selectionClipboard),
-            hover: _boolean(opts.hover, defaults.hover),
+            hover: this._sanitizeHoverOpts(opts.hover, defaults.hover),
             links: _boolean(opts.links, defaults.links),
             contextmenu: _boolean(opts.contextmenu, defaults.contextmenu),
             quickSuggestions: quickSuggestions,
             quickSuggestionsDelay: _clampedInt(opts.quickSuggestionsDelay, defaults.quickSuggestionsDelay, -1073741824 /* MIN_SAFE_SMALL_INTEGER */, 1073741824 /* MAX_SAFE_SMALL_INTEGER */),
-            parameterHints: _boolean(opts.parameterHints, defaults.parameterHints),
-            iconsInSuggestions: _boolean(opts.iconsInSuggestions, defaults.iconsInSuggestions),
+            parameterHints: this._sanitizeParameterHintOpts(opts.parameterHints, defaults.parameterHints),
             formatOnType: _boolean(opts.formatOnType, defaults.formatOnType),
             formatOnPaste: _boolean(opts.formatOnPaste, defaults.formatOnPaste),
             suggestOnTriggerCharacters: _boolean(opts.suggestOnTriggerCharacters, defaults.suggestOnTriggerCharacters),
             acceptSuggestionOnEnter: _stringSet(opts.acceptSuggestionOnEnter, defaults.acceptSuggestionOnEnter, ['on', 'smart', 'off']),
             acceptSuggestionOnCommitCharacter: _boolean(opts.acceptSuggestionOnCommitCharacter, defaults.acceptSuggestionOnCommitCharacter),
-            snippetSuggestions: _stringSet(opts.snippetSuggestions, defaults.snippetSuggestions, ['top', 'bottom', 'inline', 'none']),
             wordBasedSuggestions: _boolean(opts.wordBasedSuggestions, defaults.wordBasedSuggestions),
             suggestSelection: _stringSet(opts.suggestSelection, defaults.suggestSelection, ['first', 'recentlyUsed', 'recentlyUsedByPrefix']),
             suggestFontSize: _clampedInt(opts.suggestFontSize, defaults.suggestFontSize, 0, 1000),
             suggestLineHeight: _clampedInt(opts.suggestLineHeight, defaults.suggestLineHeight, 0, 1000),
+            tabCompletion: this._sanitizeTabCompletionOpts(opts.tabCompletion, defaults.tabCompletion),
+            suggest: this._sanitizeSuggestOpts(opts, defaults.suggest),
+            gotoLocation: this._sanitizeGotoLocationOpts(opts, defaults.gotoLocation),
             selectionHighlight: _boolean(opts.selectionHighlight, defaults.selectionHighlight),
             occurrencesHighlight: _boolean(opts.occurrencesHighlight, defaults.occurrencesHighlight),
-            codeLens: _boolean(opts.codeLens, defaults.codeLens) && _boolean(opts.referenceInfos, true),
+            codeLens: _boolean(opts.codeLens, defaults.codeLens),
             folding: _boolean(opts.folding, defaults.folding),
             foldingStrategy: _stringSet(opts.foldingStrategy, defaults.foldingStrategy, ['auto', 'indentation']),
             showFoldingControls: _stringSet(opts.showFoldingControls, defaults.showFoldingControls, ['always', 'mouseover']),
             matchBrackets: _boolean(opts.matchBrackets, defaults.matchBrackets),
             find: find,
             colorDecorators: _boolean(opts.colorDecorators, defaults.colorDecorators),
-            lightbulbEnabled: _boolean(opts.lightbulb ? opts.lightbulb.enabled : false, defaults.lightbulbEnabled)
+            lightbulbEnabled: _boolean(opts.lightbulb ? opts.lightbulb.enabled : false, defaults.lightbulbEnabled),
+            codeActionsOnSave: _booleanMap(opts.codeActionsOnSave, {}),
+            codeActionsOnSaveTimeout: _clampedInt(opts.codeActionsOnSaveTimeout, defaults.codeActionsOnSaveTimeout, 1, 10000)
         };
     };
     return EditorOptionsValidator;
@@ -798,12 +912,17 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
             wordWrapBreakAfterCharacters: opts.wordWrapBreakAfterCharacters,
             wordWrapBreakObtrusiveCharacters: opts.wordWrapBreakObtrusiveCharacters,
             autoClosingBrackets: opts.autoClosingBrackets,
+            autoClosingQuotes: opts.autoClosingQuotes,
+            autoSurround: opts.autoSurround,
             autoIndent: opts.autoIndent,
             dragAndDrop: opts.dragAndDrop,
             emptySelectionClipboard: opts.emptySelectionClipboard,
+            copyWithSyntaxHighlighting: opts.copyWithSyntaxHighlighting,
             useTabStops: opts.useTabStops,
             multiCursorModifier: opts.multiCursorModifier,
+            multiCursorMergeOverlapping: opts.multiCursorMergeOverlapping,
             accessibilitySupport: opts.accessibilitySupport,
+            showUnused: opts.showUnused,
             viewInfo: {
                 extraEditorClassName: opts.viewInfo.extraEditorClassName,
                 disableMonospaceOptimizations: opts.viewInfo.disableMonospaceOptimizations,
@@ -811,6 +930,7 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 ariaLabel: (accessibilityIsOff ? nls.localize('accessibilityOffAriaLabel', "The editor is not accessible at this time. Press Alt+F1 for options.") : opts.viewInfo.ariaLabel),
                 renderLineNumbers: opts.viewInfo.renderLineNumbers,
                 renderCustomLineNumbers: opts.viewInfo.renderCustomLineNumbers,
+                renderFinalNewline: opts.viewInfo.renderFinalNewline,
                 selectOnLineNumbers: opts.viewInfo.selectOnLineNumbers,
                 glyphMargin: opts.viewInfo.glyphMargin,
                 revealHorizontalRightPadding: opts.viewInfo.revealHorizontalRightPadding,
@@ -819,16 +939,19 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 overviewRulerBorder: opts.viewInfo.overviewRulerBorder,
                 cursorBlinking: opts.viewInfo.cursorBlinking,
                 mouseWheelZoom: opts.viewInfo.mouseWheelZoom,
+                cursorSmoothCaretAnimation: opts.viewInfo.cursorSmoothCaretAnimation,
                 cursorStyle: opts.viewInfo.cursorStyle,
                 cursorWidth: opts.viewInfo.cursorWidth,
                 hideCursorInOverviewRuler: opts.viewInfo.hideCursorInOverviewRuler,
                 scrollBeyondLastLine: opts.viewInfo.scrollBeyondLastLine,
+                scrollBeyondLastColumn: opts.viewInfo.scrollBeyondLastColumn,
                 smoothScrolling: opts.viewInfo.smoothScrolling,
                 stopRenderingLineAfter: opts.viewInfo.stopRenderingLineAfter,
                 renderWhitespace: (accessibilityIsOn ? 'none' : opts.viewInfo.renderWhitespace),
                 renderControlCharacters: (accessibilityIsOn ? false : opts.viewInfo.renderControlCharacters),
                 fontLigatures: (accessibilityIsOn ? false : opts.viewInfo.fontLigatures),
                 renderIndentGuides: (accessibilityIsOn ? false : opts.viewInfo.renderIndentGuides),
+                highlightActiveIndentGuide: opts.viewInfo.highlightActiveIndentGuide,
                 renderLineHighlight: opts.viewInfo.renderLineHighlight,
                 scrollbar: opts.viewInfo.scrollbar,
                 minimap: {
@@ -848,17 +971,18 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 quickSuggestions: opts.contribInfo.quickSuggestions,
                 quickSuggestionsDelay: opts.contribInfo.quickSuggestionsDelay,
                 parameterHints: opts.contribInfo.parameterHints,
-                iconsInSuggestions: opts.contribInfo.iconsInSuggestions,
                 formatOnType: opts.contribInfo.formatOnType,
                 formatOnPaste: opts.contribInfo.formatOnPaste,
                 suggestOnTriggerCharacters: opts.contribInfo.suggestOnTriggerCharacters,
                 acceptSuggestionOnEnter: opts.contribInfo.acceptSuggestionOnEnter,
                 acceptSuggestionOnCommitCharacter: opts.contribInfo.acceptSuggestionOnCommitCharacter,
-                snippetSuggestions: opts.contribInfo.snippetSuggestions,
                 wordBasedSuggestions: opts.contribInfo.wordBasedSuggestions,
                 suggestSelection: opts.contribInfo.suggestSelection,
                 suggestFontSize: opts.contribInfo.suggestFontSize,
                 suggestLineHeight: opts.contribInfo.suggestLineHeight,
+                tabCompletion: opts.contribInfo.tabCompletion,
+                suggest: opts.contribInfo.suggest,
+                gotoLocation: opts.contribInfo.gotoLocation,
                 selectionHighlight: (accessibilityIsOn ? false : opts.contribInfo.selectionHighlight),
                 occurrencesHighlight: (accessibilityIsOn ? false : opts.contribInfo.occurrencesHighlight),
                 codeLens: (accessibilityIsOn ? false : opts.contribInfo.codeLens),
@@ -868,7 +992,9 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 matchBrackets: (accessibilityIsOn ? false : opts.contribInfo.matchBrackets),
                 find: opts.contribInfo.find,
                 colorDecorators: opts.contribInfo.colorDecorators,
-                lightbulbEnabled: opts.contribInfo.lightbulbEnabled
+                lightbulbEnabled: opts.contribInfo.lightbulbEnabled,
+                codeActionsOnSave: opts.contribInfo.codeActionsOnSave,
+                codeActionsOnSaveTimeout: opts.contribInfo.codeActionsOnSaveTimeout
             }
         };
     };
@@ -1007,18 +1133,23 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
             readOnly: opts.readOnly,
             accessibilitySupport: accessibilitySupport,
             multiCursorModifier: opts.multiCursorModifier,
+            multiCursorMergeOverlapping: opts.multiCursorMergeOverlapping,
             wordSeparators: opts.wordSeparators,
             autoClosingBrackets: opts.autoClosingBrackets,
+            autoClosingQuotes: opts.autoClosingQuotes,
+            autoSurround: opts.autoSurround,
             autoIndent: opts.autoIndent,
             useTabStops: opts.useTabStops,
             tabFocusMode: opts.readOnly ? true : env.tabFocusMode,
             dragAndDrop: opts.dragAndDrop,
             emptySelectionClipboard: opts.emptySelectionClipboard && env.emptySelectionClipboard,
+            copyWithSyntaxHighlighting: opts.copyWithSyntaxHighlighting,
             layoutInfo: layoutInfo,
             fontInfo: env.fontInfo,
             viewInfo: opts.viewInfo,
             wrappingInfo: wrappingInfo,
-            contribInfo: opts.contribInfo
+            contribInfo: opts.contribInfo,
+            showUnused: opts.showUnused,
         });
     };
     return InternalEditorOptionsFactory;
@@ -1071,30 +1202,31 @@ var EditorLayoutProvider = /** @class */ (function () {
         if (!minimap) {
             minimapLeft = 0;
             minimapWidth = 0;
-            renderMinimap = RenderMinimap.None;
+            renderMinimap = 0 /* None */;
             contentWidth = remainingWidth;
         }
         else {
             var minimapCharWidth = void 0;
             if (pixelRatio >= 2) {
-                renderMinimap = minimapRenderCharacters ? RenderMinimap.Large : RenderMinimap.LargeBlocks;
+                renderMinimap = minimapRenderCharacters ? 2 /* Large */ : 4 /* LargeBlocks */;
                 minimapCharWidth = 2 / pixelRatio;
             }
             else {
-                renderMinimap = minimapRenderCharacters ? RenderMinimap.Small : RenderMinimap.SmallBlocks;
+                renderMinimap = minimapRenderCharacters ? 1 /* Small */ : 3 /* SmallBlocks */;
                 minimapCharWidth = 1 / pixelRatio;
             }
             // Given:
-            // viewportColumn = (contentWidth - verticalScrollbarWidth) / typicalHalfwidthCharacterWidth
+            // (leaving 2px for the cursor to have space after the last character)
+            // viewportColumn = (contentWidth - verticalScrollbarWidth - 2) / typicalHalfwidthCharacterWidth
             // minimapWidth = viewportColumn * minimapCharWidth
             // contentWidth = remainingWidth - minimapWidth
             // What are good values for contentWidth and minimapWidth ?
-            // minimapWidth = ((contentWidth - verticalScrollbarWidth) / typicalHalfwidthCharacterWidth) * minimapCharWidth
-            // typicalHalfwidthCharacterWidth * minimapWidth = (contentWidth - verticalScrollbarWidth) * minimapCharWidth
-            // typicalHalfwidthCharacterWidth * minimapWidth = (remainingWidth - minimapWidth - verticalScrollbarWidth) * minimapCharWidth
-            // (typicalHalfwidthCharacterWidth + minimapCharWidth) * minimapWidth = (remainingWidth - verticalScrollbarWidth) * minimapCharWidth
-            // minimapWidth = ((remainingWidth - verticalScrollbarWidth) * minimapCharWidth) / (typicalHalfwidthCharacterWidth + minimapCharWidth)
-            minimapWidth = Math.max(0, Math.floor(((remainingWidth - verticalScrollbarWidth) * minimapCharWidth) / (typicalHalfwidthCharacterWidth + minimapCharWidth)));
+            // minimapWidth = ((contentWidth - verticalScrollbarWidth - 2) / typicalHalfwidthCharacterWidth) * minimapCharWidth
+            // typicalHalfwidthCharacterWidth * minimapWidth = (contentWidth - verticalScrollbarWidth - 2) * minimapCharWidth
+            // typicalHalfwidthCharacterWidth * minimapWidth = (remainingWidth - minimapWidth - verticalScrollbarWidth - 2) * minimapCharWidth
+            // (typicalHalfwidthCharacterWidth + minimapCharWidth) * minimapWidth = (remainingWidth - verticalScrollbarWidth - 2) * minimapCharWidth
+            // minimapWidth = ((remainingWidth - verticalScrollbarWidth - 2) * minimapCharWidth) / (typicalHalfwidthCharacterWidth + minimapCharWidth)
+            minimapWidth = Math.max(0, Math.floor(((remainingWidth - verticalScrollbarWidth - 2) * minimapCharWidth) / (typicalHalfwidthCharacterWidth + minimapCharWidth)));
             var minimapColumns = minimapWidth / minimapCharWidth;
             if (minimapColumns > minimapMaxColumn) {
                 minimapWidth = Math.floor(minimapMaxColumn * minimapCharWidth);
@@ -1111,7 +1243,8 @@ var EditorLayoutProvider = /** @class */ (function () {
                 minimapLeft = outerWidth - minimapWidth - verticalScrollbarWidth;
             }
         }
-        var viewportColumn = Math.max(1, Math.floor((contentWidth - verticalScrollbarWidth) / typicalHalfwidthCharacterWidth));
+        // (leaving 2px for the cursor to have space after the last character)
+        var viewportColumn = Math.max(1, Math.floor((contentWidth - verticalScrollbarWidth - 2) / typicalHalfwidthCharacterWidth));
         var verticalArrowSize = (verticalScrollbarHasArrows ? scrollbarArrowSize : 0);
         return {
             width: outerWidth,
@@ -1163,9 +1296,11 @@ export var EDITOR_FONT_DEFAULTS = {
  */
 export var EDITOR_MODEL_DEFAULTS = {
     tabSize: 4,
+    indentSize: 4,
     insertSpaces: true,
     detectIndentation: true,
-    trimAutoWhitespace: true
+    trimAutoWhitespace: true,
+    largeFileOptimizations: true
 };
 /**
  * @internal
@@ -1182,17 +1317,22 @@ export var EDITOR_DEFAULTS = {
     wordWrap: 'off',
     wordWrapColumn: 80,
     wordWrapMinified: true,
-    wrappingIndent: WrappingIndent.Same,
+    wrappingIndent: 1 /* Same */,
     wordWrapBreakBeforeCharacters: '([{‘“〈《「『【〔（［｛｢£¥＄￡￥+＋',
-    wordWrapBreakAfterCharacters: ' \t})]?|&,;¢°′″‰℃、。｡､￠，．：；？！％・･ゝゞヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻ｧｨｩｪｫｬｭｮｯｰ”〉》」』】〕）］｝｣',
+    wordWrapBreakAfterCharacters: ' \t})]?|/&,;¢°′″‰℃、。｡､￠，．：；？！％・･ゝゞヽヾーァィゥェォッャュョヮヵヶぁぃぅぇぉっゃゅょゎゕゖㇰㇱㇲㇳㇴㇵㇶㇷㇸㇹㇺㇻㇼㇽㇾㇿ々〻ｧｨｩｪｫｬｭｮｯｰ”〉》」』】〕）］｝｣',
     wordWrapBreakObtrusiveCharacters: '.',
-    autoClosingBrackets: true,
+    autoClosingBrackets: 'languageDefined',
+    autoClosingQuotes: 'languageDefined',
+    autoSurround: 'languageDefined',
     autoIndent: true,
     dragAndDrop: true,
     emptySelectionClipboard: true,
+    copyWithSyntaxHighlighting: true,
     useTabStops: true,
     multiCursorModifier: 'altKey',
+    multiCursorMergeOverlapping: true,
     accessibilitySupport: 'auto',
+    showUnused: true,
     viewInfo: {
         extraEditorClassName: '',
         disableMonospaceOptimizations: false,
@@ -1200,28 +1340,32 @@ export var EDITOR_DEFAULTS = {
         ariaLabel: nls.localize('editorViewAccessibleLabel', "Editor content"),
         renderLineNumbers: 1 /* On */,
         renderCustomLineNumbers: null,
+        renderFinalNewline: true,
         selectOnLineNumbers: true,
         glyphMargin: true,
         revealHorizontalRightPadding: 30,
         roundedSelection: true,
         overviewRulerLanes: 2,
         overviewRulerBorder: true,
-        cursorBlinking: TextEditorCursorBlinkingStyle.Blink,
+        cursorBlinking: 1 /* Blink */,
         mouseWheelZoom: false,
+        cursorSmoothCaretAnimation: false,
         cursorStyle: TextEditorCursorStyle.Line,
         cursorWidth: 0,
         hideCursorInOverviewRuler: false,
         scrollBeyondLastLine: true,
+        scrollBeyondLastColumn: 5,
         smoothScrolling: false,
         stopRenderingLineAfter: 10000,
         renderWhitespace: 'none',
         renderControlCharacters: false,
         fontLigatures: false,
         renderIndentGuides: true,
+        highlightActiveIndentGuide: true,
         renderLineHighlight: 'line',
         scrollbar: {
-            vertical: ScrollbarVisibility.Auto,
-            horizontal: ScrollbarVisibility.Auto,
+            vertical: 1 /* Auto */,
+            horizontal: 1 /* Auto */,
             arrowSize: 11,
             useShadows: true,
             verticalHasArrows: false,
@@ -1232,6 +1376,7 @@ export var EDITOR_DEFAULTS = {
             verticalSliderSize: 14,
             handleMouseWheel: true,
             mouseWheelScrollSensitivity: 1,
+            fastScrollSensitivity: 5,
         },
         minimap: {
             enabled: true,
@@ -1244,23 +1389,42 @@ export var EDITOR_DEFAULTS = {
     },
     contribInfo: {
         selectionClipboard: true,
-        hover: true,
+        hover: {
+            enabled: true,
+            delay: 300,
+            sticky: true
+        },
         links: true,
         contextmenu: true,
         quickSuggestions: { other: true, comments: false, strings: false },
         quickSuggestionsDelay: 10,
-        parameterHints: true,
-        iconsInSuggestions: true,
+        parameterHints: {
+            enabled: true,
+            cycle: false
+        },
         formatOnType: false,
         formatOnPaste: false,
         suggestOnTriggerCharacters: true,
         acceptSuggestionOnEnter: 'on',
         acceptSuggestionOnCommitCharacter: true,
-        snippetSuggestions: 'inline',
         wordBasedSuggestions: true,
         suggestSelection: 'recentlyUsed',
         suggestFontSize: 0,
         suggestLineHeight: 0,
+        tabCompletion: 'off',
+        suggest: {
+            filterGraceful: true,
+            snippets: 'inline',
+            snippetsPreventQuickSuggestions: true,
+            localityBonus: false,
+            shareSuggestSelections: false,
+            showIcons: true,
+            maxVisibleSuggestions: 12,
+            filteredTypes: Object.create(null)
+        },
+        gotoLocation: {
+            multiple: 'peek'
+        },
         selectionHighlight: true,
         occurrencesHighlight: true,
         codeLens: true,
@@ -1271,9 +1435,12 @@ export var EDITOR_DEFAULTS = {
         find: {
             seedSearchStringFromSelection: true,
             autoFindInSelection: false,
-            globalFindClipboard: false
+            globalFindClipboard: false,
+            addExtraSpaceOnTop: true
         },
         colorDecorators: true,
-        lightbulbEnabled: true
+        lightbulbEnabled: true,
+        codeActionsOnSave: {},
+        codeActionsOnSaveTimeout: 750
     },
 };

@@ -4,6 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 'use strict';
 import { createScanner } from './scanner.js';
+var ParseOptions;
+(function (ParseOptions) {
+    ParseOptions.DEFAULT = {
+        allowTrailingComma: false
+    };
+})(ParseOptions || (ParseOptions = {}));
 /**
  * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
  */
@@ -15,7 +21,8 @@ export function getLocation(text, position) {
         value: {},
         offset: 0,
         length: 0,
-        type: 'object'
+        type: 'object',
+        parent: void 0
     };
     var isAtPropertyKey = false;
     function setPreviousNode(value, offset, length, type) {
@@ -23,7 +30,7 @@ export function getLocation(text, position) {
         previousNodeInst.offset = offset;
         previousNodeInst.length = length;
         previousNodeInst.type = type;
-        previousNodeInst.columnOffset = void 0;
+        previousNodeInst.colonOffset = void 0;
         previousNode = previousNodeInst;
     }
     try {
@@ -81,7 +88,7 @@ export function getLocation(text, position) {
                     throw earlyReturnException;
                 }
                 if (sep === ':' && previousNode && previousNode.type === 'property') {
-                    previousNode.columnOffset = offset;
+                    previousNode.colonOffset = offset;
                     isAtPropertyKey = false;
                     previousNode = void 0;
                 }
@@ -128,6 +135,7 @@ export function getLocation(text, position) {
  */
 export function parse(text, errors, options) {
     if (errors === void 0) { errors = []; }
+    if (options === void 0) { options = ParseOptions.DEFAULT; }
     var currentProperty = null;
     var currentParent = [];
     var previousParents = [];
@@ -176,7 +184,8 @@ export function parse(text, errors, options) {
  */
 export function parseTree(text, errors, options) {
     if (errors === void 0) { errors = []; }
-    var currentParent = { type: 'array', offset: -1, length: -1, children: [] }; // artificial root
+    if (options === void 0) { options = ParseOptions.DEFAULT; }
+    var currentParent = { type: 'array', offset: -1, length: -1, children: [], parent: void 0 }; // artificial root
     function ensurePropertyComplete(endOffset) {
         if (currentParent.type === 'property') {
             currentParent.length = endOffset - currentParent.offset;
@@ -215,7 +224,7 @@ export function parseTree(text, errors, options) {
         onSeparator: function (sep, offset, length) {
             if (currentParent.type === 'property') {
                 if (sep === ':') {
-                    currentParent.columnOffset = offset;
+                    currentParent.colonOffset = offset;
                 }
                 else if (sep === ',') {
                     ensurePropertyComplete(offset);
@@ -271,26 +280,79 @@ export function findNodeAtLocation(root, path) {
     return node;
 }
 /**
+ * Gets the JSON path of the given JSON DOM node
+ */
+export function getNodePath(node) {
+    if (!node.parent || !node.parent.children) {
+        return [];
+    }
+    var path = getNodePath(node.parent);
+    if (node.parent.type === 'property') {
+        var key = node.parent.children[0].value;
+        path.push(key);
+    }
+    else if (node.parent.type === 'array') {
+        var index = node.parent.children.indexOf(node);
+        if (index !== -1) {
+            path.push(index);
+        }
+    }
+    return path;
+}
+/**
  * Evaluates the JavaScript object of the given JSON DOM node
  */
 export function getNodeValue(node) {
-    if (node.type === 'array') {
-        return node.children.map(getNodeValue);
+    switch (node.type) {
+        case 'array':
+            return node.children.map(getNodeValue);
+        case 'object':
+            var obj = Object.create(null);
+            for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
+                var prop = _a[_i];
+                var valueNode = prop.children[1];
+                if (valueNode) {
+                    obj[prop.children[0].value] = getNodeValue(valueNode);
+                }
+            }
+            return obj;
+        case 'null':
+        case 'string':
+        case 'number':
+        case 'boolean':
+            return node.value;
+        default:
+            return void 0;
     }
-    else if (node.type === 'object') {
-        var obj = Object.create(null);
-        for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
-            var prop = _a[_i];
-            obj[prop.children[0].value] = getNodeValue(prop.children[1]);
+}
+export function contains(node, offset, includeRightBound) {
+    if (includeRightBound === void 0) { includeRightBound = false; }
+    return (offset >= node.offset && offset < (node.offset + node.length)) || includeRightBound && (offset === (node.offset + node.length));
+}
+/**
+ * Finds the most inner node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
+ */
+export function findNodeAtOffset(node, offset, includeRightBound) {
+    if (includeRightBound === void 0) { includeRightBound = false; }
+    if (contains(node, offset, includeRightBound)) {
+        var children = node.children;
+        if (Array.isArray(children)) {
+            for (var i = 0; i < children.length && children[i].offset <= offset; i++) {
+                var item = findNodeAtOffset(children[i], offset, includeRightBound);
+                if (item) {
+                    return item;
+                }
+            }
         }
-        return obj;
+        return node;
     }
-    return node.value;
+    return void 0;
 }
 /**
  * Parses the given text and invokes the visitor functions for each object, array and literal reached.
  */
 export function visit(text, visitor, options) {
+    if (options === void 0) { options = ParseOptions.DEFAULT; }
     var _scanner = createScanner(text, false);
     function toNoArgVisit(visitFunction) {
         return visitFunction ? function () { return visitFunction(_scanner.getTokenOffset(), _scanner.getTokenLength()); } : function () { return true; };

@@ -2,9 +2,8 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
-'use strict';
-import { Range } from '../core/range.js';
 import { Position } from '../core/position.js';
+import { Range } from '../core/range.js';
 import { InlineDecoration, ViewModelDecoration } from './viewModel.js';
 var ViewModelDecorations = /** @class */ (function () {
     function ViewModelDecorations(editorId, model, configuration, linesCollection, coordinatesConverter) {
@@ -21,7 +20,7 @@ var ViewModelDecorations = /** @class */ (function () {
         this._cachedModelDecorationsResolverViewRange = null;
     };
     ViewModelDecorations.prototype.dispose = function () {
-        this._decorationsCache = null;
+        this._decorationsCache = Object.create(null);
         this._clearCachedModelDecorationsResolver();
     };
     ViewModelDecorations.prototype.reset = function () {
@@ -57,8 +56,7 @@ var ViewModelDecorations = /** @class */ (function () {
         return r;
     };
     ViewModelDecorations.prototype.getDecorationsViewportData = function (viewRange) {
-        var cacheIsValid = true;
-        cacheIsValid = cacheIsValid && (this._cachedModelDecorationsResolver !== null);
+        var cacheIsValid = (this._cachedModelDecorationsResolver !== null);
         cacheIsValid = cacheIsValid && (viewRange.equalsRange(this._cachedModelDecorationsResolverViewRange));
         if (!cacheIsValid) {
             this._cachedModelDecorationsResolver = this._getDecorationsViewportData(viewRange);
@@ -82,7 +80,7 @@ var ViewModelDecorations = /** @class */ (function () {
             var viewRange = viewModelDecoration.range;
             decorationsInViewport[decorationsInViewportLen++] = viewModelDecoration;
             if (decorationOptions.inlineClassName) {
-                var inlineDecoration = new InlineDecoration(viewRange, decorationOptions.inlineClassName, 0 /* Regular */);
+                var inlineDecoration = new InlineDecoration(viewRange, decorationOptions.inlineClassName, decorationOptions.inlineClassNameAffectsLetterSpacing ? 3 /* RegularAffectingLetterSpacing */ : 0 /* Regular */);
                 var intersectedStartLineNumber = Math.max(startLineNumber, viewRange.startLineNumber);
                 var intersectedEndLineNumber = Math.min(endLineNumber, viewRange.endLineNumber);
                 for (var j = intersectedStartLineNumber; j <= intersectedEndLineNumber; j++) {

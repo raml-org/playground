@@ -14,7 +14,7 @@ var HeightMap = /** @class */ (function () {
     };
     HeightMap.prototype.onInsertItems = function (iterator, afterItemId) {
         if (afterItemId === void 0) { afterItemId = null; }
-        var item;
+        var item = null;
         var viewItem;
         var i, j;
         var totalSize;
@@ -60,10 +60,10 @@ var HeightMap = /** @class */ (function () {
     };
     // Contiguous items
     HeightMap.prototype.onRemoveItems = function (iterator) {
-        var itemId;
+        var itemId = null;
         var viewItem;
         var startIndex = null;
-        var i;
+        var i = 0;
         var sizeDiff = 0;
         while (itemId = iterator.next()) {
             i = this.indexes[itemId];
@@ -79,7 +79,7 @@ var HeightMap = /** @class */ (function () {
                 startIndex = i;
             }
         }
-        if (sizeDiff === 0) {
+        if (sizeDiff === 0 || startIndex === null) {
             return;
         }
         this.heightMap.splice(startIndex, i - startIndex + 1);
@@ -100,7 +100,7 @@ var HeightMap = /** @class */ (function () {
     };
     // Ordered, but not necessarily contiguous items
     HeightMap.prototype.onRefreshItems = function (iterator) {
-        var item;
+        var item = null;
         var viewItem;
         var newHeight;
         var i, j = null;
@@ -131,19 +131,6 @@ var HeightMap = /** @class */ (function () {
     HeightMap.prototype.onRefreshItem = function (item, needsRender) {
         if (needsRender === void 0) { needsRender = false; }
         // noop
-    };
-    HeightMap.prototype.itemsCount = function () {
-        return this.heightMap.length;
-    };
-    HeightMap.prototype.itemAt = function (position) {
-        return this.heightMap[this.indexAt(position)].model.id;
-    };
-    HeightMap.prototype.withItemsInRange = function (start, end, fn) {
-        start = this.indexAt(start);
-        end = this.indexAt(end);
-        for (var i = start; i <= end; i++) {
-            fn(this.heightMap[i].model.id);
-        }
     };
     HeightMap.prototype.indexAt = function (position) {
         var left = 0;
@@ -182,8 +169,8 @@ var HeightMap = /** @class */ (function () {
         throw new Error('not implemented');
     };
     HeightMap.prototype.dispose = function () {
-        this.heightMap = null;
-        this.indexes = null;
+        this.heightMap = [];
+        this.indexes = {};
     };
     return HeightMap;
 }());
