@@ -66,6 +66,25 @@ gulp.task('bundleVisualization', function () {
     .pipe(browserSync.stream({once: true}))
 })
 
+const optionsTooltips = {'standalone': 'tooltips'}
+const bTooltips = browserify(optionsTooltips)
+gulp.task('bundleTooltips', function () {
+  return bTooltips
+    .add([
+      'src/tooltips/view_model.ts'
+    ])
+    .plugin(tsify, { target: 'es6' })
+    .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
+    .bundle()
+    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .pipe(source('tooltips.js'))
+    .pipe(buffer())
+    .pipe(sourcemaps.init({loadMaps: true}))
+    .pipe(sourcemaps.write('./'))
+    .pipe(gulp.dest('./docs/js'))
+    .pipe(browserSync.stream({once: true}))
+})
+
 
 gulp.task('serveRamlOas', gulp.series(
   'sass',
@@ -91,10 +110,23 @@ gulp.task('serveVisualization', gulp.series(
   }
 ))
 
+gulp.task('serveTooltips', gulp.series(
+  'sass',
+  'bower',
+  'bundleTooltips',
+  function () {
+    return browserSync.init({
+      server: 'docs',
+      startPath: '/tooltips.html'
+    })
+  }
+))
+
 // Bundle all the demos
 gulp.task('bundle', gulp.series(
   'sass',
   'bower',
   'bundleRamlOas',
-  'bundleVisualization'
+  'bundleVisualization',
+  'bundleTooltips'
 ))
