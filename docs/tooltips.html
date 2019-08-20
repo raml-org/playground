@@ -138,6 +138,7 @@
           window.appModel = new tooltips.ViewModel(ramlEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
+          window.appModel.loadInitialDocument();
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

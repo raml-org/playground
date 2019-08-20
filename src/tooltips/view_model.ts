@@ -6,6 +6,8 @@ import { WebApiParser as wap } from 'webapi-parser'
 export type EditorSection = 'raml' | 'graph';
 
 export class ViewModel extends CommonViewModel {
+  public base = window.location.href.toString().split('/tooltips.html')[0]
+
   constructor (public ramlEditor: any) {
     super()
 
@@ -19,6 +21,17 @@ export class ViewModel extends CommonViewModel {
           console.error(`Failed to parse file: ${err}`)
         })
     })
+  }
+
+  public loadInitialDocument () {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get(this.queryParamName)) {
+      return
+    }
+
+    this.loadModal.fileUrl(
+      `${this.base}/examples/world-music-api/api.raml`)
+    this.loadModal.save()
   }
 
   public parseEditorSection (section?: EditorSection) { }

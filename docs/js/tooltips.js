@@ -38829,6 +38829,7 @@ class ViewModel extends common_view_model_1.CommonViewModel {
   constructor(ramlEditor) {
     super();
     this.ramlEditor = ramlEditor;
+    this.base = window.location.href.toString().split('/tooltips.html')[0];
     this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
       return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
         this.model = new model_proxy_1.ModelProxy(parsedModel, 'raml');
@@ -38837,6 +38838,17 @@ class ViewModel extends common_view_model_1.CommonViewModel {
         console.error(`Failed to parse file: ${err}`);
       });
     });
+  }
+
+  loadInitialDocument() {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get(this.queryParamName)) {
+      return;
+    }
+
+    this.loadModal.fileUrl(`${this.base}/examples/world-music-api/api.raml`);
+    this.loadModal.save();
   }
 
   parseEditorSection(section) {}
