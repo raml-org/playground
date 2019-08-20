@@ -11,6 +11,7 @@
 
     <script src="js/preload.js"></script>
     <script src="js/monaco-editor/monaco-customize.js"></script>
+    <script src="js/monaco-hover-utils.js" type="text/javascript"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
@@ -127,6 +128,12 @@
                 enabled: false
               }
             });
+          ramlEditor.getModel().updateOptions({ tabSize: 2 });
+
+          hoverUtils.loadLanguages('json', 'xml', 'yaml')
+          monaco.languages.registerHoverProvider('raml', {
+            provideHover: (m, p) => hoverUtils.hoverProvider(m, p, ramlEditor)
+          });
 
           window.appModel = new tooltips.ViewModel(ramlEditor);
           window.appModel.apply();
