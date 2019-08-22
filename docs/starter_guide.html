@@ -109,7 +109,8 @@
             var height = document.documentElement.clientHeight;
             var ramlContainerDiv = document.getElementById("editor-container-raml");
             if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+              var offset = ramlContainerDiv.getBoundingClientRect().top + 20
+              ramlContainerDiv.setAttribute("style", "height: " + (height - offset) + "px");
             }
           }
           window.onresize = resize;
