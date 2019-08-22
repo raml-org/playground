@@ -66,18 +66,18 @@ gulp.task('bundleVisualization', function () {
     .pipe(browserSync.stream({once: true}))
 })
 
-const optionsTooltips = {'standalone': 'tooltips'}
-const bTooltips = browserify(optionsTooltips)
-gulp.task('bundleTooltips', function () {
-  return bTooltips
+const optionsStarterGuide = {'standalone': 'starter_guide'}
+const bStarterGuide = browserify(optionsStarterGuide)
+gulp.task('bundleStarterGuide', function () {
+  return bStarterGuide
     .add([
-      'src/tooltips/view_model.ts'
+      'src/starter_guide/view_model.ts'
     ])
     .plugin(tsify, { target: 'es6' })
     .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
     .bundle()
     .on('error', gutil.log.bind(gutil, 'Browserify Error'))
-    .pipe(source('tooltips.js'))
+    .pipe(source('starter_guide.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init({loadMaps: true}))
     .pipe(sourcemaps.write('./'))
@@ -110,14 +110,14 @@ gulp.task('serveVisualization', gulp.series(
   }
 ))
 
-gulp.task('serveTooltips', gulp.series(
+gulp.task('serveStarterGuide', gulp.series(
   'sass',
   'bower',
-  'bundleTooltips',
+  'bundleStarterGuide',
   function () {
     return browserSync.init({
       server: 'docs',
-      startPath: '/tooltips.html'
+      startPath: '/starter_guide.html'
     })
   }
 ))
@@ -128,5 +128,5 @@ gulp.task('bundle', gulp.series(
   'bower',
   'bundleRamlOas',
   'bundleVisualization',
-  'bundleTooltips'
+  'bundleStarterGuide'
 ))

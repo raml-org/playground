@@ -17,7 +17,7 @@
         "src/main/units_model.ts",
         "src/raml_oas/view_model.ts",
         "src/visualization/view_model.ts",
-        "src/tooltips/view_model.ts",
+        "src/starter_guide/view_model.ts",
         "src/view_models/diagram.ts",
         "src/view_models/load_modal.ts",
         "src/view_models/common_view_model.ts"
