@@ -133,10 +133,10 @@
 
           hoverUtils.loadLanguages('json', 'xml', 'yaml')
           monaco.languages.registerHoverProvider('raml', {
-            provideHover: (m, p) => hoverUtils.hoverProvider(m, p, ramlEditor)
+            provideHover: (m, p) => hoverUtils.provideHover(m, p, ramlEditor)
           });
           monaco.languages.registerLinkProvider('raml', {
-            provideLinks: (m, t) => hoverUtils.linkProvider(m, t)
+            provideLinks: (m, t) => hoverUtils.provideLinks(m, t)
           })
 
           window.appModel = new starter_guide.ViewModel(ramlEditor);

@@ -48,7 +48,7 @@ const hoverUtils = {
    * @param   {monaco.editor.IStandaloneCodeEditor} editor - Monaco editor instance.
    * @returns {ProviderResult<Hover>} - Range and contents of a tooltip.
    */
-  hoverProvider: function (model, position, editor) {
+  provideHover: function (model, position, editor) {
     let [desc, blockStartLineNum] = this.findBlockDescription(
       model, position.lineNumber)
     if (!desc) { return }
@@ -226,7 +226,7 @@ const hoverUtils = {
    * @param   {monaco.editor.ITextModel} model - Editor text model.
    * @returns {ProviderResult<ILinksList>} - Range and contents of a tooltip.
    */
-  linkProvider: function (model) {
+  provideLinks: function (model) {
     const re = /\S+(.raml|.yaml|.json|.xml|.xsd|.txt)$/
     const matches = model.findMatches(re, false, true)
     const links = matches.map(m => {
