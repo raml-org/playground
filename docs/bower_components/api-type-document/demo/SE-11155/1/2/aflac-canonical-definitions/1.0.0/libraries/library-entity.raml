@@ -1,0 +1,36 @@
+#%RAML 1.0 Library
+uses:
+  master-lib: library-master-key.raml
+  source-lib: library-source.raml
+  property-lib: library-property.raml
+
+types:
+  entities:
+    displayName: Entities
+    description: an array of entities
+    type: entity[]
+    
+  entity:
+    displayName: Entity
+    description: Entity Description
+    type: object
+    additionalProperties: false
+    properties:
+      id:
+        required: false
+        type: master-lib.master-key
+      name:
+        required: false
+        type: string
+      type:
+        required: false
+        type: string
+      sources:
+        required: false
+        type: source-lib.sources
+      properties:
+        required: false
+        type: property-lib.properties
+      entities:    
+        required: false
+        type: entities

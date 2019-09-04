@@ -1,0 +1,53 @@
+#%RAML 1.0 DataType
+
+type: object 
+properties: 
+  user-id:
+    displayName: User ID
+    type: string
+    required: false
+    description: System assigned id that represents a user.  It is created when the new user record is created
+    example: ABC123
+  user-name:
+    displayName: User Name
+    description: User's full name
+    type: string
+    required: false
+    example: John F Remedy
+  user-date-of-birth:
+    displayName: Date of Birth
+    description: User's date of birth
+    type: date-only
+    required: false
+    example: 2000-01-01
+  user-address:
+    displayName: Mailing Address
+    description: User's mailing address
+    type: !include ../1/2/aflac-canonical-definitions/1.0.0/data-types/dataType-address.raml
+    required: false
+    example:
+      context: home
+      line1: 3388 Hamilton St
+      line2: Apt 1
+      city: Philadelphia
+      state-region-code: PA
+      state-region-name: Pennsylvania
+      country: USA
+      postal-code: "19104"
+      additional-postal-code: "0388"
+      validity: Valid
+      preference-index: 3
+example:
+  user-id: ABCD1234
+  user-name: George Castanza
+  user-date-of-birth: 2000-01-01
+  user-address:
+    line1: 3388 Hamilton St
+    line2: Apt 1
+    city: Philadelphia
+    state-region-code: PA
+    state-region-name: Pennsylvania
+    country: USA
+    postal-code: "19104"
+    additional-postal-code: "0388"
+    validity: Valid

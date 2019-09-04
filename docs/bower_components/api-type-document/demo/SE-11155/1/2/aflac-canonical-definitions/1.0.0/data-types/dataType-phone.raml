@@ -1,0 +1,32 @@
+#%RAML 1.0 DataType
+
+uses:
+  core: ../libraries/library-context-and-preference.raml
+
+displayName: Phone
+description: Used to express the values of any phone number in the world
+
+type: [core.preferable, core.contextual]
+additionalProperties: false
+
+properties:
+  country-code:
+    required: false
+    type: string
+  area-code:
+    required: false
+    type: string
+  phone-number:
+    required: false
+    type: string
+  ext:
+    displayName: phone extension
+    required: false
+    type: string
+
+example:
+  context: Mobile
+  country-code: "1"
+  area-code: "877"
+  phone-number: 763-3000
+  ext: "24558"

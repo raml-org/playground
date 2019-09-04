@@ -1,0 +1,41 @@
+#%RAML 1.0 NamedExample
+
+multiple_customer_accounts_list_all_olss_registered:
+  displayName: GET response example with multiple customer accounts found
+  value:
+    - #1st element
+      id: "123456789"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: true
+    - #2nd element
+      id: "123456799"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: true
+
+multiple_customer_accounts_list_all_non_olss_registered:
+  displayName: GET response example with multiple customer accounts found
+  value:
+    - #1st element
+      id: "123456789"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: false
+    - #2nd element
+      id: "123456799"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: false
+
+multiple_customer_accounts_list_mixed:
+  displayName: GET response example with multiple customer accounts found
+  value:
+    - #1st element
+      id: "123456789"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: true
+    - #2nd element
+      id: "123456799"
+      dateOfBirth: "1970-01-01"
+      olssRegistered: false
+
+empty_customer_accounts_list:
+  displayName: GET response example with no customer accounts found
+  value: []

@@ -1,0 +1,102 @@
+#%RAML 1.0
+title: RAML types example
+version: v1
+baseUri: http://api.domain.com/
+
+types:
+  Message: !include message-type.raml
+
+/examples:
+  post:
+    body:
+      application/json:
+        type: Message
+        example:
+          from:
+            uid: 123456abc
+            name: Pawel Psztyc
+            email: pawel.psztyc@mulesoft.com
+          message: Hi, this is message
+          timestamp: 123456789
+          important: false
+          attachements:
+            - Attachment URL no 1
+            - Attachment URL no 2
+      application/xml:
+        type: Message
+        example:
+          from:
+            uid: 2f101b0e-40bb-4a2c-a686-c1ace840a5fd
+            name: Tyler McKinney
+            email: tono@medfu.cn
+          message: Guowo gakiw lilo nuggedjil tarpezdo zug abacaz torhic nuzvupbap ica luguvi ife dujer he.
+          timestamp: 2374110741252
+          important: false
+          attachements:
+            - "http://eziciheg.tm/ge"
+            - "http://iragazvit.la/vak"
+  put:
+    body:
+      application/json:
+        type: Message
+        example: |
+          {
+            "from": {
+              "uid": "123456abc",
+              "name": "Pawel Psztyc",
+              "email": "pawel.psztyc@mulesoft.com"
+            },
+            "message": "Hi, this is message",
+            "timestamp": 123456789,
+            "important": true,
+            "attachements": ["Attachment URL no 1", "Attachment URL no 2"]
+          }
+      application/xml:
+        type: Message
+        example:
+          from:
+            uid: 2f101b0e-40bb-4a2c-a686-c1ace840a5fd
+            name: Tyler McKinney
+            email: tono@medfu.cn
+          message: Guowo gakiw lilo nuggedjil tarpezdo zug abacaz torhic nuzvupbap ica luguvi ife dujer he.
+          timestamp: 2374110741252
+          important: false
+          attachements:
+            - "http://eziciheg.tm/ge"
+            - "http://iragazvit.la/vak"
+  delete:
+    body:
+      application/json:
+        schema: !include schemas/person.json
+        example: !include examples/person.json
+      application/xml:
+        type: !include schemas/person.xsd
+        example: !include examples/person.xml
+/multiple:
+  post:
+    body:
+      application/json:
+        type: Message
+        examples:
+          ex1:
+            from:
+              uid: example-1
+              name: Example 1
+              email: ex1@mulesoft.com
+            message: Hi, this is message from EX1
+            timestamp: 123456789
+            important: false
+            attachements:
+              - Attachment URL no 1
+              - Attachment URL no 2
+          ex2:
+            from:
+              uid: example-2
+              name: Example 2
+              email: ex2@mulesoft.com
+            message: Hi, this is message from EX2
+            timestamp: 123456789
+            important: false
+            attachements:
+              - Attachment URL no 1
+              - Attachment URL no 2

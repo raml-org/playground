@@ -1,0 +1,38 @@
+#%RAML 1.0
+title: Types test
+version: v1
+mediaType: application/json
+
+uses: 
+  myLib: library.raml
+
+types:
+  MainFileType:
+    description: Type contained inside the main raml file
+    type: object
+    properties:
+      foo: string # Sample foo property
+      bar: string # Sample bar property
+  TypeFromDataTypeFile: !include typeFromDataTypeFile.raml
+
+/typeFromMainFileEndpoint:
+  post:
+    body: 
+      type: MainFileType
+    responses: 
+      200:
+
+/typeFromDataTypeEndpoint:
+  post:
+    body: 
+      type: TypeFromDataTypeFile
+    responses: 
+      200:
+
+/typeFromLibraryEndpoint:
+  post:
+    body: 
+      type: myLib.TypeFromLibray
+    responses: 
+      200:
+

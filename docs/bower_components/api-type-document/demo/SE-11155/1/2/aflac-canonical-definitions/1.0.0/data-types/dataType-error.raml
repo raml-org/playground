@@ -1,0 +1,33 @@
+#%RAML 1.0 DataType
+
+displayName: Aflac Error Type
+description: The type to be used in all Aflac Software Components to report an error condition
+
+type: object
+additionalProperties: false
+
+properties:
+  transaction-id:
+    displayName: Transaction ID
+    description: This is the unique id that flows throughout a request process.  By providing the transaction ID the complete records regarding that request can be retrieved from an appropriate system.
+    type: string
+    required: false
+  type:
+    displayName: Error Type
+    type: string
+    required: false
+  message:
+    displayName: Error Message
+    type: string
+    required: false
+  time:
+    displayName: Occurence Time
+    type: string
+    required: false
+    description: The timestamp will be shown in GMT
+
+example:
+  transaction-id: aaaaaaaa-bbbb-cccc-dddd-0123456789ab
+  type: Data error 
+  message: String value was expected but number value received
+  time: 2018-05-31T15:00:06,325Z

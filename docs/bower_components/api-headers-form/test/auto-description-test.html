@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-headers-form test</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+    <link rel="import" href="../api-headers-form.html">
+    <link rel="import" href="../../arc-polyfills/arc-polyfills.html">
+  </head>
+  <body>
+
+    <test-fixture id="basic">
+      <template>
+        <api-headers-form></api-headers-form>
+      </template>
+    </test-fixture>
+
+    <script>
+      suite('Headers description test', () => {
+        const model = [{
+          binding: 'header',
+          name: 'x-test',
+          hasDescription: false,
+          required: true,
+          schema: {
+            enabled: true,
+            type: 'string',
+            inputLabel: 'x-string',
+            isEnum: false,
+            isArray: false,
+            isBool: false,
+            inputType: 'text'
+          },
+          value: ''
+        }, {
+          binding: 'header',
+          name: 'accept',
+          hasDescription: false,
+          required: true,
+          schema: {
+            enabled: true,
+            type: 'string',
+            inputLabel: 'x-string',
+            isEnum: false,
+            isArray: false,
+            isBool: false,
+            inputType: 'text'
+          },
+          value: ''
+        }, {
+          binding: 'header',
+          name: 'content-type',
+          hasDescription: true,
+          description: 'test',
+          required: true,
+          schema: {
+            enabled: true,
+            type: 'string',
+            inputLabel: 'x-string',
+            isEnum: false,
+            isArray: false,
+            isBool: false,
+            inputType: 'text'
+          },
+          value: ''
+        }];
+        let element;
+        setup(() => {
+          element = fixture('basic');
+          element.model = model;
+        });
+
+        test('Adds description to the header', () => {
+          assert.isTrue(element.model[1].hasDescription);
+        });
+
+        test('Description is set', () => {
+          assert.typeOf(element.model[1].description, 'string');
+        });
+
+        test('Example is set', () => {
+          assert.isAbove(element.model[1].schema.examples.length, 0);
+        });
+
+        test('Unknown headers are ignored', () => {
+          assert.isFalse(element.model[0].hasDescription);
+        });
+
+        test('Model with description is ignored', () => {
+          assert.equal(element.model[2].description, 'test');
+        });
+      });
+    </script>
+
+  </body>
+</html>

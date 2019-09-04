@@ -1,0 +1,11 @@
+#%RAML 1.0 Trait
+responses:
+  503:
+    description: Service Unavailable.  
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true

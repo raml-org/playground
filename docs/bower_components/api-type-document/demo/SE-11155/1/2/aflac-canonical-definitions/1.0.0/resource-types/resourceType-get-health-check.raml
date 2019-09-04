@@ -1,0 +1,39 @@
+#%RAML 1.0 ResourceType
+
+
+uses:
+  error-lib: ../libraries/library-error.raml
+  code-description-lib: ../libraries/library-code-description.raml
+
+get:
+  displayName:  GET Health Check Resource
+  description: This resource is used by all APIs which has a /health-check resource path at its root and takes certain actions to validate its and its dependent components' health condition.
+  headers:
+    aflac-detailed-health-check-switch:
+      required: false
+      displayName: Detailed Health Check Flag
+      description: If the value is provided as On, the health of all dependencies will be checked.  Otherwise, the dependencies will not be checked.
+      enum:
+        - On
+        - Off
+      default: Off
+      
+  responses:
+    200:
+      description: On success the response will return an array of code descriptions with information regarding the health of the API and its subcomponents' health.
+      body:
+        
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: !include ../examples/example-get-health-check.raml
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: !include ../examples/example-get-health-check.raml
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+          examples: !include ../examples/example-error.raml
+        application/xml:
+          type: error-lib.error
+          examples: !include ../examples/example-error.raml

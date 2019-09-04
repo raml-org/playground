@@ -1,0 +1,29 @@
+{
+  "name": "api-console-ext-comm",
+  "version": "2.0.0",
+  "license": "Apache-2.0",
+  "description": "Element that support communication with the api-console-extension",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1"
+  },
+  "private": false,
+  "main": "api-console-ext-comm.html",
+  "scripts": {
+    "lint": "polymer lint api-console-ext-comm.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-console-ext-comm:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-console-ext-comm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-console-ext-comm/issues",
+    "email": "arc@mulesoft.com"
+  },
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ]
+}

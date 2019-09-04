@@ -1,0 +1,19 @@
+#%RAML 1.0 DataType
+
+displayName: Content Data
+description: This represents the data part of the content in a printable, non-binary form.  For example, a pdf document can be represented as a binary stream and can be passed around in MIME type application/octet-stream or application/pdf.  That octet stream can also be Base64 encoded and a resulting printable array of characters can be used to represent the same pdf document.  This type is used only for representations that can be printed as an array of characters.  In cases where the content has to be passed as binary application/octet-stream should be used.
+
+type: object
+additionalProperties: true
+
+properties:
+  data:
+    displayName: Base64 Encoded Content Data
+    description: Base64 encoding schemes are commonly used when there is a need to encode binary data that needs be stored and transferred over media that are designed to deal with textual data such as XML or JSON.  This is to ensure that the data remains intact without modification during transport.
+    required: false
+    type: string
+  type:
+    displayName: Data Type
+    description: The data is an array of printable characters.  The type indicates the original form.  For example, if the data is Base64 encoded, and we Base64 decode the data, the resulting output may be a binary for application/pdf or application/msword.
+    required: false
+    

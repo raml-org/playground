@@ -1,0 +1,27 @@
+{
+  "name": "arc-polyfills",
+  "description": "Set of web polyfills used in ARC project",
+  "version": "0.1.12",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc"
+  ],
+  "keywords": [
+    "web-components",
+    "advanced-rest-client",
+    "polyfill"
+  ],
+  "private": true,
+  "main": "arc-polyfills.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/arc-polyfills.git"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

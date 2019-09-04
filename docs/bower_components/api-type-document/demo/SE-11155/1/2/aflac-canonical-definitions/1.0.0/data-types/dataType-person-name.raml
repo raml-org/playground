@@ -1,0 +1,45 @@
+#%RAML 1.0 DataType
+
+displayName: Name
+description: Structure to represent a person's full name
+
+type: object
+additionalProperties: false
+
+properties:
+  salutation:
+    required: false
+    enum:
+      - Mr.
+      - Ms.
+      - Mrs.
+  first-name:
+    required: false
+    type: string
+  middle-name:
+    required: false
+    type: string
+  last-name:
+    required: false
+    type: string
+  suffix:
+    required: false
+    type: string
+  nick-names:
+    required: false
+    type: array
+    items: string
+examples:
+  regular-example:
+    salutation: Mr.
+    first-name: John
+    middle-name: F
+    last-name: Remedy
+    suffix: III
+    nick-names: [Babyface, Softhands]
+  extended-example:
+    salutation: Mr.
+    first-name: John
+    middle-name: F
+    last-name: Remedy
+    suffix: III

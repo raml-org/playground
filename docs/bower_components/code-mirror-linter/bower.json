@@ -1,0 +1,38 @@
+{
+  "name": "code-mirror-linter",
+  "description": "A source files for code mirror linter files",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "code-mirror",
+    "linter"
+  ],
+  "private": true,
+  "main": "code-mirror-linter.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/code-mirror-linter.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "codemirror": "^5.35.0",
+    "jsonlint": "zaach/jsonlint#^1.6.0"
+  },
+  "devDependencies": {
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

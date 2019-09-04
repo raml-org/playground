@@ -1,0 +1,12 @@
+#%RAML 1.0
+version: v1
+title: Purina-Supplier-PurchaseOrder
+types:
+  purchaseOrder: !include Purchase-Order-oagis-id-dd32f9c6c01048a19e15c423c9c741ae.json
+/purina/b2b/supplier/purchaseOrder:
+  get:
+    responses:
+      200:
+        body:
+          application/json:
+            type: !include Purchase-Order-oagis-id-dd32f9c6c01048a19e15c423c9c741ae.json

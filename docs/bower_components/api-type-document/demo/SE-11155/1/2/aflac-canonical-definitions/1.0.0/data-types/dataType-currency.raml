@@ -1,0 +1,22 @@
+#%RAML 1.0 DataType
+
+displayName: Currency
+
+type: object
+additionalProperties: false
+
+properties: 
+  code:
+    description: | 
+      The currency abbreviation as listed in https://www.easymarkets.com/int/learn-centre/discover-trading/currency-acronyms-and-abbreviations/
+      Not an enum.
+    required: false
+    type: string
+  amount:
+    required: false
+    type: number
+    minimum: 0.0
+
+example:
+  code: USD
+  amount: 123.45

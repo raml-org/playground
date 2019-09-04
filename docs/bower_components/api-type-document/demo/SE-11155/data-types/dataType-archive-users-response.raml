@@ -1,0 +1,20 @@
+#%RAML 1.0 DataType
+
+
+displayName: Archive Users Response
+description: The response structure fo archiving a collection of users
+
+properties:
+  archived-location:
+    type: string
+    required: false
+  archive-completed-time:
+    type: datetime
+    required: false
+  number-of-records-archived:
+    type: number
+    required: false
+example:
+  archived-location: \\DCS001AB\user-archive-folder
+  archive-completed-time: 2018-08-10T13:11:46.449Z
+  number-of-records-archived: 17225

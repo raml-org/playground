@@ -1,0 +1,10 @@
+#%RAML 1.0 SecurityScheme
+description: |
+        A lightweight security policy which requires an Authorization http header to be set on a request.
+type: x-custom
+describedBy:
+  headers:
+    Authorization:
+      description: |
+        Used to pass an authorization token on the request. 
+      type: string

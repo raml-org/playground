@@ -1,0 +1,243 @@
+#%RAML 1.0 DataType
+
+uses:
+  basic-q-lib: ../libraries/library-basic-questions-set.raml
+  property-lib: ../libraries/library-property.raml
+  version-lib: ../libraries/library-version.raml
+  
+displayName: Content Metadata
+description: Data about any content's data.  This type is part of the content type.  However, it can also be used independently as part of a multipart/* where one of the parts describes the metadata and the other parts may be octet stream.
+
+type: object
+additionalProperties: true
+
+properties:
+  content-id:
+    displayName: Content ID
+    description:  The unique ID that represents a content
+    required: false
+    type: string
+  correlated-content-ids:
+    displayName: Correlated content IDs
+    description:  An array of content-ids that are related to this content and their relation type.  Four types of relationships are recognized, namely, parent, child, sibling and associated.
+    required: false
+    type: property-lib.properties
+    examples:
+      parent-only-example:
+        value:
+          - type: parent
+            value: doc-1234567890
+      parent-and-children-example:
+        value:
+          - type: parent
+            value: doc-1234567890
+          - type: child
+            value: doc-1234567999
+          - type: child
+            value: doc-1234560000
+      parent-children-and-siblings-example:
+        value:
+          - type: parent
+            value: doc-1234567890
+          - type: child
+            value: doc-1234567999
+          - type: child
+            value: doc-1234560000
+          - type: sibling
+            value: doc-1234561111
+  content-type:
+    displayName: Content Type
+    description: What type of content is being represented.  Content can be document, image, video, audio, table such as spreadsheets, drawings such as diagrams, or sites that contain content at a referenceable location.
+    required: false
+    enum:
+      - document
+      - image
+      - video
+      - audio
+      - table
+      - drawing
+      - site
+  content-mime-type:
+    displayName: Content MIME Type
+    description: The MIME type of the content, such as application/pdf, image/png, application/msword/ application/epub+zip, application/octet-stream, etc.
+    required: false
+  location:
+    displayName: Location
+    description: |
+      Detailed information about the location of the content.  A content can be a record in a database, a file in a file system, in a referencable site, or some other type of an entry that have not been defined at this point in time.  
+      The ultimate goal of the location property is to "locate" where the content has been persisted.  
+      The consumer originally would not know this information but would get this information from the provider as part of the metadata.
+      An array of name value pairs can generically define any location.
+      location-type: (database | file-system | reference)
+      database: name of the database
+      schema: name of the schema, owner, plan etc.
+      table: name of the table, view, etc.
+      os: name of the operating system
+      file-path: complete path in that operating system
+      file-name: the name of the file where the content has been persisted
+      reference-type: what type of reference is the content located at
+      reference-uri: the uri that shows the exact location of the content
+    required: false
+    type: property-lib.properties
+    example:
+      value:
+        - name: location-type
+          value: database
+        - name: database
+          value: GRC001DB
+        - name: table
+          value: RECORDS
+
+  title:
+    displayName: Title
+    required: false
+    type: string
+    example: Business Architecture for IT Managers
+  subject:
+    displayName: Subject
+    required: false
+    type: string
+    example: Business Architecture Basics
+  author:
+    displayName: Original Author
+    required: false
+    type: string
+  manager:
+    displayName: Author's Manager
+    required: false
+    type: string
+  categories:
+    displayName: Categories
+    description: Content may belong to different categories.  These categories may be used to persist the content in different locations so that their search can be executed more effectively.  For example, contents that contain claim information may be persisted in a claim repository with other claim content, while content that contains application information may be persisted in a different repository.  These line of business categorization may be used to organize content in more manageable ways.  There may be other types of categorizations such as the freshness of the content.  Some active content may be persisted in a location that can read and written very quickly.  Some much older content that has been used but cannot be deleted can be archived.  Even though the location is much harder to reach and much slower to read, the content is still available, yet in a different location.  Since there is no way of knowing how many of these categorization keys are available, this property is an array of name value pairs 
+    required: false
+    type: property-lib.properties
+    example:
+      value:
+        - name: line-of-business
+          value: Individual-Claim
+        - name: freshness
+          value: archived
+  keywords:
+    displayName: Keywords
+    description: Keywords are special informative words that can be tagged to content and later can be used for search and retrieval of that content.
+    required: false
+    type: string[]
+    example: ["Account","Invoice","Correction"]
+  comments:
+    displayName: Comments
+    required: false
+    type: basic-q-lib.basic-questions-sets
+    example:
+      - what: original version created
+        who: Jane Doe
+        when: 2018-08-31T15:42:16.000Z
+      - what: added Chapter 3 for recipies
+        who: Jane Doe
+        when: 2018-09-01T14:42:16.000Z
+  company:
+    displayName: Company that ownes the Content 
+    required: false
+    type: string
+    example: Aflac
+  template-name:
+    displayName: Content Template
+    required: false
+    type: string
+  events:
+    displayName: Important milestone events of the content
+    description:  Important events of a content are the creation, last update, check-in, check-out, print and others.
+    required: false
+    type: basic-q-lib.basic-questions-sets
+    example:
+      - what: created
+        who: Jane Doe
+        when: 2018-08-31T15:42:16.000Z
+      - what: checked-out
+        who: Jane Doe
+        when: 2018-09-01T14:42:16.000Z
+      - what: printed
+        who: Jane Doe
+        when: 2018-09-01T14:52:48.000Z
+      - what: updated
+        who: Jane Doe
+        when: 2018-09-01T15:00:10.000Z
+      - what: checked-in
+        who: Jane Doe
+        when: 2018-09-01T15:10:25.000Z
+  version:
+    displayName: Current Version
+    required: false
+    type: version-lib.version
+  size-in-bytes:
+    displayName: Content Size
+    description: The size of the content's data in bytes
+    required: false
+    type: number
+  custom-fields:
+    displayName: Custom Fields
+    required: false
+    type: property-lib.properties
+examples:
+  read-example:
+    value:
+      content-id: ABCDEF01-2541-3526-AADD-1245789630ABCDEF
+      correlated-content-ids:
+        - type: parent
+          value: doc-1234567890
+        - type: child
+          value: doc-1111
+        - type: sibling
+          value: doc-2222
+      content-type: document
+      content-mime-type: application/pdf
+      location:
+        - name: location-type
+          value: database
+        - name: database
+          value: GRC001DB
+        - name: table
+          value: RECORDS
+      title: Business Architecture for IT Managers
+      subject: Business Architecture Basics
+      author: Dr. John D. Litmus
+      manager: Greg Peterson
+      categories:
+        - name: source
+          value: FileNet
+        - name: line-of-business
+          value: individual claim
+        - name: freshness
+          value: active
+      keywords: 
+        - Account
+        - Invoice
+        - Correction
+      comments:
+        - what: original version created
+          who: Jane Doe
+          when: 2018-08-31T15:42:16.000Z
+        - what: added Chapter 3 for recipies
+          who: Jane Doe
+          when: 2018-09-01T14:42:16.000Z
+      company: Aflac
+      template-name: TMPL-PDF-11234432
+      events:
+        - what: created
+          who: Jane Doe
+          when: 2018-08-31T15:42:16.000Z
+        - what: checked-out
+          who: Jane Doe
+          when: 2018-09-01T14:42:16.000Z
+        - what: printed
+          who: Jane Doe
+          when: 2018-09-01T14:52:48.000Z
+        - what: updated
+          who: Jane Doe
+          when: 2018-09-01T15:00:10.000Z
+        - what: checked-in
+          who: Jane Doe
+          when: 2018-09-01T15:10:25.000Z
+      version:
+        full: 1.0.0
+      size-in-bytes: 155478445
+        

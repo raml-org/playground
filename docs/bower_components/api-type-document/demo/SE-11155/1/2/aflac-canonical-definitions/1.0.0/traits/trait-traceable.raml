@@ -1,0 +1,24 @@
+#%RAML 1.0 Trait
+description: Traceable trait allows an operation to have the aflac-transaction-id header value which is GUID that uniquely represents a specific request
+
+headers: 
+  aflac-transaction-id:
+    displayName: Aflac Transaction ID
+    type: string
+    required: false
+    description: |
+      GUID to track service requests.  
+      If not provided by a consumer in the request, one will be created and assigned by the provider and returned to the consumer in the response
+    examples: 
+      upperCase: B744DF0B-0B71-4A0C-9F5A-8D45F204987D
+      lowerCase: d1af335b-ce04-40e9-9557-f6ed399b1a87
+responses:
+  200:
+    headers: 
+      aflac-transaction-id:
+        displayName: Aflac Transaction ID
+        type: string
+        required: true
+        description: |
+          GUID to track service requests.  
+          This is either the GUID passed by the consumer in the request or the GUID created by provider because the consumer did not pass one.

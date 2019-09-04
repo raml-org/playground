@@ -1,0 +1,40 @@
+{
+  "name": "url",
+  "main": "url.js",
+  "version": "0.6.1",
+  "homepage": "https://github.com/Polymer/URL",
+  "authors": [
+    "https://github.com/Polymer/URL/graphs/contributors"
+  ],
+  "description": "URL parser in JavaScript",
+  "keywords": [
+    "url",
+    "urlsearchparams",
+    "whatwg",
+    "w3c",
+    "web-components",
+    "polymer"
+  ],
+  "license": "https://github.com/Polymer/URL#license",
+  "ignore": [
+    "**/.*",
+    "*test*",
+    "playground.html",
+    "test",
+    "node_modules",
+    "bower_components"
+  ],
+  "files": [
+    "url.js",
+    "url-polyfill.html"
+  ],
+  "_release": "0.6.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "0.6.1",
+    "commit": "b2f0700355c701adf3aa50c932861c6cfccad280"
+  },
+  "_source": "https://github.com/advanced-rest-client/URL.git",
+  "_target": "^0.6.1",
+  "_originalSource": "advanced-rest-client/URL"
+}

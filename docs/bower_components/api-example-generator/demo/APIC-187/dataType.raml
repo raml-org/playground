@@ -1,0 +1,132 @@
+#%RAML 1.0 DataType
+
+displayName: Record type
+description: Fields for create a new record
+properties:
+  allOrNone:
+    type: boolean
+    required: true
+  records:
+    type: array
+    required: true
+    items:
+      type: object
+      properties:
+        attributes:
+          type: object
+          properties:
+            type:
+              type: string
+              required: true
+        Name:
+          type: string
+          required: true
+        AS400Location:
+          type: string
+          required: true
+        AS400CityName:
+          type: string
+          required: true
+        Year:
+          type: string
+          required: true
+        Make:
+          type: string
+          required: true
+        Model:
+          type: string
+          required: true
+        ModelType:
+          type: string
+          required: true
+        Type:
+          type: string
+          required: true
+        Weight:
+          type: number
+          required: true
+        Serial:
+          type: string
+          required: true
+        AcquiredDate:
+          type: date-only
+          required: true
+        InService:
+          type: date-only
+          required: true
+        MaintenanceCode:
+          type: string
+          required: true
+        MaintenanceCodeDescription:
+          type: string
+          required: true
+        AS400ECM:
+          type: number
+          required: true
+        AS400Status:
+          type: string
+          required: true
+        IQDate:
+          type: date-only
+          required: true
+        Engine:
+          type: string
+          required: true
+        EngineSerial:
+          type: string
+          required: true
+        EngineWarranty:
+          type: date-only
+          required: true
+        EngineArrangement:
+          type: string
+          required: true
+        TransmissionSerial:
+          type: string
+          required: true
+        TransmissionRearRatio:
+          type: number
+          required: true
+        TransmissionRearRearSN:
+          type: string
+          required: true
+        TransmissionFrontRearSN:
+          type: string
+          required: true
+        BookValue:
+          type: number
+          required: true
+        BookValueAsOf:
+          type: date-only
+          required: true
+        Depreciation:
+          type: number
+          required: true
+        Age:
+          type: number
+          required: true
+        AssetDescription:
+          type: string
+          required: true
+        CabType:
+          type: string
+          required: true
+        Color:
+          type: string
+          required: true
+        TCUType:
+          type: string
+          required: true
+        TCUHours:
+          type: number
+          required: true
+        Length:
+          type: number
+          required: true
+        Axles:
+          type: number
+          required: true
+        InventoryType:
+          type: string
+          enum: [Tractor, Trailer]
+          required: true

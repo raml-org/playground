@@ -38788,9 +38788,15 @@ class ViewModel extends common_view_model_1.CommonViewModel {
       return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
         this.model = new model_proxy_1.ModelProxy(parsedModel, 'raml');
         this.ramlEditor.setValue(parsedModel.raw);
-      }).catch(err => {
-        console.error(`Failed to parse file: ${err}`);
-      });
+        return webapi_parser_1.WebApiParser.raml10.resolve(parsedModel);
+      }).then(resModel => {
+        return webapi_parser_1.WebApiParser.amfGraph.generateString(resModel);
+      }).then(graph => {
+        var apiCons = document.querySelector('api-console');
+        apiCons.amfModel = JSON.parse(graph);
+      }); // .catch((err) => {
+      //   console.error(`Failed to parse file: ${err}`)
+      // })
     });
   }
 

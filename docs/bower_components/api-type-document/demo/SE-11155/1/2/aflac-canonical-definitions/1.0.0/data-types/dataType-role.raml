@@ -1,0 +1,51 @@
+#%RAML 1.0 DataType
+
+uses:
+  master-key-lib: ../libraries/library-master-key.raml
+  property-lib: ../libraries/library-property.raml
+  contact-info-lib: ../libraries/library-contact-info.raml
+
+displayName: Role
+description: Role applies to a party and describes the specifics of that party instance.  For example, a party can be a person who is both a policyholder and an associate.  This means that the same person has two roles.  Some of the person's properties such as his name, gender and age may be common to all of his roles, while some other properties such as his policyholder ID is unique to his policyholder role and his associate ID is unique to his associate role.  Sometimes there may be more than one system of record for this person and the data has to be collected and merged to get a complete picture.
+type: object
+additionalProperties: false
+
+properties: 
+  id:
+    displayName: ID
+    description: The unique id of the instance represented by this role.  For example, if the role-name is policyholder then this ID represents a specific policyholder
+    required: false
+    type: master-key-lib.master-key
+  
+  role-name:
+    displayName: Role name
+    description: |
+      Name of the role.  Role names are listed in this documentation instead of an enumaration as new names may be added at any time.
+      Current Person based role names are
+      - Insurance Agreement Holder
+      - Policyholder
+      - Certificateholder
+      - Claimant
+      - Applicant
+      - Dependent
+      - Beneficiary
+      - Associate
+      - Employee
+      Current Organization based role names are
+      - Account
+      - Third Party Administrator
+      - Broker
+    required: false
+    type: string
+  
+  contact-information:
+    displayName: Role Contact Information
+    description: Contact Information for the role
+    required: false
+    type: contact-info-lib.contact-information
+  
+  statuses:
+    displayName: Role Statuses
+    description: the description of each status as an array
+    required: false
+    type: property-lib.properties

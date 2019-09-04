@@ -1,0 +1,8 @@
+{
+  "demo-api/demo-api.raml": "RAML 1.0",
+  "apic-83/apic-83.raml": "RAML 1.0",
+  "oas-api/Petstore.yaml": "OAS 2.0",
+  "examples-api/examples-api.raml": "RAML 1.0",
+  "SE-10469/SE-10469.raml": "RAML 1.0",
+  "SE-11155/SE-11155.raml": "RAML 1.0"
+}

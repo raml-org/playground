@@ -1,0 +1,6 @@
+{
+  "excludeFiles": [
+    "tasks/*",
+    "demo/*"
+  ]
+}

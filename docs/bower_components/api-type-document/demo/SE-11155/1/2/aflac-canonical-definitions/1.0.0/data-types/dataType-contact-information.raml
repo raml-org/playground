@@ -1,0 +1,69 @@
+#%RAML 1.0 DataType
+
+uses:
+  language-lib: ../libraries/library-language.raml
+  address-lib: ../libraries/library-address.raml
+  phone-lib: ../libraries/library-phone.raml
+  email-lib: ../libraries/library-email.raml
+  social-media-lib: ../libraries/library-social-media.raml
+
+displayName: Contact Information
+
+type: object
+additionalProperties: false
+
+properties:
+  languages:
+    displayName: List of Languages
+    description:  The preferred language has the highest preference-index number 
+    required: false
+    type: language-lib.languages
+  addresses:
+    displayName: List of Addresses
+    required: false
+    type: address-lib.addresses
+  phones:
+    displayName: List of Phones
+    required: false
+    type: phone-lib.phones
+  emails:
+    displayName: List of Emails
+    required: false
+    type: email-lib.email-addresses
+  social-media-accounts:
+    displayName: List of Social Media Accounts
+    required: false
+    type: social-media-lib.social-media-accounts
+
+example:
+  languages:
+    - name: English
+      code: en
+      preference-index: 1
+    - name: Spanish
+      code: es
+      preference-index: 0
+  addresses:
+    - context: home
+      line1: 3388 Hamilton St
+      line2: Apt 1
+      city: Philadelphia
+      state-region-code: PA
+      country: USA
+      postal-code: "19104"
+      additional-postal-code: "6388"
+    - context: work
+      line1: 101 Walnut St
+      line2: Suite 2300
+      city: Philadelphia
+      state-region-code: PA
+      country: USA
+      postal-code: "19104"
+  phones:
+    - context: home
+      area-code: "212"
+      phone-number: 255-5584
+    - context: work
+      area-code: "212"
+      phone-number: 257-8400
+      ext: "1378"

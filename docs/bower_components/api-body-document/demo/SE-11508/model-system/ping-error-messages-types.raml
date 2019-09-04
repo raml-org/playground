@@ -1,0 +1,17 @@
+#%RAML 1.0 Library
+
+types:
+  PingErrorMessage:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+
+  PingErrorMessagesResponse:
+    properties:
+      messages:
+        type: PingErrorMessage[]
+        required: false
+
+         

@@ -1,0 +1,26 @@
+{
+  "name": "@api-components/api-headers-editor",
+  "version": "2.0.12",
+  "description": "HTTP headers form build from AMF json/ld model",
+  "main": "api-headers-editor.html",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@api-components/api-model-generator": "^0.1.5",
+    "@polymer/gen-typescript-declarations": "^1.6.0"
+  },
+  "private": false,
+  "scripts": {
+    "lint": "polymer lint api-headers-editor.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-headers-editor:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "bower install && gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-headers-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-headers-editor/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

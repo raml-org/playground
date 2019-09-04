@@ -1,0 +1,20 @@
+#%RAML 1.0 Trait
+
+  headers:
+    X-Trace-Id:
+      description: The X-Trace-Id provides API clients the opportunity to submit there own reference ID on an API request. The Id will be output in the application logs to facilate diagnostic troubleshooting. 
+      type: string
+      maxLength: 64
+      required: false
+
+    X-Request-Id:
+      description: The X-Request-Id is a correlation identifier set on a request by the loadbalancer.  
+      type: string
+      pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+      required: true  
+
+    X-Message-Id:
+      description: The X-Message-Id is a unique identifier for every request within the API subsystem.  
+      type: string
+      pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+      required: true  

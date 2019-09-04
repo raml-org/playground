@@ -1,0 +1,22 @@
+#%RAML 1.0 Trait
+description: When a consumer application makes a request to an API, it may provide its consumer ID and the reason why it is making the request, as the value of the business event header.  These values are used to determine how the consumer's request is processed by the application network.
+
+headers: 
+  aflac-consumer-id:
+    displayName: Aflac Consumer ID
+    type: string
+    required: false
+    description: A unique, descriptive name that represents the consumer application.  The name must be created, approved and assigned at design time. 
+    examples:
+      example1: wynsure-financial-service-app
+      example2: wynsure-financial-service-consumerfacing-api-impl1
+  
+  aflac-business-event:
+    displayName: Aflac Business Event
+    description: A name that represents the business event which indicates why the request is being made.
+    type: string
+    required: false
+    examples:
+      example1: policyholder-information-requested
+      example2: account-setup-completed
+      example3: claim-submitted

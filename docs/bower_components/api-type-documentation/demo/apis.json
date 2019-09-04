@@ -1,0 +1,5 @@
+{
+  "demo-api/demo-api.raml": "RAML 1.0",
+  "examples-api/examples-api.raml": "RAML 1.0",
+  "uber/uber.json": ["OAS 2.0", "application/json"]
+}

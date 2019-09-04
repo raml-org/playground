@@ -1,0 +1,25 @@
+{
+  "name": "@api-components/api-property-form-item",
+  "version": "2.0.6",
+  "description": "An input to use with forms to render inputs based in ARC view-model",
+  "main": "api-property-form-item.html",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "scripts": {
+    "lint": "polymer lint api-property-form-item.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-property-form-item:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-property-form-item.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-property-form-item/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

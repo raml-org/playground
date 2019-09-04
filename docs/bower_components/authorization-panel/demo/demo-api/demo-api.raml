@@ -1,0 +1,217 @@
+#%RAML 1.0
+title: Oauth 2.0 example
+version: v1
+baseUri: http://domain.api.domain.com/{version}/
+
+annotationTypes:
+  oauth2CustomSettings:
+    allowedTargets: [ SecuritySchemeSettings ]
+    properties:
+      authorizationSettings:
+        description: |
+          Settings to be applied to the `authorizationUri` GET request.
+          Define any query parameters or headers that are required by your OAuth 2.0
+          authorization server implementation.
+          This settings can be applied only to `token` and `code` requests
+        type: object
+        displayName: Authorization settings
+        required: false
+        properties:
+          queryParameters:
+            displayName: Authorization query parameters
+            description: |
+              Query parameters to be applied to the `authorizationUri`.
+              Use the same notation as RAML's `queryParameters`.
+              If you define a parameter that is already defined in OAuth 2.0 specification
+              (RFC6749) it should be ignored by the processor.
+            type: object
+            required: false
+            properties:
+              /a-zA-Z0-9\-\_/*:
+                type: object
+                required: false
+          headers:
+            displayName: Authorization headers
+            description: |
+              Headers to be set on the authorization request.
+              Use the same notation as RAML's `headers`.
+            type: object
+            required: false
+            properties:
+              /a-zA-Z0-9\-\_/*:
+                type: object
+                required: false
+      accessTokenSettings:
+        displayName: Access token settings
+        description: |
+          Settings to be applied to the token endpoint POST request.
+          Define query parameters, headers or custom body paramaeters that should
+          be included into the request.
+          Note, as per RFC6749, the request content type is `application/x-www-form-urlencoded`
+          and the processor has to always assume this content type.
+        type: object
+        required: false
+        properties:
+          queryParameters:
+            displayName: Token query parameters
+            description: |
+              Query parameters to be applied to the `accessTokenUri`.
+              Use the same notation as RAML's `queryParameters`.
+              OAuth 2.0 specification does not specify any query parameters for this
+              type of request.
+            type: object
+            required: false
+            properties:
+              /a-zA-Z0-9\-\_/*:
+                type: object
+                required: false
+          headers:
+            displayName: Token request headers
+            description: |
+              Headers to be set on the token request.
+              Use the same notation as RAML's `headers`.
+            type: object
+            required: false
+            properties:
+              /a-zA-Z0-9\-\_/*:
+                type: object
+                required: false
+          body:
+            displayName: Token body parameters
+            description: |
+              Body parameters to be applied to the `accessTokenUri`.
+              Properties will be applied to the default set of OAuth 2.0 token request
+              parameters.
+              If you define a parameter that is already defined in OAuth 2.0 specification
+              (RFC6749) it should be ignored by the processor.
+            type: object
+            required: false
+      authorizationGrants:
+        type: string[]
+        displayName: Custom authorization grants
+        required: false
+        description: |
+          List of custom authorization granst supported by your OAuth 2.0 server
+      ignoreDefaultGrants:
+        type: nil
+        required: false
+        description: |
+          If set, the processor should not use any of the `authorizationGrants`
+          properties defined in the `settings` and should be replaced by
+          `authorizationGrants` defined in this annotation.
+          This can be used only if this annotation `authorizationGrants` is set.
+securitySchemes:
+  oauth2Normal: !include oauth-2.raml
+  oauth2:
+    type: OAuth 2.0
+    displayName: OAuth 2.0 with annotation
+    settings:
+      (oauth-2-custom-settings):
+        # ignoreDefaultGrants:
+        authorizationGrants: [annotated_custom_grant, annotated_custom_grant2]
+        authorizationSettings:
+          queryParameters:
+            resource:
+              type: string
+              required: true
+              description: |
+                A resource ID that defines a domain of authorization.
+              displayName: Hello query parameeter
+              default: some default
+              examples:
+                named: named example value
+                otherExample: test example value
+              pattern: [a-zA-Z\s\S, test]
+              maxLength: 12
+              minLength: 3
+              required: true
+            numericParam:
+              type: number
+              minimum: 10
+              maximum: 20
+              multipleOf: 2
+              format: float
+              required: false
+              example: 22
+            dateParam:
+              type: date-only
+              required: false
+            repetableParam1:
+              type: string[]
+              required: false
+            repetableParam2:
+              type: array
+              items: integer
+              required: false
+          headers:
+            x-auth-resource:
+              type: string
+              required: false
+              enum: [a, b, c]
+        accessTokenSettings:
+          queryParameters:
+            queryTokenResource: string
+            detailedTokenResource:
+              type: number
+              description: some description
+              required: false
+          body:
+            bodyTokenResource: string
+            bodyDetailed:
+              type: boolean
+              required: true
+              displayName: Body detailed property
+      accessTokenUri: https://token.com
+      authorizationUri: https://auth.com
+      authorizationGrants: [implicit, authorization_code]
+      scopes: [profile, email]
+    describedBy:
+      queryParameters:
+        access_token:
+          type: string
+          description: Apply access token here.
+  basic:
+    type: Basic Authentication
+  digest:
+    type: Digest Authentication
+  pass:
+    type: Pass Through
+  oauth1: !include oauth_1_0.raml
+  custom1: !include x-custom.raml
+  custom2: !include x-other.raml
+/oauth2:
+  get:
+    securedBy: [oauth2Normal, oauth2]
+  post:
+    securedBy: [oauth2]
+  put:
+    securedBy: [null, oauth2]
+/basic:
+  get:
+    securedBy: [basic]
+/digest:
+  get:
+    securedBy: [digest]
+/pass:
+  get:
+    securedBy: [pass]
+    queryParameters:
+      exampleTest:
+        examples:
+          example1: hello example
+          example2: Other example
+/oauth1:
+  get:
+    securedBy: [oauth1]
+/custom1:
+  get:
+    securedBy: [custom1]
+/custom2:
+  get:
+    securedBy: [custom2]
+/combo:
+  get:
+    securedBy: [null, basic, digest, pass, oauth1, oauth2Normal, custom1, custom2]
+/custom-only:
+  get:
+    securedBy: [custom1, custom2]

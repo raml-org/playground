@@ -1,0 +1,48 @@
+#%RAML 1.0 DataType
+displayName: Company identification
+description: This object represents the indentification of a company.
+type: object
+examples:
+  BE_CompanyId: !include examples/CompanyIdentification_BE_Example-1.0.raml
+  GB_CompanyId: !include examples/CompanyIdentification_GB_Example-1.0.raml
+  NL_CompanyId: !include examples/CompanyIdentification_NL_Example-1.0.raml
+properties:
+  countryCode:
+    description: The country code identifying the country where a company resides.
+    type: string
+    minLength: 2
+    maxLength: 2
+    required: true
+  graydonEnterpriseId:
+    description: The unique company identifier issued by Graydon.
+    type: integer
+    required: false
+    example: 1558501924
+  registrationId:
+    description: The unique (legal) company identifier in the country where it resides; a Chamber of Commerce number in the Netherlands, CRO number in the United Kingdom and Company number in Belgium.
+    required: false
+    type: string
+    minLength: 1
+    maxLength: 12
+    example: "330803480000"
+  vatNumber:
+    description: The unique VAT number issued to a company by competent authority in the country where it resides.
+    type: string
+    required: false
+    minLength: 1
+    maxLength: 15
+    example: "NL004753975B01"
+  graydonCompanyId:
+    description: The unique company identifier identifier issued by Graydon.
+    type: string
+    minLength: 1
+    maxLength: 15
+    example: "501924"
+    required: false
+  isBranchOffice:
+    description: Determines if this company is a branch office or not (=head office)
+    type: boolean
+    required: false
+  branchIdentification:
+    description: Identification of the branch office.
+    required: false

@@ -1,0 +1,29 @@
+{
+  "name": "@api-components/api-form-mixin",
+  "description": "A mixin that contains common properties, methods and styles for components that implements AMF based forms",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.0"
+  },
+  "private": false,
+  "main": "api-form-mixin.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint api-form-mixin.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-form-mixin:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-form-mixin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-form-mixin/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

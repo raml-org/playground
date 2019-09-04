@@ -1,0 +1,34 @@
+{
+  "name": "@advanced-rest-client/code-mirror",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "description": "CodeMirror web component made with Polymer",
+  "scripts": {
+    "lint": "polymer lint code-mirror.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"code-mirror:local-test\"",
+    "test": "polymer test",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "keywords": [
+    "web-component",
+    "web-components",
+    "polymer",
+    "code-mirror",
+    "code",
+    "mirror",
+    "chrome-apps"
+  ],
+  "author": "Pawel Psztyc <jarrodek@gmail.com>",
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/code-mirror/issues",
+    "email": "arc@mulesoft.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/code-mirror.git"
+  },
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1"
+  },
+  "private": false
+}

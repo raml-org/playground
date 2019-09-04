@@ -1,0 +1,57 @@
+#%RAML 1.0 Library
+
+types:
+  PingBaseCustomerAccount:
+    properties:
+      id:
+        type: string
+        required: true
+ 
+  PingCustomerAccount:
+    type: PingBaseCustomerAccount
+    properties:
+      dateOfBirth:
+        type: string
+      olssRegistered:
+        type: boolean
+        required: true
+
+  PatchPingCustomerAccountRequest:
+    properties:
+        userId: 
+          type: string
+          required: false
+          example: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+        email:
+          type: string
+          required: false
+          maxLength: 50
+          pattern: ^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}\b$
+          example: "jsmith@provider.co.uk"
+        encryptedPassword: 
+          type: string
+          required: false
+          example: "XXXXXXXX"
+
+  ValidateCustomerAccountPolicy:
+    properties:  
+      id: string
+      description: string
+      startDate: date-only  
+    
+  ValidateCustomerAccountMatchedResponse:
+    properties:
+      userId?: string
+      customerAccountId: string
+      title: string
+      firstName: string
+      lastName: string
+      email?: string
+      policies: ValidateCustomerAccountPolicy[]
+  
+  ValidateCustomerAccountMatchedRequest:
+    properties:
+      firstName: string
+      lastName: string
+      dateOfBirth: string   
+         

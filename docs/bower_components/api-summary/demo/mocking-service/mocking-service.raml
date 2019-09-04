@@ -1,0 +1,149 @@
+#%RAML 1.0
+
+version: v1
+types:
+  Response:
+    type: object
+    properties:
+      msg: string
+      code: integer
+    examples:
+      r1:
+        msg: "OK"
+        code: 12
+      r2:
+        msg: "error"
+        code: 001
+title: Mocking Server 2
+
+/test:
+  get:
+
+    headers:
+      h1:
+        type: boolean
+        default: false
+        example: false
+      h2:
+        required: true
+        type: string
+        default: A
+
+    queryParameters:
+      parameter1:
+        type: string
+        example: A
+    responses:
+      200:
+        body:
+          application/json:
+            type: Response
+  put:
+    body:
+      application/json:
+        type: object
+        properties:
+          id: integer
+          name: string
+        example:
+          id: 222
+          name: John Doe
+    responses:
+      201:
+        body:
+          application/json:
+            type: object
+            properties:
+              code: string
+              msg: string
+            example:
+              code: M1
+              msg: CREATED
+  post:
+    body:
+      application/json:
+        type: object
+        properties:
+          list:
+            type: array
+            items: integer
+        example:
+          list: [1,3,5]
+    responses:
+      201:
+        body:
+          application/json:
+            type: Response
+
+
+  delete:
+    protocols: [ HTTP ]
+    queryParameters:
+      id:
+        type: string
+        example: s1
+        default: s2
+    responses:
+      200:
+        body:
+          application/json:
+            type: Response
+
+  options:
+    displayName: options
+    queryParameters:
+      qp1:
+        type: array
+        items: string
+        default: [A,B]
+        example: [C,D]
+    headers:
+      h1:
+        type: boolean
+        default: false
+        example: true
+  head:
+    responses:
+      200:
+        body:
+          application/json:
+
+            type: Response
+            properties:
+        headers:
+          X-PSN-Exists:
+            type: boolean
+            enum: [true, false]
+            example: true
+  patch:
+    body:
+      application/xml:
+
+    queryParameters:
+      patchId:
+        type: integer
+        example: 123
+        default:  34
+    responses:
+      200:
+        body:
+          application/json:
+            type: Response
+  trace:
+    headers:
+      exp: date-only
+    body:
+      application/json:
+        type: object
+        properties:
+          txNumber:
+            type: number
+          expirationDate:
+            type: date-only
+
+  connect:
+    responses:
+      200:
+        body:
+          application/json:
+            type: Response

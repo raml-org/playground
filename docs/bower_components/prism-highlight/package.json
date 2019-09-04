@@ -1,0 +1,25 @@
+{
+  "name": "@advanced-rest-client/prism-highlight",
+  "description": "Syntax highlighting via Prism",
+  "version": "3.0.3",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "main": "prism-highlight.html",
+  "scripts": {
+    "lint": "polymer lint prism-highlight.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"prism-highlight:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/prism-highlight.git"
+  }
+}

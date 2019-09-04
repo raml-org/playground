@@ -1,0 +1,41 @@
+#%RAML 1.0 Library
+
+types:
+  myType:
+    properties:
+      foo: boolean
+      bar: string
+resourceTypes:
+  myResourceType:
+    get:
+      headers:
+        x-header: string
+traits:
+  myTrait:
+    queryParameters:
+      abc:
+        type: string
+        description: test type
+        default: yes
+        minLength: 1
+        maxLength: 3
+    headers:
+      x-abc:
+        type: string
+        default: no
+        pattern: (yes|no)
+    securedBy: [OAuth1, null]
+    responses:
+      200:
+        description: test response
+        headers:
+          X-Frame-Options:
+            type: string
+securitySchemes:
+  OAuth1:
+    type: OAuth 1.0
+    description: OAuth 1.0 continues to be supported for all API requests, but OAuth 2.0 is now preferred.
+    settings:
+      requestTokenUri: http://api.domain.com/oauth1/request_token
+      authorizationUri: http://api.domain.com/oauth1/authorize
+      tokenCredentialsUri: http://api.domain.com/oauth1/access_token

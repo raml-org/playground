@@ -1,0 +1,33 @@
+{
+  "name": "prism-common",
+  "description": "Common import files for Prism library for ARC",
+  "version": "2.0.0",
+  "license": "Apache-2.0",
+  "main": "index.html",
+  "keywords": [
+    "api-components"
+  ],
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "prism-element": "PolymerElements/prism-element#^2.1.0"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^3.0.1",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/prism-common.git"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

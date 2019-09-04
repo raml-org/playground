@@ -1,0 +1,26 @@
+{
+  "name": "@advanced-rest-client/xml-viewer",
+  "version": "2.1.1",
+  "license": "Apache-2.0",
+  "description": "An XML payload viewer for the XML response",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.1"
+  },
+  "private": false,
+  "main": "xml-viewer.html",
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "lint": "polymer lint xml-viewer.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"xml-viewer:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/xml-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/xml-viewer/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

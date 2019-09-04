@@ -1,0 +1,75 @@
+#%RAML 1.0 DataType
+displayName: Address
+type: object
+examples:
+  BE_Address: !include examples/Address_BE_Example-1.0.raml
+  GB_Address: !include examples/Address_GB_Example-1.0.raml
+  NL_Address: !include examples/Address_NL_Example-1.0.raml
+properties:
+  addressType:
+    description: Specifies the type of address.
+    type: string
+    enum: ['TRADING-ADDRESS','REGISTERED-OFFICE-ADDRESS','POSTAL-ADDRESS']
+    required: false
+  building:
+    description: Building
+    type: string
+    required: false
+    example: "HYGEIA BUILDING"
+  streetName:
+    description: Street name
+    type: string
+    required: false
+    example: "College Road"
+  streetNameAdd1:
+    description: Street name (part 2)
+    required: false
+    type: string
+    example: "66 68 COLLEGE ROAD"
+  streetNameAdd2:
+    description: Street name (part 3)
+    type: string
+    required: false
+    example: "HARROW, MIDDLESEX, HA1 1BE., UNITED KINGDOM"
+  streetNameAdd3:
+    description: Street name (part 4)
+    type: string
+    required: false
+  houseNumber:
+    description: House number
+    type: string
+    required: false
+  houseNumberAddition:
+    description: House number addition
+    type: string
+    required: false
+  poBoxNumber:
+    description: P.O Box
+    type: string
+    required: false
+  postalCode:
+    description: Postal code
+    type: string
+    required: false
+  city:
+    description: City
+    type: string
+    required: false
+  state:
+    description: State or province
+    type: string
+    required: false
+  country:
+    description: Country name
+    type: string
+    required: false
+  countryCode:
+    description: Country code
+    type: string
+    required: false
+    example: "GB"
+  fullFormatedAddress:
+    description: Full formatted address
+    type: string
+    required: false
+    example: "HYGEIA BUILDING, 66 68 COLLEGE ROAD, HARROW, MIDDLESEX, HA1 1BE., UNITED KINGDOM"

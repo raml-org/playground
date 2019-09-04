@@ -1,0 +1,36 @@
+{
+  "name": "api-form-mixin",
+  "description": "A mixin that contains common properties, methods and styles for components that implements AMF based forms",
+  "version": "2.0.1",
+  "main": "api-form-mixin.html",
+  "license": "Apache-2.0",
+  "authors": [
+    "pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "raml",
+    "oas",
+    "form builder"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-component-page": "^3.0.1",
+    "iron-form": "PolymerElements/iron-form#^2.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-form-mixin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-form-mixin/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

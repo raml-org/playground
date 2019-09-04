@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>response-view demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../xhr-simple-request/xhr-simple-request.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../iron-flex-layout/iron-flex-layout.html">
+  <link rel="import" href="../../paper-input/paper-input.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../paper-icon-button/paper-icon-button.html">
+  <link rel="import" href="../../paper-toast/paper-toast.html">
+  <link rel="import" href="../response-view.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    .url-input {
+      @apply --layout-horizontal;
+    }
+    .url-input paper-input {
+      @apply --layout-flex;
+    }
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>The `response-view`</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind id="demo">
+          <template is="dom-bind">
+            <div class="url-input">
+              <paper-input label="URL" value="{{url}}"></paper-input>
+              <paper-button raised on-tap="download">go</paper-button>
+            </div>
+            <response-view request="[[request]]" response="[[response]]" loading-time="[[loadingTime]]" is-xhr is-error="[[isError]]" response-error="[[responseError]]"></response-view>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+    <paper-toast text=""></paper-toast>
+    <xhr-simple-request></xhr-simple-request>
+  </div>
+  <script>
+  window.addEventListener('WebComponentsReady', () => {
+    const scope = document.getElementById('demo');
+    scope.url = 'https://cdn.rawgit.com/jarrodek/ChromeRestClient/develop/tasks/test-data/xml1.xml';
+    // scope.url = 'https://raw.githubusercontent.com/jarrodek/ChromeRestClient/develop/tasks/test-data/json2.json';
+    let requestId = 0;
+
+    window.addEventListener('api-response', (e) => {
+      scope.request = e.detail.request;
+      scope.response = e.detail.response;
+      scope.loadingTime = e.detail.loadingTime;
+      if (e.detail.isError) {
+        scope.isError = e.detail.isError;
+        scope.responseError = e.detail.error;
+      }
+    });
+
+    scope.download = function() {
+      scope.request = undefined;
+      scope.response = undefined;
+      scope.responseError = undefined;
+      scope.isError = false;
+      const detail = {
+        id: 'request' + (requestId ++),
+        url: scope.url,
+        method: 'GET'
+      };
+      document.body.dispatchEvent(new CustomEvent('api-request', {
+        bubbles: true,
+        detail: detail
+      }));
+    };
+  });
+  </script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-navigation demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../raml-aware/raml-aware.html">
+    <link rel="import" href="../../paper-styles/typography.html">
+    <link rel="import" href="../../paper-styles/shadow.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../../paper-toast/paper-toast.html">
+    <link rel="import" href="../api-navigation.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      :root {
+        --arc-font-common-base: {
+          @apply --paper-font-common-base;
+        };
+        --arc-font-body1: {
+          @apply --paper-font-body1;
+        };
+        --api-navigation-list-item-selected-background-color: var(--primary-color);
+        --api-navigation-endpoint-toggle-icon-color: #9E9E9E;
+        --api-navigation-endpoint-toggle-icon: {
+          width: 32px;
+          height: 32px;
+          margin-right: 4px;
+        };
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+
+      h2 {
+        @apply --paper-font-headline;
+      }
+
+      .box {
+        @apply --shadow-elevation-4dp;
+        box-sizing: border-box;
+        padding: 16px;
+        margin-bottom: 40px;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <raml-aware raml="{{amfModel}}" scope="api-demo"></raml-aware>
+
+        <header>
+          <paper-dropdown-menu label="Select demo API">
+            <paper-listbox slot="dropdown-content" id="apiList" on-selected-changed="_apiChanged">
+              <paper-item data-file="missing-endpoints.json">Missing endpoints issue</paper-item>
+              <paper-item data-file="demo-api.json">Demo API</paper-item>
+              <paper-item data-file="demo-api-compact.json">Demo API - compact model</paper-item>
+              <paper-item data-file="types-list.json">Types list issue demo</paper-item>
+              <paper-item data-file="types-list-compact.json">Types list issue demo - compact model</paper-item>
+              <paper-item data-file="exchange-experience-api.json">Exchange API</paper-item>
+              <paper-item data-file="exchange-experience-api-compact.json">Exchange API - compact model</paper-item>
+              <paper-item data-file="oauth1-fragment.json">OAuth1 fragment</paper-item>
+              <paper-item data-file="oauth2-fragment.json">OAuth2 fragment</paper-item>
+              <paper-item data-file="documentation-fragment.json">Documentation fragment</paper-item>
+              <paper-item data-file="type-fragment.json">Type fragment</paper-item>
+              <paper-item data-file="lib-fragment.json">Library fragment</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </header>
+
+        <section role="main" class="vertical-section-container centered main">
+          <div role="region" class="box" aria-labelledby="regular">
+            <p>Latest selected object: [[latestSelected]]</p>
+            <p>Latest selected type: [[latestType]]</p>
+            <h2 id="regular">Regular navigation</h2>
+            <api-navigation summary aware="api-demo" endpoints-opened></api-navigation>
+          </div>
+        </section>
+
+        <paper-toast id="navToast"></paper-toast>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      app._load = function() {
+        document.getElementById('apiList').selected = 0;
+      };
+
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.file;
+        app._loadFile(file);
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+      app._navChanged = function(e) {
+        const {selected, type} = e.detail;
+        app.latestSelected = selected;
+        app.latestType = type;
+        const navToast = document.getElementById('navToast');
+        navToast.text = 'Navigation occured. Type: ' + type + ', id: ' + selected;
+        navToast.opened = true;
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+    </script>
+  </body>
+</html>

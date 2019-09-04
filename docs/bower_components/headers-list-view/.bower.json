@@ -1,0 +1,55 @@
+{
+  "name": "headers-list-view",
+  "description": "An element that displays a list of headers",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "http headers",
+    "list"
+  ],
+  "private": true,
+  "main": "headers-list-view.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/headers-list-view.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "paper-item": "PolymerElements/paper-item#^2.1.0",
+    "paper-dialog": "PolymerElements/paper-dialog#^2.1.1",
+    "paper-dialog-scrollable": "PolymerElements/paper-dialog-scrollable#^2.2.0",
+    "paper-button": "PolymerElements/paper-button#^2.1.0",
+    "headers-parser-behavior": "advanced-rest-client/headers-parser-behavior#^2.0.0"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-test-helpers": "PolymerElements/iron-test-helpers#^2.0.0",
+    "iron-component-page": "^3.0.1",
+    "arc-definitions": "advanced-rest-client/arc-definitions#^2.0.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ],
+  "homepage": "https://github.com/advanced-rest-client/headers-list-view",
+  "_release": "2.0.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "2.0.1",
+    "commit": "6e299dcc3bfa8ce3fe6fad87f188d33a07a08b5c"
+  },
+  "_source": "https://github.com/advanced-rest-client/headers-list-view.git",
+  "_target": "^2.0.0",
+  "_originalSource": "advanced-rest-client/headers-list-view"
+}

@@ -1,0 +1,126 @@
+#%RAML 1.0 DataType
+
+uses:
+  lib: ../libraries/library-context-and-preference.raml
+  base-lib: ../libraries/library-base.raml
+
+displayName: Address
+description: Used to express the values of a US address, but can also be used for non-US addresses
+
+type: [lib.preferable, lib.contextual, base-lib.base]
+additionalProperties: false
+
+properties:
+  line1:
+    displayName: Address Line 1
+    required: false
+    type: string
+    minLength: 0
+    maxLength: 64
+    description: The street name part of the address
+    example: 156 Trentini Ave
+  line2:
+    displayName: Address Line 2
+    required: false
+    type: string
+    minLength: 0
+    maxLength: 64
+    description: The additional street name part of the address
+    example: Suite 101
+  line3:
+    displayName: Address Line 3
+    required: false
+    type: string
+    minLength: 0
+    maxLength: 64
+    description: For Attn to a specific person in an organization
+    example: "Attn: John Doe"
+  line4:
+    displayName: Address Line 4
+    required: false
+    type: string
+    minLength: 0
+    maxLength: 64
+    description: Any additional information that does not fit the above three lines can be inserted here
+  city:
+    displayName: City
+    required: false
+    type: string
+    description: The city name part of the address
+    example: Atlanta
+  county:
+    displayName: County
+    required: false
+    type: string
+    description: Rarely used county name within a US state
+    example: Fulton
+  state-region-code:
+    displayName: State or Region Code
+    description: In countries such as the USA which has states, this field holds the code of the state.  Otherwise, it holds the code of a region or province
+    required: false
+    type: string
+    examples:
+      state-example: GA
+      region-example: MBR
+  state-region-name:
+    displayName: State or Region Name
+    description: In countries such as the USA which has states, this field holds the full name of the state.  Otherwise, it holds the full name of a region or province
+    required: false
+    type: string
+    examples:
+      state-example: Georgia
+      region-example: Marmara Bolgesi
+  country:
+    displayName: Country
+    description: The name of the country. It can be abbreviated or full.
+    required: false
+    type: string
+    example: U.S.A.
+  postal-code:
+    displayName: Primary Postal Code
+    required: false
+    type: string
+    description: Most country addresses use a primary postal code.  In the U.S. the primary postal code is the first 5 digits of the zip code.
+    example: "12345" 
+  additional-postal-code:
+    displayName: Additional Postal Code
+    required: false
+    type: string
+    description: In some countries which use a primary postal may also include an additional postal code.  In the U.S. the additional postal code is the last 4 digits of the 9 digit full postal code.  Most people only know their primary postal code.  However, post offices can use these additional postal codes to increase efficiencies and reduce costs.
+    example: "1234" 
+  validity:
+    displayName: Address Validity
+    required: false
+    enum:
+      - Unknown
+      - Valid
+      - Invalid
+    description:  |
+      An address can be validated against a service to confirm its existence and its format.  This field shows either the address has been validated or not, and if validated what the result is.
+      Unknown: We do not know if the address has been validated or not
+      Valid:  The address has been validated and the result came back as a valid address
+      Invalid: The validation process returned a negative result and the address is NOT valid, meaning it either does not exist or is not formatted correctly and it should not be used until fixed.
+examples:
+  us-address-example:
+    context: home
+    line1: 3388 Hamilton St
+    line2: Apt 1
+    city: Philadelphia
+    state-region-code: PA
+    state-region-name: Pennsylvania
+    country: USA
+    postal-code: "19104"
+    additional-postal-code: "0388"
+    validity: Valid
+    preference-index: 3
+  canada-address-example:
+    context: office
+    line1: 2701 Riverside Dr
+    line2: Suite No813
+    city: Ottowa
+    state-region-code: ON
+    country: Canada
+    postal-code: "K1A 0B1"
+    additional-postal-code: "0388"
+    validity: Valid
+    preference-index: 3

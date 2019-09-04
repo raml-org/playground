@@ -1,0 +1,29 @@
+{
+  "name": "@advanced-rest-client/multipart-payload-editor",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "description": "Multipart payload editor for ARC body editor",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "private": false,
+  "main": "multipart-payload-editor.html",
+  "scripts": {
+    "lint": "polymer lint multipart-payload-editor.html multipart-text-form-item.html multipart-file-form-item.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"multipart-payload-editor:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/multipart-payload-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/multipart-payload-editor/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

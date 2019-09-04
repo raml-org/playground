@@ -1,0 +1,48 @@
+#%RAML 1.0 DataType
+displayName: Company Profile base object
+description: This object contain all base company data
+type: object
+properties:
+  companyIdentification:
+    type: !include CompanyIdentification-1.0.raml
+    required: false
+  companyName:
+    description: The official registered company name. Generally a company has only one official registered name; for Beglian companies a company may have two official registered names.
+    type: string
+    required: false
+  alternateCompanyName:
+    description: The official registered alternate company name.
+    type: string
+    required: false
+  tradeNames:
+    description: De trade name is the name a company uses to trade. It is mainly used to distinct itself from other companies and has also a publicity value. A company have 0 or more trade names.
+    type: array
+    items: string
+    required: false
+  companyAddress:
+    type: array
+    items: !include Address-1.0.raml
+    required: false
+  legalForm:
+    description: The current legal form
+    type: object
+    required: false
+  isActive:
+    displayName: Specifies if company is registered as an active company or not
+    type: string
+    enum: ['true','false','unknown']
+    required: false
+  foundationDate:
+    displayName: The foundation date of the company (Derivation of Incorporation date or Establishment date)
+    type: date-only
+    required: false
+    example: 2015-05-24
+  dissolutionDate:
+    displayName: The dissolution date of the company
+    type: date-only
+    required: false
+    example: 2017-03-22
+  nonEmailIndicator:
+    displayName: Company explicitly indicates not to appreciate receiving unsolicited emails
+    type: boolean
+    required: false

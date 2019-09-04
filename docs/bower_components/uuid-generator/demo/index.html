@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>uuid-generator demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../uuid-generator.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>Generate the UUID</h3>
+    <demo-snippet>
+      <template>
+        <uuid-generator></uuid-generator>
+        <paper-button raised id="gen">generate</paper-button>
+        <output></output>
+        <script>
+          document.querySelector('#gen').addEventListener('tap', () => {
+            const uuid = document.querySelector('uuid-generator').generate();
+            document.querySelector('output').innerText = uuid;
+          });
+        </script>
+      </template>
+    </demo-snippet>
+
+    <h3>Auto generate</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind>
+          <template>
+            <uuid-generator auto last-uuid="{{generatedUuid}}"></uuid-generator>
+            <output>[[generatedUuid]]</output>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+  </div>
+</body>
+</html>

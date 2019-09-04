@@ -1,0 +1,18 @@
+#%RAML 1.0 DataType
+
+displayName: Contextual
+description: This is a type that is best used for inheritance to give a context to any inheriting object.
+
+type: object
+additionalProperties: false
+
+properties:
+  context:
+    displayName: Context
+    required: false
+    type: string
+    description: a name that represents the context an object is in.  For example, the context of an email can be 'personal', or 'work', the context of a phone number can be 'office', 'cell', or 'home'.
+    
+examples:
+  json-example:
+    {"context": "work"}

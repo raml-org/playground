@@ -1,0 +1,24 @@
+#%RAML 1.0 DataType
+
+displayName: Origination Point
+description: Information regarding the run-time and design-time location of the code.  When an event occurs in the code, an error or log entry can use this data type to communicate the exact location of the event in the code and the execution environment.
+
+type: object
+
+properties: 
+  node:
+    type: string
+    description: the specific instance name of a container, server, machine etc
+    required: false
+  component:
+    type: string
+    description: the name of the software component, api, service, program, class etc.
+    required: false
+  method:
+    type: string
+    description: the section name of the code in the software component, method, operation, function, subroutine, etc.
+    required: false
+  line:
+    type: string
+    description: the line number of the code in that code unit.
+    required: false

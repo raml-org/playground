@@ -1,0 +1,49 @@
+#%RAML 1.0 DataType
+
+uses:
+  source-lib: ../libraries/library-source.raml
+
+displayName: Master Key
+description: |
+  The master key is a generically reusable object that can uniquely identify any record in any system.  Master key can also uniquely identify the combined data of an entity from all systems using a global id.
+  As an example, consider a business entity called Person.  The Person's full information may have been distributed on several Source systems.  If we read all Source systems and combine the data, removing redundant elements, we would reach a complete Person record.  The Person's record in System 1 may be identitified by an element such as SSN, in System 2 it may be identified by many elements, such as full name, date of birth and location of birth, in System 3 may be idenitified by an internal ID.  Each system may contain pieces of important information and some information may have been redundantly stored in more than one source system.
+
+type: object
+additionalProperties: false
+
+properties:
+  type:
+    displayName: Object's Type Name
+    description: The name of the object's type.  This should be a concrete business entity name that makes sense in Aflac's business, such as a policyholder, associate, account, invoice, etc.
+    required: false
+    type: string
+  guid:
+    displayName: Global Unique ID
+    description: A unique ID that represents a specific entity across all systems
+    required: false
+    type: string
+  sources:
+    displayName: Sources
+    description: the list of sources each of which contains some or all parts of an entity's full information
+    type: source-lib.sources
+    required: false
+examples:
+  policyholder-example:
+    type: policyholder
+    guid: 12345678-ABCD-DEFA-0001-0123456789ABCDEF
+    sources:
+      - source-name: Customer Information File
+        source-code: CIF
+        resource-keys:
+          - name: CIFNumber
+            value: PH5534265142
+            type: string
+      - source-name: SalesForce
+        source-code: SFE
+        resource-keys:
+          - name: SFID
+            value: 112233445566ASDD
+            type: string
+
+  associate-example:
+    type: associate

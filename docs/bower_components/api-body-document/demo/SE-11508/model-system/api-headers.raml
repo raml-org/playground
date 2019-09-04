@@ -1,0 +1,8 @@
+#%RAML 1.0 Trait
+
+  headers:
+    X-Trace-Id:
+      description: The X-Trace-Id provides API clients the opportunity to submit there own reference ID on an API request. The Id will be output in the application logs to facilate diagnostic troubleshooting. 
+      type: string
+      maxLength: 64
+      required: false        

@@ -1,0 +1,43 @@
+{
+  "name": "api-headers-document",
+  "description": "Documentation component for API headers based on AMF data model",
+  "version": "2.0.3",
+  "license": "Apache-2.0",
+  "main": "api-headers-document.html",
+  "keywords": [
+    "api-components"
+  ],
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "raml-aware": "advanced-rest-client/raml-aware#^2.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^2.0.3",
+    "api-type-document": "advanced-rest-client/api-type-document#^2.0.1",
+    "iron-collapse": "PolymerElements/iron-collapse#^2.2.0",
+    "iron-icon": "PolymerElements/iron-icon#^2.1.0",
+    "paper-button": "PolymerElements/paper-button#^2.1.0",
+    "arc-icons": "advanced-rest-client/arc-icons#^2.0.2"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "iron-component-page": "PolymerElements/iron-component-page#^3.0.1",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "api-navigation": "advanced-rest-client/api-navigation#^2.0.0",
+    "arc-polyfills": "advanced-rest-client/arc-polyfills#^0.1.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/api-headers-document.git"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

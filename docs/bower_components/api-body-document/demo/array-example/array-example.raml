@@ -1,0 +1,200 @@
+#%RAML 1.0
+baseUri: https://demo.api.com
+title: Demo
+version: 1.0
+
+types:
+  addressType:
+    type: object
+    displayName: address
+    properties:
+      addressIndicator:
+        type: string
+        required: false
+        description: Address indicator as referred from SOLR.
+      addressId:
+        type: string
+        required: false
+        description: Address Id as referred from SOLR.ex:-0001
+      addressType:
+        type: string
+        required: false
+        description: Address type as referred from SOLR.ex:-BUSINESS
+      addressLine1:
+        type: string
+        required: false
+        description: Address details as referred from SOLR.ex:-5310 S 123TH ST
+      addressLine2:
+        type: string
+        required: false
+        description: Address details as referred from SOLR.ex:-STE 3
+      addressLine3:
+        type: string
+        required: false
+        description: Address details as referred from SOLR.ex:-8950A CAMPUS DEL
+      city:
+        type: string
+        required: false
+        description: City as referred from SOLR.ex:-LINCOLN
+      stateProvinceCode:
+        type: string
+        required: false
+        description: State as referred from SOLR.ex:-NE
+      postalCode:
+        type: string
+        required: false
+        description: Postal code as referred from SOLR.ex:-B3H 60023
+      postalCodeExt:
+        type: string
+        required: false
+        description: Postal code extension as referred from SOLR.ex:-B3H
+      country:
+        type: string
+        required: false
+        description: Country as referred from SOLR.ex:-US
+  contactType:
+    type: object
+    displayName: contact
+    properties:
+      phone:
+        type: string
+        required: false
+        description: Phone number of the customer as referred from SOLR.ex:-(000) 123-1234
+      phone2:
+        type: string
+        required: false
+        description: Phone number of the customer as referred from SOLR.ex:-(000) 123-1234
+      email:
+        type: string
+        required: false
+        description: Email Id of the customer as referred from SOLR. ex:-veeralakshmi.palanivelu@astrazeneca.com
+      fax:
+        type: string
+        required: false
+        description: Fax number of the customer as referred from SOLR.ex:-(250) 000-6789
+      webAddress:
+        type: string
+        required: false
+        description: web address as referred from SOLR.
+  affiliationType:
+    type: object
+    displayName: affiliation
+    properties:
+      affiliationId:
+        type: string
+        required: false
+        description: Affiliation Id as referred from SOLR.ex:-49664
+      affiliationName:
+        type: string
+        required: false
+        description: Affiliation name as referred from SOLR.ex:-Westin Medical
+      secAffiliationId:
+        type: string
+        required: false
+        description: Secondary affiliation Id as referred from SOLR.ex:-123123
+      secAffiliationName:
+        type: string
+        required: false
+        description: Secondary affiliation name as referred from SOLR.ex:-NHS Swingson
+      addresses:
+        type: array
+        displayName: addresses
+        description: Address details of the affiliation as referred from SOLR.
+        items: addressType
+  customer:
+    properties:
+      customerId:
+        type: string
+        description: Customer Id of the customer as referred from SOLR.
+        example: CA1353123
+        required: false
+      doctorId:
+        type: string
+        description: Doctor Id of the customer as referred from SOLR.
+        example: tbc
+        required: false
+      customerStatus:
+        type: string
+        description: Customer status as referred from SOLR.
+        example: A
+        required: false
+      customerTypeCode:
+        type: string
+        description: Customer type code as referred from SOLR.
+        example: PHARMST
+        required: false
+      customerSubTypeCode:
+        type: string
+        description: Customer subtype code as referred from SOLR.
+        example: tbc
+        required: false
+      primarySpecialtyCode:
+        type: string
+        description: Primary speciality as referred from SOLR.
+        example: PSY
+        required: false
+      primarySpecialtyDescr:
+        type: string
+        description: Description of the primary speciality as referred from SOLR.
+        example: Psychiatry
+        required: false
+      nameData:
+        type: object
+        displayName: nameData
+        required: false
+        properties:
+          name:
+            type: string
+            description: Name of the customer as referred from SOLR.
+            example: John smith chaozhi
+            required: false
+          firstName:
+            type: string
+            description: First name of the customer as referred from SOLR.
+            example: John
+            required: false
+          lastName:
+            type: string
+            description: Last name of the customer as referred from SOLR.
+            example: chaozhi
+            required: false
+          middleName:
+            type: string
+            description: Middle name of the customer as referred from SOLR.
+            example: smith
+            required: false
+          salutation:
+            type: string
+            description: Salutation of the customer as referred from SOLR.
+            example: Dr
+            required: false
+          designation:
+            type: string
+            description: Designation of the customer as referred from SOLR.
+            example: tbc
+            required: false
+      affiliations:
+        type: array
+        displayName: affiliationData
+        description: tbc
+        required: false
+        items: affiliationType
+      addresses:
+        type: array
+        displayName: addressData
+        description: tbc
+        required: false
+        items: addressType
+      contacts:
+        type: array
+        displayName: contactMethod
+        description: tbc
+        required: false
+        items: contactType
+    example: !include customer-example.raml
+
+/customers:
+  get:
+    body:
+      application/json:
+        type: customer[]

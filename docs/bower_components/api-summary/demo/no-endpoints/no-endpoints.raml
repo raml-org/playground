@@ -1,0 +1,14 @@
+#%RAML 1.0
+title: Amazon S3 REST API
+version: 1
+mediaType: application/json
+
+types:
+  person:
+    type: object
+    properties:
+      name: string
+      age?: number
+
+  manager:
+    type: person

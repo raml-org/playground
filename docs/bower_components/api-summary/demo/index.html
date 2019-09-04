@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-summary demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-styles/typography.html">
+    <link rel="import" href="../../raml-aware/raml-aware.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../api-summary.html">
+    <link rel="import" href="../../api-console-default-theme/api-console-default-theme.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      [role="main"] {
+        max-width: 1100px;
+      }
+
+      api-summary {
+        margin-left: 40px;
+        margin-right: 40px;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <header>
+          <paper-dropdown-menu label="Select demo API">
+            <paper-listbox slot="dropdown-content" id="enpointsList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">Demo api</paper-item>
+              <paper-item data-src="demo-api-compact.json">Demo api - compact version</paper-item>
+              <paper-item data-src="array-body.json">Body with array</paper-item>
+              <paper-item data-src="array-body-compact.json">Body with array - compact version</paper-item>
+              <paper-item data-src="nexmo-sms-api.json">Nexmo SMS API</paper-item>
+              <paper-item data-src="nexmo-sms-api-compact.json">Nexmo SMS API - compact version</paper-item>
+              <paper-item data-src="appian-api.json">Appian API</paper-item>
+              <paper-item data-src="appian-api-compact.json">Appian API - compact version</paper-item>
+              <paper-item data-src="loan-microservice.json">Loan microservice</paper-item>
+              <paper-item data-src="loan-microservice-compact.json">Loan microservice - compact version</paper-item>
+              <paper-item data-src="mocking-service.json">mocking-service</paper-item>
+              <paper-item data-src="mocking-service-compact.json">mocking-service - compact</paper-item>
+              <paper-item data-src="no-endpoints.json">no-endpoints</paper-item>
+              <paper-item data-src="no-endpoints-compact.json">no-endpoints - compact</paper-item>
+              <paper-item data-src="no-server.json">No server info</paper-item>
+              <paper-item data-src="no-server-compact.json">No server info - compact</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </header>
+        <raml-aware raml="{{amfModel}}" scope="model"></raml-aware>
+        <div class="vertical-section-container centered" role="main">
+          <api-summary aware="model"></api-summary>
+        </div>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+      app._load = function() {
+        document.getElementById('enpointsList').selected = 0;
+      };
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

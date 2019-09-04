@@ -1,0 +1,28 @@
+#%RAML 1.0 DataType
+
+uses:
+  core: ../libraries/library-context-and-preference.raml
+
+displayName: Social Media Account Information
+
+type: [core.preferable, core.contextual]
+additionalProperties: false
+
+properties:
+  platform-name:
+    displayName: Platform Name
+    description: The name of the social media platform such as Skype, WhatsApp, Twitter, Instagram, etc.
+    required: false
+    type: string
+  user-name:
+    displayName: User Name
+    required: false
+    type: string
+
+examples:
+  skype-example:
+    platform-name: Skype
+    user-name: JohnDoe2011
+  facebook-example:
+    platform-name: Facebook
+    user-name: JohnDoe2011

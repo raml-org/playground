@@ -1,0 +1,49 @@
+{
+  "name": "raw-payload-editor",
+  "description": "A raw payload input editor based on CodeMirror",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "payload-editor",
+    "code-mirror"
+  ],
+  "private": true,
+  "main": "raw-payload-editor.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/raw-payload-editor.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "code-mirror": "advanced-rest-client/code-mirror#^2.0.0",
+    "code-mirror-hint": "advanced-rest-client/code-mirror-hint#^1.0.0",
+    "paper-button": "PolymerElements/paper-button#^2.1.0",
+    "iron-resizable-behavior": "PolymerElements/iron-resizable-behavior#^2.0.0",
+    "paper-toast": "PolymerElements/paper-toast#^2.1.0",
+    "events-target-behavior": "advanced-rest-client/events-target-behavior#^2.0.0",
+    "payload-parser-behavior": "advanced-rest-client/payload-parser-behavior#^2.0.0",
+    "code-mirror-linter": "advanced-rest-client/code-mirror-linter#^2.0.1"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "iron-test-helpers": "PolymerElements/iron-test-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-component-page": "^3.0.1",
+    "paper-checkbox": "PolymerElements/paper-checkbox#^2.0.0",
+    "content-type-selector": "advanced-rest-client/content-type-selector#^2.0.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

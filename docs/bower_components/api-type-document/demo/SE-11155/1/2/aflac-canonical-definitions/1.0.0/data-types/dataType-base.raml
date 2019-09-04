@@ -1,0 +1,31 @@
+#%RAML 1.0 DataType
+
+uses:
+  prop-lib: ../libraries/library-property.raml
+
+displayName: Base DataType
+description: Base data type is used as the super type of most business data types.  Base has properties that all business entities commonly have.
+
+type: object
+additionalProperties: false
+
+properties:
+  additional-properties:
+    displayName: Additional Properties
+    description: When a data type is defined for various reasons it may be missing some properties.  This array of property objects keeps track of the missed properties
+    required: false
+    type: prop-lib.properties
+
+example:
+  additional-properties:
+    - order: 1
+      name: forgotten-property
+      value: value
+      type: string
+    - name: forgotten-number-array
+      is-array: true
+      delimiter:  ","
+      value: 1,3,4,5,6
+      type: integer
+
+    

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+  <title>api-url-params-editor demo</title>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../api-view-model-transformer/api-view-model-transformer.html">
+  <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+  <link rel="import" href="../../paper-styles/shadow.html">
+  <link rel="import" href="../api-url-params-editor.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    :root {
+      --arc-font-body1: {
+        @apply --paper-font-body1;
+      }
+    }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 12px 24px;
+      background-color: #C5E1A5;
+      @apply --layout-horizontal;
+      @apply --layout-center;
+    }
+
+    h1 {
+      @apply --paper-font-headline;
+    }
+
+    h2 {
+      @apply --paper-font-title;
+    }
+
+    h3 {
+      @apply --paper-font-subhead;
+    }
+
+    output {
+      white-space: pre-wrap;
+      @apply --paper-font-code1;
+      font-size: 16px;
+    }
+
+    .spacer {
+      @apply --layout-flex;
+    }
+
+    .vertical-section-container {
+      background-color: #fff;
+      padding: 20px;
+      margin: 24px;
+      @apply --shadow-elevation-2dp;
+    }
+
+    api-url-params-editor {
+      padding: 8px;
+    }
+
+    api-url-params-editor[invalid] {
+      border: 1px red dashed;
+    }
+    </style>
+  </custom-style>
+</head>
+<body>
+
+  <dom-bind id="demo">
+    <template is="dom-bind">
+      <api-view-model-transformer></api-view-model-transformer>
+
+      <header>
+        <h1>API URL params editor</h1>
+        <div class="spacer"></div>
+        <div class="options">
+          <paper-checkbox checked="{{narrow}}">Render narrow view</paper-checkbox>
+        </div>
+      </header>
+
+      <section class="vertical-section-container" role="main">
+        <api-url-params-editor on-query-value-changed="_queryValueChanged" allow-custom narrow="{{narrow}}" invalid="{{invalid}}"></api-url-params-editor>
+      </section>
+
+      <section class="vertical-section-container" role="region" aria-labelledby="outputTitle">
+        <h2 id="outputTitle">Query parameters model</h2>
+        <output>[[queryValueString]]</output>
+      </section>
+
+      <section class="vertical-section-container" role="region" aria-labelledby="validityTitle">
+        <h2 id="validityTitle">Validity</h2>
+        <p>Invalid: [[invalid]]</p>
+      </section>
+    </template>
+  </dom-bind>
+  <script>
+  (function(scope) {
+    scope._queryValueChanged = function(e) {
+      let queryValue = e.detail.value;
+      let result;
+      if (queryValue) {
+        result = JSON.stringify(queryValue);
+      } else {
+        result = '';
+      }
+      scope.set('queryValueString', result);
+    };
+    // scope._logEvent = function(type, name, value) {
+    //   let log = '[' + new Date().toGMTString() + ']: ';
+    //   log += type + ' model changed: ' + name + '=' + value + '\n';
+    //   let scopelog = scope.eventsLog;
+    //   if (!scopelog) {
+    //     scopelog = '';
+    //   }
+    //   scopelog += log;
+    //   scope.eventsLog = scopelog;
+    // };
+    // scope.clearEventsLog = function() {
+    //   scope.eventsLog = '';
+    // };
+    // window.addEventListener('query-parameter-changed', (e) => {
+    //   console.log('query-parameter-changed', e.detail.name, e.detail.value);
+    //   scope._logEvent('Query', e.detail.name, e.detail.value);
+    // });
+  })(document.getElementById('demo'));
+  </script>
+</body>
+</html>

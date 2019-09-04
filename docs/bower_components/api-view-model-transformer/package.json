@@ -1,0 +1,30 @@
+{
+  "name": "@api-components/api-view-model-transformer",
+  "description": "AMF model transformer to a form view model used in API components.",
+  "version": "2.0.18",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "main": "api-view-model-transformer.html",
+  "private": false,
+  "devDependencies": {
+    "@api-components/api-model-generator": "0.1.8",
+    "@polymer/gen-typescript-declarations": "1.6.1"
+  },
+  "scripts": {
+    "lint": "polymer lint api-view-model-transformer.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-view-model-transformer:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-view-model-tranformer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-view-model-tranformer/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

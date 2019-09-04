@@ -1,0 +1,21 @@
+#%RAML 1.0
+title: api
+types:
+  recordCreateRequest : !include dataType.raml
+
+
+/record:
+  displayName: Inventory Record
+  description: Resource to request the Update and Create inventory records
+  post:
+    displayName: Create inventory records
+    description: Create multiple inventory records
+    headers:
+      Authorization:
+        type: string
+        required: true
+        example: 'Bearer 00D3C0000000kXR!ARMAQN942GQWCIeeQMaSCKBQZaAZcYoi0kTx2pOvA8vfGb85Ae6Sb5KNwvqR73K3PCsgH89voKsZZ0ztqAzYWjLiw736BhS4'
+    body:
+      application/json:
+        type: recordCreateRequest
+        examples: !include example.raml 

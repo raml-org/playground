@@ -1,0 +1,29 @@
+{
+  "name": "@api-components/headers-list-view",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "description": "An element that displays a list of headers",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "main": "headers-list-view.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint headers-list-view.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"headers-list-view:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/headers-list-view.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/headers-list-view/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

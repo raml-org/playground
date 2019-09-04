@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+Comment
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+
+  <title>response-body-view demo</title>
+
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <style is="custom-style" include="demo-pages-shared-styles">
+
+    .vertical-section-container {
+      max-width: 600px;
+    }
+
+    .url-input {
+      @apply(--layout-horizontal);
+    }
+
+    .url-input paper-input {
+      @apply(--layout-flex);
+    }
+
+  </style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>The `response-body-view`</h3>
+    <response-body-view response-text="[[response]]" content-type="[[contentType]]"></response-body-view>
+  </div>
+  <script>
+    window.addEventListener('WebComponentsReady', function() {
+      console.log('abc');
+    });
+  </script>
+</body>
+</html>

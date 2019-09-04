@@ -1,0 +1,10 @@
+#%RAML 1.0 Trait 
+
+headers: 
+  Client-Id:
+    type: string
+    minLength: 10
+    maxLength: 12
+    pattern: ([\w]{3})([\.])([\w]{3})([\.])([\w]{2,4})
+    example: TST.CLI.ID 
+    required: true

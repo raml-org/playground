@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>auth-methods demo</title>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <link rel="import" href="../../shadycss/apply-shim.html">
+  <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-toggle-button/paper-toggle-button.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../iron-form/iron-form.html">
+  <link rel="import" href="../auth-method-basic.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+
+    output {
+      white-space: pre-wrap;
+    }
+
+    auth-method-basic {
+      margin-bottom: 40px;
+    }
+    </style>
+  </custom-style>
+</head>
+<body>
+  <div class="vertical-section-container centered">
+    <h3>The `auth-method-basic`</h3>
+    <demo-snippet>
+      <template>
+        <auth-method-basic id="auth" step-start-index="0"></auth-method-basic>
+        <paper-input id="hashInput" label="Generated hash"></paper-input>
+        <paper-toggle-button id="toggle">Hide steps</paper-toggle-button>
+      </template>
+    </demo-snippet>
+    <fieldset>
+      <iron-form id="headerChange">
+        <form autocomplete="on">
+          <legend>Send header change event</legend>
+          <paper-input name="name" label="Header name" value="authorization"></paper-input>
+          <paper-input name="value" label="Header value" value="basic b3RoZXIgdXNlcjpvdGhlciBwYXNzd29yZA=="></paper-input>
+          <paper-button id="sendHeaderEventButton">Send event</paper-button>
+        </form>
+      </iron-form>
+    </fieldset>
+    <output id="log"></output>
+  </div>
+  <script>
+  (function() {
+    const AuthDemo = {
+      init: () => {
+        AuthDemo.auth = document.getElementById('auth');
+        AuthDemo.output = document.getElementById('log');
+        AuthDemo.hashInput = document.getElementById('hashInput');
+        AuthDemo.hashInput.value = AuthDemo.auth.hash = 'dGVzdDp0ZXN0';
+        document.getElementById('toggle')
+        .addEventListener('checked-changed', () => AuthDemo.toggleNoStep());
+        AuthDemo.auth.addEventListener('hash-changed', (e) => AuthDemo.hashHandler(e.detail.value));
+        AuthDemo.hashInput.addEventListener('input', AuthDemo.hashInput);
+        AuthDemo.auth.addEventListener('auth-settings-changed', AuthDemo.settingsChanged);
+        AuthDemo.auth.addEventListener('error', AuthDemo.errorHandler);
+        document.getElementById('sendHeaderEventButton')
+        .addEventListener('tap', AuthDemo.sendHeaderChange);
+      },
+
+      sendHeaderChange: function() {
+        const form = document.getElementById('headerChange');
+        const values = form.serializeForm();
+        document.body.dispatchEvent(new CustomEvent('request-header-changed', {
+          detail: {
+            name: values.name,
+            value: values.value
+          },
+          bubbles: true
+        }));
+      },
+
+      errorHandler: function(e) {
+        AuthDemo.output.innerHTML += e.detail.error.message + '\n';
+      },
+
+      settingsChanged: function(e) {
+        const settings = e.detail.settings;
+        let text = 'Current settings:\n';
+        text += '\tUsername: ' + settings.username + '\n';
+        text += '\tPassword: ' + settings.password + '\n';
+        text += '\tHash: ' + settings.hash + '\n';
+        AuthDemo.output.innerHTML = text;
+      },
+
+      toggleNoStep: function() {
+        AuthDemo.auth.noSteps = !AuthDemo.auth.noSteps;
+      },
+
+      hashHandler: function(value) {
+        if (AuthDemo.hashInput.value !== value) {
+          AuthDemo.hashInput.value = value;
+        }
+      },
+
+      hashInput: function() {
+        const value = AuthDemo.hashInput.value;
+        if (AuthDemo.auth.hash !== value) {
+          AuthDemo.auth.hash = value;
+        }
+      }
+    };
+    window.addEventListener('WebComponentsReady', () => AuthDemo.init());
+  })();
+  </script>
+</body>
+</html>

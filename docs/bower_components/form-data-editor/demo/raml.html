@@ -1,0 +1,187 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>form-data-editor demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+  <link rel="import" href="../../paper-item/paper-item.html">
+  <link rel="import" href="../../paper-listbox/paper-listbox.html">
+  <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+  <link rel="import" href="../../api-view-model-transformer/api-view-model-transformer.html">
+  <link rel="import" href="../../neon-animation/web-animations.html">
+  <link rel="import" href="../../api-navigation/api-navigation.html">
+  <link rel="import" href="../form-data-editor.html">
+
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+
+      output {
+        display: block;
+        margin-top: 24px;
+        white-space: pre-wrap;
+        @apply --paper-font-code1;
+      }
+
+      .main {
+        margin-top: 40px;
+        @apply --shadow-elevation-4dp;
+        padding: 24px;
+        margin-bottom: 40px;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+      }
+
+      .centered {
+        max-width: 1200px;
+      }
+
+      .content {
+        @apply --layout-flex;
+      }
+    </style>
+  </custom-style>
+</head>
+<body>
+  <dom-bind id="demo">
+    <template is="dom-bind">
+      <header>
+        <paper-dropdown-menu label="Select demo endpoint">
+          <paper-listbox slot="dropdown-content" id="apisList" on-selected-changed="_apiChanged">
+            <paper-item data-src="demo-api.json">Demo api</paper-item>
+            <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+          </paper-listbox>
+        </paper-dropdown-menu>
+
+        <paper-dropdown-menu label="Select media type" disabled id="mediaDropdown">
+          <paper-listbox slot="dropdown-content" id="mediaList" on-selected-changed="_mediaTypeChanged">
+            <template is="dom-repeat" items="[[mediaTypes]]">
+              <paper-item data-type$="[[item]]">[[item]]</paper-item>
+            </template>
+          </paper-listbox>
+        </paper-dropdown-menu>
+      </header>
+
+      <div class="horizontal-section-container centered">
+        <api-navigation amf-model="[[amfModel]]" endpoints-opened></api-navigation>
+
+        <div class="content">
+          <section role="main" class="vertical-section-container centered main">
+            <api-view-model-transformer id="transformer"></api-view-model-transformer>
+            <form-data-editor model="[[dataViewModel]]" narrow="[[narrow]]" allow-custom allow-disable-params allow-hide-optional value="{{value}}"></form-data-editor>
+            <output>[[value]]</output>
+          </section>
+
+          <section class="vertical-section-container centered">
+            <paper-checkbox checked="{{narrow}}">Render narrow view</paper-checkbox>
+          </section>
+        </div>
+      </div>
+
+      <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+    </template>
+  </dom-bind>
+  <script>
+    (function(app) {
+      app._load = function() {
+        class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+        window.customElements.define('demo-element', DemoElement);
+        document.getElementById('apisList').selected = 0;
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+
+      app._navChanged = function(e) {
+        if (e.detail.passive) {
+          return;
+        }
+        const type = e.detail.type;
+        if (type === 'method') {
+          app.setData(e.detail.selected);
+          app.hasData = true;
+        } else {
+          app.hasData = false;
+        }
+      };
+
+      app.setData = function(id) {
+        document.getElementById('mediaList').selected = undefined;
+        const webApi = app.$.helper._computeWebApi(app.amfModel);
+        const method = app.$.helper._computeMethodModel(webApi, id);
+        const expect = app.$.helper._computeExpects(method);
+        const payloads = app.$.helper._computePayload(expect);
+        app.payloads = payloads;
+        app.setupMediaTypes(payloads);
+      };
+
+      app.setupMediaTypes = function(payloads) {
+        const ns = ApiElements.Amf.ns;
+        const types = payloads.map((item) => {
+          return app.$.helper._getValue(item, ns.raml.vocabularies.http + 'mediaType');
+        });
+        app.mediaTypes = types;
+        const dropdown = document.getElementById('mediaDropdown');
+        if (dropdown.hasAttribute('disabled')) {
+          dropdown.removeAttribute('disabled');
+        }
+        if (types && types.length === 1) {
+          document.getElementById('mediaList').selected = 0;
+        }
+      };
+
+      app._mediaTypeChanged = function(e) {
+        const ns = ApiElements.Amf.ns;
+        const payload = app.payloads[e.detail.value];
+        if (!payload) {
+          return;
+        }
+        const key = app.$.helper._getAmfKey(ns.raml.vocabularies.http + 'schema');
+        let schema = app.$.helper._ensureArray(payload[key])[0];
+        schema = app.$.helper._resolve(schema);
+        const pKey = app.$.helper._getAmfKey(ns.w3.shacl.name + 'property');
+        const properties = app.$.helper._ensureArray(schema[pKey]);
+        const tr = document.getElementById('transformer');
+        tr.amfModel = app.amfModel;
+        const model = tr.computeViewModel(properties);
+        app.dataViewModel = model;
+      };
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+      window.addEventListener('WebComponentsReady', () => app._load());
+    })(document.getElementById('demo'));
+  </script>
+</body>
+</html>

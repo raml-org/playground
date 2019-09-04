@@ -1,0 +1,35 @@
+#%RAML 1.0 Library
+
+types:
+  CreateQuotePostRequest:
+    properties:
+      titleCode: string
+      firstName: string
+      lastName: string
+      dateOfBirth: string
+      maritalStatusCode: string
+      addressLine1: string
+      addressLine2?: string
+      addressLine3?: string
+      addressLine4?: string
+      addressLine5?: string
+      postCode: string
+      maskCode: string
+      product: string
+      clientId: string
+
+  CreateQuotePostMatchedResponse:
+    properties:
+      customerAccountId: string
+      quoteId: string
+      titleCode: string
+      title: string
+      firstName: string
+      lastName: string
+      existingCustomer: boolean
+
+  CreateQuotePostCreatedResponse:
+    properties:
+      customerAccountId: string
+      quoteId: string
+      existingCustomer: boolean

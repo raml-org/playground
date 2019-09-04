@@ -1,0 +1,37 @@
+#%RAML 1.0 DataType
+
+uses:
+  role-lib: ../libraries/library-role.raml
+
+displayName: Party
+description: |
+  Any entity that can take part in a business transaction and can be interacted with is considered a party.  There are two main groups, person and organization.
+  In Aflac's business, examples in person category include Associates, Applicants, Insurance Agreement Holders, Beneficiaries, Employees, Dependents and so on.  Examples in organization category include Accounts, Brokers and Third Party Administrators.
+  Each of these examples is considered to be a role of a party.  For example, a party can be both an associate, an applicant and an insurance agreement holder.  Each of these roles may have some common properties and some role specific properties.
+
+type: object
+additionalProperties: false
+
+properties:
+  party-name:
+    displayName: Party Name
+    description: The name of the party.  If the party is of type Person, this is set to the Person's full name.  If the party is of Type Organization, this is set to the name of the organization.
+    required: false
+    type: string
+  
+  party-type:
+    displayName: Party Type
+    description: Type of the party whether it is of Person or Organization.  When Person is selected the person-info property is populated, and organization-info property is not populated.  When Organization is selected, the organization-info property is populated and person-info property is not populated.  When it is left as unset, it is not definitive which *-info is populated.  Both person-info and organization-info properties must NOT be populated in the same party instance.
+    type: string
+    required: false
+    enum:
+      - Person
+      - Organization
+      - Unset
+    default: Unset
+  
+  roles:
+    displayName: Roles
+    description: Every party instance may represent one or more roles.
+    required: false
+    type: role-lib.roles

@@ -1,0 +1,92 @@
+#%RAML 1.0 DataType
+
+displayName: Aflac Log Entry Type
+description: The type to be used in all Aflac Software Components when logging any activity
+  
+type: object
+additionalProperties: false
+
+properties:
+  transaction-id:
+    displayName: Transaction ID
+    description: |
+      The GUID that uniquely identifies the consumer's request.  
+      This id should originate from the consumer.  
+      If the consumer cannot produce a unique id, then the first point of contact software component produces it on behalf of the consumer.
+      This id continues to be propagated to downstream components via the Aflac-Timestamps header, both in request and response flows.
+    type: string
+    required: false
+  level:
+    displayName: Log Entry Level
+    required: false
+    enum:
+      - FATAL
+      - ERROR
+      - WARN
+      - INFO
+      - DEBUG
+      - TRACE
+  code:
+    displayName: Entry Code
+    description: Any code that can be used to identify a condition, both success or failure.  This can be a response code, a status code that is specific to a protocol
+    type: string
+    required: false
+    examples:
+      http_example: HTTP 404
+      amqp_example: AMQP 9903
+      sql_example: JDBC 3001
+      jms_example: JMS 668
+  origin:
+    displayName: Origination Point
+    description: Information regarding what has created this log entry
+    required: false
+    type: !include dataType-code-origin.raml
+  message:
+    displayName: Any message in free text form for additional information
+    type: string
+    required: false
+  time:
+    displayName: Occurence Time
+    description: |
+      When the software component creates this log entry.
+      GMT long number.  
+      Instead of using a formatted date-time string use the long number that represents the GMT time in milliseconds.
+      This element is especially important to provide with the Traffic Direction and Origination Point to calculate all system performance.
+      The accuracy of the system performance information depends on the machine time synchronization with a master clock.
+    type: number
+    required: false
+  direction:
+    displayName: Traffic Direction
+    description: |
+      A software component can have the following 4 traffic modes
+      - RequestFromConsumer: The component has just received a request from a consumer
+      - ResponseToConsumer: The component is about to send the response back to the consumer
+      - RequestToProvider: The component is making a request to another provider
+      - ResponseFromProvider: The component has just received a response from the provider
+    required: false
+    enum:
+      - RequestFromConsumer
+      - ResponseToConsumer
+      - RequestToProvider
+      - ResponseFromProvider
+
+examples:
+  info-example:
+    transaction-id: B744DF0B-0B71-4A0C-9F5A-8D45F204987D
+    level: INFO
+    origin:
+      node: PCNSDBSQL01
+      component: Account API
+    message: Received a request from ABC Consumer
+    time: 157002458744
+    direction: RequestFromConsumer
+  error-example:
+    transaction-id: B744DF0B-0B71-4A0C-9F5A-8D45F204987D
+    level: ERROR
+    code: HTTP 429
+    origin:
+      node: PCNSDBSQL01
+      component: Account API
+    message: Limit Exceeded.  This API does not allow ABC consumer more than 10 requests per minute"
+    time: 157002458744
+    direction: RequestFromConsumer

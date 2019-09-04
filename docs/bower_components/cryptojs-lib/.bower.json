@@ -1,0 +1,38 @@
+{
+  "name": "cryptojs-lib",
+  "description": "Web component wrapper for cryptojs lib",
+  "version": "0.1.1",
+  "license": "Apache-2.0 OR CC-BY-4.0",
+  "authors": [
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "CryptoJS"
+  ],
+  "private": true,
+  "main": "cryptojs-lib.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/cryptojs-lib.git"
+  },
+  "dependencies": {
+    "cryptojslib": "^3.1.2"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components"
+  ],
+  "homepage": "https://github.com/advanced-rest-client/cryptojs-lib",
+  "_release": "0.1.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "0.1.1",
+    "commit": "44d7f7053f5946511a30b8473694e8b8d0eceedc"
+  },
+  "_source": "https://github.com/advanced-rest-client/cryptojs-lib.git",
+  "_target": "^0.1.1",
+  "_originalSource": "advanced-rest-client/cryptojs-lib"
+}

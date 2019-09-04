@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-resource-example-document demo</title>
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../api-resource-example-document.html">
+    <link rel="import" href="../../api-console-default-theme/api-console-default-theme.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      [role="main"] {
+        max-width: 1100px;
+        @apply --layout-horizontal;
+        @apply --layout-start;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+      }
+
+      api-method-documentation {
+        margin-left: 40px;
+        @apply --layout-flex;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+
+      .demo-container {
+        @apply --layout-flex;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <raml-aware raml="{{amfModel}}" scope="model"></raml-aware>
+        <header>
+          <paper-dropdown-menu label="Select demo endpoint">
+            <paper-listbox slot="dropdown-content" id="enpointsList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">Demo api</paper-item>
+              <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+              <paper-item data-src="raml-types.json">RAML types with raml examples</paper-item>
+              <paper-item data-src="raml-types-compact.json">RAML types with raml examples - compact model</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </header>
+
+        <section class="vertical-section-container centered" role="main">
+
+          <api-navigation aware="model" endpoints-opened></api-navigation>
+
+          <div class="demo-container">
+            <paper-dropdown-menu label="Select media type" hidden$="[[singlePayload]]">
+              <paper-listbox slot="dropdown-content" id="mediaList" on-selected-changed="_mediaChanged">
+                <template is="dom-repeat" items="[[mediaTypes]]">
+                  <paper-item>[[item.label]]</paper-item>
+                </template>
+              </paper-listbox>
+            </paper-dropdown-menu>
+
+            <template is="dom-if" if="[[hasData]]">
+              <template is="dom-if" if="[[hasExamples]]">
+                <api-resource-example-document amf-model="[[amfModel]]" examples="[[examples]]" media-type="[[mediaType]]"></api-resource-example-document>
+              </template>
+
+              <template is="dom-if" if="[[!hasExamples]]">
+                <p>Examples not found in selected method</p>
+              </template>
+            </template>
+            <template is="dom-if" if="[[!hasData]]">
+              <p>Select an object that contains examples.</p>
+            </template>
+          </div>
+        </section>
+
+        <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      app.hasData = false;
+      app.singlePayload = true;
+      app._load = function() {
+        class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+        window.customElements.define('demo-element', DemoElement);
+        document.getElementById('enpointsList').selected = 0;
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+
+      app._navChanged = function(e) {
+        const type = e.detail.type;
+        if (type === 'method') {
+          app.setData(e.detail.selected);
+          app.hasData = true;
+        } else {
+          app.hasData = false;
+        }
+      };
+
+      app.setData = function(selection) {
+        const list = document.body.querySelector('#mediaList');
+        if (list) {
+          list.selected = -1;
+        }
+        const webApi = app.$.helper._computeWebApi(app.amfModel);
+        const method = app.$.helper._computeMethodModel(webApi, selection);
+        if (!method) {
+          app.hasData = false;
+          return;
+        }
+        const payloads = app.computePayloads(method);
+        app.hasData = !!(payloads && payloads.length);
+        app.singlePayload = app.hasData && payloads.length === 1;
+        app.mediaTypes = app.computeMediaTypes(payloads);
+        app.payloads = app.hasData ? payloads : undefined;
+        if (app.hasData) {
+          Polymer.RenderStatus.afterNextRender(app, () => {
+            const list = document.body.querySelector('#mediaList');
+            if (list) {
+              list.selected = 0;
+            }
+          });
+        }
+      };
+
+      app.computePayloads = function(model) {
+        if (!model) {
+          return;
+        }
+        let result = [];
+        const expects = app.$.helper._computeExpects(model);
+        if (expects) {
+          let payloads = app.$.helper._computePayload(expects);
+          if (payloads) {
+            if (!(payloads instanceof Array)) {
+              payloads = [payloads];
+            }
+            result = payloads;
+          }
+        }
+        const returns = app.$.helper._computeReturns(model);
+        if (returns) {
+          for (let i = 0, len = returns.length; i < len; i++) {
+            let payloads = app.$.helper._computePayload(returns[i]);
+            if (payloads) {
+              if (!(payloads instanceof Array)) {
+                payloads = [payloads];
+              }
+              result = result.concat(payloads);
+            }
+          }
+        }
+
+        return result.length ? result : undefined;
+      };
+
+      app.computeMediaTypes = function(payloads) {
+        if (!payloads) {
+          return;
+        }
+        const result = [];
+        payloads.forEach((item) => {
+          const label = app.$.helper._getValue(item, app.$.helper.ns.raml.vocabularies.http + 'mediaType');
+          if (label) {
+            result.push({label});
+          }
+        });
+        return result.length ? result : undefined;
+      };
+
+      app._mediaChanged = function(e) {
+        app.hasExamples = false;
+        const index = e.detail.value;
+        if (isNaN(index) || index === -1) {
+          return;
+        }
+        const mediaType = app.mediaTypes[index].label;
+        const body = app.payloads[index];
+        app.hasExamples = true;
+        app.examples = body;
+        app.mediaType = mediaType;
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

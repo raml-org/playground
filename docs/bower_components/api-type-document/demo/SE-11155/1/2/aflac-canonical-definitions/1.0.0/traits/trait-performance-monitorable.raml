@@ -1,0 +1,31 @@
+#%RAML 1.0 Trait
+
+
+headers: 
+  aflac-performance-report:
+    description: |
+      Performance monitorable trait is designed to provide real-time information to a consumer about the performance and status of each node in an integration implementation.
+      This collection of these metrics can be activated by the consumer by setting the "active" to true.
+      Currently, this field is defined as a string but the contents are a JSON object as shown in the example.
+      The complete information what this JSON Obejct looks like and how it can be used is documented in dataType-performance-report.raml fragment.
+
+    displayName: Aflac Performance Report
+    required: false
+    type: string
+    example: |
+      '{
+          "active": true,
+          "ns":
+          [
+            {"n": "ConsumerMachine","c": "Provider A","t": 1230000000000,"d": "dQ"},
+            {"n": "Server1","c": "Provider A","t": 1230000000150,"d": "uQ"},
+            {"n": "ConsumerMachine","c": "Provider A","t": 123000005400,"d": "uS","s":"200"},
+            {"n": "ConsumerMachine","c": "Provider A","t": 1230000000000,"d": "dQ","s":"200"}
+          ] 
+      }'
+
+# The below section is commented out due to a limitation in Design Center.  
+# When Headers are assigned a type of object the validation misinterprets and fails.
+# Until this is resolved, further headers will be of simple type, even the values can be object representations
+#    type: !include ../data-types/dataType-performance-report.raml
+#    example: !include ../examples/example-performance-report.raml

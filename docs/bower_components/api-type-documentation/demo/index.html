@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-type-documentation demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-styles/typography.html">
+    <link rel="import" href="../../raml-aware/raml-aware.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../../api-console-default-theme/api-console-default-theme.html">
+    <link rel="import" href="../api-type-documentation.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      body,
+      html {
+        background-color: #e5e5e5;
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+
+      [role="main"] {
+        max-width: 1100px;
+        @apply --layout-horizontal;
+        @apply --layout-start;
+      }
+
+      .card {
+        @apply --shadow-elevation-4dp;
+        padding: 20px;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        margin-left: 20px;
+        box-sizing: border-box;
+        background-color: #fff;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .spacer {
+        @apply --layout-flex;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+      }
+
+      api-type-documentation {
+        margin-left: 40px;
+        @apply --layout-flex;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <header>
+          <paper-dropdown-menu label="Select demo API">
+            <paper-listbox slot="dropdown-content" id="apisList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">Demo API</paper-item>
+              <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+              <paper-item data-src="examples-api.json">Examples API</paper-item>
+              <paper-item data-src="examples-api-compact.json">Examples api - compact model</paper-item>
+              <paper-item data-src="uber.json">Uber (OAS)</paper-item>
+              <paper-item data-src="uber-compact.json">Uber (OAS) - compact model</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+          <div class="spacer"></div>
+        </header>
+
+        <div class="vertical-section-container centered" role="main">
+          <raml-aware raml="{{amfModel}}" scope="model"></raml-aware>
+          <api-navigation aware="model" types-opened></api-navigation>
+          <template is="dom-if" if="[[hasType]]">
+            <div class="card">
+              <api-type-documentation aware="model" type="[[type]]" media-types='["application/json", "application/xml"]'></api-type-documentation>
+            </div>
+          </template>
+          <template is="dom-if" if="[[!hasType]]">
+            <p>Select type in the navigation to see the demo.</p>
+          </template>
+        </div>
+
+        <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+      window.customElements.define('demo-element', DemoElement);
+
+      app.hasType = false;
+      app._load = function() {
+        document.getElementById('apisList').selected = 0;
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+
+      app._navChanged = function(e) {
+        const type = e.detail.type;
+        if (type === 'type') {
+          app.setTypeData(e.detail.selected);
+          app.hasType = true;
+        } else {
+          app.hasType = false;
+        }
+      };
+      app.setTypeData = function(id) {
+        // const ns = ApiElements.Amf.ns;
+        const declares = app.$.helper._computeDeclares(app.amfModel);
+        const type = declares.find((item) => item['@id'] === id);
+        if (!type) {
+          console.error('Type not found');
+          return;
+        }
+        app.type = type;
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

@@ -1,0 +1,43 @@
+#%RAML 1.0 DataType
+
+displayName: Performance Node
+description: This object represents a component node which captures a request or response entry or exit point.
+
+type: object
+additionalProperties: false
+
+properties:
+  n:
+    displayName: Node
+    description: The name of the machine on which the component is executing.  If the machine is a node in a cluster the exact name of the machine needs to be used
+    required: false
+    type: string
+  c:
+    displayName: Component
+    description: The name of the software component that is handling the request or response
+    required: false
+    type: string
+  t:
+    displayName: Time
+    description: the time when the traffic has entered or left the component.  This is a long number of the GMT rather than any formatted time string.
+    required: false
+    type: number
+  s:
+    displayName: Status
+    description: this field only applicable for a response and shows the status of the response.
+    required: false
+    type: string
+  d:
+    displayName: Direction
+    description: |
+      the direction of the traffic
+      uQ : stands for upstreamReQuest.  Use this value when your component receives a request from the upstream flow.  This indicates that the request is coming into your component.
+      uS : stands for upstreamReSponse.  Use this value when your component returns a response to the upstream flow.  This indicates that the response is going back to the component's consumer.
+      dQ : stands for downstreamReQuest.  Use this value when your component is sending a request to another coomponent in the downstream flow.  This indicates that the request is leaving your component.
+      dS : stands for dowstreamReSponse.  Use this value when your component receives the response from the dowstream request.  This indicates that the response has arrived into your component.
+    required: false
+    enum:
+      - uQ
+      - uS
+      - dQ
+      - dS

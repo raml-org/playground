@@ -1,0 +1,29 @@
+{
+  "name": "@api-components/response-view",
+  "description": "An element to display the HTTP response view",
+  "version": "2.0.3",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.1"
+  },
+  "private": false,
+  "main": "response-view.html",
+  "scripts": {
+    "lint": "polymer lint response-view.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"response-view:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/response-view.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/response-view/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

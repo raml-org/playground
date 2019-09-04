@@ -1,0 +1,22 @@
+{
+  "name": "@api-components/markdown-styles",
+  "description": "Element that displays response documentation for RAML",
+  "version": "2.0.5",
+  "license": "Apache-2.0",
+  "private": true,
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "scripts": {
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/markdown-styles.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/markdown-styles/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

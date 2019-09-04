@@ -1,0 +1,19 @@
+#%RAML 1.0 DataType
+
+displayName: Archive Users Request
+description: The request structure fo archiving a collection of users
+
+properties:
+  archive-location:
+    type: string
+    required: false
+  archive-time:
+    type: datetime
+    required: false
+  zip-records:
+    type: boolean
+    required: false
+example:
+  archive-location: \\DCS001AB\user-archive-folder
+  archive-time: 2018-08-10T13:00:00.000Z
+  zip-records: true

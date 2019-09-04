@@ -1,0 +1,39 @@
+{
+  "$schema" : "http://json-schema.org/draft-04/schema#",
+  "id" : "http://www.openapplications.org/oagis/10",
+  "type" : "object",
+  "required" : [ "content", "typeCode" ],
+  "additionalProperties" : false,
+  "properties" : {
+    "content" : {
+      "$ref" : "#/definitions/normalizedString"
+    },
+    "typeCode" : {
+      "$ref" : "#/definitions/token"
+    },
+    "schemeAgencyIdentifier" : {
+      "$ref" : "#/definitions/token"
+    }
+  },
+  "definitions" : {
+    "token" : {
+      "type" : "string"
+    },
+    "normalizedString" : {
+      "type" : "string"
+    },
+    "string" : {
+      "type" : "string"
+    },
+    "decimal" : {
+      "type" : "number"
+    },
+    "integer" : {
+      "type" : "number",
+      "multipleOf" : 1
+    },
+    "xbt_BooleanType" : {
+      "type" : "boolean"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@advanced-rest-client/response-raw-viewer",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "description": "An element to display the raw response data",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "main": "response-raw-viewer.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint response-raw-viewer.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"response-raw-viewer:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/response-raw-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/response-raw-viewer/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

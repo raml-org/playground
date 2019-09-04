@@ -1,0 +1,17 @@
+#%RAML 1.0 SecurityScheme
+type: OAuth 2.0
+
+displayName: Normal OAuth 2.0 definition
+settings:
+  accessTokenUri: https://token.com
+  authorizationUri: https://auth.com
+  authorizationGrants: implicit
+  scopes: [profile, email]
+describedBy:
+  queryParameters:
+    access_token:
+      type: string
+      description: Apply access token here.
+  headers:
+    Authorization:
+      type: string

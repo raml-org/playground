@@ -1,0 +1,29 @@
+{
+  "name": "@advanced-rest-client/response-status-view",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "description": "HTTP response status view, including status, headers redirects and timings",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "main": "response-status-view.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint response-status-view.html http-source-message-view.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"response-status-view:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/response-status-view.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/response-status-view/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

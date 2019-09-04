@@ -1,0 +1,16 @@
+#%RAML 1.0 Library
+types: 
+  error: !include ../1/2/aflac-canonical-definitions/1.0.0/data-types/dataType-error.raml
+  code-description: !include ../1/2/aflac-canonical-definitions/1.0.0/data-types/dataType-code-description.raml
+  code-descriptions: code-description[]
+
+resourceTypes: 
+  health-check-get: !include ../1/2/aflac-canonical-definitions/1.0.0/resource-types/resourceType-get-health-check.raml
+  applicable-to-collections: !include ../1/2/aflac-canonical-definitions/1.0.0/resource-types/resourceType-applicable-to-collections.raml
+  applicable-to-items: !include ../1/2/aflac-canonical-definitions/1.0.0/resource-types/resourceType-applicable-to-items.raml
+  applicable-to-collection-actions: !include ../1/2/aflac-canonical-definitions/1.0.0/resource-types/resourceType-applicable-to-collection-actions.raml
+  applicable-to-item-actions: !include ../1/2/aflac-canonical-definitions/1.0.0/resource-types/resourceType-applicable-to-item-actions.raml
+
+
+securitySchemes: 
+  basic: !include ../1/2/aflac-canonical-definitions/1.0.0/security-schemes/securityScheme-basic.raml

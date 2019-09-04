@@ -1,0 +1,23 @@
+#%RAML 1.0 NamedExample
+performance-example:
+  value:
+    active: true
+    ns:
+      - n: ConsumerMachine
+        c: Provider A
+        t: 1230000000000
+        d: dQ
+      - n: Server1
+        c: Provider A
+        t: 1230000000150
+        d: uQ
+      - n: ConsumerMachine
+        c: Provider A
+        t: 123000005400
+        d: uS
+        s: "200"
+      - n: ConsumerMachine
+        c: Provider A
+        t: 123000005400
+        d: dS
+        s: "200"

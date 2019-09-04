@@ -1,0 +1,27 @@
+{
+  "name": "@api-components/error-message",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "description": "A standarized error information",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1",
+    "bower": "^1.8.0"
+  },
+  "private": false,
+  "main": "error-message.html",
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "lint": "node_modules/.bin/polymer lint error-message.html",
+    "test-sauce": "node_modules/.bin/polymer test --plugin sauce --job-name \"arc-license-dialog:local-test\"",
+    "test": "node_modules/.bin/polymer test --plugin local",
+    "update-types": "bower install && gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/error-message.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/error-message/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

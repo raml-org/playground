@@ -1,0 +1,29 @@
+{
+  "name": "@advanced-rest-client/response-body-view",
+  "description": "An element to display the response body",
+  "version": "2.0.7",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.1"
+  },
+  "private": false,
+  "main": "response-body-view.html",
+  "scripts": {
+    "lint": "polymer lint response-body-view.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"response-body-view:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/response-body-view.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/response-body-view/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

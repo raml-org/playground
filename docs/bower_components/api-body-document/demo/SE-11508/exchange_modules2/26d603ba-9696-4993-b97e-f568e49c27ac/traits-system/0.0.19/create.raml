@@ -1,0 +1,30 @@
+#%RAML 1.0 Trait
+
+responses:
+  201:
+    description: Created
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true 
+  400:
+    description: Bad request.
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true
+  500:
+    description: Internal Server Error.  
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true

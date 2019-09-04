@@ -1,0 +1,48 @@
+#%RAML 1.0 Trait
+
+uses: 
+  response-types: types/common-responses.raml
+
+responses:
+  200:
+    description: Ok.
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true
+  400:
+    description: Bad request.
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true
+    body:
+      application/json:
+        properties: 
+          messages?: response-types.ErrorMessage[]
+  404:
+    description: Resource not found.
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true
+  500:
+    description: Internal Server Error.  
+    headers: 
+      X-Trace-Id:
+        required: false
+      X-Request-Id:
+        required:  true
+      X-Message-Id:
+        required:  true
+
+        

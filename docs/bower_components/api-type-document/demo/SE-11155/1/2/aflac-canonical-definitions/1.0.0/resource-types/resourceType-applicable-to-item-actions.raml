@@ -1,0 +1,48 @@
+#%RAML 1.0 ResourceType
+displayName: Resource Type applicable to item actions
+usage: |
+  An item action is a process that can be applied to specific resource.  The action can only be taken with a POST.
+  
+uses:
+  error-lib: ../libraries/library-error.raml
+  code-description-lib: ../libraries/library-code-description.raml
+  traits: ../libraries/library-traits.raml
+
+post:
+  displayName: Execute an action on the specific record.
+  description: Is used to execute an action on the specific record
+  is:
+    - traits.filterable
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+
+  body: 
+    application/json:
+      examples: <<item-action-req-examples>>
+    application/xml:
+      examples: <<item-action-req-examples>>
+  responses: 
+    200:
+      description: The response when the operation is synchronously called.
+      body:
+        application/json:
+          examples: <<item-action-200-examples>>
+        application/xml:
+          examples: <<item-action-200-examples>>
+    202:
+      description: The response when the operation is asynchronously called.
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<item-action-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<item-action-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error

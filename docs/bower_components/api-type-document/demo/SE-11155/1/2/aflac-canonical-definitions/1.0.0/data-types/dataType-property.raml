@@ -1,0 +1,61 @@
+#%RAML 1.0 DataType
+
+displayName: Entity Property
+description: A generic type that can contain a typed name value pair.
+
+type: object
+additionalProperties: false
+
+properties:
+  order:
+    description: When this type is used as an array the order field shows the where in the arraqy a specific element is placed
+    required: false
+    type: number
+  type:
+    displayName: Property Type Name
+    description: The type of the value, such as string, number, boolean, etc.  Must be a primitive type, not an object type.
+    required: false
+    type: string
+  is-array:
+    required: false
+    type: boolean
+  delimiter:
+    required: false
+    type: string
+  name:
+    required: false
+    type: string
+  value:
+    required: false
+    type: string
+  masking-flag:
+    required: false
+    type: string
+    enum:
+      - to-be-masked
+      - masked
+  encryption-flag:
+    required: false
+    type: string
+    enum:
+      - to-be-encrypted
+      - encrypted
+examples:
+  number-example:
+    value:
+      order: 1
+      type: number
+      name: age
+      value: "45"
+  string-example:
+    value:
+      order: 5
+      type: string
+      name: city
+      value: Atlanta
+  ssn-example:
+    value:
+      type: string
+      name: ssn
+      value: 2t5rRE4ew3ew==
+      encryption-flag: encrypted

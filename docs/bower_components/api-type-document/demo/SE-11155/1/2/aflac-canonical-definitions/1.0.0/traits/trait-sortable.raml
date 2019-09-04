@@ -1,0 +1,20 @@
+#%RAML 1.0 Trait
+description: |
+  Sorting can be requested by the consumer application by providing sortBy field name and sortOrder indicator.  
+  If the consumer application does not provide any sorting input and if the provider API sorts the results, the API may provide information back to the consumer on how sorting has been done.
+  In this case, the API would return sorting information 
+
+queryParameters: 
+  sort-by:
+    displayName: Sort By
+    description: The name of the field by which the sorting will be executed on.
+    type: string
+    required: false
+  sort-order:
+    displayName: Sort Order
+    description: Indicates the direction of the sorting, asccending or descending.  If no value is provided, the default value of ASC will be used.
+    type: string
+    required: false
+    enum:  
+      - ASC
+      - DESC

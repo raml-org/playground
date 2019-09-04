@@ -1,0 +1,103 @@
+#%RAML 1.0 DataType
+
+uses:
+  party-lib: ../libraries/library-party.raml
+  person-name-lib: ../libraries/library-person-name.raml
+  address-lib: ../libraries/library-address.raml
+  habit-lib: ../libraries/library-habit.raml
+  property-lib: ../libraries/library-property.raml
+
+
+
+displayName: Person
+
+type: party-lib.party
+additionalProperties: false
+
+properties:
+  name:
+    displayName: Person's full name
+    required: false
+    type: person-name-lib.person-name
+  gender:
+    displayName: Person's gender
+    required: false
+    enum:
+      - Male
+      - Female
+      - Other
+      - Unknown
+  date-of-birth:
+    displayName: Person's date of birth
+    required: false
+    type: date-only
+  location-of-birth:
+    displayName: Person's location of birth
+    required: false
+    type: address-lib.address
+  date-of-death:
+    displayName: Person's date of death
+    required: false
+    type: date-only
+  ethnicity:
+    displayName: Person's Ethnicity
+    required: false
+    type: string
+  marital-status:
+    displayName: Marital Status
+    description: Current Marital Status of a Person, such as, single, married, divorced, widowed etc.
+    required: false
+    type: string
+  social-security-number:
+    displayName: Social Security NUmber
+    description: Government issued social security number
+    required: false
+    type: property-lib.property
+  habits:
+    displayName: Habits
+    description: a collection of all habits a person may have
+    required: false
+    type: habit-lib.habits
+examples:
+  regular-example:
+    name:
+      salutation: Mr.
+      first-name: John
+      middle-name: F
+      last-name: Remedy
+      suffix: III
+    gender : Male
+    date-of-birth: 1999-01-01
+    social-security-number:
+      type: string
+      value: ASS45ffwr+==
+      encryption-flag: encrypted
+    location-of-birth:
+      city: Atlanta
+      state-region-code: GA
+      country: USA
+  extended-example:
+    name:
+      salutation: Mr.
+      first-name: John
+      middle-name: F
+      last-name: Remedy
+      suffix: III
+    gender : Male
+    date-of-birth: 1999-01-01
+    location-of-birth:
+      city: Atlanta
+      state-region-code: GA
+      country: USA
+    marital-status: married
+    habits:
+      - habit-name: video games
+        usage-amount: 6
+        usage-unit: hour
+        time-amount: 1
+        time-unit: day
+      - habit-name: beer consumption
+        usage-amount: 6
+        usage-unit: can
+        time-amount: 1
+        time-unit: day

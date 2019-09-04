@@ -1,0 +1,36 @@
+#%RAML 1.0 DataType
+
+displayName: Version Information
+description: Used to capture version information of software components and artifacts.  The implementation of this type must be done in such a way so that when full field is edited major, minor and revision fields are automatically set to correct values and when any any of the major, minor or revision fields are edited the full field is repopulated with the correct values.
+
+type: object
+additionalProperties: false
+
+properties: 
+  major:
+    displayName: Major Version Number
+    required: false
+    type: string
+    example: "1"
+  minor:
+    displayName: Minor Version Number
+    required: false
+    type: string
+    example: "5"
+  revision:
+    displayName: Revision Number
+    required: false
+    type: string
+    example: "181_b1"
+  full:
+    displayName: Full Version Number
+    description: A combination of major.minor.revision that is usually dot delimited
+    required: false
+    type: string
+    example: "1.5.181_b1"
+
+example:
+  major: "1"
+  minor: "5"
+  revision: "181_b1"
+  full: "1.5.181_b1"

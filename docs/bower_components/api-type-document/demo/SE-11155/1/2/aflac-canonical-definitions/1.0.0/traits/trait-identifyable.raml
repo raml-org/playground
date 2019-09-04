@@ -1,0 +1,50 @@
+#%RAML 1.0 Trait
+
+#uses:
+#  name-value-lib: ../libraries/library-name-value-pair.raml
+
+displayName: Identifyable
+description: Identifyable trait provides a header called aflac-identity-fields which can pass several different types of identity tokens and identity related information to a service.
+
+headers: 
+  aflac-identity-fields:
+    displayName: Aflac Identity Fields
+    description: |
+      Is a JSON object which contain an array of typed name value pairs.  Any kind of identity information can be passed using the array.
+    required: false
+    type: string
+    examples:
+      oAuth-example: '[{"type": "oAuth2-access-token", "value": "Bfrdget3456iuyge+Og=="}]'
+      username-password-example: |
+        '[
+            {"type": "encrypted-username", "value": "Sgrfqwt$34s5465asgfv56"},
+            {"type": "encrypted-password", "value": "87623uhvbuberc754^%$yvygwed"},
+            {"type": "encryption-certificate-serial-number-in-dec", "value": "351686516876516213213546987984965163216"}
+        ]'
+
+# The below section is commented out due to a limitation in Design Center.  
+# When Headers are assigned a type of object the validation misinterprets and fails.
+# Until this is resolved, further headers will be of simple type, even the values can be object representations
+#        type: typed-name-value-pairs
+#        examples:
+#          oAuth-example:
+#            value:
+#              - type: oAuth2-access-token
+#                value: Bfrdget3456iuyge+Og==
+#          username-password-example: 
+#            value:
+#              - type: encrypted-username
+#                value: Sgrfqwt$34s5465asgfv56
+#              - type: encrypted-password
+#                value: 87623uhvbuberc754^%$yvygwed
+#              - type: encryption-certificate-serial-number-in-dec
+#                value: "351686516876516213213546987984965163216"
+#          multiple-field-example:
+#            value:
+#              - type: oAuth2-access-token
+#                value: Bfrdget3456iuyge+Og==
+#              - type: passive-saml-token
+#                value: 87623uhvbuberc754yvygwedjhgaskdjgfiuwe8976539gkhegf
+#              - type: encryption-certificate-serial-number-in-dec
+#                value: "351686516876516213213546987984965163216"
+

@@ -1,0 +1,27 @@
+{
+  "name": "@advanced-rest-client/code-mirror-linter",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "description": "A source files for code mirror linter files",
+  "private": false,
+  "main": "code-mirror-linter.html",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1",
+    "bower": "^1.8.0"
+  },
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "lint": "polymer lint code-mirror-linter.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"code-mirror-linter:local-test\"",
+    "test": "exit 0",
+    "gen-tsd": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/code-mirror-linter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/code-mirror-linter/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

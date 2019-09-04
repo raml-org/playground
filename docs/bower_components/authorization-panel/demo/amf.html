@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>authorization-panel demo</title>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <link rel="import" href="../../shadycss/apply-shim.html">
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-styles/typography.html">
+  <link rel="import" href="../../oauth-authorization/oauth2-authorization.html">
+  <link rel="import" href="../../oauth-authorization/oauth1-authorization.html">
+  <link rel="import" href="../../paper-toggle-button/paper-toggle-button.html">
+  <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+  <link rel="import" href="../../paper-item/paper-item.html">
+  <link rel="import" href="../../paper-listbox/paper-listbox.html">
+  <link rel="import" href="../../neon-animation/web-animations.html">
+  <link rel="import" href="../../cryptojs-lib/cryptojs-lib.html">
+  <link rel="import" href="../../neon-animation/web-animations.html">
+  <link rel="import" href="../../arc-electron-default-theme/arc-electron-default-theme.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../api-navigation/api-navigation.html">
+  <link rel="import" href="../authorization-panel.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    output {
+      @apply --paper-font-code1;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: block;
+      margin: 12px 0;
+      background-color: #FFF3E0;
+      padding: 4px;
+    }
+
+    #settings {
+      margin-top: 40px;
+    }
+
+    html,
+    body {
+      background-color: #e5e5e5;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 12px 24px;
+      background-color: #C5E1A5;
+      @apply --layout-horizontal;
+      @apply --layout-center;
+      --iron-icon-fill-color: #3E2723;
+      --paper-input-container-focus-color: #33691E;
+      --paper-input-container-label: {
+        color: #3E2723;
+      };
+    }
+
+    .spacer {
+      @apply --layout-flex;
+    }
+
+    .options {
+      @apply --layout-horizontal;
+      @apply --layout-center;
+    }
+
+    .options > * {
+      margin-left: 8px;
+    }
+
+    authorization-panel {
+      @apply --layout-flex;
+    }
+
+    api-navigation {
+      width: 256px;
+    }
+
+    [role="main"] {
+      max-width: 1100px;
+      @apply --layout-horizontal;
+      @apply --layout-start;
+    }
+
+    .card {
+      @apply --shadow-elevation-4dp;
+      padding: 20px;
+      margin-top: 20px;
+      margin-bottom: 20px;
+      box-sizing: border-box;
+      background-color: #fff;
+    }
+    </style>
+  </custom-style>
+</head>
+
+<body unresolved>
+  <dom-bind id="demo">
+    <template is="dom-bind">
+      <oauth2-authorization></oauth2-authorization>
+      <oauth1-authorization></oauth1-authorization>
+
+      <header>
+        <paper-dropdown-menu label="Select demo endpoint">
+          <paper-listbox slot="dropdown-content" id="apisList" on-selected-changed="_apiChanged">
+            <paper-item data-src="demo-api.json">Demo api</paper-item>
+            <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+          </paper-listbox>
+        </paper-dropdown-menu>
+        <div class="spacer"></div>
+        <div class="options">
+          <paper-toggle-button checked="{{readonly}}">Read only mode</paper-toggle-button>
+          <paper-toggle-button checked="{{autoSelect}}">Selected first method automatically</paper-toggle-button>
+        </div>
+      </header>
+
+      <section role="main" class="centered card">
+        <api-navigation amf-model="[[amfModel]]" endpoints-opened></api-navigation>
+        <authorization-panel
+          no-steps="[[noSteps]]"
+          readonly="[[readonly]]"
+          auto-select="[[autoSelect]]"
+          redirect-uri="[[redirectUri]]"
+          on-selected-changed="_selectedChanged"
+          auth-required="{{authRequired}}"
+          auth-valid="{{authValid}}"
+          secured-by="[[securedBy]]"
+          amf-model="[[amfModel]]"></authorization-panel>
+      </section>
+
+      <output class="vertical-section-container centered">
+        <template is="dom-if" if="[[authRequired]]">
+          <p>Authorization is <b>required</b> for this endpoint.</p>
+        </template>
+        <template is="dom-if" if="[[!authRequired]]">
+          <p>Authorization is <b>not required</b> for this endpoint.</p>
+        </template>
+        <template is="dom-if" if="[[authValid]]">
+          <p>Authorization is <b>valid</b> for given settings.</p>
+        </template>
+        <template is="dom-if" if="[[!authValid]]">
+          <p>Authorization is <b>not valid</b> for given settings.</p>
+        </template>
+        <output id="settings">[[settings]]</output>
+        <output id="state">[[state]]</output>
+      </output>
+
+      <fieldset role="form" class="centered">
+        <legend>Events based API</legend>
+        <paper-input label="Header name" value="{{headerName}}"></paper-input>
+        <paper-input label="Header value" value="{{headerValue}}"></paper-input>
+        <paper-button raised on-tap="sendHeaderEvent">Send event</paper-button>
+      </fieldset>
+      <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+    </template>
+  </dom-bind>
+  <script>
+  (function(app) {
+    const ns = ApiElements.Amf.ns;
+    app.redirectUri = location.href.replace(/authorization-panel\/demo\/(amf\.html)?/,
+      'oauth-authorization/oauth-popup.html');
+
+    class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+    window.customElements.define('demo-element', DemoElement);
+
+    app.autoSelect = true;
+
+    app._load = function() {
+      document.getElementById('apisList').selected = 0;
+    };
+
+    app._loadFile = function(file) {
+      fetch('./' + file)
+      .then((response) => response.json())
+      .then((data) => {
+        app.amfModel = data;
+      });
+    };
+
+    app._apiChanged = function(e) {
+      const file = e.target.selectedItem.dataset.src;
+      app._loadFile(file);
+    };
+
+    app._navChanged = function(e) {
+      const type = e.detail.type;
+      if (type === 'method') {
+        app.setData(e.detail.selected);
+        app.hasData = true;
+      } else {
+        app.hasData = false;
+      }
+    };
+
+    app.setData = function(selected) {
+      const webApi = app.$.helper._computeWebApi(app.amfModel);
+      const method = app.$.helper._computeMethodModel(webApi, selected);
+      const key = app.$.helper._getAmfKey(ns.raml.vocabularies.security + 'security');
+      const security = app.$.helper._ensureArray(method[key]);
+      app.securedBy = security;
+    };
+
+    app._selectedChanged = function(e) {
+      if (e.detail.value === 'digest') {
+        document.body.dispatchEvent(new CustomEvent('url-value-changed', {
+          bubbles: true,
+          detail: {
+            value: 'https://api.domain.com/endpoint'
+          }
+        }));
+        document.body.dispatchEvent(new CustomEvent('http-method-changed', {
+          bubbles: true,
+          detail: {
+            value: 'GET'
+          }
+        }));
+      }
+    };
+    app.settings = '';
+    app.state = '';
+    app.headerName = 'authorization';
+    app.headerValue = '';
+
+    app.sendHeaderEvent = function() {
+      const e = new CustomEvent('request-header-changed', {
+        bubbles: true,
+        detail: {
+          name: app.headerName,
+          value: app.headerValue
+        }
+      });
+      document.body.dispatchEvent(e);
+    };
+
+    window.addEventListener('authorization-settings-changed', function(e) {
+      var data = e.detail;
+      if (!data.settings) {
+        app.settings = '';
+      } else {
+        var txt = 'Authorization type: ' + data.type + '\n\n';
+        txt += JSON.stringify(data.settings, null, 1);
+        app.settings = txt;
+      }
+    });
+
+    window.addEventListener('authorization-type-changed', function(e) {
+      var type = e.detail.type;
+      app.state = 'Selected authorization method: ' + type;
+    });
+    window.addEventListener('WebComponentsReady', app._load);
+    window.addEventListener('api-navigation-selection-changed', app._navChanged);
+  })(document.getElementById('demo'));
+  </script>
+</body>
+</html>

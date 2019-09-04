@@ -1,0 +1,38 @@
+{
+  "name": "headers-parser-behavior",
+  "license": "Apache-2.0",
+  "version": "2.0.3",
+  "description": "Headers parser behavior to be impplemented with elements that needs to parse headers data",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "headers-parser"
+  ],
+  "private": true,
+  "main": "headers-parser-behavior.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/headers-parser-behavior.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-component-page": "^3.0.1",
+    "fetch-polyfill": "advanced-rest-client/fetch-polyfill#^0.1.1"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

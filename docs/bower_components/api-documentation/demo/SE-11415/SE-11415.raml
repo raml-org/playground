@@ -1,0 +1,94 @@
+#%RAML 1.0
+title: mule-template
+documentation:
+ - title: Home
+   content: |
+     Welcome to the **Mule Template API** Documentation. The Mule Template API allows you to connect your application to some simple endpoints that illustrate the design of a Web-based API.
+version: api
+baseUri: http://mule-deve.canda.biz:24030/api
+
+uses: 
+  candaCommons: canda-commons/canda-commons.raml
+
+securedBy: [candaCommons.basicAuth]
+
+/greetings:
+  description: The greetings resource contains only a simple message. The message text might be customized by passing a query parameter.
+  get:
+    description: Answers a collection of three simple greetings.
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ref/greetings-example.json
+            type: !include ref/greetings-schema.json
+      204:
+        description: The response does not contain any content.
+  put:
+    description: Creates a representation of a simple greeting message. This is a pseudo operation, the API does not store the representation in any way.
+    body:
+      application/json:
+        example: !include ref/greeting-example.json
+        type: !include ref/greeting-schema.json
+    responses:
+      201:
+        body:
+          application/json:
+            example: !include ref/greeting-example.json
+            type: !include ref/greeting-schema.json
+  /{name}:
+    description: Responds with a greeting a for the given 'name'.
+    uriParameters:
+      name:
+        type: string
+        example: "mike"
+    get:
+      description: Answers a greeting representation for the given 'name'.
+      queryParameters:
+        message:
+          displayName: message
+          type: string
+          description: Pass a message which should be used by the response.
+          required: false
+          example: "Hi, Dude"
+      responses:
+        200:
+          body:
+            application/json:
+              example: !include ref/greeting-example.json
+              type: !include ref/greeting-schema.json
+/companies:
+  description: The companies resource is probably the most simple representation of a C&A company.
+  get:
+    description: Answers a collection (1..n) of all available Companies with their basic attributes.
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ref/companies-example.json
+            type: !include ref/companies-schema.json
+      204:
+        description: The response does not contain any content.
+/additions:
+  description: The additions resource consists of the elements of a mathematical addition - a result and the summands.
+  get:
+    description: Answers a simple JSON response that reflects the elements of an addition.
+    queryParameters:
+      summands:
+        displayName: summands
+        type: string
+        description: Pass the list of summands separated by ',' (comma). Each summand must be a value between 0 and 99999. The value must not contain spaces.
+        required: true
+        pattern: "^[0-9]{1,5}(,[0-9]{1,5})*$"
+        example: "2,4,88765,0"
+    responses:
+      200:
+        body:
+          application/json:
+            example: !include ref/additions-example.json
+            type: !include ref/additions-schema.json
+
+/logLevels/{loggerName}:
+  type: candaCommons.logLevel
+/ping:
+  type: candaCommons.ping

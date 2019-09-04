@@ -1,0 +1,28 @@
+#%RAML 1.0
+title: NewStore Event Listener API
+
+types:
+  lib:
+    properties:
+      tenant:
+        type: string
+        required: false
+      name:
+        type: string
+        required: false
+        example: MuleSoft
+      published_at:
+        type: datetime
+        required: false
+      payload:
+        type: string
+        required: false
+
+/new:
+  description: Accepts JSON events from NewStore
+  post:
+    body:
+      application/json:
+        type: lib
+    responses:
+      200:

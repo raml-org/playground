@@ -1,0 +1,29 @@
+{
+  "name": "@advanced-rest-client/response-highlighter",
+  "description": "An element that parses the HTTP response and displays highlighted result",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.0"
+  },
+  "private": false,
+  "main": "response-highlighter.html",
+  "scripts": {
+    "lint": "polymer lint response-highlighter.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"response-highlighter:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/response-highlighter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/response-highlighter/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

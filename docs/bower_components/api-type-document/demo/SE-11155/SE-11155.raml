@@ -1,0 +1,43 @@
+#%RAML 1.0
+baseUri: https://anypoint.mulesoft.com/mocking/api/v1/links/db807048-967b-4533-bdc6-9ab0cb457492/ #
+
+title: Usage-Example-API
+
+uses:
+  lib: libraries/library.raml
+
+types:
+  user:
+    type: !include data-types/dataType-user.raml
+  users:
+    type: user[]
+  archive-users-request:
+    type: !include data-types/dataType-archive-users-request.raml
+  archive-users-response:
+    type: !include data-types/dataType-archive-users-response.raml
+  restore-user-request:
+    type: object
+  restore-user-response:
+    type: object
+
+
+/users:
+  type:
+    lib.applicable-to-collections:
+      coll-delete-200-cds-examples: !include /examples/users-delete-cds-200.raml
+      coll-delete-202-cds-examples: !include /examples/users-delete-cds-202.raml
+      coll-get-200-coll-examples: !include /examples/users-get-200.raml
+      coll-patch-req-item-examples: !include /examples/users-patch.raml
+      coll-patch-200-coll-and-cds-examples: !include /examples/users-patch-200.raml
+      coll-patch-202-cds-examples: !include /examples/users-patch-cds-202.raml
+      coll-post-req-item-and-coll-examples:
+        single-object-request-example: !include /examples/users-post-single.raml
+        multiple-objects-request-example: !include /examples/users-post-multi.raml
+      coll-post-200-item-and-coll-and-cds-examples:
+        single-input-200-response-example: !include /examples/users-post-single-200.raml
+        multiple-input-200-response-example: !include /examples/users-post-multi-200.raml
+        any-input-200-cds-response-example: !include /examples/users-post-cds-200.raml
+      coll-post-202-cds-examples: !include /examples/users-post-cds-202.raml
+
+  post:
+    securedBy: lib.basic

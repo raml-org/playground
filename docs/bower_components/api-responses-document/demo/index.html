@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-request-editor demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-styles/typography.html">
+    <link rel="import" href="../../raml-aware/raml-aware.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../../api-console-default-theme/api-console-default-theme.html">
+    <link rel="import" href="../api-responses-document.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      [role="main"] {
+        max-width: 1100px;
+        @apply --layout-horizontal;
+        @apply --layout-start;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+      }
+
+      api-responses-document {
+        margin-left: 40px;
+        @apply --layout-flex;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .spacer {
+        @apply --layout-flex;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <header>
+          <paper-dropdown-menu label="Select demo endpoint">
+            <paper-listbox slot="dropdown-content" id="enpointsList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">Demo api</paper-item>
+              <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+          <div class="spacer"></div>
+        </header>
+        <raml-aware raml="{{amfModel}}" scope="model"></raml-aware>
+        <div class="vertical-section-container centered" role="main">
+          <api-navigation aware="model" endpoints-opened></api-navigation>
+
+          <template is="dom-if" if="[[hasData]]">
+            <api-responses-document aware="model" returns="[[returns]]"></api-responses-document>
+          </template>
+
+          <template is="dom-if" if="[[!hasData]]">
+            <p>Select a HTTP method in the navigation to see the demo.</p>
+          </template>
+        </div>
+
+        <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      // const ns = ApiElements.Amf.ns;
+      class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+      window.customElements.define('demo-element', DemoElement);
+
+      app.hasData = false;
+      app._load = function() {
+        document.getElementById('enpointsList').selected = 0;
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+
+      app._apiChanged = function(e) {
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+      app._navChanged = function(e) {
+        const type = e.detail.type;
+        if (type === 'method') {
+          app.setData(e.detail.selected);
+          app.hasData = true;
+        } else {
+          app.hasData = false;
+        }
+      };
+      app.setData = function(id) {
+        const webApi = app.$.helper._computeWebApi(app.amfModel);
+        const method = app.$.helper._computeMethodModel(webApi, id);
+        const returns = app.$.helper._computeReturns(method);
+        app.returns = app.$.helper._ensureArray(returns);
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

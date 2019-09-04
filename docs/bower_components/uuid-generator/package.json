@@ -1,0 +1,26 @@
+{
+  "name": "@advanced-rest-client/uuid-generator",
+  "version": "2.0.0",
+  "license": "Apache-2.0",
+  "description": "An UUID generator",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1",
+    "bower": "^1.8.0"
+  },
+  "private": false,
+  "main": "uuid-generator.html",
+  "authors": [
+    "pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint uuid-generator.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"uuid-generator:local-test\"",
+    "test": "polymer test",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/uuid-generator.git"
+  }
+}

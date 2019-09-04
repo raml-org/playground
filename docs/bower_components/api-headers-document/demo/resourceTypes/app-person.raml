@@ -1,0 +1,101 @@
+#%RAML 1.0 DataType
+
+displayName: A person resource
+description: |
+  An object representing a person in the API.
+  This object will be used in all methods returning a Person or list of people.
+
+type: !include resource.raml
+example:
+  id: "R34fg663H9KW9MMSKISIhTs1dR7Hss7e"
+  name: "Pawel Psztyc"
+  birthday: "1983-10-20"
+  gender: male
+  url: "https://domain.com/profile/pawel.psztyc"
+  image:
+    url: https://domain.com/profile/pawel.psztyc/image
+    thumb: https://domain.com/profile/pawel.psztyc/image/thumb
+  tagline: Some text about me.
+  language: en_GB
+  etag: "W\\244m4n5kj3gbn2nj4k4n4"
+  favouriteNumber: 10
+  favouriteTime: 10:29:52
+  nillable: null
+
+properties:
+  id:
+    description: |
+      A unique identifier of a person.
+
+      It is a 32 bit string containing alphanumeric characters.
+    minLength: 32
+    maxLength: 32
+    pattern: "[A-Za-z0-9]*"
+  name:
+    required: true
+    example: John Smith
+    description: Person full name. The input will be rejected if this property is not set while creating new object.
+    type: string
+    pattern: "[0-9a-zA-Z ]+"
+  birthday:
+    type: date-only
+    description: The person's date of birth, represented as YYYY-MM-DD.
+  favouriteTime:
+    type: time-only
+    description: The person's favourite time of day
+  gender?:
+    type: string
+    description: |
+      The person's gender. Possible values includes, but are not limited to, the following values:
+      * "male" - Male gender.
+      * "female" - Female gender.
+      * "other" - Other.
+    enum: [male, female, other]
+    examples:
+      Women: female
+      Man: male
+      Elmo: other
+  favouriteNumber:
+    type: number
+    minimum: 0
+    maximum: 9999
+    multipleOf: 5
+    required: true
+    displayName: Favourite number
+    example: 25
+  url:
+    type: string
+    description: The URL of this person's profile.
+  image: !include image.raml
+  tagline:
+    type: string
+    description: The brief description (tagline) of this person.
+  language:
+    type: string
+    description: The user's preferred language for rendering.
+  newsletter:
+    type: boolean
+    required: false
+    default: false
+  age:
+    type: integer
+    required: false
+    description: |
+      Very unpractical property to have in a data store.
+  created:
+    type: datetime-only
+    required: false
+    example: 2018-04-09T19:10:15
+  fietype:
+    required: false
+    type: file
+    fileTypes:
+      - image/png
+      - image/jpeg
+      - image/jpg
+      - image/gif
+    minLength: 10
+    maxLength: 1000
+  nillable:
+    type: string | nil
+    default: null

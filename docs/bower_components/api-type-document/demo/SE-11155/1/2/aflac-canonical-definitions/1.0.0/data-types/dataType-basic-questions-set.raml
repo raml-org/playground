@@ -1,0 +1,42 @@
+#%RAML 1.0 DataType
+
+displayName: Basic Question Set
+description: Basic question set contains 6 questions (what, when, where, who, why and how) that are asked for any event to gather information about the event.
+
+properties: 
+  what:
+    displayName: What
+    description:  answers what has happened
+    required: false
+    type: string
+    example: Created
+  when:
+    displayName: When
+    description:  answers when it has happened.  Always in Zulu(GMT) time in ISO 8601 format yyyy-MM-ddThh:mm:ss.sssZ
+    required: false
+    type: datetime
+    example: 2018-09-12T15:10:19.123Z
+  where:
+    displayName: Where
+    description:  answers where it has happened.  Usually location or locations
+    required: false
+    type: string
+    example: \\pcnsdnca02a\folder1
+  who:
+    displayName: Who
+    description:  answers who has done it.  Usually name or names
+    required: false
+    type: string
+    example: AFLHQ\e99999
+  why:
+    displayName: Why
+    description:  answers why it has been done.  Usually reason or reasons
+    required: false
+    type: string
+    example: new file
+  how:
+    displayName: How
+    description:  answers how it has been done.  Usually mean or means
+    required: false
+    type: string
+    example: Microsoft Word

@@ -1,0 +1,32 @@
+#%RAML 1.0 DataType
+
+uses:
+  lib: ../libraries/library-context-and-preference.raml
+  
+displayName: Language
+description: This data structure contains the language information of a person
+
+type: [lib.preferable, lib.contextual]
+additionalProperties: false
+
+properties:
+  name:
+    displayName: Language Name
+    description: The spelled out name of the language such as English or Spanish
+    type: string
+    required: false
+  code:
+    displayName: ISO Language Code
+    description: ISO 639-1, 2 character language code as it is listed here https://www.loc.gov/standards/iso639-2/php/code_list.php
+    type: string
+    required: false
+  locale:
+    displayName: Language Locale
+    description: The locale that determines the accent and dialect such as US vs UK for English
+    type: string
+    required: false
+
+example:
+  name: English
+  code: en
+  locale: US

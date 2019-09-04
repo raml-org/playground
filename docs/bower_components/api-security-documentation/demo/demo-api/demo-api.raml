@@ -1,0 +1,89 @@
+#%RAML 1.0
+title: Security Demo
+version: v1
+baseUri: http://secured.domain.com/
+
+annotationTypes:
+  oauth-2-custom-settings: !include oauth-2-custom-settings.raml
+
+securitySchemes:
+  oauth_2_0: !include security/oauth_2_0.raml
+  oauth_1_0: !include security/oauth_1_0.raml
+  other_oauth_1_0: !include security/other-oauth_1_0.raml
+  pass_through: !include security/passthrough.raml
+  basic: !include security/basic.raml
+  digest: !include security/digest.raml
+  x-custom: !include security/x-custom.raml
+  x-other: !include security/x-other.raml
+  oauth2Annotated:
+    type: OAuth 2.0
+    displayName: OAuth 2.0 with annotation
+    settings:
+      (oauth-2-custom-settings):
+        authorizationGrants: [annotated_custom_grant, annotated_custom_grant2]
+        authorizationSettings:
+          queryParameters:
+            resource:
+              type: string
+              required: true
+              description: |
+                A resource ID that defines a domain of authorization.
+              displayName: Hello query parameeter
+              default: some default
+              examples:
+                named: named example value
+                otherExample: test example value
+              pattern: [a-zA-Z\s\S, test]
+              maxLength: 12
+              minLength: 3
+              required: true
+            numericParam:
+              type: number
+              minimum: 10
+              maximum: 20
+              multipleOf: 2
+              format: float
+              required: false
+              example: 22
+            dateParam:
+              type: date-only
+              required: false
+            repetableParam1:
+              type: string[]
+              required: false
+            repetableParam2:
+              type: array
+              items: integer
+              required: false
+          headers:
+            x-auth-resource:
+              type: string
+              required: false
+              enum: [a, b, c]
+        accessTokenSettings:
+          queryParameters:
+            queryTokenResource: string
+            detailedTokenResource:
+              type: number
+              description: some description
+              required: false
+          body:
+            bodyTokenResource: string
+            bodyDetailed:
+              type: boolean
+              required: true
+              displayName: Body detailed property
+      accessTokenUri: https://token.com
+      authorizationUri: https://auth.com
+      authorizationGrants: [implicit, authorization_code]
+      scopes: [profile, email]
+    describedBy:
+      queryParameters:
+        access_token:
+          type: string
+          description: Apply access token here.
+
+securedBy: [null, oauth_2_0, oauth_1_0, pass_through, basic, digest, x-custom, x-other]
+
+/test:
+  get:

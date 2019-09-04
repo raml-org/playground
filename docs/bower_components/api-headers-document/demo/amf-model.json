@@ -1,0 +1,1028 @@
+[
+  {
+    "@id": "file://demo/api.raml",
+    "@type": [
+      "http://a.ml/vocabularies/document#Document",
+      "http://a.ml/vocabularies/document#Fragment",
+      "http://a.ml/vocabularies/document#Module",
+      "http://a.ml/vocabularies/document#Unit"
+    ],
+    "http://a.ml/vocabularies/document#encodes": [
+      {
+        "@id": "file://demo/api.raml#/web-api",
+        "@type": [
+          "http://schema.org/WebAPI",
+          "http://a.ml/vocabularies/document#RootDomainElement",
+          "http://a.ml/vocabularies/document#DomainElement"
+        ],
+        "http://schema.org/name": [
+          {
+            "@value": "My super cool, example API"
+          }
+        ],
+        "http://a.ml/vocabularies/http#server": [
+          {
+            "@id": "file://demo/api.raml#/web-api/http%3A%2F%2F%7Benvironment%7D.api.domain.com%2F%7Bversion%7D%2F",
+            "@type": [
+              "http://a.ml/vocabularies/http#Server",
+              "http://a.ml/vocabularies/document#DomainElement"
+            ],
+            "http://a.ml/vocabularies/http#url": [
+              {
+                "@value": "http://{environment}.api.domain.com/{version}/"
+              }
+            ]
+          }
+        ],
+        "http://schema.org/version": [
+          {
+            "@value": "v1"
+          }
+        ],
+        "http://a.ml/vocabularies/http#endpoint": [
+          {
+            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest",
+            "@type": [
+              "http://a.ml/vocabularies/http#EndPoint",
+              "http://a.ml/vocabularies/document#DomainElement"
+            ],
+            "http://a.ml/vocabularies/http#path": [
+              {
+                "@value": "/test"
+              }
+            ],
+            "http://www.w3.org/ns/hydra/core#supportedOperation": [
+              {
+                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get",
+                "@type": [
+                  "http://www.w3.org/ns/hydra/core#Operation",
+                  "http://a.ml/vocabularies/document#DomainElement"
+                ],
+                "http://www.w3.org/ns/hydra/core#method": [
+                  {
+                    "@value": "get"
+                  }
+                ],
+                "http://www.w3.org/ns/hydra/core#expects": [
+                  {
+                    "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request",
+                    "@type": [
+                      "http://a.ml/vocabularies/http#Request",
+                      "http://a.ml/vocabularies/document#DomainElement"
+                    ],
+                    "http://a.ml/vocabularies/http#header": [
+                      {
+                        "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated",
+                        "@type": [
+                          "http://a.ml/vocabularies/http#Parameter",
+                          "http://a.ml/vocabularies/document#DomainElement"
+                        ],
+                        "http://schema.org/name": [
+                          {
+                            "@value": "x-deprecated"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#paramName": [
+                          {
+                            "@value": "x-deprecated"
+                          }
+                        ],
+                        "http://schema.org/description": [
+                          {
+                            "@value": "This is a description\n"
+                          }
+                        ],
+                        "http://www.w3.org/ns/hydra/core#required": [
+                          {
+                            "@value": false
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#binding": [
+                          {
+                            "@value": "header"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#schema": [
+                          {
+                            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema",
+                            "@type": [
+                              "http://a.ml/vocabularies/shapes#ScalarShape",
+                              "http://www.w3.org/ns/shacl#Shape",
+                              "http://a.ml/vocabularies/shapes#Shape",
+                              "http://a.ml/vocabularies/document#DomainElement"
+                            ],
+                            "http://www.w3.org/ns/shacl#datatype": [
+                              {
+                                "@id": "http://www.w3.org/2001/XMLSchema#string"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#pattern": [
+                              {
+                                "@value": "^[a-zA-Z]*$"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#minLength": [
+                              {
+                                "@value": 0
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#maxLength": [
+                              {
+                                "@value": 100
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#name": [
+                              {
+                                "@value": "schema"
+                              }
+                            ],
+                            "http://schema.org/name": [
+                              {
+                                "@value": "Deprecated"
+                              }
+                            ],
+                            "http://schema.org/description": [
+                              {
+                                "@value": "This is a description\n"
+                              }
+                            ],
+                            "http://a.ml/vocabularies/document#examples": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema/example/Googd",
+                                "@type": [
+                                  "http://a.ml/vocabularies/document#Example",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://schema.org/name": [
+                                  {
+                                    "@value": "Googd"
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#strict": [
+                                  {
+                                    "@value": true
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#structuredValue": [
+                                  {
+                                    "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema/example/Googd/scalar_1",
+                                    "@type": [
+                                      "http://a.ml/vocabularies/data#Scalar"
+                                    ],
+                                    "http://a.ml/vocabularies/data#value": [
+                                      {
+                                        "@value": "",
+                                        "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "http://www.w3.org/ns/shacl#raw": [
+                                  {
+                                    "@value": ""
+                                  }
+                                ]
+                              },
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema/example/Bad",
+                                "@type": [
+                                  "http://a.ml/vocabularies/document#Example",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://schema.org/name": [
+                                  {
+                                    "@value": "Bad"
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#strict": [
+                                  {
+                                    "@value": true
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#structuredValue": [
+                                  {
+                                    "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema/example/Bad/scalar_1",
+                                    "@type": [
+                                      "http://a.ml/vocabularies/data#Scalar"
+                                    ],
+                                    "http://a.ml/vocabularies/data#value": [
+                                      {
+                                        "@value": "something",
+                                        "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "http://www.w3.org/ns/shacl#raw": [
+                                  {
+                                    "@value": "something"
+                                  }
+                                ]
+                              }
+                            ],
+                            "file://demo/api.raml#/declarations/annotations/deprecated": {
+                              "http://a.ml/vocabularies/document#name": [
+                                {
+                                  "@value": "deprecated"
+                                }
+                              ],
+                              "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/scalar/schema/deprecated/scalar_1",
+                              "@type": [
+                                "http://a.ml/vocabularies/data#Scalar"
+                              ],
+                              "http://a.ml/vocabularies/data#value": [
+                                {
+                                  "@value": "This property is deprecated.\n\nPlease, do not use it in new projects.\n",
+                                  "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                }
+                              ]
+                            },
+                            "http://a.ml/vocabularies/document#customDomainProperties": [
+                              {
+                                "@id": "file://demo/api.raml#/declarations/annotations/deprecated"
+                              }
+                            ]
+                          }
+                        ],
+                        "file://demo/api.raml#/declarations/annotations/deprecated": {
+                          "http://a.ml/vocabularies/document#name": [
+                            {
+                              "@value": "deprecated"
+                            }
+                          ],
+                          "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-deprecated/deprecated/scalar_1",
+                          "@type": [
+                            "http://a.ml/vocabularies/data#Scalar"
+                          ],
+                          "http://a.ml/vocabularies/data#value": [
+                            {
+                              "@value": "This property is deprecated.\n\nPlease, do not use it in new projects.\n",
+                              "@type": "http://www.w3.org/2001/XMLSchema#string"
+                            }
+                          ]
+                        },
+                        "http://a.ml/vocabularies/document#customDomainProperties": [
+                          {
+                            "@id": "file://demo/api.raml#/declarations/annotations/deprecated"
+                          }
+                        ]
+                      },
+                      {
+                        "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable",
+                        "@type": [
+                          "http://a.ml/vocabularies/http#Parameter",
+                          "http://a.ml/vocabularies/document#DomainElement"
+                        ],
+                        "http://schema.org/name": [
+                          {
+                            "@value": "x-enumerable"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#paramName": [
+                          {
+                            "@value": "x-enumerable"
+                          }
+                        ],
+                        "http://schema.org/description": [
+                          {
+                            "@value": "Example enumerable type to test the documentation\nelement.\n\nIt renders `Markdown` model.\n"
+                          }
+                        ],
+                        "http://www.w3.org/ns/hydra/core#required": [
+                          {
+                            "@value": false
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#binding": [
+                          {
+                            "@value": "header"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#schema": [
+                          {
+                            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema",
+                            "@type": [
+                              "http://a.ml/vocabularies/shapes#ScalarShape",
+                              "http://www.w3.org/ns/shacl#Shape",
+                              "http://a.ml/vocabularies/shapes#Shape",
+                              "http://a.ml/vocabularies/document#DomainElement"
+                            ],
+                            "http://www.w3.org/ns/shacl#datatype": [
+                              {
+                                "@id": "http://www.w3.org/2001/XMLSchema#string"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#pattern": [
+                              {
+                                "@value": "^v[1-4]$"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#name": [
+                              {
+                                "@value": "schema"
+                              }
+                            ],
+                            "http://schema.org/name": [
+                              {
+                                "@value": "Enumerable 1"
+                              }
+                            ],
+                            "http://schema.org/description": [
+                              {
+                                "@value": "Example enumerable type to test the documentation\nelement.\n\nIt renders `Markdown` model.\n"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#defaultValue": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/scalar_1",
+                                "@type": [
+                                  "http://a.ml/vocabularies/data#Scalar"
+                                ],
+                                "http://a.ml/vocabularies/data#value": [
+                                  {
+                                    "@value": "v1",
+                                    "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                  }
+                                ]
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#in": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/list",
+                                "@type": "http://www.w3.org/2000/01/rdf-schema#Seq",
+                                "http://www.w3.org/2000/01/rdf-schema#_1": [
+                                  {
+                                    "@value": "v1"
+                                  }
+                                ],
+                                "http://www.w3.org/2000/01/rdf-schema#_2": [
+                                  {
+                                    "@value": "v2"
+                                  }
+                                ],
+                                "http://www.w3.org/2000/01/rdf-schema#_3": [
+                                  {
+                                    "@value": "v3"
+                                  }
+                                ],
+                                "http://www.w3.org/2000/01/rdf-schema#_4": [
+                                  {
+                                    "@value": "v4"
+                                  }
+                                ]
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#defaultValueStr": [
+                              {
+                                "@value": "v1"
+                              }
+                            ],
+                            "http://a.ml/vocabularies/document#examples": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/example/Version1",
+                                "@type": [
+                                  "http://a.ml/vocabularies/document#Example",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://schema.org/name": [
+                                  {
+                                    "@value": "Version1"
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#strict": [
+                                  {
+                                    "@value": true
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#structuredValue": [
+                                  {
+                                    "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/example/Version1/scalar_1",
+                                    "@type": [
+                                      "http://a.ml/vocabularies/data#Scalar"
+                                    ],
+                                    "http://a.ml/vocabularies/data#value": [
+                                      {
+                                        "@value": "v1",
+                                        "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "http://www.w3.org/ns/shacl#raw": [
+                                  {
+                                    "@value": "v1"
+                                  }
+                                ]
+                              },
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/example/Version2",
+                                "@type": [
+                                  "http://a.ml/vocabularies/document#Example",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://schema.org/name": [
+                                  {
+                                    "@value": "Version2"
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#strict": [
+                                  {
+                                    "@value": true
+                                  }
+                                ],
+                                "http://a.ml/vocabularies/document#structuredValue": [
+                                  {
+                                    "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/example/Version2/scalar_1",
+                                    "@type": [
+                                      "http://a.ml/vocabularies/data#Scalar"
+                                    ],
+                                    "http://a.ml/vocabularies/data#value": [
+                                      {
+                                        "@value": "v2",
+                                        "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                      }
+                                    ]
+                                  }
+                                ],
+                                "http://www.w3.org/ns/shacl#raw": [
+                                  {
+                                    "@value": "v2"
+                                  }
+                                ]
+                              }
+                            ],
+                            "file://demo/api.raml#/declarations/annotations/MarkAnnotation": {
+                              "http://a.ml/vocabularies/document#name": [
+                                {
+                                  "@value": "MarkAnnotation"
+                                }
+                              ],
+                              "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/MarkAnnotation/scalar_1",
+                              "@type": [
+                                "http://a.ml/vocabularies/data#Scalar"
+                              ],
+                              "http://a.ml/vocabularies/data#value": [
+                                {
+                                  "@value": "",
+                                  "@type": "http://www.w3.org/2001/XMLSchema#nil"
+                                }
+                              ]
+                            },
+                            "file://demo/api.raml#/declarations/annotations/clearanceLevel": {
+                              "http://a.ml/vocabularies/document#name": [
+                                {
+                                  "@value": "clearanceLevel"
+                                }
+                              ],
+                              "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/clearanceLevel/object_1",
+                              "@type": [
+                                "http://a.ml/vocabularies/data#Object"
+                              ],
+                              "http://a.ml/vocabularies/data#level": [
+                                {
+                                  "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/clearanceLevel/object_1/scalar_2",
+                                  "@type": [
+                                    "http://a.ml/vocabularies/data#Scalar"
+                                  ],
+                                  "http://a.ml/vocabularies/data#value": [
+                                    {
+                                      "@value": "low",
+                                      "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                    }
+                                  ]
+                                }
+                              ],
+                              "http://a.ml/vocabularies/data#signature": [
+                                {
+                                  "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/scalar/schema/clearanceLevel/object_1/scalar_3",
+                                  "@type": [
+                                    "http://a.ml/vocabularies/data#Scalar"
+                                  ],
+                                  "http://a.ml/vocabularies/data#value": [
+                                    {
+                                      "@value": "230-ghtwvfrs1itr",
+                                      "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            "http://a.ml/vocabularies/document#customDomainProperties": [
+                              {
+                                "@id": "file://demo/api.raml#/declarations/annotations/MarkAnnotation"
+                              },
+                              {
+                                "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel"
+                              }
+                            ]
+                          }
+                        ],
+                        "file://demo/api.raml#/declarations/annotations/MarkAnnotation": {
+                          "http://a.ml/vocabularies/document#name": [
+                            {
+                              "@value": "MarkAnnotation"
+                            }
+                          ],
+                          "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/MarkAnnotation/scalar_1",
+                          "@type": [
+                            "http://a.ml/vocabularies/data#Scalar"
+                          ],
+                          "http://a.ml/vocabularies/data#value": [
+                            {
+                              "@value": "",
+                              "@type": "http://www.w3.org/2001/XMLSchema#nil"
+                            }
+                          ]
+                        },
+                        "file://demo/api.raml#/declarations/annotations/clearanceLevel": {
+                          "http://a.ml/vocabularies/document#name": [
+                            {
+                              "@value": "clearanceLevel"
+                            }
+                          ],
+                          "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/clearanceLevel/object_1",
+                          "@type": [
+                            "http://a.ml/vocabularies/data#Object"
+                          ],
+                          "http://a.ml/vocabularies/data#level": [
+                            {
+                              "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/clearanceLevel/object_1/scalar_2",
+                              "@type": [
+                                "http://a.ml/vocabularies/data#Scalar"
+                              ],
+                              "http://a.ml/vocabularies/data#value": [
+                                {
+                                  "@value": "low",
+                                  "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                }
+                              ]
+                            }
+                          ],
+                          "http://a.ml/vocabularies/data#signature": [
+                            {
+                              "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-enumerable/clearanceLevel/object_1/scalar_3",
+                              "@type": [
+                                "http://a.ml/vocabularies/data#Scalar"
+                              ],
+                              "http://a.ml/vocabularies/data#value": [
+                                {
+                                  "@value": "230-ghtwvfrs1itr",
+                                  "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "http://a.ml/vocabularies/document#customDomainProperties": [
+                          {
+                            "@id": "file://demo/api.raml#/declarations/annotations/MarkAnnotation"
+                          },
+                          {
+                            "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel"
+                          }
+                        ]
+                      },
+                      {
+                        "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-repeat",
+                        "@type": [
+                          "http://a.ml/vocabularies/http#Parameter",
+                          "http://a.ml/vocabularies/document#DomainElement"
+                        ],
+                        "http://schema.org/name": [
+                          {
+                            "@value": "x-repeat"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#paramName": [
+                          {
+                            "@value": "x-repeat"
+                          }
+                        ],
+                        "http://schema.org/description": [
+                          {
+                            "@value": "Hello world\n"
+                          }
+                        ],
+                        "http://www.w3.org/ns/hydra/core#required": [
+                          {
+                            "@value": true
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#binding": [
+                          {
+                            "@value": "header"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#schema": [
+                          {
+                            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-repeat/array/schema",
+                            "@type": [
+                              "http://a.ml/vocabularies/shapes#ArrayShape",
+                              "http://www.w3.org/ns/shacl#Shape",
+                              "http://a.ml/vocabularies/shapes#Shape",
+                              "http://a.ml/vocabularies/document#DomainElement"
+                            ],
+                            "http://a.ml/vocabularies/shapes#items": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-repeat/array/schema/scalar/items",
+                                "@type": [
+                                  "http://a.ml/vocabularies/shapes#ScalarShape",
+                                  "http://www.w3.org/ns/shacl#Shape",
+                                  "http://a.ml/vocabularies/shapes#Shape",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://www.w3.org/ns/shacl#datatype": [
+                                  {
+                                    "@id": "http://www.w3.org/2001/XMLSchema#string"
+                                  }
+                                ],
+                                "http://www.w3.org/ns/shacl#name": [
+                                  {
+                                    "@value": "items"
+                                  }
+                                ]
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#name": [
+                              {
+                                "@value": "schema"
+                              }
+                            ],
+                            "http://schema.org/description": [
+                              {
+                                "@value": "Hello world\n"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-unionable",
+                        "@type": [
+                          "http://a.ml/vocabularies/http#Parameter",
+                          "http://a.ml/vocabularies/document#DomainElement"
+                        ],
+                        "http://schema.org/name": [
+                          {
+                            "@value": "x-unionable"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#paramName": [
+                          {
+                            "@value": "x-unionable"
+                          }
+                        ],
+                        "http://www.w3.org/ns/hydra/core#required": [
+                          {
+                            "@value": true
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#binding": [
+                          {
+                            "@value": "header"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#schema": [
+                          {
+                            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-unionable/union/schema/union/default-union",
+                            "@type": [
+                              "http://a.ml/vocabularies/shapes#UnionShape",
+                              "http://www.w3.org/ns/shacl#Shape",
+                              "http://a.ml/vocabularies/shapes#Shape"
+                            ],
+                            "http://a.ml/vocabularies/shapes#anyOf": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-unionable/union/schema/scalar/scalar-expression-0",
+                                "@type": [
+                                  "http://a.ml/vocabularies/shapes#ScalarShape",
+                                  "http://www.w3.org/ns/shacl#Shape",
+                                  "http://a.ml/vocabularies/shapes#Shape",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://www.w3.org/ns/shacl#datatype": [
+                                  {
+                                    "@id": "http://www.w3.org/2001/XMLSchema#string"
+                                  }
+                                ]
+                              },
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/x-unionable/union/schema/scalar/scalar-expression-2",
+                                "@type": [
+                                  "http://a.ml/vocabularies/shapes#ScalarShape",
+                                  "http://www.w3.org/ns/shacl#Shape",
+                                  "http://a.ml/vocabularies/shapes#Shape",
+                                  "http://a.ml/vocabularies/document#DomainElement"
+                                ],
+                                "http://www.w3.org/ns/shacl#datatype": [
+                                  {
+                                    "@id": "http://a.ml/vocabularies/shapes#number"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/Accept",
+                        "@type": [
+                          "http://a.ml/vocabularies/http#Parameter",
+                          "http://a.ml/vocabularies/document#DomainElement"
+                        ],
+                        "http://schema.org/name": [
+                          {
+                            "@value": "Accept"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#paramName": [
+                          {
+                            "@value": "Accept"
+                          }
+                        ],
+                        "http://schema.org/description": [
+                          {
+                            "@value": "Supported mime tyes in this API are:\n\n- `application/json`\n- `application/xml`\n- `application/x-vnd.unknown`\n"
+                          }
+                        ],
+                        "http://www.w3.org/ns/hydra/core#required": [
+                          {
+                            "@value": true
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#binding": [
+                          {
+                            "@value": "header"
+                          }
+                        ],
+                        "http://a.ml/vocabularies/http#schema": [
+                          {
+                            "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/Accept/scalar/schema",
+                            "@type": [
+                              "http://a.ml/vocabularies/shapes#ScalarShape",
+                              "http://www.w3.org/ns/shacl#Shape",
+                              "http://a.ml/vocabularies/shapes#Shape",
+                              "http://a.ml/vocabularies/document#DomainElement"
+                            ],
+                            "http://www.w3.org/ns/shacl#datatype": [
+                              {
+                                "@id": "http://www.w3.org/2001/XMLSchema#string"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#name": [
+                              {
+                                "@value": "schema"
+                              }
+                            ],
+                            "http://schema.org/description": [
+                              {
+                                "@value": "Supported mime tyes in this API are:\n\n- `application/json`\n- `application/xml`\n- `application/x-vnd.unknown`\n"
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#defaultValue": [
+                              {
+                                "@id": "file://demo/api.raml#/web-api/end-points/%2Ftest/get/request/parameter/Accept/scalar/schema/scalar_1",
+                                "@type": [
+                                  "http://a.ml/vocabularies/data#Scalar"
+                                ],
+                                "http://a.ml/vocabularies/data#value": [
+                                  {
+                                    "@value": "application/json",
+                                    "@type": "http://www.w3.org/2001/XMLSchema#string"
+                                  }
+                                ]
+                              }
+                            ],
+                            "http://www.w3.org/ns/shacl#defaultValueStr": [
+                              {
+                                "@value": "application/json"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "http://a.ml/vocabularies/http#payload": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "http://a.ml/vocabularies/document#declares": [
+      {
+        "@id": "file://demo/api.raml#/declarations/annotations/MarkAnnotation",
+        "@type": [
+          "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+          "http://a.ml/vocabularies/document#DomainProperty",
+          "http://a.ml/vocabularies/document#DomainElement"
+        ],
+        "http://a.ml/vocabularies/shapes#schema": [
+          {
+            "@id": "file://demo/api.raml#/declarations/annotations/MarkAnnotation/nil/MarkAnnotation",
+            "@type": [
+              "http://a.ml/vocabularies/shapes#NilShape",
+              "http://www.w3.org/ns/shacl#Shape",
+              "http://a.ml/vocabularies/shapes#Shape"
+            ],
+            "http://www.w3.org/ns/shacl#name": [
+              {
+                "@value": "MarkAnnotation"
+              }
+            ]
+          }
+        ],
+        "http://a.ml/vocabularies/document#name": [
+          {
+            "@value": "MarkAnnotation"
+          }
+        ]
+      },
+      {
+        "@id": "file://demo/api.raml#/declarations/annotations/deprecated",
+        "@type": [
+          "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+          "http://a.ml/vocabularies/document#DomainProperty",
+          "http://a.ml/vocabularies/document#DomainElement"
+        ],
+        "http://a.ml/vocabularies/shapes#schema": [
+          {
+            "@id": "file://demo/api.raml#/declarations/annotations/deprecated/scalar/deprecated",
+            "@type": [
+              "http://a.ml/vocabularies/shapes#ScalarShape",
+              "http://www.w3.org/ns/shacl#Shape",
+              "http://a.ml/vocabularies/shapes#Shape",
+              "http://a.ml/vocabularies/document#DomainElement"
+            ],
+            "http://www.w3.org/ns/shacl#datatype": [
+              {
+                "@id": "http://www.w3.org/2001/XMLSchema#string"
+              }
+            ],
+            "http://www.w3.org/ns/shacl#name": [
+              {
+                "@value": "deprecated"
+              }
+            ]
+          }
+        ],
+        "http://a.ml/vocabularies/document#name": [
+          {
+            "@value": "deprecated"
+          }
+        ]
+      },
+      {
+        "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel",
+        "@type": [
+          "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property",
+          "http://a.ml/vocabularies/document#DomainProperty",
+          "http://a.ml/vocabularies/document#DomainElement"
+        ],
+        "http://a.ml/vocabularies/shapes#schema": [
+          {
+            "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema",
+            "@type": [
+              "http://www.w3.org/ns/shacl#NodeShape",
+              "http://www.w3.org/ns/shacl#Shape",
+              "http://a.ml/vocabularies/shapes#Shape",
+              "http://a.ml/vocabularies/document#DomainElement"
+            ],
+            "http://www.w3.org/ns/shacl#closed": [
+              {
+                "@value": false
+              }
+            ],
+            "http://www.w3.org/ns/shacl#property": [
+              {
+                "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema/property/level",
+                "@type": [
+                  "http://www.w3.org/ns/shacl#PropertyShape",
+                  "http://www.w3.org/ns/shacl#Shape",
+                  "http://a.ml/vocabularies/shapes#Shape"
+                ],
+                "http://www.w3.org/ns/shacl#path": [
+                  {
+                    "@id": "http://a.ml/vocabularies/data#level"
+                  }
+                ],
+                "http://a.ml/vocabularies/shapes#range": [
+                  {
+                    "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema/property/level/scalar/level",
+                    "@type": [
+                      "http://a.ml/vocabularies/shapes#ScalarShape",
+                      "http://www.w3.org/ns/shacl#Shape",
+                      "http://a.ml/vocabularies/shapes#Shape",
+                      "http://a.ml/vocabularies/document#DomainElement"
+                    ],
+                    "http://www.w3.org/ns/shacl#datatype": [
+                      {
+                        "@id": "http://www.w3.org/2001/XMLSchema#string"
+                      }
+                    ],
+                    "http://www.w3.org/ns/shacl#name": [
+                      {
+                        "@value": "level"
+                      }
+                    ],
+                    "http://www.w3.org/ns/shacl#in": [
+                      {
+                        "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema/property/level/scalar/level/list",
+                        "@type": "http://www.w3.org/2000/01/rdf-schema#Seq",
+                        "http://www.w3.org/2000/01/rdf-schema#_1": [
+                          {
+                            "@value": "low"
+                          }
+                        ],
+                        "http://www.w3.org/2000/01/rdf-schema#_2": [
+                          {
+                            "@value": "medium"
+                          }
+                        ],
+                        "http://www.w3.org/2000/01/rdf-schema#_3": [
+                          {
+                            "@value": "high"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "http://www.w3.org/ns/shacl#minCount": [
+                  {
+                    "@value": 1
+                  }
+                ],
+                "http://www.w3.org/ns/shacl#name": [
+                  {
+                    "@value": "level"
+                  }
+                ]
+              },
+              {
+                "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema/property/signature",
+                "@type": [
+                  "http://www.w3.org/ns/shacl#PropertyShape",
+                  "http://www.w3.org/ns/shacl#Shape",
+                  "http://a.ml/vocabularies/shapes#Shape"
+                ],
+                "http://www.w3.org/ns/shacl#path": [
+                  {
+                    "@id": "http://a.ml/vocabularies/data#signature"
+                  }
+                ],
+                "http://a.ml/vocabularies/shapes#range": [
+                  {
+                    "@id": "file://demo/api.raml#/declarations/annotations/clearanceLevel/schema/property/signature/scalar/signature",
+                    "@type": [
+                      "http://a.ml/vocabularies/shapes#ScalarShape",
+                      "http://www.w3.org/ns/shacl#Shape",
+                      "http://a.ml/vocabularies/shapes#Shape",
+                      "http://a.ml/vocabularies/document#DomainElement"
+                    ],
+                    "http://www.w3.org/ns/shacl#datatype": [
+                      {
+                        "@id": "http://www.w3.org/2001/XMLSchema#string"
+                      }
+                    ],
+                    "http://www.w3.org/ns/shacl#pattern": [
+                      {
+                        "@value": "^\\d{3}-\\w{12}$"
+                      }
+                    ],
+                    "http://www.w3.org/ns/shacl#name": [
+                      {
+                        "@value": "signature"
+                      }
+                    ]
+                  }
+                ],
+                "http://www.w3.org/ns/shacl#minCount": [
+                  {
+                    "@value": 1
+                  }
+                ],
+                "http://www.w3.org/ns/shacl#name": [
+                  {
+                    "@value": "signature"
+                  }
+                ]
+              }
+            ],
+            "http://www.w3.org/ns/shacl#name": [
+              {
+                "@value": "schema"
+              }
+            ]
+          }
+        ],
+        "http://a.ml/vocabularies/document#name": [
+          {
+            "@value": "clearanceLevel"
+          }
+        ]
+      }
+    ]
+  }
+]

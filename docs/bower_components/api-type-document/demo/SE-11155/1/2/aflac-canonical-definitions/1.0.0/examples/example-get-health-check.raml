@@ -1,0 +1,16 @@
+#%RAML 1.0 NamedExample
+health-check-example:
+  value:
+    - context: experienceAPI-datacap-claims
+      code: "1"
+      short-description: healthy
+    - context: processAPI-claim-adjudicator
+      code: "1"
+      short-description: healthy
+    - context: systemAPI-wynsure-claims
+      code: "1"
+      short-description: healthy
+    - context: systemAPI-SQL-DB-claims
+      code: "404"
+      short-description: resource not found
+      long-description: The health check on systemAPI-SQL-DB-claims did not respond with success.  Contact SQL Server DBA.

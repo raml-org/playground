@@ -1,0 +1,22 @@
+#%RAML 1.0 DataType
+
+uses: 
+  performance-lib: ../libraries/library-performance.raml
+
+type: object
+additionalProperties: false
+
+properties: 
+  active:
+    displayName: Activation Flag
+    description:  |
+      A consumer can set this flag to true which will enable the creation of performance report in the header.  
+      This indicates all downstream components to collect and update the aflac-performance-report header object values accordingly.
+    required: false
+    type: boolean
+    default: false
+  ns:
+    type: performance-lib.performance-nodes
+
+examples: 
+  !include ../examples/example-performance-report.raml

@@ -1,0 +1,34 @@
+#%RAML 1.0 NamedExample
+
+registration_confirmation_with_no_callback_request:
+  displayName: POST Request where correspondence is of type "registration-confirmation" with no callback URL.
+  value:
+    correspondenceTypeCode: "registration-confirmation"
+    
+forgotten_password_with_callback_request:
+  displayName: POST Request where correspondence is of type "forgotten-password" and a callback URL is provided.
+  value:
+    correspondenceTypeCode: "forgotten-password"
+    callbackUrl: "http://pingurl/forgottenpassword"
+    
+password_reset_confirmation_with_callback_request:
+  displayName: POST Request where correspondence is of type "password-reset-confirmation" and a callback URL is provided.
+  value:
+    correspondenceTypeCode: "password-reset-confirmation"
+    callbackUrl: "http://pingurl/resetpassword"
+    
+change_password_confirmation_with_no_callback_request:
+  displayName: POST Request where correspondence is of type "change-password-confirmation" and no callback URL.
+  value:
+    correspondenceTypeCode: "change-password-confirmation"
+
+change_email_confirmation_with_no_callback_request:
+  displayName: POST Request where correspondence is of type "change-email-confirmation" and no callback URL.
+  value:
+    correspondenceTypeCode: "change-email-confirmation"
+
+email_verification_with_callback_request:
+  displayName: POST Request where correspondence is of type "email-verification" and a callback URL.
+  value:
+    correspondenceTypeCode: "email-verification"
+    callbackUrl: "http://pingurl/emailverified"

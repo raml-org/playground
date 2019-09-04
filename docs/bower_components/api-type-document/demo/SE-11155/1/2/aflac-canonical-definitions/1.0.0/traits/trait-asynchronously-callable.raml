@@ -1,0 +1,12 @@
+#%RAML 1.0 Trait
+description: Asynchronously callable trait allows a request to be submitted and a response returned without completing the processing of that request
+
+headers: 
+  aflac-asynchronous-processing:
+    displayName: Aflac Processing Style
+    description: |
+      Set this header value to true to indicate to the provider that request processing should be executed asynchronously if available.
+    type: boolean
+    required: false
+    default: true
+    example: true

@@ -1,0 +1,19 @@
+#%RAML 1.0 DataType
+
+uses:
+  lib: ../libraries/library-context-and-preference.raml
+
+displayName: Email Address
+
+type: [lib.preferable, lib.contextual]
+additionalProperties: false
+
+properties: 
+  address: 
+    displayName: Full email address
+    required: false
+    type: string
+
+example:
+  context: work
+  address: john.doe@company.com

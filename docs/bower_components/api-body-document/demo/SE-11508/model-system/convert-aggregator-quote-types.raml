@@ -1,0 +1,25 @@
+#%RAML 1.0 Library
+
+types:
+  CreatedQuote:
+    properties:
+      referenceId:
+        description: The newly created Customer Account ID.
+      quoteId?:
+        description: The newly created Quote ID.
+      source:
+        description: The name of the Aggregator which is the source of the click-through URL.
+      existingCustomer:
+        type: boolean
+        description: A boolean value to indicate whether the 'new' customer's details have been matched to an existing account.
+      title?:
+      firstName?:
+      lastName?:
+
+
+  AggregatorCreateQuote:
+    properties: 
+      clickthroughurl: 
+        required: true
+        type: string
+        example: https://budget-qa.doodleinsurance.co.uk/Car/BI9M/ALE/?refno=A8S000191&vehno=1&ORGAFFCLIE=CTMS&prdcls=PC&clkref=4DCFB507B8500DCB1123B3AF75F10255D92297C7

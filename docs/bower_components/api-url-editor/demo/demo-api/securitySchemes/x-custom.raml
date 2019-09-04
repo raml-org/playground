@@ -1,0 +1,33 @@
+#%RAML 1.0 SecurityScheme
+
+description: |
+  A custom security scheme for authenticating requests.
+  It allows to set `SpecialToken` header from the authorization panel.
+  The same header should be rendered in the headers editor with console using
+  RAML JS parser.
+  With `AMF` console this is separated information.
+  This scheme also sets `debugToken` and `booleanToken` query parameters.
+  Both are enums, however `booleanToken` can only have `true` and `false`
+  values.
+type: x-custom
+describedBy:
+  headers:
+    SpecialToken:
+      description: |
+        Used to send a custom token.
+      type: string
+  queryParameters:
+    debugToken:
+      description: Select one of available values to run the request in the debug mode with selected level.
+      enum: [Info, Log, Warning, Error, Critical]
+      type: string
+      required: false
+    booleanToken:
+      description: Just to test boolean values.
+      type: boolean
+      default: true
+  responses:
+    401:
+      description: |
+        Bad token.
+    403:

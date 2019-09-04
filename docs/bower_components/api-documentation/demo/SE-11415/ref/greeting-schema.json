@@ -1,0 +1,22 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"description": "Describes simple greeting representation consisting of an ID and a message.",
+	"additionalProperties": false,
+	"type": "object",
+	"required": [
+		"id",
+		"message"
+	],
+	"properties": {
+		"id": {
+			"type": "string",
+			"minLength": 36,
+			"maxLength": 36,
+			"description": "The ID of the representation, a randomly generated UUID."
+		},
+		"message": {
+			"type": "string",
+			"description": "The text message of the greeting."
+		}
+	}
+}

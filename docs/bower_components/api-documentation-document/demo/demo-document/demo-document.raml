@@ -1,0 +1,21 @@
+#%RAML 1.0 DocumentationItem
+title: About
+content: |
+  This is test document.
+
+  ## Example
+  Let's say you want to generate a random number in the request. So the property
+  value like:
+  ```
+  http://www.domain.com/?time=${now}
+  ```
+  can produce:
+  ```
+  http://www.domain.com/?time=12312312312
+  ```
+  ## Build-in magic variables.
+  | Variable | Description | Example |
+  | --- | --- | --- |
+  | `${random}` | Will generate random number in range from 0 to Number.MAX_SAFE_INTEGER | 9007199254740991 |
+  | `${random:NUMBER}` | A variation of `${random}` where the result will be remembered and can be used in other property. If the same `NUMBER` occurs again then previously generated value will be used. | 7199254740 |
+  | `${now}` | Inserts current epoch time | 12312312312 |

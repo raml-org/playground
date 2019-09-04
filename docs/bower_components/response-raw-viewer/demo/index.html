@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>response-raw-viewer demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../iron-flex-layout/iron-flex-layout.html">
+  <link rel="import" href="../../paper-input/paper-input.html">
+  <link rel="import" href="../../paper-button/paper-button.html">
+  <link rel="import" href="../../paper-icon-button/paper-icon-button.html">
+  <link rel="import" href="../../paper-toast/paper-toast.html">
+  <link rel="import" href="../../arc-icons/arc-icons.html">
+  <link rel="import" href="../../paper-icon-button/paper-icon-button.html">
+  <link rel="import" href="../response-raw-viewer.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    .url-input {
+      @apply --layout-horizontal;
+    }
+    .url-input paper-input {
+      @apply --layout-flex);
+    }
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>The `response-raw-viewer`</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind id="demo">
+          <template is="dom-bind">
+            <div class="url-input">
+              <paper-input label="URL" value="{{url}}"></paper-input>
+              <paper-button raised on-tap="download">go</paper-button>
+            </div>
+            <response-raw-viewer response-text="[[response]]">
+              <paper-icon-button slot="content-action" title="Additional action" icon="arc:cached" on-tap="_additionalAction"></paper-icon-button>
+              <paper-icon-button slot="content-action" title="Clear the code" icon="arc:clear" on-tap="_clearCode"></paper-icon-button>
+            </response-raw-viewer>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+  </div>
+  <paper-toast text="Additional action clicked"></paper-toast>
+  <script>
+  window.addEventListener('WebComponentsReady', () => {
+    const scope = document.getElementById('demo');
+    scope.url = 'https://cdn.rawgit.com/jarrodek/ChromeRestClient/develop/tasks/test-data/xml1.xml';
+    scope.response = '';
+    scope.download = function() {
+      var opts = {
+        method: 'GET',
+        mode: 'cors'
+      };
+      fetch(scope.url, opts)
+      .then(function(response) {
+        return response.text();
+      })
+      .then(function(text) {
+        scope.response = text;
+      });
+    };
+    scope._clearCode = function() {
+      scope.response = undefined;
+      scope.contentType = undefined;
+    };
+    scope._additionalAction = function() {
+      document.querySelector('paper-toast').opened = true;
+    };
+    if (!('fetch' in window)) {
+      window.alert('Your browser is ancient! This demo page won\'t work here.');
+    }
+  });
+  </script>
+</body>
+</html>

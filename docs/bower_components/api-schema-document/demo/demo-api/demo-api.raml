@@ -1,0 +1,37 @@
+#%RAML 1.0
+title: API body demo
+version: v1
+baseUri: http://api.domain.com/
+
+types:
+  SchemaPerson:
+    type: !include schemas/person.json
+    example: !include examples/person.json
+  XmlTypeSchema:
+    type: !include schemas/product.xsd
+    example: !include examples/product.xml
+  Person:
+    properties:
+      name:
+        type: string
+        xml:
+          attribute: true
+          name: "fullname"
+      addresses:
+        type: Address[]
+        xml:
+          wrapped: true # serialize it into its own <addresses>...</addresses> XML element
+  SimpleSchema:
+    example: |
+      {
+      "status":"success"
+      }
+  Address:
+    properties:
+      street: string
+      city: string
+/post:
+  post:
+    body:
+      application/json:
+        type: SchemaPerson

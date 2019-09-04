@@ -1,0 +1,30 @@
+{
+  "name": "@api-components/api-parameters-document",
+  "description": "Documentation component for API query and URI parameters based on AMF data model",
+  "version": "2.0.7",
+  "license": "Apache-2.0",
+  "main": "api-parameters-document.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@api-components/api-model-generator": "^0.1.8",
+    "@polymer/gen-typescript-declarations": "^1.6.0"
+  },
+  "private": false,
+  "scripts": {
+    "lint": "polymer lint api-parameters-document.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-parameters-document:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-parameters-document.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-parameters-document/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

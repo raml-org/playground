@@ -1,0 +1,40 @@
+#%RAML 1.0 Library
+types:
+  RetrieveQuotesResponse:
+    properties:
+      customerAccountId:
+        description: Valid customer account ID.
+      quoteId:
+        description: The most recent quote id found.
+      isTE:
+        type: boolean
+        description: Is this a TE journey?
+      affinityCode:
+        description: The affinity code of this journey.
+
+  RetrieveQuotesRequest:
+    properties: 
+      lastName:
+        required: true
+        type: string
+        example: "Schwarzenegger"
+      dateOfBirth: 
+        required: true
+        type: date-only
+        example: "1947-07-30"
+      customerAccountId:
+        required: true
+        type: string
+        minLength: 9
+        maxLength: 9
+        example: "123456789"
+      product:
+        required: true
+        type:
+          enum: [ Car, Van, Home ]
+        example: "Car"
+      maskCode: 
+        required: true
+        type: string
+        maxLength: 7
+        example: "A123"

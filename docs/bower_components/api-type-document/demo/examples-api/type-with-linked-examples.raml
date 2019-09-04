@@ -1,0 +1,15 @@
+#%RAML 1.0 DataType
+type: object
+displayName: Company
+description: A company
+examples:
+  BE_Company: !include examples/Company_BE_Example-1.0.raml
+  GB_Company: !include examples/Company_GB_Example-1.0.raml
+  NL_Company: !include examples/Company_NL_Example-1.0.raml
+properties:
+  companyIdentification:
+    type: !include CompanyIdentification-1.0.raml
+    required: true
+  companyProfile:
+    type: !include CompanyProfile-1.0.raml
+    required: false

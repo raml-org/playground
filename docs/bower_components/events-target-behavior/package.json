@@ -1,0 +1,25 @@
+{
+  "name": "@advanced-rest-client/events-target-behavior",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "description": "Behavior that support event targets retargeting so the element listens on a set node instead of default one",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1"
+  },
+  "private": false,
+  "main": "events-target-behavior.html",
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "lint": "polymer lint events-target-behavior.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"events-target-behavior:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/events-target-behavior.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/events-target-behavior/issues"
+  }
+}

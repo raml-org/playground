@@ -1,0 +1,14 @@
+#%RAML 1.0 DataType
+displayName: Company Profile
+description: This object contain all base company data
+type: !include CompanyProfileBase-1.0.raml
+examples:
+  BE_Profile: !include examples/CompanyProfile_BE_Example-1.0.raml
+  GB_Profile: !include examples/CompanyProfile_GB_Example-1.0.raml
+  NL_Profile: !include examples/CompanyProfile_NL_Example-1.0.raml
+properties:
+  companyIdentification:
+    type: !include CompanyIdentification-1.0.raml
+    required: true
+  companyName:
+    required: true

@@ -1,0 +1,29 @@
+{
+  "name": "@api-components/content-type-selector",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "description": "A content type dropdown to select request CT header",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.6.0"
+  },
+  "private": false,
+  "main": "content-type-selector.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "scripts": {
+    "lint": "polymer lint content-type-selector.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"content-type-selector:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/content-type-selector.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/content-type-selector/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

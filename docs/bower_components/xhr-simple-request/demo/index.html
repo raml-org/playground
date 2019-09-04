@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>xhr-simple-request demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-input/paper-input.html">
+    <link rel="import" href="../../paper-input/paper-textarea.html">
+    <link rel="import" href="../../paper-input/paper-input-container.html">
+    <link rel="import" href="../../paper-button/paper-button.html">
+    <link rel="import" href="../../iron-form/iron-form.html">
+    <link rel="import" href="../../iron-input/iron-input.html">
+    <link rel="import" href="../../paper-toast/paper-toast.html">
+    <link rel="import" href="../xhr-simple-request.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      iron-input > input {
+        @apply --paper-input-container-shared-input-style;
+        font-family: inherit;
+        font-weight: inherit;
+        font-size: inherit;
+        letter-spacing: inherit;
+        word-spacing: inherit;
+        line-height: inherit;
+        text-shadow: inherit;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <div class="vertical-section-container centered">
+      <h3>Basic xhr-simple-request demo</h3>
+      <demo-snippet>
+        <template>
+          <iron-form id="form">
+            <form enctype="application/json">
+              <paper-input id="url" type="url" name="url" label="URL"></paper-input>
+              <paper-input-container>
+                <label slot="label">Method</label>
+                <iron-input slot="input" id="method">
+                  <input type="text" name="method" list="methods">
+                </iron-input>
+              </paper-input-container>
+              <paper-textarea name="headers" label="Headers"></paper-textarea>
+              <paper-textarea name="body" label="Body"></paper-textarea>
+              <paper-button raised onclick="submitForm()">Submit</paper-button>
+
+              <datalist id="methods">
+                <option value="GET">
+                <option value="POST">
+                <option value="PUT">
+                <option value="DELETE">
+              </datalist>
+            </form>
+          </iron-form>
+          <xhr-simple-request id="request"></xhr-simple-request>
+          <paper-toast id="toast"></paper-toast>
+          <script>
+          let lastId = 0;
+          function submitForm() {
+            const form = document.getElementById('form');
+            const data = form.serializeForm();
+            const id = 'request' + lastId++;
+            const request = {
+              url: data.url,
+              method: data.method,
+              headers: data.headers,
+              body: data.mody,
+              id: id
+            };
+            const e = new CustomEvent('api-request', {
+              detail: request,
+              bubbles: true
+            });
+            document.body.dispatchEvent(e);
+          }
+          window.addEventListener('api-response', (e) => {
+            console.log(e.detail);
+            const toast = document.getElementById('toast');
+            let message;
+            if (e.detail.isError) {
+              message = e.detail.error.message;
+            } else {
+              message = `Received response in ${e.detail.loadingTime} ms`;
+            }
+            toast.text = message;
+            toast.opened = true;
+          });
+          window.addEventListener('WebComponentsReady', () => {
+            document.getElementById('url').value = location.href;
+            document.getElementById('method').bindValue = 'GET';
+          });
+          </script>
+        </template>
+      </demo-snippet>
+    </div>
+  </body>
+</html>

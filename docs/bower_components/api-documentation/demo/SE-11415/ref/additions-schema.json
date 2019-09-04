@@ -1,0 +1,43 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"description": "Describes the representation of an addition with 1..n summands.",
+	"additionalProperties": false,
+	"definitions": {
+		
+	},
+
+	"properties": {
+		"sum": {
+			"type": "integer",
+			"description": "The result (sum) of the addition."
+		},
+
+		"summands": {
+			"additionalItems": false,
+			"items": {
+				"additionalProperties": false,
+				"properties": {
+					"value": {
+						"type": "integer",
+						"description": "The integer value of the summand."
+					}
+				},
+
+				"required": [
+					"value"
+				],
+
+				"type": "object"
+			},
+
+			"type": "array"
+		}
+	},
+
+	"required": [
+		"summands",
+		"sum"
+	],
+
+	"type": "object"
+}

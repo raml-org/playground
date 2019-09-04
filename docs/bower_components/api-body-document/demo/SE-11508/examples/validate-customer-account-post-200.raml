@@ -1,0 +1,76 @@
+#%RAML 1.0 NamedExample
+
+validateCustomerAccountSinglePolicyResponse:
+  displayName: Validate Customer Account Single Policy Response
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    customerAccountId: "123456789"
+    title: "MR"
+    firstName: "John"
+    lastName: "Smith"
+    email: "jsmith@provider.com"
+    policies: 
+      -
+        id: "123456789-01"
+        description: "Ford Fiesta 2015"
+        startDate: "2019-01-01"
+
+validateCustomerAccountMultiplePolicyResponse:
+  displayName: Validate Customer Account Multiple Policy Response
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    customerAccountId: "123456789"
+    title: "MR"
+    firstName: "John"
+    lastName: "Smith"
+    email: "jsmith@provider.com"
+    policies: 
+      -
+        id: "123456789-01"
+        description: "Ford Fiesta 2015"
+        startDate: "2019-01-01"    
+      -
+        id: "123456789-02"
+        description: "15 High Street, Derby DE1 4DS"
+        startDate: "2019-02-01" 
+
+validateCustomerAccountContainsEmailNoPingIdResponse:
+  displayName: Validate Customer Account Response Email is Populated, No PingId
+  value:  
+    customerAccountId : "123456789"
+    title : "MR"
+    firstName : "John"
+    lastName : "Smith"
+    email: "jsmith@provider.com"
+    policies: 
+      -
+        id: "123456789-01"
+        description: "Ford Fiesta 2015"
+        startDate: "2019-01-01"
+
+validateCustomerAccountContainsPingIdNoEmailResponse:
+  displayName: Validate Customer Account Response PingId is Populated, No Email
+  value: 
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4" 
+    customerAccountId : "123456789"
+    title : "MR"
+    firstName : "John"
+    lastName : "Smith"
+    policies: 
+      -
+        id: "123456789-01"
+        description: "Ford Fiesta 2015"
+        startDate: "2019-01-01"
+
+validateCustomerAccountContainsNoPingIdNoEmailResponse:
+  displayName: Validate Customer Account Response PingId is Populated, No Email
+  value: 
+    customerAccountId : "123456789"
+    title : "MR"
+    firstName : "John"
+    lastName : "Smith"
+    policies: 
+      -
+        id: "123456789-01"
+        description: "Ford Fiesta 2015"
+        startDate: "2019-01-01"

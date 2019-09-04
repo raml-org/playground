@@ -1,0 +1,15 @@
+#%RAML 1.0 DataType
+
+displayName: Preference Index
+type: object
+additionalProperties: false
+
+properties: 
+  preference-index:
+    required: false
+    type: integer
+    displayName: Preference Index
+    description: Preference index is an integer number between 0 and 9.  If there are many contact methods a party can be reached at, the contact information with the highest preference index is to be chosen.  Preference index number can span multiple types of contact information, for example, a party can have 2 addresses, 3 phones and 1 email address, altogether 6 contact methods with preference indexes, 0, 0, 9, 0, 0, 1, respectively.  This would mean that the party prefers to be contacted first through the 1st phone number and second through the email address and the party does not want to be contacted through anything else even though those additional contact information has been provided.
+    default: 0
+    example: 3
+  

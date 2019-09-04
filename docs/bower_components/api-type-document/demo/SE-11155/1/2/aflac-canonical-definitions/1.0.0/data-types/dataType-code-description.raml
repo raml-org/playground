@@ -1,0 +1,36 @@
+#%RAML 1.0 DataType
+
+displayName: Code Description
+description: Used to explain the meaning of a code, with short and long descriptions
+
+type: object
+additionalProperties: true
+
+properties: 
+  context:
+    required: false
+    type: string
+    displayName: Context
+    description: a name that represents to whom the code belongs such as the name of a system or software component or under which context it has been created such as an error condition.  Use kebab-case for multi words.
+    example: experienceAPI-for-datacap-claim-app
+  code:
+    required: false
+    type: string
+    displayName: Code
+    description: a code that represent a specific condition
+  short-description:
+    required: false
+    type: string
+    displayName: Short Description
+    description: a short description of the code
+  long-description:
+    required: false
+    type: string
+    displayName: Long Description
+    description: a long description of the code which may include instruction what actions to take under certain conditions.
+
+example:
+  context: error
+  code: 3001A
+  short-description: Connection Timeout
+  long-description: The allowed time to acquire a database connection has elapsed.  Contact database administrator for TRX_DB on server SCSSOASQL01.

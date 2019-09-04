@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>code-mirror demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../shadycss/apply-shim.html">
+  <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-styles/paper-styles.html">
+  <link rel="import" href="../code-mirror.html">
+  <link rel="import" href="../../code-mirror-linter/code-mirror-linter-json.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    html,
+    body {
+      overflow: auto;
+    }
+    .styled {
+      --code-mirror-editor: {
+        max-height: 120px;
+        @apply --paper-font-code1;
+      }
+    }
+    </style>
+  </custom-style>
+</head>
+
+<body>
+  <div class="vertical-section-container centered">
+    <h3>Default editor</h3>
+    <demo-snippet>
+      <template>
+<code-mirror required>
+{
+  "property": "value",
+  "integer": 1234,
+  "number": 123.4567,
+  "boolean": true,
+  "nullable": null,
+  "arrable": ["one", 2],
+  "objectable": {
+    "hello": "object"
+  }
+}
+</code-mirror>
+      </template>
+    </demo-snippet>
+
+    <h3>Regular editor</h3>
+    <demo-snippet>
+      <template>
+<code-mirror mode="javascript">
+function myScript() {
+  return 100;
+}
+</code-mirror>
+      </template>
+    </demo-snippet>
+
+    <h3>Themed editor</h3>
+    <demo-snippet>
+      <template>
+<code-mirror mode="javascript" class="ambiance-theme">
+function myScript() {
+  return 100;
+}
+</code-mirror>
+<custom-style>
+  <style is="custom-style">
+  .ambiance-theme {
+    --code-mirror-keyword-color: #cda869;
+    --code-mirror-atom-color: #CF7EA9;
+    --code-mirror-number-color: #78CF8A;
+    --code-mirror-def-color: #aac6e3;
+    --code-mirror-variable-color: #ffb795;
+    --code-mirror-variable-2-color: #eed1b3;
+    --code-mirror-variable-3-color: ##faded3;
+    --code-mirror-property-color: #eed1b3;
+    --code-mirror-operator-color: #fa8d6a;
+    --code-mirror-comment-color: #555;
+    --code-mirror-string-color: #8f9d6a;
+    --code-mirror-string-2-color: #9d937c;
+    --code-mirror-meta-color: #D2A8A1;
+    --code-mirror-attribute-color: #9B859D;
+    --code-mirror-header-color: blue;
+    --code-mirror-quote-color: #24C2C7;
+    --code-mirror-background-color: #202020;
+    --code-mirror-punctuation-color: #fff;
+  }
+  </style>
+</custom-style>
+      </template>
+    </demo-snippet>
+
+    <h3>Styled markdown</h3>
+    <demo-snippet>
+      <template>
+<code-mirror mode="markdown" class="styled">
+# This is markdown
+- list element #1
+- list element #2
+[This is link](http://codemirror.net)
+</code-mirror>
+
+<style is="custom-style">
+.styled {
+  --code-mirror-editor: {
+    max-height: 170px;
+    @apply --paper-font-code1;
+  }
+}
+</style>
+      </template>
+    </demo-snippet>
+
+    <h3>JSON linter</h3>
+    <demo-snippet>
+      <template>
+
+<code-mirror mode="application/json" gutters='["CodeMirror-lint-markers"]' id="linter">
+{
+  "a": 'b',
+  "value": true
+}
+</code-mirror>
+      </template>
+    </demo-snippet>
+  </div>
+  <script>
+  function addScripts() {
+    var scripts = ['lint.js', 'json-lint.js'];
+    scripts.forEach(function(item) {
+      var s = document.createElement('script');
+      s.src = '../../codemirror/addon/lint/' + item;
+      document.head.appendChild(s);
+    });
+  }
+  function init() {
+    addScripts();
+    setTimeout(function() {
+      var demo = document.getElementById('linter');
+      demo.lint = CodeMirror.lint.json;
+    }, 100);
+  }
+  window.addEventListener('WebComponentsReady', init);
+  </script>
+</body>
+</html>

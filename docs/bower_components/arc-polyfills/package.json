@@ -1,0 +1,19 @@
+{
+  "name": "arc-polyfills",
+  "version": "0.1.12",
+  "license": "Apache-2.0",
+  "description": "Set of web polyfills used in ARC project",
+  "private": false,
+  "main": "arc-polyfills.html",
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "test": "exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/arc-polyfills.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/arc-polyfills/issues"
+  }
+}

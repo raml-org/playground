@@ -1,0 +1,19 @@
+#%RAML 1.0 NamedExample
+
+no-match-customer:
+  displayName: A to P quote without matched Customer
+  value:  
+    referenceId: "P8T000027"
+    quoteId: "P8T000027-01"
+    source: "moneysupermarket"
+    existingCustomer: false
+
+match-customer:
+  displayName: A to P quote with matched Customer
+  value:  
+    referenceId: "118806474"
+    source: "Compare the Market"
+    existingCustomer: true
+    title: "Mr"
+    firstName: "Test"
+    lastName: "Name"

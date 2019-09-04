@@ -1,0 +1,8 @@
+{
+  "demo-api/demo-api.raml": "RAML 1.0",
+  "demo-api/demo-api.raml": "RAML 1.0",
+  "array-body/array-body.raml": "RAML 1.0",
+  "appian-api/appian-api.raml": "RAML 1.0",
+  "nexmo-sms-api/nexmo-sms-api.raml": "RAML 1.0",
+  "loan-ms/loan-microservice.json": ["OAS 2.0", "application/json"]
+}

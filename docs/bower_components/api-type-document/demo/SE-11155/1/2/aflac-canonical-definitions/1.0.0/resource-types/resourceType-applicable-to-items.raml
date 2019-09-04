@@ -1,0 +1,154 @@
+#%RAML 1.0 ResourceType
+displayName: Resource Type applicable to collection items
+usage: |
+  When using this resource type the name of the data type must match the name of the resource path which needs to be a noun in singular form.  For example, if the resource path is /users/{user-id} then the data type must be called user.
+
+  Every HTTP verb in this resource type has been defined as optional.  Any combination of HTTP verbs can be chosen.  Simply add the verb name under the resource path's type and provide the necessary examples.
+
+uses:
+  error-lib: ../libraries/library-error.raml
+  code-description-lib: ../libraries/library-code-description.raml
+  traits: ../libraries/library-traits.raml
+
+
+
+delete?:
+  displayName: Delete the specific <<resourcePathName | !singularize>> record
+  description: Is used to delete the specific <<resourcePathName | !singularize>> record.  Can be synchronously or asynchronously called based on the applied traits.  Accordingly, the response will show what has been deleted or what has been accepted to be deleted.
+
+  is: 
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+  responses:
+    200:
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<item-delete-200-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<item-delete-200-cds-examples>>
+    202:
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<item-delete-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<item-delete-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+get?:
+  displayName: Retrieves specific <<resourcePathName | !singularize>> record
+  description: Is used to retrieve a specific <<resourcePathName | !singularize>> record.  The content can be filtered based on the implementation.
+  is: 
+    - traits.filterable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+  responses:
+    200:
+      body:
+        application/json:
+          type: <<resourcePathName | !singularize>>
+          examples: <<item-get-200-item-examples>>
+        application/xml:
+          type: <<resourcePathName | !singularize>>
+          examples: <<item-get-200-item-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+patch?:
+  displayName: Partially updates specific <<resourcePathName | !singularize>> record
+  description: Is used to partially update specific <<resourcePathName | !singularize>> record.  Input is the partial <<resourcePathName | !singularize>> record that includes only the element values which is used to update the specific record.  Can be synchronously or asynchronously called based on the applied traits.
+  is: 
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+
+  body: 
+    application/json:
+      type: <<resourcePathName | !singularize>>
+      examples: <<item-patch-req-item-examples>>
+    application/xml:
+      type: <<resourcePathName | !singularize>>
+      examples: <<item-patch-req-item-examples>>
+  responses: 
+    200:
+      description: The response when the patch operation is synchronously called.  It returns the partially updated record(s) or a code that explains what has taken place.
+      body:
+        application/json:
+          type: <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<item-patch-200-item-and-cds-examples>>
+        application/xml:
+          type: <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<item-patch-200-item-and-cds-examples>>
+    202:
+      description: The response when the patch operation is asynchronously called.  It returns list of codes that includes acknowledgements and confirmations that the request has been accepted to be processed later.
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<item-patch-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<item-patch-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+put?:
+  displayName: Fully updates specific <<resourcePathName | !singularize>> record
+  description: Is used to fully update specific <<resourcePathName | !singularize>> record.  Input is the full <<resourcePathName | !singularize>> record that includes all element values which are used to update the specific record.  Can be synchronously or asynchronously called based on the applied traits.
+  is: 
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+
+  body: 
+    application/json:
+      type: <<resourcePathName | !singularize>>
+      examples: <<item-put-req-item-examples>>
+    application/xml:
+      type: <<resourcePathName | !singularize>>
+      examples: <<item-put-req-item-examples>>
+  responses: 
+    200:
+      description: The response when the put operation is synchronously called.  It returns the partially updated record(s) or a code that explains what has taken place.
+      body:
+        application/json:
+          type: <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<item-put-200-item-and-cds-examples>>
+        application/xml:
+          type: <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<item-put-200-item-and-cds-examples>>
+    202:
+      description: The response when the put operation is asynchronously called.  It returns list of codes that includes acknowledgements and confirmations that the request has been accepted to be processed later.
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<item-put-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<item-put-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error

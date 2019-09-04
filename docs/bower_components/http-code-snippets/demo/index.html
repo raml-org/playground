@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>http-code-snippets demo</title>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <link rel="import" href="../../shadycss/apply-shim.html">
+  <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../http-code-snippets.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>Full example</h3>
+    <demo-snippet>
+      <template>
+        <http-code-snippets url="https://api.github.com/authorizations" method="POST"></http-code-snippets>
+        <script>
+          var headers = 'accept: application/vnd.github.v3+json\n';
+          headers += 'content-type: application/json';
+          var payload = {'scopes': ['public_repo']};
+          var snippet = document.querySelectorAll('http-code-snippets')[0];
+          snippet.headers = headers;
+          snippet.payload = JSON.stringify(payload, null, 2);
+        </script>
+      </template>
+    </demo-snippet>
+
+    <h3>GET request</h3>
+    <demo-snippet>
+      <template>
+        <http-code-snippets url="https://api.github.com/users/advanced-rest-client/repos?type=all&sort=pushed" method="GET"></http-code-snippets>
+        <script>
+          var headers = 'accept: application/vnd.github.v3+json';
+          var snippet = document.querySelectorAll('http-code-snippets')[1];
+          snippet.headers = headers;
+        </script>
+      </template>
+    </demo-snippet>
+
+    <h3>Minimal request</h3>
+    <demo-snippet>
+      <template>
+        <http-code-snippets url="https://api.github.com/users/advanced-rest-client/repos" method="GET"></http-code-snippets>
+      </template>
+    </demo-snippet>
+
+    <h3>Payload only</h3>
+    <demo-snippet>
+      <template>
+        <http-code-snippets url="https://api.github.com/authorizations" method="POST"></http-code-snippets>
+        <script>
+          var payload = {'scopes': ['public_repo']};
+          var snippet = document.querySelectorAll('http-code-snippets')[3];
+          snippet.payload = JSON.stringify(payload, null, 2);
+        </script>
+      </template>
+    </demo-snippet>
+  </div>
+</body>
+</html>

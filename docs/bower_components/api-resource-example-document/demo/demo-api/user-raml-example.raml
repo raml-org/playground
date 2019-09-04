@@ -1,0 +1,37 @@
+#%RAML 1.0 DataType
+type: object
+displayName: User
+properties:
+  id:
+    displayName: Id
+  username:
+    displayName: Username
+  firstName:
+    displayName: First Name
+  lastName:
+    displayName: Last Name
+  profilePhoto:
+    displayName: Profile photo
+  email:
+    displayName: Email
+  age: integer
+  newsletter: boolean
+examples:
+  User 1:
+    id: uid1
+    username: ppsztyc
+    firstName: Pawel
+    lastName: Psztyc
+    profilePhoto: https://img/domain.com/ppsztyc
+    email: ppsztyc@domain.com
+    age: 35
+    newsletter: true
+  User 2:
+    id: uid2
+    username: jdoe
+    firstName: John
+    lastName: Does
+    profilePhoto: https://img/domain.com/jdoe
+    email: jdoe@domain.com
+    age: 25
+    newsletter: false

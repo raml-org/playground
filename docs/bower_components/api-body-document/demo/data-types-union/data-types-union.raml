@@ -1,0 +1,35 @@
+#%RAML 1.0
+version: v1
+title: dataTypes
+
+types:
+  Manager: !include Manager.raml
+  Person: !include Person.raml
+  Employee: !include Employee.raml
+  Direct: Employee | Manager
+/manager/{id}:
+  put:
+    queryParameters:
+      id: string
+    body:
+      application/json:
+        type: Direct
+        example:
+          employeeId: 2334A
+          name: test name
+          address:
+            street: Libertador 34
+            city: test
+          directs: []
+
+/employee/{id}:
+  put:
+    body:
+      application/json:
+        type: Manager | Employee
+        example:
+          name: John Doe
+          address:
+            street: L
+            city: BA
+          employeeId: A12

@@ -1,0 +1,29 @@
+{
+  "name": "@advanced-rest-client/json-table",
+  "description": "A table view from a JSON structure",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "main": "json-table.html",
+  "scripts": {
+    "lint": "polymer lint json-table.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"json-table:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/json-table.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/json-table/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

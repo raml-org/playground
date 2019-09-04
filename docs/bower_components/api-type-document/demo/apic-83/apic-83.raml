@@ -1,0 +1,32 @@
+#%RAML 1.0
+title: 00193743
+
+types:
+  Email:
+    type: object
+    properties:
+      name:
+        type: string
+      subject:
+        type: string
+      sent:
+        type: datetime
+
+  TestType:
+    properties:
+      name: string
+
+  Emails:
+    type: array
+    items: Email
+    minItems: 1
+    uniqueItems: true
+
+  GoodEmails:
+   type: Email[]
+   minItems: 1
+
+  BadEmails:
+   type: array
+   items: Emails | TestType
+   minItems: 1

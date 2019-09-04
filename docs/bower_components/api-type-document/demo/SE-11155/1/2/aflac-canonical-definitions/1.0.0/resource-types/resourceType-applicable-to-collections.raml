@@ -1,0 +1,157 @@
+#%RAML 1.0 ResourceType
+displayName: Resource Type applicable to collections
+usage: |
+  When using this resource type the name of the data type must match the name of the resource path which needs to be a noun in plural form.  For example, if the resource path is /users then the data type must be called users.
+
+  Every HTTP verb in this resource type has been defined as optional.  Any combination of HTTP verbs can be chosen.  Simply add the verb name under the resource path's type and provide the necessary examples.
+  
+uses:
+  error-lib: ../libraries/library-error.raml
+  code-description-lib: ../libraries/library-code-description.raml
+  traits: ../libraries/library-traits.raml
+
+post?:
+  displayName: Create new <<resourcePathName | !singularize>> record(s)
+  description: Is used to add one or more <<resourcePathName | !singularize>> records into the <<resourcePathName>> collection.  Takes either a single <<resourcePathName | !singularize>> object to create a single record or an array of <<resourcePathName | !singularize>> objects to create multiple records.  Can be called synchronously or asynchronously depending on the applied traits.
+  is:
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+
+  body: 
+    application/json:
+      type: <<resourcePathName>> | <<resourcePathName | !singularize>>
+      examples: <<coll-post-req-item-and-coll-examples>>
+    application/xml:
+      type: <<resourcePathName>> | <<resourcePathName | !singularize>>
+      examples: <<coll-post-req-item-and-coll-examples>>
+  responses: 
+    200:
+      description: The response when the operation is synchronously called.  It returns the created record(s).
+      body:
+        application/json:
+          type: <<resourcePathName>> | <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<coll-post-200-item-and-coll-and-cds-examples>>
+        application/xml:
+          type: <<resourcePathName>> | <<resourcePathName | !singularize>> | code-description-lib.code-descriptions
+          examples: <<coll-post-200-item-and-coll-and-cds-examples>>
+    202:
+      description: The response when the operation is asynchronously called.  It returns the acknowledgement and confirmation codes if any.
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-post-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-post-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+delete?:
+  displayName: Delete selected <<resourcePathName | !singularize>> records from <<resourcePathName>> collection
+  description: Is used to delete selected <<resourcePathName | !singularize>> records from <<resourcePathName>> collection.  Can be synchronously or asynchronously called based on the applied traits.  Accordingly, the response will show what has been deleted or what has been accepted to be deleted.
+
+  is: 
+    - traits.selectable
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+  responses:
+    200:
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-delete-200-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-delete-200-cds-examples>>
+    202:
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-delete-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-delete-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+get?:
+  displayName: Search <<resourcePathName>> records
+  description: Is used to search <<resourcePathName>> records by providing a selection criteria.  The results can be sorted, paged and contents can be filtered based on the implementation.
+  is: 
+    - traits.selectable
+    - traits.sortable
+    - traits.pageable
+    - traits.filterable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+  responses:
+    200:
+      body:
+        application/json:
+          type: <<resourcePathName>>
+          examples: <<coll-get-200-coll-examples>>
+        application/xml:
+          type: <<resourcePathName>>
+          examples: <<coll-get-200-coll-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error
+
+patch?:
+  displayName: Partially updates selected <<resourcePathName | !singularize>> records
+  description: Is used to partially update one or more <<resourcePathName | !singularize>> records in the <<resourcePathName>> collection.  Input is the partial <<resourcePathName | !singularize>> record that includes only the element values which is used to update the selected records.  Can be synchronously or asynchronously called based on the applied traits.
+  is: 
+    - traits.selectable
+    - traits.asynchronously-callable
+    - traits.traceable
+    - traits.routable
+    - traits.performance-monitorable
+
+  body: 
+    application/json:
+      type: <<resourcePathName | !singularize>>
+      examples: <<coll-patch-req-item-examples>>
+    application/xml:
+      type: <<resourcePathName | !singularize>>
+      examples: <<coll-patch-req-item-examples>>
+  responses: 
+    200:
+      description: The response when the patch operation is synchronously called.  It returns the partially updated record(s) or a code that explains what has taken place.
+      body:
+        application/json:
+          type: <<resourcePathName>> | code-description-lib.code-descriptions
+          examples: <<coll-patch-200-coll-and-cds-examples>>
+        application/xml:
+          type: <<resourcePathName>> | code-description-lib.code-descriptions
+          examples: <<coll-patch-200-coll-and-cds-examples>>
+    202:
+      description: The response when the patch operation is asynchronously called.  It returns list of codes that includes acknowledgements and confirmations that the requested has been accepted to be processed later.
+      body:
+        application/json:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-patch-202-cds-examples>>
+        application/xml:
+          type: code-description-lib.code-descriptions
+          examples: <<coll-patch-202-cds-examples>>
+    500:
+      body: 
+        application/json:
+          type: error-lib.error
+        application/xml:
+          type: error-lib.error

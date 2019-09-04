@@ -1,0 +1,31 @@
+#%RAML 1.0 NamedExample
+
+userId_only_request:
+  displayName: PATCH Request with only userId
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    
+userId_and_email_request:
+  displayName: PATCH Request with userId and email
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    email: "jsmith@provider.com"
+    
+userId_and_encryptedPassword_request:
+  displayName: PATCH Request with userId and encryptedPassword
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    encryptedPassword: "XXXXXXXX"
+    
+userId_email_and_encryptedPassword_request:
+  displayName: PATCH Request with email and encryptedPassword
+  value:
+    userId: "3141933d-1ed3-40e6-bff8-5c9a4ad10ac4"
+    email: "jsmith@provider.com"
+    encryptedPassword: "XXXXXXXX"
+
+email_and_encryptedPassword_request:
+  displayName: PATCH Request with email and encryptedPassword
+  value:
+    email: "jsmith@provider.com"
+    encryptedPassword: "XXXXXXXX"

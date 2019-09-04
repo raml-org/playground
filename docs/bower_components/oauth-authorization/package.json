@@ -1,0 +1,27 @@
+{
+  "name": "@api-components/oauth-authorization",
+  "version": "2.0.2",
+  "description": "A set of elements that perform oauth authorization",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.1.1",
+    "bower": "^1.8.0"
+  },
+  "private": false,
+  "main": "outh-authorization.html",
+  "author": "The Advanced REST client authors <arc@mulesoft.com>",
+  "scripts": {
+    "lint": "node_modules/.bin/polymer lint oauth-authorization.html oauth1-authorization.html",
+    "test-sauce": "node_modules/.bin/polymer test --plugin sauce --job-name \"oauth-authorization:local-test\"",
+    "test": "node_modules/.bin/polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/oauth-authorization.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/oauth-authorization/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

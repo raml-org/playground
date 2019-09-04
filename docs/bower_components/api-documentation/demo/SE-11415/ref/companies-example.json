@@ -1,0 +1,11 @@
+{
+	"companies": [{
+		"code" : 2,
+		"name": "C & A Mode GmbH & Co. KG, Germany"
+		},
+		{
+      	"code" : 11,
+		"name": "C & A Nederland"
+    	}
+	]
+}

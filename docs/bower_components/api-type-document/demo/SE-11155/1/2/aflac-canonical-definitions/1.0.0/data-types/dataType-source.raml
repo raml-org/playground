@@ -1,0 +1,65 @@
+#%RAML 1.0 DataType
+uses:
+  property-lib: ../libraries/library-property.raml
+  version-lib: ../libraries/library-version.raml
+
+displayName: Source
+description: Source represents the location of persisted data and its unique identifier(s).  This value can be provided to consumer services for routing and optimistic record locking purposes.  Consumer applications should not see this value.
+
+type: object
+additionalProperties: false
+
+properties: 
+  source-name:
+    displayName: Source Name
+    description: The name of the Source System
+    required: false
+    type: string
+  source-code:
+    displayName: Source Code
+    description: The code abbreviation of the Source System
+    required: false
+    type: string
+  source-version:
+    displayName: Source Version
+    description: The version of the Source System in which the record exists
+    required: false
+    type: version-lib.version
+  record-creation-time:
+    displayName: Record Creation Time
+    description: Shows in GMT when a particular record has been created
+    required: false
+    type: datetime
+  record-last-updated-time:
+    displayName: Record Last Update Time
+    description: Shows in GMT when a particular record has been last updated
+    required: false
+    type: datetime
+  resource-keys:
+    displayName: Resource ID
+    description: |
+      An object can be identified combining several pieces of information, each of them a part of a composite key.  
+      For example, a person can be identified by the combination of name, date and location of birth.  
+      Name has 5 subcomponents, salutation, first, middle, last name and suffix.
+      date of birth has 3 subcomponents, month, day and year
+      location of birth has 3 subcomponents, city, state and country
+      altogether 11 subcomponents in a very specific order can identify a person
+    type: property-lib.properties
+    required: false
+  delimiter:
+    displayName: Delimiter
+    description: This is the character or character sequence that delimits individual key values
+    required: false
+    type: string
+    default: "~"
+    example: "~"
+  composite-key:
+    displayName: Composite Key
+    description: |
+      Composite key combines the values of each key component, places the delimiter between them and represents the object's id as a single string.
+    type: string
+    required: false
+    examples:
+      person-example: CIF(Mr.~John~F~Remedy~III~8~21~1964~Atlanta~GA~USA)
+      person-with-missing-values-example: WYN(~John~F~Remedy~~8~21~1964~Atlanta~GA~USA)
+      ssn-example: CIF(~~~~~~~~~~~~2rTe45ri8==)

@@ -1,0 +1,28 @@
+{
+  "name": "@advanced-rest-client/prism-common",
+  "description": "Common import files for Prism library for ARC",
+  "version": "2.0.0",
+  "license": "Apache-2.0",
+  "main": "prism-common.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@polymer/gen-typescript-declarations": "^1.5.1"
+  },
+  "private": false,
+  "scripts": {
+    "lint": "polymer lint prism-bash-import.html prism-c-import.html prism-dart-import.html prism-go-import.html prism-http-import.html prism-json-import.html prism-php-import.html prism-ruby-import.html prism-swift-import.html prism-java-import.html prism-ptyhon-import.html",
+    "test": "exit 0",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/prism-common.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/prism-common/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

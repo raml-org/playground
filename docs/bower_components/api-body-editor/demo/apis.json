@@ -1,0 +1,5 @@
+{
+  "demo-api/demo-api.raml": "RAML 1.0",
+  "apic-169/apic-169.raml": "RAML 1.0",
+  "examples-api/examples-api.raml": "RAML 1.0"
+}

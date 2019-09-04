@@ -1,0 +1,29 @@
+
+#%RAML 1.0 SecurityScheme
+type: OAuth 1.0
+displayName: Other OAuth1 settings
+description: Some other OAuth1 settings.
+settings:
+  requestTokenUri: http://other.domain.com/oauth1/request_token
+  authorizationUri: http://other.domain.com/oauth1/authorize
+  tokenCredentialsUri: http://other.domain.com/oauth1/access_token
+describedBy:
+  headers:
+    Authorization:
+      type: string
+      description: |
+        Access Token to use.
+  responses:
+    403:
+      description: Server understood the request but says no to it.
+    401:
+      description: |
+        The request is invalid.
+      body:
+        application/json:
+          type: object
+          properties:
+            isError:
+              type: boolean
+              default: true
+            message: string

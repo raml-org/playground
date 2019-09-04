@@ -1,0 +1,34 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"description": "Describes a collection of 0..n simple message representations consisting of an ID and a text.",
+	"additionalProperties": false,
+	"type": "object",
+	"required": [
+		"greetings"
+	],
+	"properties": {
+		"greetings": {
+			"type": "array",
+			"description": "Holds the collection of simple messages.",
+			"items": {
+				"type": "object",
+				"required": [
+					"id",
+					"message"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 36,
+						"maxLength": 36,
+						"description": "The ID of the representation, a randomly generated UUID."
+					},
+					"message": {
+						"type": "string",
+						"description": "The text of the message."
+					}
+				}
+			}
+		}
+	}
+}

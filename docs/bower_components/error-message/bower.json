@@ -1,0 +1,40 @@
+{
+  "name": "error-message",
+  "description": "A standarized error information",
+  "version": "2.0.1",
+  "license": "Apache-2.0",
+  "authors": [
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "error message"
+  ],
+  "private": true,
+  "main": "error-message.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/error-message.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^2.0.0",
+    "iron-icon": "PolymerElements/iron-icon#^2.1.0",
+    "arc-icons": "advanced-rest-client/arc-icons#^2.0.0"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-component-page": "^3.0.1"
+  },
+  "ignore": [
+    "**/.*",
+    "dependencyci.yml",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-request-editor demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-if.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-styles/typography.html">
+    <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+    <link rel="import" href="../api-type-document.html">
+    <link rel="import" href="../../raml-aware/raml-aware.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      :root {
+        --code-background-color: #f5f2f0;
+        --arc-font-subhead: {
+          @apply --paper-font-subhead;
+          font-family: "Open Sans", "DIN Pro", sans-serif;
+        };
+        --arc-font-body1: {
+          @apply --paper-font-body1;
+          font-family: "Open Sans", "DIN Pro", sans-serif;
+        };
+        --arc-font-body2: {
+          @apply --paper-font-body2;
+          font-family: "Open Sans", "DIN Pro", sans-serif;
+        };
+
+        --api-type-document-property-complex-wrapper: {
+          padding-right: 12px;
+          border: 1px #E8E9EA solid;
+        };
+
+        --no-info-message: {
+          @apply --arc-font-body1;
+          font-style: italic;
+          color: #989a9b;
+        };
+
+        --api-type-document-type-background-color: transparent;
+        --api-type-document-type-color: #989a9b;
+        --api-type-document-trait-data-type-padding: 4px 0;
+        --api-type-document-trait-color: #58595a;
+        --api-type-document-property-parent-color: #000;
+        --api-type-document-property-color: #000;
+
+        --property-shape-document-border-bottom-style: solid;
+        --property-shape-document-border-bottom-color: #E8E9EA;
+
+        --property-shape-document-union-color: transparent;
+        --property-shape-document-union-color-active: transparent;
+        --property-shape-document-array-color: transparent;
+        --property-shape-document-array-color-active: transparent;
+        --property-shape-document-object-color: transparent;
+        --property-shape-document-object-color-active: transparent;
+      }
+
+      [role="main"] {
+        max-width: 1100px;
+        @apply --layout-horizontal;
+        @apply --layout-start;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+      }
+
+      api-type-document {
+        margin-left: 40px;
+        margin-top: 24px;
+        margin-right: 24px;
+        @apply --layout-flex;
+        padding: 15px;
+        background-color: #f9fafb;
+        border: 1px #E8E9EA solid;
+      };
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Open Sans", "DIN Pro", sans-serif !important;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <header>
+          <paper-checkbox checked="{{narrow}}">Render narrow layout</paper-checkbox>
+        </header>
+        <div class="vertical-section-container" role="main">
+          <raml-aware raml="{{amfModel}}" scope="model"></raml-aware>
+          <api-navigation aware="model" types-opened></api-navigation>
+          <template is="dom-if" if="[[hasType]]">
+            <api-type-document narrow="[[narrow]]" aware="model" type="[[dataProperties]]"></api-type-document>
+          </template>
+          <template is="dom-if" if="[[!hasType]]">
+            <p>Select type in the navigation to see the demo.</p>
+          </template>
+        </div>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      app.hasType = false;
+      app._load = function() {
+        fetch('./amf-model.json')
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+      app._navChanged = function(e) {
+        const type = e.detail.type;
+        if (type === 'type') {
+          app.setTypeData(e.detail.selected);
+          app.hasType = true;
+        } else {
+          app.hasType = false;
+        }
+      };
+      app.setTypeData = function(id) {
+        const dKey = 'http://a.ml/vocabularies/document#declares';
+        const d = app.amfModel[0][dKey];
+        let type = d.find((item) => item['@id'] === id);
+        if (!type) {
+          const r = app.amfModel[0]['http://a.ml/vocabularies/document#references'];
+          if (r) {
+            for (let i = 0; i < r.length; i++) {
+              const ref = r[i];
+              const rd = ref[dKey];
+              if (!rd) {
+                continue;
+              }
+              type = rd.find((item) => item['@id'] === id);
+              if (type) {
+                break;
+              }
+            }
+          }
+        }
+        if (!type) {
+          console.error('Type not found');
+          return;
+        }
+        app.dataProperties = type;
+      };
+      window.addEventListener('WebComponentsReady', () => app._load());
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

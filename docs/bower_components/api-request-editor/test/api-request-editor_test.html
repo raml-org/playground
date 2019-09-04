@@ -1,0 +1,874 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+  <title>api-request-editor test</title>
+  <link rel="import" href="../../arc-polyfills/arc-polyfills.html">
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <script src="../../web-component-tester/browser.js"></script>
+  <script src="amf-loader.js"></script>
+  <link rel="import" href="../api-request-editor.html">
+</head>
+
+<body>
+  <test-fixture id="Basic">
+    <template>
+      <api-request-editor></api-request-editor>
+    </template>
+  </test-fixture>
+
+  <test-fixture id="NoUrl">
+    <template>
+      <api-request-editor no-url-editor></api-request-editor>
+    </template>
+  </test-fixture>
+  <script>
+  /* global AmfLoader */
+  function readMethodId(element, amf, path, methodIndex) {
+    methodIndex = methodIndex || 0;
+    const webApi = element._computeWebApi(amf);
+    const endpoint = element._computeEndpointByPath(webApi, path);
+    const ops = element._computeOperations(webApi, endpoint['@id']);
+    return ops[methodIndex]['@id'];
+  }
+
+  function clearCache() {
+    const transformer = document.createElement('api-view-model-transformer');
+    transformer.clearCache();
+  }
+  suite('api-request-editor', () => {
+    [
+      ['Full model', false],
+      ['Compact model', true]
+    ].forEach((item) => {
+      suite(item[0], () => {
+        let amf;
+        let element;
+        suiteSetup(() => {
+          return AmfLoader.load(item[1])
+          .then((model) => {
+            amf = model;
+          });
+        });
+
+        suite('_computeHttpMethod()', () => {
+          let webApi;
+          suiteSetup(() => {
+            element = fixture('Basic');
+            element.amfModel = amf;
+            webApi = element._computeWebApi(amf);
+          });
+
+          test('Finds method name', () => {
+            const endpoint = element._computeEndpointByPath(webApi, '/people');
+            const ops = element._computeOperations(webApi, endpoint['@id']);
+            // it's POST
+            const result = element._computeHttpMethod(ops[1]);
+            assert.equal(result, 'post');
+          });
+
+          test('Returns undefined for missing model', () => {
+            const result = element._computeHttpMethod();
+            assert.isUndefined(result);
+          });
+        });
+
+        suite('_computeApiPayload()', () => {
+          let webApi;
+          suiteSetup(() => {
+            element = fixture('Basic');
+            element.amfModel = amf;
+            webApi = element._computeWebApi(amf);
+          });
+
+          test('Finds method name', () => {
+            const endpoint = element._computeEndpointByPath(webApi, '/people');
+            const ops = element._computeOperations(webApi, endpoint['@id']);
+            const result = element._computeApiPayload(ops[1]);
+            assert.typeOf(result, 'array');
+            assert.lengthOf(result, 2);
+          });
+
+          test('Returns undefined for missing model', () => {
+            const result = element._computeApiPayload();
+            assert.isUndefined(result);
+          });
+        });
+
+        suite('_computeIsPayloadRequest()', () => {
+          suiteSetup(() => {
+            element = fixture('Basic');
+            element.amfModel = amf;
+          });
+
+          test('Returns false for GET', () => {
+            const result = element._computeIsPayloadRequest('get');
+            assert.isFalse(result);
+          });
+
+          test('Returns false for HEAD', () => {
+            const result = element._computeIsPayloadRequest('head');
+            assert.isFalse(result);
+          });
+
+          test('Returns true for other inputs', () => {
+            const result = element._computeIsPayloadRequest('post');
+            assert.isTrue(result);
+          });
+        });
+
+        suite('Basic computations', () => {
+          setup(() => {
+            clearCache();
+            element = fixture('Basic');
+            element.amfModel = amf;
+            const webApi = element._computeWebApi(amf);
+            const endpoint = element._computeEndpointByPath(webApi, '/people/{personId}');
+            const ops = element._computeOperations(webApi, endpoint['@id']);
+            element.selected = ops[0]['@id'];
+          });
+
+          test('_methodModel is computed', () => {
+            assert.typeOf(element._methodModel, 'object');
+          });
+
+          test('httpMethod is computed', () => {
+            assert.equal(element.httpMethod, 'get');
+          });
+
+          test('securedBy is computed', () => {
+            assert.typeOf(element.securedBy, 'array');
+          });
+
+          test('apiHeaders is computed', () => {
+            assert.typeOf(element.apiHeaders, 'array');
+          });
+
+          test('apiPayload is computed', () => {
+            assert.typeOf(element.apiPayload, 'array');
+          });
+
+          test('isPayloadRequest is computed', () => {
+            assert.isFalse(element.isPayloadRequest);
+          });
+
+          test('authNotRequired is set', () => {
+            assert.isFalse(element.authNotRequired);
+          });
+
+          test('Changing selection to "undefined" clears the result', () => {
+            element.selected = undefined;
+            assert.isUndefined(element._methodModel);
+            assert.isUndefined(element.httpMethod);
+            assert.isUndefined(element.securedBy);
+            assert.isUndefined(element.apiHeaders);
+            assert.isUndefined(element.apiPayload);
+          });
+        });
+
+        suite('View control', () => {
+          function dataSetup(id, fix) {
+            return new Promise((resolve) => {
+              clearCache();
+              element = fixture(fix || 'Basic');
+              element.amfModel = amf;
+              element.selected = id;
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                flush(() => resolve());
+              });
+            });
+          }
+
+          test('Authorization tab is not rendered when there\'s no security', () => {
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id)
+              .then(() => {
+                const panel = element.shadowRoot.querySelector('authorization-panel');
+                const display = getComputedStyle(panel).display;
+                assert.equal(display, 'none');
+              });
+          });
+
+          test('Authorization tab is rendered when security is set', () => {
+            const id = readMethodId(element, amf, '/messages');
+            return dataSetup(id)
+              .then(() => {
+                element.selectedTab = 0;
+                const panel = element.shadowRoot.querySelector('authorization-panel');
+                const display = getComputedStyle(panel).display;
+                assert.notEqual(display, 'none');
+              });
+          });
+
+          test('Body tab is rendered', () => {
+            const id = readMethodId(element, amf, '/people', 1);
+            return dataSetup(id)
+              .then(() => {
+                element.selectedTab = 3;
+                assert.isTrue(element.isPayloadRequest);
+                const panel = element.shadowRoot.querySelector('api-body-editor');
+                const display = getComputedStyle(panel).display;
+                assert.notEqual(display, 'none');
+              });
+          });
+
+          test('api-url-editor is rendered', () => {
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id)
+              .then(() => {
+                const panel = element.shadowRoot.querySelector('.url-editor');
+                const display = getComputedStyle(panel).display;
+                assert.notEqual(display, 'none');
+              });
+          });
+
+          test('api-url-editor is not rendered when noUrlEditor', () => {
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id, 'NoUrl')
+              .then(() => {
+                const panel = element.shadowRoot.querySelector('.url-editor');
+                const display = getComputedStyle(panel).display;
+                assert.equal(display, 'none');
+              });
+          });
+
+          test('Computes URL when noUrlEditor', () => {
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id, 'NoUrl')
+              .then(() => {
+                assert.equal(element.url, 'http://production.domain.com/people');
+              });
+          });
+        });
+
+        suite('Query / path model changed events', () => {
+          function dataSetup(id) {
+            return new Promise((resolve) => {
+              element = fixture('Basic');
+              element.amfModel = amf;
+              element.selected = id;
+              flush(() => resolve());
+            });
+          }
+
+          test('Dispatches query event when model changes', () => {
+            let eventData;
+            window.addEventListener('request-query-model-changed', function clb(e) {
+              window.removeEventListener('request-query-model-changed', clb);
+              eventData = e.detail.value;
+            });
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id, 'NoUrl')
+              .then(() => {
+                assert.typeOf(eventData, 'array');
+                assert.lengthOf(eventData, 3);
+              });
+          });
+
+          test('Dispatches path event when model changes', () => {
+            let eventData;
+            window.addEventListener('request-path-model-changed', function clb(e) {
+              window.removeEventListener('request-path-model-changed', clb);
+              eventData = e.detail.value;
+            });
+            const id = readMethodId(element, amf, '/people');
+            return dataSetup(id, 'NoUrl')
+              .then(() => {
+                assert.typeOf(eventData, 'array');
+                assert.lengthOf(eventData, 1);
+              });
+          });
+
+          test('Dispatches url-value-changed', (done) => {
+            const id = readMethodId(element, amf, '/people');
+            dataSetup(id, 'NoUrl')
+            .then(() => {
+              window.addEventListener('url-value-changed', function clb(e) {
+                window.removeEventListener('url-value-changed', clb);
+                assert.equal(e.detail.value,
+                  'http://production.domain.com/people?limit=test');
+                done();
+              });
+              element.set('queryModel.0.value', 'test');
+            });
+          });
+        });
+
+        suite('Validation states', () => {
+          let element;
+          let endpoints;
+          setup(() => {
+            clearCache();
+            element = fixture('Basic');
+            element.amfModel = amf;
+            endpoints = [
+              readMethodId(element, amf, '/people/{personId}', 2),
+              readMethodId(element, amf, '/test-parameters/{feature}/{typeFeature}'),
+              readMethodId(element, amf, '/people'),
+              readMethodId(element, amf, '/orgs/{orgId}')
+            ];
+          });
+
+          test('Editor is invalid when query parameters are invalid', (done) => {
+            element.selected = endpoints[0];
+            flush(() => {
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                assert.isTrue(element.paramsInvalid, 'Query parameters is invalid');
+                assert.isTrue(element.invalid, 'Editor is invalid');
+                done();
+              });
+            });
+          });
+
+          test('Editor is invalid when path parameters are invalid', (done) => {
+            element.selected = endpoints[3];
+            flush(() => {
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                assert.isTrue(element.paramsInvalid, 'Path parameters is invalid');
+                assert.isTrue(element.invalid, 'Editor is invalid');
+                done();
+              });
+            });
+          });
+
+          test('Editor is valid', (done) => {
+            element.selected = endpoints[1];
+            flush(() => {
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                assert.isFalse(element.invalid, 'Editor is valid');
+                assert.isFalse(element.paramsInvalid, 'Query parameters is valid');
+                assert.isFalse(element.headersInvalid, 'Headers is valid');
+                assert.isTrue(element.authValid, 'Authorization is valid');
+                assert.isTrue(element.authNotRequired, 'Auth is not required');
+                done();
+              });
+            });
+          });
+
+          test('Editor is valid when auth is not required', (done) => {
+            element.selected = endpoints[2];
+            flush(() => {
+              element.selectedTab = 0;
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                assert.isFalse(element.invalid, 'Editor is valid');
+                assert.isTrue(element.authValid, 'Authorization is valid');
+                assert.isFalse(element.authNotRequired, 'Auth is not required');
+                done();
+              });
+            });
+          });
+
+          test('Editor is valid when no-auth is selected', (done) => {
+            element.selected = endpoints[2];
+            flush(() => {
+              element.selectedTab = 0;
+              const panel = element.shadowRoot.querySelector('authorization-panel');
+              panel.selected = 0;
+              Polymer.RenderStatus.afterNextRender(element, () => {
+                assert.isFalse(element.invalid, 'Editor is valid');
+                assert.isTrue(element.authValid, 'Authorization is valid');
+                assert.isFalse(element.authNotRequired, 'Auth is not required');
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+
+  suite('_dispatch()', () => {
+    let element;
+    setup(() => {
+      element = fixture('Basic');
+    });
+    const eName = 'test-event';
+    const eDetail = 'test-detail';
+
+    test('Dispatches an event', () => {
+      const spy = sinon.spy();
+      element.addEventListener(eName, spy);
+      element._dispatch(eName);
+      assert.isTrue(spy.called);
+    });
+
+    test('Returns the event', () => {
+      const e = element._dispatch(eName);
+      assert.typeOf(e, 'customevent');
+    });
+
+    test('Event is cancelable by default', () => {
+      const e = element._dispatch(eName);
+      assert.isTrue(e.cancelable);
+    });
+
+    test('Event is composed', () => {
+      const e = element._dispatch(eName);
+      if (typeof e.composed !== 'undefined') {
+        assert.isTrue(e.composed);
+      }
+    });
+
+    test('Event bubbles', () => {
+      const e = element._dispatch(eName);
+      assert.isTrue(e.bubbles);
+    });
+
+    test('Event is not cancelable when set', () => {
+      const e = element._dispatch(eName, eDetail, false);
+      assert.isFalse(e.cancelable);
+    });
+
+    test('Event has detail', () => {
+      const e = element._dispatch(eName, eDetail);
+      assert.equal(e.detail, eDetail);
+    });
+  });
+
+  suite('_sendGaEvent()', () => {
+    let element;
+    setup(() => {
+      element = fixture('Basic');
+    });
+
+    const action = 'test-action';
+    test('Calls _dispatch()', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element._sendGaEvent(action);
+      assert.isTrue(spy.called);
+    });
+
+    test('Returns the event', () => {
+      const e = element._sendGaEvent(action);
+      assert.typeOf(e, 'customevent');
+      assert.equal(e.type, 'send-analytics');
+    });
+
+    test('Event is not cancelable', () => {
+      const e = element._sendGaEvent(action);
+      assert.isFalse(e.cancelable);
+    });
+
+    test('Detail has action', () => {
+      const e = element._sendGaEvent(action);
+      assert.equal(e.detail.action, action);
+    });
+
+    test('Detail has category', () => {
+      const e = element._sendGaEvent(action);
+      assert.equal(e.detail.category, 'Request editor');
+    });
+
+    test('Detail has type', () => {
+      const e = element._sendGaEvent(action);
+      assert.equal(e.detail.type, 'event');
+    });
+  });
+
+  suite('noUrlEditor', function() {
+    let element;
+    suiteSetup(function(done) {
+      element = fixture('NoUrl');
+      element.value = 'http://api.domain.com';
+      flush(() => done());
+    });
+
+    test('URL editor is removed when noUrlEditor is set', function() {
+      const editor = element.shadowRoot.querySelector('url-input-editor');
+      assert.notOk(editor);
+    });
+
+    test('Clears URL value', function() {
+      assert.equal(element.url, '');
+    });
+  });
+
+  suite('execute()', () => {
+    let element;
+    let amf;
+    setup((done) => {
+      clearCache();
+      AmfLoader.load()
+      .then((result) => {
+        amf = result;
+        element = fixture('Basic');
+        element.amfModel = amf;
+        // Eny endpoint that passes validation is OK
+        element.selected = readMethodId(element, amf, '/people');
+        done();
+      });
+    });
+
+    test('Dispatches `api-request` event', () => {
+      const spy = sinon.spy();
+      element.addEventListener('api-request', spy);
+      element.execute();
+      assert.isTrue(spy.called);
+    });
+
+    test('Sets loadingRequest property', () => {
+      element.execute();
+      assert.isTrue(element.loadingRequest);
+    });
+
+    test('Sets requestId property', () => {
+      element.execute();
+      assert.typeOf(element.requestId, 'string');
+    });
+
+    test('Calls serializeRequest()', () => {
+      const spy = sinon.spy(element, 'serializeRequest');
+      element.execute();
+      assert.isTrue(spy.called);
+    });
+
+    test('Calls _dispatch()', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.execute();
+      assert.isTrue(spy.called);
+    });
+
+    test('_dispatch() is called with event name', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.execute();
+      assert.equal(spy.args[0][0], 'api-request');
+    });
+
+    test('_dispatch() is called with serialized request', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.execute();
+      const compare = element.serializeRequest();
+      compare.id = element.requestId;
+      assert.deepEqual(spy.args[0][1], compare);
+    });
+
+    test('Calls _sendGaEvent()', () => {
+      const spy = sinon.spy(element, '_sendGaEvent');
+      element.execute();
+      assert.isTrue(spy.called);
+      assert.equal(spy.args[0][0], 'request-execute');
+      assert.equal(spy.args[0][1], 'true');
+    });
+  });
+
+  suite('abort()', () => {
+    let element;
+    let amf;
+    setup((done) => {
+      clearCache();
+      AmfLoader.load()
+      .then((result) => {
+        amf = result;
+        element = fixture('Basic');
+        element.amfModel = amf;
+        // Eny endpoint that passes validation is OK
+        element.selected = readMethodId(element, amf, '/people');
+        element.loadingRequest = true;
+        element.requestId = 'test-request';
+        flush(() => done());
+      });
+    });
+
+    test('Fires when abort button pressed', function() {
+      const spy = sinon.spy();
+      element.addEventListener('abort-api-request', spy);
+      const button = element.shadowRoot.querySelector('.send-button.abort');
+      button.click();
+      assert.isTrue(spy.calledOnce);
+    });
+
+    test('Event contains the URL and the ID', function(done) {
+      element.addEventListener('abort-api-request', function clb(e) {
+        element.removeEventListener('abort-api-request', clb);
+        assert.equal(e.detail.url, 'http://production.domain.com/people', 'URL is set');
+        assert.equal(e.detail.id, 'test-request', 'id is set');
+        done();
+      });
+      element.abort();
+    });
+
+    test('Calls _sendGaEvent()', () => {
+      const spy = sinon.spy(element, '_sendGaEvent');
+      element.abort();
+      assert.isTrue(spy.called);
+      assert.equal(spy.args[0][0], 'request-abort');
+      assert.equal(spy.args[0][1], 'true');
+    });
+
+    test('Resets loadingRequest property', () => {
+      element.abort();
+      assert.isFalse(element.loadingRequest);
+    });
+
+    test('Resets requestId property', () => {
+      element.abort();
+      assert.isUndefined(element.requestId);
+    });
+  });
+
+  suite('serializeRequest()', () => {
+    let element;
+    let amf;
+    setup(() => {
+      clearCache();
+      return AmfLoader.load()
+      .then((result) => {
+        amf = result;
+        element = fixture('Basic');
+        element.amfModel = amf;
+      });
+    });
+
+    test('Returns an object', (done) => {
+      element.selected = readMethodId(element, amf, '/people');
+      flush(() => {
+        const result = element.serializeRequest();
+        assert.typeOf(result, 'object');
+        done();
+      });
+    });
+
+    test('Sets editor url', (done) => {
+      element.selected = readMethodId(element, amf, '/people');
+      flush(() => {
+        const result = element.serializeRequest();
+        assert.equal(result.url, element.url);
+        done();
+      });
+    });
+
+    test('Sets editor url when no selection', () => {
+      const result = element.serializeRequest();
+      assert.equal(result.url, 'http://{instance}.domain.com/');
+    });
+
+    test('Sets editor method', (done) => {
+      element.selected = readMethodId(element, amf, '/people');
+      flush(() => {
+        const result = element.serializeRequest();
+        assert.equal(result.method, 'GET');
+        done();
+      });
+    });
+
+    test('Sets headers from the editor', (done) => {
+      element.selected = readMethodId(element, amf, '/post-headers');
+      Polymer.RenderStatus.afterNextRender(element, () => {
+        flush(() => {
+          const result = element.serializeRequest();
+          assert.equal(result.headers, 'x-string: \nContent-Type: application/json');
+          done();
+        });
+      });
+    });
+
+    test('Sets default headers if missing', (done) => {
+      element.selected = readMethodId(element, amf, '/people');
+      flush(() => {
+        const result = element.serializeRequest();
+        assert.equal(result.headers, '');
+        done();
+      });
+    });
+
+    test('Sets editor payload', (done) => {
+      element.selected = readMethodId(element, amf, '/people', 1);
+      flush(() => {
+        const result = element.serializeRequest();
+        assert.equal(result.payload, element.payload);
+        done();
+      });
+    });
+
+    test('Aurth data is set', (done) => {
+      element.selected = readMethodId(element, amf, '/people/{personId}');
+      Polymer.RenderStatus.afterNextRender(element, () => {
+        flush(() => {
+          Polymer.RenderStatus.afterNextRender(element, () => {
+            const result = element.serializeRequest();
+            assert.equal(result.authType, 'x-custom');
+            assert.typeOf(result.auth, 'object');
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  suite('_urlChanged()', () => {
+    let element;
+    let amf;
+    setup(() => {
+      clearCache();
+      return AmfLoader.load()
+      .then((result) => {
+        amf = result;
+        element = fixture('Basic');
+        element.amfModel = amf;
+        element.selected = readMethodId(element, amf, '/people');
+      });
+    });
+    const newUrl = 'https://new-url';
+
+    test('Calls _dispatch()', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.url = newUrl;
+      assert.isTrue(spy.calledOnce);
+    });
+
+    test('Calls _dispatch() with event name', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.url = newUrl;
+      assert.equal(spy.args[0][0], 'url-value-changed');
+    });
+
+    test('Calls _dispatch() with new value', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.url = newUrl;
+      assert.equal(spy.args[0][1].value, newUrl);
+    });
+  });
+
+  suite('clearRequest()', () => {
+    let element;
+    setup((done) => {
+      clearCache();
+      element = fixture('Basic');
+      element.url = 'https://api.com';
+      element.headers = 'x-test: true';
+      element.payload = 'test-payload';
+      element.selectedTab = 1;
+      flush(() => done());
+    });
+
+    test('Clears the URL', () => {
+      element.clearRequest();
+      assert.equal(element.url, '');
+    });
+
+    test('Clears headers', () => {
+      element.clearRequest();
+      assert.equal(element.headers, '');
+    });
+
+    test('Clears payload', () => {
+      element.clearRequest();
+      assert.equal(element.payload, '');
+    });
+
+    test('Resets selected tab', () => {
+      element.clearRequest();
+      assert.equal(element.selectedTab, 0);
+    });
+
+    test('Calls _dispatch() with parameters', () => {
+      const spy = sinon.spy(element, '_dispatch');
+      element.clearRequest();
+      assert.isTrue(spy.called);
+      assert.equal(spy.args[2][0], 'request-clear-state');
+    });
+
+    test('Calls _sendGaEvent() with parameters', () => {
+      const spy = sinon.spy(element, '_sendGaEvent');
+      element.clearRequest();
+      assert.isTrue(spy.called);
+      assert.equal(spy.args[1][0], 'Clear request');
+    });
+  });
+
+  suite('_responseHandler()', () => {
+    let element;
+    const requestId = 'test-id';
+    setup((done) => {
+      clearCache();
+      element = fixture('Basic');
+      element.loadingRequest = true;
+      element.requestId = requestId;
+      flush(() => done());
+    });
+
+    test('Does nothing when ID is different', () => {
+      element._responseHandler({
+        detail: {
+          id: 'otherId'
+        }
+      });
+      assert.isTrue(element.loadingRequest);
+    });
+
+    test('Does nothing when no detail', () => {
+      element._responseHandler({});
+      assert.isTrue(element.loadingRequest);
+    });
+
+    test('Resets loadingRequest', () => {
+      element._responseHandler({
+        detail: {
+          id: requestId
+        }
+      });
+      assert.isFalse(element.loadingRequest);
+    });
+
+    test('Event handler is connected', () => {
+      document.body.dispatchEvent(new CustomEvent('api-response', {
+        bubbles: true,
+        detail: {
+          id: requestId
+        }
+      }));
+      assert.isFalse(element.loadingRequest);
+    });
+  });
+
+  suite('_authSettingsChanged()', () => {
+    let element;
+    let amf;
+    setup((done) => {
+      clearCache();
+      AmfLoader.load()
+      .then((result) => {
+        amf = result;
+        element = fixture('Basic');
+        element.amfModel = amf;
+        element.selected = readMethodId(element, amf, '/basicauth');
+        element.settings = {};
+        let cnt = 0;
+        element.addEventListener('authorization-settings-changed', function f() {
+          cnt++;
+          if (cnt !== 1) {
+            return;
+          }
+          element.removeEventListener('authorization-settings-changed', f);
+          setTimeout(() => {
+            flush(() => done());
+          }, 200);
+        });
+      });
+    });
+
+    test('Sets authMethod', () => {
+      assert.equal(element.authMethod, 'Basic Authentication');
+    });
+
+    test('Sets auth settings', () => {
+      if (element.authSettings.settings === undefined) {
+        // The authorization panel makes asynk comutation then additional
+        // async operations are performed in authorization method and sometimes
+        // it may happen that the settings are not yet ready. So far it was
+        // always a false-positive error.
+        // TODO: Test whenther the basic auth panel do what it supposed to do.
+        return;
+      }
+      assert.deepEqual(element.authSettings.settings, {
+        hash: '',
+        password: '',
+        username: ''
+      });
+    });
+  });
+  </script>
+</body>
+
+</html>

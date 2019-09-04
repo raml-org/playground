@@ -1,0 +1,47 @@
+#%RAML 1.0 DataType
+
+uses:
+  content-lib: ../libraries/library-content.raml
+
+displayName: Content
+description: |
+  Content is digitized data that can only be consumed wholly.  There are different types of content, such as document, image, audio, video, table, drawing, etc.
+  Content has two parts
+  1) Data, that is the actual content
+  2) Metadata, that is data about the data.
+  This type is a container of the data and metadata types, so that they can be moved together if needed.
+  This type is used when the content is being passed as an XML or JSON object.  If the data is being passed using a multipart/* MIME type then only the metadata part can be used.
+
+type: object
+additionalProperties: true
+
+properties:
+  content-id:
+    displayName: Content ID
+    description: A unique ID that represents the content.  The same value exists in the metadata section.  It is duplicated here for convenience.
+    required: false
+  
+  content-type:
+    displayName: Content Type
+    description: The type of the content.  The same value exists in the metadata section.  It is duplicated here for convenience.
+    required: false
+    enum:
+      - document
+      - image
+      - video
+      - audio
+      - table
+      - drawing
+      - site
+  
+  data:
+    displayName: Data
+    description: Data
+    required: false
+    type: content-lib.content-data
+
+  metadata:
+    displayName: Metadata
+    description: Metadata
+    required: false
+    type: content-lib.content-metadata

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-request-editor demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+    <link rel="import" href="../../paper-toast/paper-toast.html">
+    <link rel="import" href="../../paper-input/paper-input.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../../oauth-authorization/oauth2-authorization.html">
+    <link rel="import" href="../../oauth-authorization/oauth1-authorization.html">
+    <link rel="import" href="../../xhr-simple-request/xhr-simple-request.html">
+    <link rel="import" href="../../arc-polyfills/arc-polyfills.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <link rel="import" href="../../api-console-default-theme/api-console-default-theme.html">
+    <link rel="import" href="../api-request-editor.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        background-color: #e5e5e5;
+        margin: 0;
+        padding: 0;
+      }
+
+      main {
+        @apply --layout-horizontal;
+        margin-right: 20px;
+      }
+
+      nav {
+        width: 256px;
+      }
+
+      h2 {
+        @apply --paper-font-title;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+
+      .spacer {
+        @apply --layout-flex;
+      }
+
+      .content {
+        @apply --layout-flex;
+        max-width: 700px;
+      }
+
+      .card {
+        @apply --shadow-elevation-4dp;
+        padding: 20px;
+        margin: 20px;
+        box-sizing: border-box;
+        background-color: #fff;
+      }
+
+      paper-checkbox {
+        margin-bottom: 12px;
+      }
+
+      [invalid] {
+        border: 1px red dashed;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <oauth2-authorization></oauth2-authorization>
+        <oauth1-authorization></oauth1-authorization>
+        <xhr-simple-request></xhr-simple-request>
+        <header>
+          <paper-dropdown-menu label="Select demo API">
+            <paper-listbox slot="dropdown-content" id="apisList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">ARC demo api</paper-item>
+              <paper-item data-src="demo-api-compact.json">ARC demo api - compact model</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+
+          <div class="spacer"></div>
+          <paper-dropdown-menu label="Override API's base uri">
+            <paper-listbox slot="dropdown-content" id="basesList" selected="{{selectedOverrideBase}}" attr-for-selected="data-url">
+              <paper-item data-url="">Restore API's base URI</paper-item>
+              <paper-item data-url="https://domain.com/base">https://domain.com/base</paper-item>
+              <paper-item data-url="https://www.google.com?q=">https://www.google.com?q=</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+        </header>
+        <main role="main">
+          <nav>
+            <api-navigation amf-model="[[amfModel]]" endpoints-opened></api-navigation>
+          </nav>
+
+          <template is="dom-if" if="[[!hasData]]">
+            <section class="intro">
+              <p class="usage-info">Select a HTTP method in the navigation</p>
+            </section>
+          </template>
+
+          <template is="dom-if" if="[[hasData]]">
+            <section class="content">
+              <div class="card">
+                <api-request-editor
+                  narrow="[[narrow]]"
+                  amf-model="[[amfModel]]"
+                  base-uri="[[computeFinaleBaseUri(selectedOverrideBase, baseUri)]]"
+                  selected="[[selectedAmfId]]"
+                  narrow="[[narrow]]"
+                  allow-custom="[[allowCustom]]"
+                  allow-disable-params="[[allowDisableParams]]"
+                  allow-hide-optional="[[allowHideOptional]]"
+                  redirect-uri="[[redirectUri]]"
+                  no-url-editor="[[noUrlEditor]]"
+                  no-docs="[[noDocs]]"
+                  selected-tab="{{selectedTab}}"
+                  content-type="{{contentType}}"
+                  is-payload-request="{{isPayloadRequest}}"
+                  auth-required="{{authRequired}}"
+                  auth-valid="{{authValid}}"
+                  auth-required="{{authRequired}}"
+                  auth-not-required="{{authNotRequired}}"
+                  loading-request="{{loadingRequest}}"
+                  params-invalid="{{paramsInvalid}}"
+                  headers-invalid="{{headersInvalid}}"
+                  url-invalid="{{urlInvalid}}"
+                  invalid="{{invalid}}"></api-request-editor>
+              </div>
+
+              <div class="card">
+                <h2>Configuration options</h2>
+                <paper-checkbox checked="{{narrow}}">Render narrow view</paper-checkbox>
+                <paper-checkbox checked="{{allowCustom}}">Allow custom properties</paper-checkbox>
+                <paper-checkbox checked="{{allowHideOptional}}">Allow auto hide optional headers</paper-checkbox>
+                <paper-checkbox checked="{{allowDisableParams}}">Allow disabling parameters</paper-checkbox>
+                <paper-checkbox checked="{{noUrlEditor}}">Remove URL editor</paper-checkbox>
+                <paper-checkbox checked="{{noDocs}}">Remove inline documentatrion</paper-checkbox>
+                <paper-input label="Override base uri" value="{{baseUri}}"></paper-input>
+              </div>
+
+              <div class="card">
+                <h2>Editor state</h2>
+                <p>Selected editor tab: [[selectedTab]]</p>
+                <p>Selected content type: [[contentType]]</p>
+                <p>Is payload required: [[isPayloadRequest]]</p>
+                <p>Authorization requirements are set: [[authRequired]]</p>
+                <p>Authorization is valid: [[authValid]]</p>
+                <p>Authorization is not required (null scheme present): [[authNotRequired]]</p>
+                <p>Request is being loaded: [[loadingRequest]]</p>
+                <p>Parameter form is invalid: [[paramsInvalid]]</p>
+                <p>Headers for is invalid: [[headersInvalid]]</p>
+                <p>URL is invalid: [[urlInvalid]]</p>
+                <p>Editor is invalid: [[invalid]]</p>
+              </div>
+            </section>
+          </template>
+        </main>
+
+        <paper-toast text="Request send event detected" id="rsend"></paper-toast>
+        <paper-toast text="Request abort event detected" id="rabort"></paper-toast>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+    app.redirectUri = 'https://auth.advancedrestclient.com/oauth-popup.html';
+    app.allowCustom = true;
+    app.allowHideOptional = true;
+    app.allowDisableParams = true;
+
+    app._load = function() {
+      document.getElementById('apisList').selected = 0;
+    };
+
+    app._loadFile = function(file) {
+      app.selectedAmfId = undefined;
+      app.amfModel = undefined;
+      fetch('./' + file)
+      .then((response) => response.json())
+      .then((data) => {
+        app.amfModel = data;
+      });
+    };
+
+    app._apiChanged = function(e) {
+      const file = e.target.selectedItem.dataset.src;
+      app._loadFile(file);
+    };
+
+    app._navChanged = function(e) {
+      const type = e.detail.type;
+      if (type === 'method') {
+        app.setData(e.detail.selected);
+        app.hasData = true;
+      } else {
+        app.hasData = false;
+      }
+    };
+
+    app.setData = function(selected) {
+      app.selectedAmfId = selected;
+    };
+
+    app._apiRequestHandler = function() {
+      document.getElementById('rsend').opened = true;
+    };
+
+    app._apiAbortHandler = function() {
+      document.getElementById('rabort').opened = true;
+    };
+
+    app.computeFinaleBaseUri = function(selectedOverrideBase, baseUri) {
+      if (selectedOverrideBase) {
+        return selectedOverrideBase;
+      }
+      return baseUri;
+    };
+
+    window.addEventListener('WebComponentsReady', app._load);
+    window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    window.addEventListener('api-request', app._apiRequestHandler);
+    window.addEventListener('abort-api-request', app._apiAbortHandler);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

@@ -1,0 +1,3702 @@
+{
+  "schema_version": "1.0.0",
+  "elements": [
+    {
+      "description": "`api-navigation`\nA navigation for an API spec using AMF model.\n\nThis element is to replace deprecated `raml-path-selector`.\nIt is lightweight and much less complex in comparision.\n\nThe element works with [AMF](https://github.com/mulesoft/amf)\njson/ld model. When the model is set it computes list of documentation\nnodes, types, endpoints, mathods and security schemas.\nAs a result user can select any of the items in the UI and the application\nis informed about user choice via custom event.\n\nThe selection is a selected API shape `@id`. The application is responsible\nfor computing the model selected by the user.\n\nAMF model can be passed directly by setting `amfModel` property or by\nsetting `aware` property and by use `raml-aware` element. It allows\nto communicate AMF data without having access to the element due to\nshadow DOM restrictions.\n\n```html\n<raml-aware scope=\"api-console\"></raml-aware>\n<api-navigation aware=\"api-console\"></api-navigation>\n```\n\nOnce the `raml-aware` element receives some that they are instantly\ntransfered to `api-navigation`.\n\nNote, this element does not contain polyfills for Array platform features.\nUse `arc-polyfills` to add support for IE and Safari 9.\n\n## Passive navigation\n\nPassive navigation means that a navigation event occured but it wasn't\ninvoked by intentional user interaction. For example\n`api-endpoint-documentation` component renders list of documentations for\nHTTP methods. While scrolling through the list navigation context\nchanges (user reads documentation of a method) but the navigation never\nwas caused by user intentional interaction.\nThis event, annotated with `passive: true` property in the detail object\nprohibits other element from taking a navigation action but some\nmay reflect the change in the UI.\n\n## Styling\n\nCustom property | Description | Default\n----------------|-------------|----------\n`--api-navigation` | Mixin applied to this element | `{}`\n`--arc-font-common-base` | Mixin applied to section headers. Theme mixin | `{}`\n`--arc-font-font1` | Mixin applied to the element. Theme mixin | `{}`\n`--api-navigation-header-color` | Color of section title | `rgba(0, 0, 0, 0.84)`\n`--api-navigation-section-title-background-color` | Background color of the section title | `inherit`\n`--api-navigation-list-item-min-height` | Minimum heigtht of menu items. Note that each item has top and bottom padding set to 4px which cobines to default 48px. | `40px`\n`--api-navigation-list-item-color` | Color of the menu items | `rgba(0, 0, 0, 0.84)`\n`--api-navigation-list-item` | Mixin applied to the menu items | `{}`\n`--api-navigation-list-item-selected-weight` | Font weight of selected menu item | `bold`\n`--api-navigation-list-item-selected-background-color` | Background color of selected menu item | `--accent-color`\n`--api-navigation-list-item-selected-color` | Color of selected menu item | `#fff`\n`--api-navigation-list-item-selected` | Mixin applied to the selected item | `{}`\n`--api-navigation-list-item-disabled-color` | Color of disabled menu item. Currently not in use. | `--disabled-text-color`\n`--api-navigation-list-item-disabled` | Mixin applied to disabled menu item. Currently not in use. | `{}`\n`--api-navigation-list-item-focused` |  Mixin applied to focused menu item. | `{}`\n`--api-navigation-list-item-focused-before` | Mixin applied to the `:before` pseudo-element of focused item | `{}`\n`--api-navigation-list-item-hovered` | Mixin applied to menu item when hovering and not focused. Note, you should not rely of hover states | `{}`\n`--api-navigation-toggle-icon-color` | Color of the toggle button next to section title | `rgba(0, 0, 0, 0.74)`\n`--api-navigation-toggle-icon-hover-color` | Color of the toggle button next to section title when hovering. | `--secondary-button-color` or `rgba(0, 0, 0, 0.88)`\n`--api-navigation-endpoint-toggle-icon-color` | Colot of endpoint toggle button | `--api-navigation-toggle-icon-color` or `rgba(0, 0, 0, 0.74)`\n`--api-navigation-endpoint-toggle-icon` | Mixin applied to endpoint toggle icon | `{}`\n`--method-display-get-color` | Font color of the GET method label box | `rgb(0, 128, 0)`\n`--method-display-post-color` | Font color of the POST method label box | `rgb(33, 150, 243)`\n`--method-display-put-color` | Font color of the PUT method label box | `rgb(255, 165, 0)`\n`--method-display-delete-color` | Font color of the DELETE method label box | `rgb(244, 67, 54)`\n`--method-display-patch-color` | Font color of the PATCH method label box | `rgb(156, 39, 176)`\n`--api-navigation-operation-item-padding-left` | Padding left of operation (method) label under endpoint | `20px`\n`--api-navigation-operation-collapse` | Mixin applied to operation list collapsable element | ``\n`--api-navigation-list-section-font-size` | Font size of toggable section label | `16px`\n`--api-navigation-endpoint-font-size` | Font size applied to endpoint label | `15px`\n`--api-navigation-operation-font-size` | Font size of operation (HTTP method) label | `14px`\n`--api-navigation-summary-label` | Mixin applied top the summary label | `{}`\n`--api-navigation-list-item-padding` | Padding of list a item | `4px 16px`\n`--api-navigation-toggle-icon` | Mixin applied to toggle icon | `{}`\n`--api-navigation-list-item-selected-passive` | Mixin applied to an item selected via \"passive\" navigation event\" | `{}`\n`--api-navigation-method-label-color` | Color of the HTTP method label | `#000`\n`--api-navigation-method-label-background-color` | Background color of the HTTP method label | `transparent`\n`--api-navigation-method-label-border-radius` | Border radius of HTTP method label | `3px`\n`--method-display-font-weigth` | Font weight of HTTP label | `400`\n`--method-label-VERB-background-color` | Background color of HTTP method label. Possible verbs are: `get`, `post`, `put`, `delete`, `patch` | `vary`\n`--method-label-VERB-color` | Color of HTTP method label. Possible verbs are: `get`, `post`, `put`, `delete`, `patch` | `vary`\n`--api-navigation-operation-endpoint-opened-background-color` | Background color of opened methods list | `inherit`\n`--api-navigation-path-label-font-size` | Path label font size | `13px`\n`--api-navigation-path-label-color` | Path label font color | `#616161`",
+      "summary": "",
+      "path": "api-navigation.html",
+      "properties": [
+        {
+          "name": "amfModel",
+          "type": "(Object | Array)",
+          "description": "Generated AMF json/ld model form the API spec.\nThe element assumes the object of the first array item to be a\ntype of `\"http://raml.org/vocabularies/document#Document`\non AMF vocabulary.\n\nIt is only usefult for the element to resolve references.",
+          "privacy": "public",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 129,
+              "column": 8
+            },
+            "end": {
+              "line": 129,
+              "column": 32
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Object"
+            }
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "ns",
+          "type": "Object | null | undefined",
+          "description": "A namespace for AMF model",
+          "privacy": "public",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 133,
+              "column": 8
+            },
+            "end": {
+              "line": 139,
+              "column": 9
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Object"
+            }
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "aware",
+          "type": "string | null | undefined",
+          "description": "`raml-aware` scope property to use.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 396,
+              "column": 10
+            },
+            "end": {
+              "line": 396,
+              "column": 23
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "String"
+            }
+          }
+        },
+        {
+          "name": "selected",
+          "type": "string | null | undefined",
+          "description": "A model `@id` of selected documentation part.\nSpecial case is for `summary` view. It's not part of an API\nbut most applications has some kins of summary view for the\nAPI.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 403,
+              "column": 10
+            },
+            "end": {
+              "line": 407,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "notify": true,
+              "observer": "\"_selectedChangd\"",
+              "attributeType": "String"
+            }
+          }
+        },
+        {
+          "name": "selectedType",
+          "type": "string | null | undefined",
+          "description": "Type of the selected item.\nOne of `documentation`, `type`, `security`, `endpoint`, `method`\nor `summary`.\n\nThis property is set after `selected` property.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 415,
+              "column": 10
+            },
+            "end": {
+              "line": 418,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "notify": true,
+              "attributeType": "String"
+            }
+          }
+        },
+        {
+          "name": "summary",
+          "type": "boolean | null | undefined",
+          "description": "If set it renders `API summary` menu option.\nIt will allow to set `selected` and `selectedType` to `summary`\nwhen this option is set.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 424,
+              "column": 10
+            },
+            "end": {
+              "line": 424,
+              "column": 26
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "summaryLabel",
+          "type": "string | null | undefined",
+          "description": "A label for the `summary` section.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 428,
+              "column": 10
+            },
+            "end": {
+              "line": 431,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "String"
+            }
+          },
+          "defaultValue": "\"Summary\""
+        },
+        {
+          "name": "docs",
+          "type": "Array.<Object>",
+          "description": "Computed list of documentatoin items in the API.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 437,
+              "column": 10
+            },
+            "end": {
+              "line": 440,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Array"
+            }
+          }
+        },
+        {
+          "name": "hasDocs",
+          "type": "Object",
+          "description": "Computed value, true when `docs` property is set with values",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 446,
+              "column": 10
+            },
+            "end": {
+              "line": 450,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "docsOpened",
+          "type": "boolean | null | undefined",
+          "description": "Determines and changes state of documentation panel.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 454,
+              "column": 10
+            },
+            "end": {
+              "line": 454,
+              "column": 29
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "types",
+          "type": "Array.<Object>",
+          "description": "Computed list of \"type\" items in the API.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 460,
+              "column": 10
+            },
+            "end": {
+              "line": 463,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Array"
+            }
+          }
+        },
+        {
+          "name": "hasTypes",
+          "type": "Object",
+          "description": "Computed value, true when `types` property is set with values",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 469,
+              "column": 10
+            },
+            "end": {
+              "line": 473,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "typesOpened",
+          "type": "boolean | null | undefined",
+          "description": "Determines and changes state of types panel.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 477,
+              "column": 10
+            },
+            "end": {
+              "line": 477,
+              "column": 30
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "security",
+          "type": "Array.<Object>",
+          "description": "Computed list of Security schemes items in the API.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 483,
+              "column": 10
+            },
+            "end": {
+              "line": 486,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Array"
+            }
+          }
+        },
+        {
+          "name": "hasSecurity",
+          "type": "Object",
+          "description": "Computed value, true when `security` property is set with values",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 492,
+              "column": 10
+            },
+            "end": {
+              "line": 496,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "securityOpened",
+          "type": "boolean | null | undefined",
+          "description": "Determines and changes state of security panel.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 500,
+              "column": 10
+            },
+            "end": {
+              "line": 500,
+              "column": 33
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "endpoints",
+          "type": "Array.<Object>",
+          "description": "Computed list of endpoint items in the API.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 506,
+              "column": 10
+            },
+            "end": {
+              "line": 509,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Array"
+            }
+          }
+        },
+        {
+          "name": "hasEndpoints",
+          "type": "Object",
+          "description": "Computed value, true when `endpoints` property is set with values",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 515,
+              "column": 10
+            },
+            "end": {
+              "line": 519,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "endpointsOpened",
+          "type": "boolean | null | undefined",
+          "description": "Determines and changes state of endpoints panel.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 523,
+              "column": 10
+            },
+            "end": {
+              "line": 523,
+              "column": 34
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "noink",
+          "type": "boolean | null | undefined",
+          "description": "If true, the element will not produce a ripple effect when interacted with via the pointer.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 527,
+              "column": 10
+            },
+            "end": {
+              "line": 527,
+              "column": 24
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "query",
+          "type": "string | null | undefined",
+          "description": "Filters list elements by this value when set.\nClear the value to reset the search.\n\nThis is not currently exposed in element's UI due\nto complexity of search and performance.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 535,
+              "column": 10
+            },
+            "end": {
+              "line": 538,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"_queryChanged\"",
+              "attributeType": "String"
+            }
+          }
+        },
+        {
+          "name": "indentSize",
+          "type": "number | null | undefined",
+          "description": "Size of endpoint indentation for nested resources.\nIn pixels.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 543,
+              "column": 10
+            },
+            "end": {
+              "line": 546,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "8"
+        },
+        {
+          "name": "_isFragment",
+          "type": "boolean | null | undefined",
+          "description": "Flag set when passed AMF model is a RAML fragment.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 550,
+              "column": 10
+            },
+            "end": {
+              "line": 553,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "_renderSummary",
+          "type": "boolean | null | undefined",
+          "description": "Computed value. True when summary should be rendered.\nSummary should be rendered only when `summary` is set and\ncurrent model is not a RAML fragment.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 559,
+              "column": 10
+            },
+            "end": {
+              "line": 562,
+              "column": 11
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "readOnly": true,
+              "attributeType": "Boolean"
+            }
+          }
+        },
+        {
+          "name": "allowPaths",
+          "type": "boolean | null | undefined",
+          "description": "When set it renders full path below endpoint name if the endpoint has\na name (different than the path).\nThis is not always recommended to use this option as some complex APIs\nmay render this component difficult to understand.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 569,
+              "column": 10
+            },
+            "end": {
+              "line": 569,
+              "column": 29
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          }
+        }
+      ],
+      "methods": [
+        {
+          "name": "_getAmfKey",
+          "description": "Returns compact model key for given value.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 148,
+              "column": 4
+            },
+            "end": {
+              "line": 180,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "property",
+              "type": "String",
+              "description": "AMF orioginal property"
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Compact model property name or the same value if\nvalue not found in the context."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_ensureAmfModel",
+          "description": "Ensures that the model is AMF object.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 187,
+              "column": 4
+            },
+            "end": {
+              "line": 197,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "amf",
+              "type": "(Object | Array)",
+              "description": "AMF json/ld model"
+            }
+          ],
+          "return": {
+            "type": "(Object | undefined)",
+            "desc": "API spec"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_ensureArray",
+          "description": "Ensures that the value is an array.\nIt returns undefined when there's no value.\nIt returns the same array if the value is already an array.\nIt returns new array of the item is not an array.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 207,
+              "column": 4
+            },
+            "end": {
+              "line": 215,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "value",
+              "type": "(Array | any)",
+              "description": "An item to test"
+            }
+          ],
+          "return": {
+            "type": "(Array | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getValue",
+          "description": "Gets a signle scalar value from a model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 222,
+              "column": 4
+            },
+            "end": {
+              "line": 240,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Amf model to extract the value from."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "description": "Model key to search for the value"
+            }
+          ],
+          "return": {
+            "type": "any",
+            "desc": "Value for key"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getValueArray",
+          "description": "Gets values from a model as an array of `@value` properties.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 247,
+              "column": 4
+            },
+            "end": {
+              "line": 254,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Amf model to extract the value from."
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "description": "Model key to search for the value"
+            }
+          ],
+          "return": {
+            "type": "Array.<any>",
+            "desc": "Value for key"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_hasType",
+          "description": "Checks if a model has a type.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 261,
+              "column": 4
+            },
+            "end": {
+              "line": 273,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Model to test"
+            },
+            {
+              "name": "type",
+              "type": "String",
+              "description": "Type name"
+            }
+          ],
+          "return": {
+            "type": "Boolean",
+            "desc": "True if model has a type."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_hasProperty",
+          "description": "Checks if a shape has a property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 280,
+              "column": 4
+            },
+            "end": {
+              "line": 283,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "?Object",
+              "description": "The shape to test"
+            },
+            {
+              "name": "key",
+              "type": "?String",
+              "description": "Property name to test"
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computePropertyArray",
+          "description": "Computes array value of a property in a model (shape).",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 291,
+              "column": 4
+            },
+            "end": {
+              "line": 301,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "Object",
+              "description": "AMF shape object"
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "description": "Property name"
+            }
+          ],
+          "return": {
+            "type": "(Array.<any> | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computePropertyObject",
+          "description": "Computes a value of a property in a model (shape).\nIt takes first value of a property, if exists.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 310,
+              "column": 4
+            },
+            "end": {
+              "line": 314,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "Object",
+              "description": "AMF shape object"
+            },
+            {
+              "name": "key",
+              "type": "String",
+              "description": "Property name"
+            }
+          ],
+          "return": {
+            "type": "(any | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeHasStringValue",
+          "description": "Tests if a passed argumet exists.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 321,
+              "column": 4
+            },
+            "end": {
+              "line": 323,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "value",
+              "type": "(String | Object | Number)",
+              "description": "A value to test"
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeHasArrayValue",
+          "description": "Computes if passed argument is an array and has a value.\nIt does not check for type or value of the array items.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 330,
+              "column": 4
+            },
+            "end": {
+              "line": 332,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "value",
+              "type": "Array",
+              "description": "Value to test"
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeDescription",
+          "description": "Computes description for a shape.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 338,
+              "column": 4
+            },
+            "end": {
+              "line": 340,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "Object",
+              "description": "AMF shape"
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Description value."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeHeaders",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 342,
+              "column": 4
+            },
+            "end": {
+              "line": 344,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape"
+            }
+          ],
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeQueryParameters",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 346,
+              "column": 4
+            },
+            "end": {
+              "line": 348,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape"
+            }
+          ],
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeResponses",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 350,
+              "column": 4
+            },
+            "end": {
+              "line": 352,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape"
+            }
+          ],
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeServerVariables",
+          "description": "Computes value for `serverVariables` property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 359,
+              "column": 4
+            },
+            "end": {
+              "line": 361,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "server",
+              "type": "Object",
+              "description": "AMF API model for Server."
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)",
+            "desc": "Variables if defined."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEndpointVariables",
+          "description": "Computes value for `endpointVariables` property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 368,
+              "column": 4
+            },
+            "end": {
+              "line": 370,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "endpoint",
+              "type": "Object",
+              "description": "Endpoint model"
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)",
+            "desc": "Parameters if defined."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computePayload",
+          "description": "Computes value for the `payload` property",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 377,
+              "column": 4
+            },
+            "end": {
+              "line": 379,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "expects",
+              "type": "Object",
+              "description": "Current value of `expects` property."
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)",
+            "desc": "Payload model if defined."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeReturns",
+          "description": "Computes value for `returns` property",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 386,
+              "column": 4
+            },
+            "end": {
+              "line": 388,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "method",
+              "type": "Object",
+              "description": "AMF `supportedOperation` model"
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeSecurity",
+          "description": "Computes value for `security` property",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 395,
+              "column": 4
+            },
+            "end": {
+              "line": 397,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "method",
+              "type": "Object",
+              "description": "AMF `supportedOperation` model"
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeHasCustomProperties",
+          "description": "Computes value for `hasCustomProperties` property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 404,
+              "column": 4
+            },
+            "end": {
+              "line": 406,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "Object",
+              "description": "AMF `supportedOperation` model"
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeApiVersion",
+          "description": "Computes API version from the AMF model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 413,
+              "column": 4
+            },
+            "end": {
+              "line": 419,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "amfModel",
+              "type": "(Object | Array.<Object>)"
+            }
+          ],
+          "return": {
+            "type": "(String | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEncodes",
+          "description": "Computes model's `encodes` property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 426,
+              "column": 4
+            },
+            "end": {
+              "line": 438,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "?Object",
+              "description": "AMF data model"
+            }
+          ],
+          "return": {
+            "type": "Array.<Object>",
+            "desc": "List of encodes"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeDeclares",
+          "description": "Computes list of declarations in the AMF api model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 445,
+              "column": 4
+            },
+            "end": {
+              "line": 458,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF json/ld model for an API"
+            }
+          ],
+          "return": {
+            "type": "Array.<Object>",
+            "desc": "List of declarations"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeReferences",
+          "description": "Computes list of references in the AMF api model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 465,
+              "column": 4
+            },
+            "end": {
+              "line": 478,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF json/ld model for an API"
+            }
+          ],
+          "return": {
+            "type": "Array.<Object>",
+            "desc": "List of declarations"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeWebApi",
+          "description": "Computes AMF's `http://schema.org/WebAPI` model",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 485,
+              "column": 4
+            },
+            "end": {
+              "line": 493,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF json/ld model for an API"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "Web API declaration."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeServer",
+          "description": "Computes value for `server` property that is later used with other computations.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 500,
+              "column": 4
+            },
+            "end": {
+              "line": 508,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF model for an API"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "The server model"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEndpointUri",
+          "description": "Computes endpoint's URI based on `amfModel` and `endpoint` models.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 518,
+              "column": 4
+            },
+            "end": {
+              "line": 530,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "server",
+              "type": "Object",
+              "description": "Server model of AMF API."
+            },
+            {
+              "name": "endpoint",
+              "type": "Object",
+              "description": "Endpoint model"
+            },
+            {
+              "name": "baseUri",
+              "type": "?String",
+              "description": "Current value of `baseUri` property"
+            },
+            {
+              "name": "version",
+              "type": "?String",
+              "description": "API current version"
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Endpoint's URI"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getBaseUri",
+          "description": "Computes base URI value from either `baseUri`, `iron-meta` with\n`ApiBaseUri` key or `amfModel` value (in this order).",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 540,
+              "column": 4
+            },
+            "end": {
+              "line": 551,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "baseUri",
+              "type": "String",
+              "description": "Value of `baseUri` property"
+            },
+            {
+              "name": "server",
+              "type": "Object",
+              "description": "AMF API model for Server."
+            },
+            {
+              "name": "protocols",
+              "type": "?Array.<String>",
+              "description": "List of supported protocols"
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Base uri value. Can be empty string."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getAmfBaseUri",
+          "description": "Computes base URI from AMF model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 561,
+              "column": 4
+            },
+            "end": {
+              "line": 565,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "server",
+              "type": "Object",
+              "description": "AMF API model for Server."
+            },
+            {
+              "name": "protocols",
+              "type": "?Array.<String>",
+              "description": "Listy of supporte dprotocols. If not\nprovided and required to compute the url it uses `amfModel` to compute\nprotocols"
+            }
+          ],
+          "return": {
+            "type": "(String | undefined)",
+            "desc": "Base uri value if exists."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_ensureUrlScheme",
+          "description": "A function that makes sure that the URL has a scheme definition.\nIf no supported protocols information is available it assumes `http`.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 577,
+              "column": 4
+            },
+            "end": {
+              "line": 591,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "value",
+              "type": "String",
+              "description": "A url value"
+            },
+            {
+              "name": "protocols",
+              "type": "?Array.<String>",
+              "description": "List of supported by the API protocols\nAn array of string like: `['HTTP', 'HTTPS']`. It lowercase the value.\nIf not set it tries to read supported protocols value from `amfModel`\nproperty."
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Url with scheme."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeProtocols",
+          "description": "Computes supported protocols by the API.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 598,
+              "column": 4
+            },
+            "end": {
+              "line": 604,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Object | Array)",
+              "description": "AMF data model"
+            }
+          ],
+          "return": {
+            "type": "(Array.<String> | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeExpects",
+          "description": "Computes value for the `expects` property.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 611,
+              "column": 4
+            },
+            "end": {
+              "line": 619,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "method",
+              "type": "Object",
+              "description": "AMF `supportedOperation` model"
+            }
+          ],
+          "return": {
+            "type": "Object"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computePropertyValue",
+          "description": "Tries to find an example value (whether it's default value or from an\nexample) to put it into snippet's values.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 627,
+              "column": 4
+            },
+            "end": {
+              "line": 648,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "A http://raml.org/vocabularies/http#Parameter property"
+            }
+          ],
+          "return": {
+            "type": "(String | undefined)"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEndpoints",
+          "description": "Computes list of endpoints from a WebApi model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 654,
+              "column": 4
+            },
+            "end": {
+              "line": 660,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "Array",
+            "desc": "Always returns an array of endpoints."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEndpointModel",
+          "description": "Computes model for an endpoint documentation.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 668,
+              "column": 4
+            },
+            "end": {
+              "line": 674,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "Current value of `webApi` property"
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "description": "Selected shape ID"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "An endponit definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeEndpointByPath",
+          "description": "Computes model for an endpoint documentation using it's path.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 682,
+              "column": 4
+            },
+            "end": {
+              "line": 696,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "Current value of `webApi` property"
+            },
+            {
+              "name": "path",
+              "type": "String",
+              "description": "Endpoint path"
+            }
+          ],
+          "return": {
+            "type": "(Object | undefined)",
+            "desc": "An endponit definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeMethodModel",
+          "description": "Computes method for the method documentation.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 704,
+              "column": 4
+            },
+            "end": {
+              "line": 710,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "Current value of `webApi` property"
+            },
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Selected shape"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "A method definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeOperations",
+          "description": "Computes list of operations in an endpoint",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 717,
+              "column": 4
+            },
+            "end": {
+              "line": 724,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "The WebApi AMF model"
+            },
+            {
+              "name": "id",
+              "type": "String",
+              "description": "Endpoint ID"
+            }
+          ],
+          "return": {
+            "type": "Array.<Object>",
+            "desc": "List of SupportedOperation objects"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeMethodEndpoint",
+          "description": "Computes an endpoint for a method.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 731,
+              "column": 4
+            },
+            "end": {
+              "line": 755,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "The WebApi AMF model"
+            },
+            {
+              "name": "methodId",
+              "type": "String",
+              "description": "Method id"
+            }
+          ],
+          "return": {
+            "type": "(Object | undefined)",
+            "desc": "An endpoint model of undefined."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "__computeMethodsListForMethod",
+          "description": "Computes a list of methods for an endpoint that contains a method with\ngiven id.",
+          "privacy": "private",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 764,
+              "column": 4
+            },
+            "end": {
+              "line": 771,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "WebApi model"
+            },
+            {
+              "name": "methodId",
+              "type": "String",
+              "description": "Method id."
+            }
+          ],
+          "return": {
+            "type": "(Array.<Object> | undefined)",
+            "desc": "A list of sibling methods or undefined."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeType",
+          "description": "Computes a type documentation model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 780,
+              "column": 4
+            },
+            "end": {
+              "line": 797,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "declares",
+              "type": "Array",
+              "description": "Current value of `declares` property"
+            },
+            {
+              "name": "references",
+              "type": "?Array",
+              "description": "Current value of `references` property"
+            },
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Selected shape"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "A type definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeReferenceType",
+          "description": "Computes a type model from a reference (library for example).",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 804,
+              "column": 4
+            },
+            "end": {
+              "line": 819,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "reference",
+              "type": "(Object | Array)",
+              "description": "AMF model for a reference to extract the data from"
+            },
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Node ID to look for"
+            }
+          ],
+          "return": {
+            "type": "(Object | undefined)",
+            "desc": "Type definition or undefined if not found."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeSecurityModel",
+          "description": "Computes model for selected security definition.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 827,
+              "column": 4
+            },
+            "end": {
+              "line": 832,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "declares",
+              "type": "Array",
+              "description": "Current value of `declares` property"
+            },
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Selected shape"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "A security definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeDocument",
+          "description": "Computes a documentation model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 840,
+              "column": 4
+            },
+            "end": {
+              "line": 847,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "webApi",
+              "type": "Object",
+              "description": "Current value of `webApi` property"
+            },
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Selected shape"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "A method definition"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_resolve",
+          "description": "Resolves a reference to an external fragment.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 854,
+              "column": 4
+            },
+            "end": {
+              "line": 903,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape",
+              "type": "Object",
+              "description": "A shape to resolve"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "Resolved shape."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getLinkTarget",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 905,
+              "column": 4
+            },
+            "end": {
+              "line": 927,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "amf"
+            },
+            {
+              "name": "id"
+            }
+          ],
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getReferenceId",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 929,
+              "column": 4
+            },
+            "end": {
+              "line": 946,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "amf"
+            },
+            {
+              "name": "id"
+            }
+          ],
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_resolveRecursive",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 948,
+              "column": 4
+            },
+            "end": {
+              "line": 959,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "shape"
+            }
+          ],
+          "return": {
+            "type": "void"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_getExampleValue",
+          "description": "Gets string value for an example data model.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 968,
+              "column": 4
+            },
+            "end": {
+              "line": 981,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Example item model"
+            },
+            {
+              "name": "isJson",
+              "type": "Boolean",
+              "description": "If set it checks if the `raw` value is valid JSON.\nIf it isn't then it parses structured value."
+            }
+          ],
+          "return": {
+            "type": "String"
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeExampleFromStructuredValue",
+          "description": "Computes an example from example structured value.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 988,
+              "column": 4
+            },
+            "end": {
+              "line": 1009,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "`structuredValue` item model."
+            }
+          ],
+          "return": {
+            "type": "(Object | Array)",
+            "desc": "Javascript object or array with structured value."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "_computeStructuredExampleValue",
+          "description": "Computes value with propert data type for a structured example.",
+          "privacy": "protected",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 1015,
+              "column": 4
+            },
+            "end": {
+              "line": 1041,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Structured example item model."
+            }
+          ],
+          "return": {
+            "type": "(String | Boolean | Number)",
+            "desc": "Value for the example."
+          },
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "connectedCallback",
+          "description": "Ensures aria role atribute is in place.\nAttaches element's listeners.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 589,
+              "column": 6
+            },
+            "end": {
+              "line": 595,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "disconnectedCallback",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 597,
+              "column": 6
+            },
+            "end": {
+              "line": 600,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_amfChanged",
+          "description": "Called by the Polymer change observer when `amfModel` property change.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 605,
+              "column": 6
+            },
+            "end": {
+              "line": 641,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF model"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_collectData",
+          "description": "Collects the information about the API and creates data model\nfor the navigation element",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 665,
+              "column": 6
+            },
+            "end": {
+              "line": 683,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "Data model for the API navigation:\n- documentation `Array` - List of documentation data models:\n - id `String` - Node `@id`\n - label `String` - Node label\n- types `Array` - List of types data models:\n - id `String` - Node `@id`\n - label `String` - Node label\n- securitySchemes `Array` - List of security schemes data models:\n - id `String` - Node `@id`\n - label `String` - Node label\n- endpoints `Array` - List of endpoints data models:\n - id `String` - Node `@id`\n - label `String` - Node label\n - methods `Array` - List of methonds data models in an endpoint:\n   - id `String` - Node `@id`\n   - label `String` - Node label"
+          }
+        },
+        {
+          "name": "_collectSecurityData",
+          "description": "Collects the data from the security fragment",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 689,
+              "column": 6
+            },
+            "end": {
+              "line": 699,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Security fragment model"
+            }
+          ],
+          "return": {
+            "type": "Object"
+          }
+        },
+        {
+          "name": "_collectDocumentationData",
+          "description": "Collects the data from the documentation fragment",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 705,
+              "column": 6
+            },
+            "end": {
+              "line": 715,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Documentation fragment model"
+            }
+          ],
+          "return": {
+            "type": "Object"
+          }
+        },
+        {
+          "name": "_collectTypeData",
+          "description": "Collects the data from the type fragment",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 721,
+              "column": 6
+            },
+            "end": {
+              "line": 733,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object",
+              "description": "Type fragment model"
+            }
+          ],
+          "return": {
+            "type": "Object"
+          }
+        },
+        {
+          "name": "_traverseDeclarations",
+          "description": "Traverses the `http://raml.org/vocabularies/document#declares`\nnode to find types and security schemes.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 741,
+              "column": 6
+            },
+            "end": {
+              "line": 747,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object"
+            },
+            {
+              "name": "target",
+              "type": "Object",
+              "description": "Target object where to put data."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_traverseReferences",
+          "description": "Traverses the `http://raml.org/vocabularies/document#references`",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 754,
+              "column": 6
+            },
+            "end": {
+              "line": 765,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "(Array | Object)",
+              "description": "AMF model"
+            },
+            {
+              "name": "target",
+              "type": "Object",
+              "description": "Target object where to put data."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_traverseEncodes",
+          "description": "Traverses the `http://raml.org/vocabularies/document#encodes`\nnode to find documentation and endpoints.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 773,
+              "column": 6
+            },
+            "end": {
+              "line": 788,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "model",
+              "type": "Object"
+            },
+            {
+              "name": "target",
+              "type": "Object",
+              "description": "Target object where to put data."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_appendModelItem",
+          "description": "Appends declaration of navigation data model to the target if\nit matches documentation or security types.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 796,
+              "column": 6
+            },
+            "end": {
+              "line": 806,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object"
+            },
+            {
+              "name": "target",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_appendTypeItem",
+          "description": "Appends \"type\" item to the results.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 813,
+              "column": 6
+            },
+            "end": {
+              "line": 845,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Type item declaration"
+            },
+            {
+              "name": "target",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_appendSecurityItem",
+          "description": "Appends \"security\" item to the results.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 852,
+              "column": 6
+            },
+            "end": {
+              "line": 865,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Type item declaration"
+            },
+            {
+              "name": "target",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_appendDocumentationItem",
+          "description": "Appends \"documentation\" item to the results.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 872,
+              "column": 6
+            },
+            "end": {
+              "line": 879,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Type item declaration"
+            },
+            {
+              "name": "target",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_appendEndpointItem",
+          "description": "Appends \"endpoint\" item to the results.\nThis also iterates over methods to extract method data.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 887,
+              "column": 6
+            },
+            "end": {
+              "line": 935,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Type item declaration"
+            },
+            {
+              "name": "target",
+              "type": "Object"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_computePathName",
+          "description": "Computes label for an endpoint when name is missing and the endpoint\nis indented, hence name should be truncated.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 945,
+              "column": 6
+            },
+            "end": {
+              "line": 957,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "currentPath",
+              "type": "String",
+              "description": "Endpoint's path"
+            },
+            {
+              "name": "parts",
+              "type": "Array.<String>",
+              "description": "Path parts"
+            },
+            {
+              "name": "indent",
+              "type": "Number",
+              "description": "Endpoint indentation"
+            },
+            {
+              "name": "basePaths",
+              "type": "Array.<String>",
+              "description": "List of base paths already used."
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Name of the path to render."
+          }
+        },
+        {
+          "name": "_createOperationModel",
+          "description": "Creates the view model for an opration.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 964,
+              "column": 6
+            },
+            "end": {
+              "line": 974,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Operation AMF model"
+            }
+          ],
+          "return": {
+            "type": "Object",
+            "desc": "Method view model"
+          }
+        },
+        {
+          "name": "_toggleSection",
+          "description": "Click handler for section name item.\nToggles the view.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 981,
+              "column": 6
+            },
+            "end": {
+              "line": 996,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "ClickEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_selectItem",
+          "description": "Selectes new item in the menu.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1002,
+              "column": 6
+            },
+            "end": {
+              "line": 1008,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "node",
+              "type": "Node"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_addSelection",
+          "description": "Toggles selection state of a node that has `data-api-id` set to\n`id`.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1016,
+              "column": 6
+            },
+            "end": {
+              "line": 1048,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "description": "Selected node id."
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Type of selected node."
+          }
+        },
+        {
+          "name": "_clearSelection",
+          "description": "Removes any current selection that may exist.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1052,
+              "column": 6
+            },
+            "end": {
+              "line": 1060,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "toggleOperations",
+          "description": "Toggles endpoint operations list.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 1066,
+              "column": 6
+            },
+            "end": {
+              "line": 1086,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "id",
+              "type": "String",
+              "description": "ID of the endpoint."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_selectedChangd",
+          "description": "Updates the state of selected element when `selected` changes.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1092,
+              "column": 6
+            },
+            "end": {
+              "line": 1098,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "current",
+              "type": "String",
+              "description": "New selection"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_labelFilter",
+          "description": "Label check agains `query` function called by `dom-repeat` element.\nThis method uses `__effectiveQuery` property set by `_flushQuery()`\nmethod.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1107,
+              "column": 6
+            },
+            "end": {
+              "line": 1112,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Model item with `lable` property."
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          }
+        },
+        {
+          "name": "_methodFilter",
+          "description": "Label and method check agains `query` function called by `dom-repeat`\nelement. This method uses `__effectiveQuery` property set by\n`_flushQuery()` method.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1121,
+              "column": 6
+            },
+            "end": {
+              "line": 1127,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "item",
+              "type": "Object",
+              "description": "Model item with `lable` property."
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          }
+        },
+        {
+          "name": "_queryChanged",
+          "description": "When `query` property change it runs the filter function\nin a debouncer set for ~50 ms.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1132,
+              "column": 6
+            },
+            "end": {
+              "line": 1141,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_flushQuery",
+          "description": "Calles `render()` function on each data repeater that have filterable\nitems.\nIt set's `__effectiveQuery` property on the element that is beyond\nPolymer's data binding system so it skips 2 function calls each time\nit is read. In a repeater filter function that can be a lot.\n\nAlso the `__effectiveQuery` is transformed to perform text search.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1151,
+              "column": 6
+            },
+            "end": {
+              "line": 1161,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_methodsCountChanged",
+          "description": "Hides the parent model when number of children is 0 or shows it\notherwise.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1168,
+              "column": 6
+            },
+            "end": {
+              "line": 1179,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "CustomEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_selectionChnaged",
+          "description": "Dispatches `api-navigation-selection-changed` event on selection change.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1186,
+              "column": 6
+            },
+            "end": {
+              "line": 1210,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "selected",
+              "type": "String",
+              "description": "Selected id"
+            },
+            {
+              "name": "selectedType",
+              "type": "String",
+              "description": "Type of AMF shape"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_itemClickHandler",
+          "description": "Navigation item click handler.\nIt used to be common function for all clicks inside the element\nbut in tests not all events were handled.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1218,
+              "column": 6
+            },
+            "end": {
+              "line": 1230,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "ClickEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_navigationChangeHandler",
+          "description": "Handler for `api-navigation-selection-changed`. Updates the selection\nif dispatched from other element.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1236,
+              "column": 6
+            },
+            "end": {
+              "line": 1251,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "CustomEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_handlePassiveNavigation",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1253,
+              "column": 6
+            },
+            "end": {
+              "line": 1259,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "detail"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_cleanPassiveSelection",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1261,
+              "column": 6
+            },
+            "end": {
+              "line": 1272,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_selectMethodPassive",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1274,
+              "column": 6
+            },
+            "end": {
+              "line": 1285,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "id"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_toggleEndpoint",
+          "description": "Endpoint label click handler.\nToggles endpoint's methods list.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1292,
+              "column": 6
+            },
+            "end": {
+              "line": 1308,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "ClickEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_computeEndpointPadding",
+          "description": "Computes `style` attribute value for endpoint item.\nIt sets padding-left property to indent resources.\nSee https://github.com/mulesoft/api-console/issues/571.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1318,
+              "column": 6
+            },
+            "end": {
+              "line": 1325,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "factor",
+              "type": "Number",
+              "description": "Computed indent factor for the resource"
+            },
+            {
+              "name": "size",
+              "type": "Number",
+              "description": "The size of indentation in pixels."
+            }
+          ],
+          "return": {
+            "type": "String",
+            "desc": "Style attribute value for the item."
+          }
+        },
+        {
+          "name": "_computeMethodPadding",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1327,
+              "column": 6
+            },
+            "end": {
+              "line": 1334,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "factor"
+            },
+            {
+              "name": "size"
+            }
+          ]
+        },
+        {
+          "name": "_computeOperationPaddingLeft",
+          "description": "Computes operation list item left padding from CSS veriables.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1339,
+              "column": 6
+            },
+            "end": {
+              "line": 1356,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "Number"
+          }
+        },
+        {
+          "name": "_computeEndpointPaddingLeft",
+          "description": "Computes endpoint list item left padding from CSS veriables.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1361,
+              "column": 6
+            },
+            "end": {
+              "line": 1389,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "Number"
+          }
+        },
+        {
+          "name": "_spaceDownHandler",
+          "description": "Cancels space key down event when selecting a method with keyboard.\nWithout it the page would scroll down.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1395,
+              "column": 6
+            },
+            "end": {
+              "line": 1401,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "KeyboardEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_spaceUpHandler",
+          "description": "Selectes an item when space up event is detected.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1406,
+              "column": 6
+            },
+            "end": {
+              "line": 1411,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e",
+              "type": "KeyboardEvent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_computeRenderSummary",
+          "description": "Computes value for `_renderSummary` property",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1418,
+              "column": 6
+            },
+            "end": {
+              "line": 1420,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "summary",
+              "type": "Boolean",
+              "description": "Current value of `summary` property"
+            },
+            {
+              "name": "isFragment",
+              "type": "Boolean",
+              "description": "Current value of `_isFragment` property"
+            }
+          ],
+          "return": {
+            "type": "Boolean"
+          }
+        },
+        {
+          "name": "_computeRenderParth",
+          "description": "Computes condition value to render path label.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 1427,
+              "column": 6
+            },
+            "end": {
+              "line": 1429,
+              "column": 7
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "allowPaths",
+              "type": "Boolean",
+              "description": "Component configuration property."
+            },
+            {
+              "name": "renderPath",
+              "type": "Boolean",
+              "description": "Endpoint property"
+            }
+          ],
+          "return": {
+            "type": "Boolean",
+            "desc": "True if both arguments are trully."
+          }
+        }
+      ],
+      "staticMethods": [],
+      "demos": [
+        {
+          "url": "demo/index.html",
+          "description": ""
+        }
+      ],
+      "metadata": {},
+      "sourceRange": {
+        "start": {
+          "line": 387,
+          "column": 4
+        },
+        "end": {
+          "line": 1447,
+          "column": 5
+        }
+      },
+      "privacy": "public",
+      "superclass": "HTMLElement",
+      "name": "ApiElements.ApiNavigation",
+      "attributes": [
+        {
+          "name": "amf-model",
+          "description": "Generated AMF json/ld model form the API spec.\nThe element assumes the object of the first array item to be a\ntype of `\"http://raml.org/vocabularies/document#Document`\non AMF vocabulary.\n\nIt is only usefult for the element to resolve references.",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 129,
+              "column": 8
+            },
+            "end": {
+              "line": 129,
+              "column": 32
+            }
+          },
+          "metadata": {},
+          "type": "(Object | Array)",
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "ns",
+          "description": "A namespace for AMF model",
+          "sourceRange": {
+            "file": "../amf-helper-mixin/amf-helper-mixin.html",
+            "start": {
+              "line": 133,
+              "column": 8
+            },
+            "end": {
+              "line": 139,
+              "column": 9
+            }
+          },
+          "metadata": {},
+          "type": "Object | null | undefined",
+          "inheritedFrom": "ApiElements.AmfHelperMixin"
+        },
+        {
+          "name": "aware",
+          "description": "`raml-aware` scope property to use.",
+          "sourceRange": {
+            "start": {
+              "line": 396,
+              "column": 10
+            },
+            "end": {
+              "line": 396,
+              "column": 23
+            }
+          },
+          "metadata": {},
+          "type": "string | null | undefined"
+        },
+        {
+          "name": "selected",
+          "description": "A model `@id` of selected documentation part.\nSpecial case is for `summary` view. It's not part of an API\nbut most applications has some kins of summary view for the\nAPI.",
+          "sourceRange": {
+            "start": {
+              "line": 403,
+              "column": 10
+            },
+            "end": {
+              "line": 407,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "string | null | undefined"
+        },
+        {
+          "name": "selected-type",
+          "description": "Type of the selected item.\nOne of `documentation`, `type`, `security`, `endpoint`, `method`\nor `summary`.\n\nThis property is set after `selected` property.",
+          "sourceRange": {
+            "start": {
+              "line": 415,
+              "column": 10
+            },
+            "end": {
+              "line": 418,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "string | null | undefined"
+        },
+        {
+          "name": "summary",
+          "description": "If set it renders `API summary` menu option.\nIt will allow to set `selected` and `selectedType` to `summary`\nwhen this option is set.",
+          "sourceRange": {
+            "start": {
+              "line": 424,
+              "column": 10
+            },
+            "end": {
+              "line": 424,
+              "column": 26
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "summary-label",
+          "description": "A label for the `summary` section.",
+          "sourceRange": {
+            "start": {
+              "line": 428,
+              "column": 10
+            },
+            "end": {
+              "line": 431,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "string | null | undefined"
+        },
+        {
+          "name": "docs",
+          "description": "Computed list of documentatoin items in the API.",
+          "sourceRange": {
+            "start": {
+              "line": 437,
+              "column": 10
+            },
+            "end": {
+              "line": 440,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Array.<Object>"
+        },
+        {
+          "name": "has-docs",
+          "description": "Computed value, true when `docs` property is set with values",
+          "sourceRange": {
+            "start": {
+              "line": 446,
+              "column": 10
+            },
+            "end": {
+              "line": 450,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Object"
+        },
+        {
+          "name": "docs-opened",
+          "description": "Determines and changes state of documentation panel.",
+          "sourceRange": {
+            "start": {
+              "line": 454,
+              "column": 10
+            },
+            "end": {
+              "line": 454,
+              "column": 29
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "types",
+          "description": "Computed list of \"type\" items in the API.",
+          "sourceRange": {
+            "start": {
+              "line": 460,
+              "column": 10
+            },
+            "end": {
+              "line": 463,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Array.<Object>"
+        },
+        {
+          "name": "has-types",
+          "description": "Computed value, true when `types` property is set with values",
+          "sourceRange": {
+            "start": {
+              "line": 469,
+              "column": 10
+            },
+            "end": {
+              "line": 473,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Object"
+        },
+        {
+          "name": "types-opened",
+          "description": "Determines and changes state of types panel.",
+          "sourceRange": {
+            "start": {
+              "line": 477,
+              "column": 10
+            },
+            "end": {
+              "line": 477,
+              "column": 30
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "security",
+          "description": "Computed list of Security schemes items in the API.",
+          "sourceRange": {
+            "start": {
+              "line": 483,
+              "column": 10
+            },
+            "end": {
+              "line": 486,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Array.<Object>"
+        },
+        {
+          "name": "has-security",
+          "description": "Computed value, true when `security` property is set with values",
+          "sourceRange": {
+            "start": {
+              "line": 492,
+              "column": 10
+            },
+            "end": {
+              "line": 496,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Object"
+        },
+        {
+          "name": "security-opened",
+          "description": "Determines and changes state of security panel.",
+          "sourceRange": {
+            "start": {
+              "line": 500,
+              "column": 10
+            },
+            "end": {
+              "line": 500,
+              "column": 33
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "endpoints",
+          "description": "Computed list of endpoint items in the API.",
+          "sourceRange": {
+            "start": {
+              "line": 506,
+              "column": 10
+            },
+            "end": {
+              "line": 509,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Array.<Object>"
+        },
+        {
+          "name": "has-endpoints",
+          "description": "Computed value, true when `endpoints` property is set with values",
+          "sourceRange": {
+            "start": {
+              "line": 515,
+              "column": 10
+            },
+            "end": {
+              "line": 519,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "Object"
+        },
+        {
+          "name": "endpoints-opened",
+          "description": "Determines and changes state of endpoints panel.",
+          "sourceRange": {
+            "start": {
+              "line": 523,
+              "column": 10
+            },
+            "end": {
+              "line": 523,
+              "column": 34
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "noink",
+          "description": "If true, the element will not produce a ripple effect when interacted with via the pointer.",
+          "sourceRange": {
+            "start": {
+              "line": 527,
+              "column": 10
+            },
+            "end": {
+              "line": 527,
+              "column": 24
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        },
+        {
+          "name": "query",
+          "description": "Filters list elements by this value when set.\nClear the value to reset the search.\n\nThis is not currently exposed in element's UI due\nto complexity of search and performance.",
+          "sourceRange": {
+            "start": {
+              "line": 535,
+              "column": 10
+            },
+            "end": {
+              "line": 538,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "string | null | undefined"
+        },
+        {
+          "name": "indent-size",
+          "description": "Size of endpoint indentation for nested resources.\nIn pixels.",
+          "sourceRange": {
+            "start": {
+              "line": 543,
+              "column": 10
+            },
+            "end": {
+              "line": 546,
+              "column": 11
+            }
+          },
+          "metadata": {},
+          "type": "number | null | undefined"
+        },
+        {
+          "name": "allow-paths",
+          "description": "When set it renders full path below endpoint name if the endpoint has\na name (different than the path).\nThis is not always recommended to use this option as some complex APIs\nmay render this component difficult to understand.",
+          "sourceRange": {
+            "start": {
+              "line": 569,
+              "column": 10
+            },
+            "end": {
+              "line": 569,
+              "column": 29
+            }
+          },
+          "metadata": {},
+          "type": "boolean | null | undefined"
+        }
+      ],
+      "events": [
+        {
+          "type": "CustomEvent",
+          "name": "api-navigation-selection-changed",
+          "description": "Dispatched when navigation occurrs.\nIt ensures that `type` property is always set when selection changes\n(selection type changes later than the selection but within the same\nmicrotask).",
+          "metadata": {}
+        },
+        {
+          "type": "CustomEvent",
+          "name": "selected-changed",
+          "description": "Fired when the `selected` property changes.",
+          "metadata": {}
+        },
+        {
+          "type": "CustomEvent",
+          "name": "selected-type-changed",
+          "description": "Fired when the `selectedType` property changes.",
+          "metadata": {}
+        }
+      ],
+      "styling": {
+        "cssVariables": [],
+        "selectors": []
+      },
+      "slots": [],
+      "tagname": "api-navigation",
+      "mixins": [
+        "ApiElements.AmfHelperMixin"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+#%RAML 1.0
+baseUri: https://mocksvc.qax.mulesoft.com/mocks/fee4c9aa-91a2-4ff7-8f38-2793d1f0d204 # baseUri: https://mocksvc.qax.mulesoft.com/mocks/39429d61-eacb-42ab-ac0a-a46779c49a1e # 
+title: notification service api
+version: 1.0
+types:  
+  substitution:
+    type: object
+    properties:
+      key:
+        type: string
+        required: false
+      value:
+        type: string
+        required: true
+  recipientslist:
+    type: object
+    properties:
+      substitution:
+        type: substitution
+        required: false
+      email:
+        type: string
+        required: true
+        displayName: "Email Address"
+        pattern: ^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$
+      type:
+        required: true
+        type: string
+        displayName: "Email Type"
+        enum: [ "TO","CC","BCC" ] 
+  Notification:
+   properties: 
+    recipients:      
+      type: recipientslist[]
+      required: true
+      displayName: Recipients
+    substitutionlist:
+      required: false
+      type: array
+      items: substitution
+    another:
+      required: true
+      type: array
+      items: integer
+    other:
+      required: false
+      type: string[]
+  
+/notifications/emails:
+  post:
+    body: 
+      application/json:
+        type: Notification
+    responses: 
+      200:
+        body: 
+          application/json:
+            example: |
+              {
+              "status":"success"
+              }
+            
+     

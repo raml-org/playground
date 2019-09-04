@@ -1,0 +1,40 @@
+#%RAML 1.0 Trait
+description: |
+  If an API has the pageable trait, the consumer can control the pagination properties in query parameters.
+  If the consumer does not provide pagination query parameters, default values will be used by the provider.
+  Provider will always populate response header values to inform the consumer.
+
+queryParameters: 
+  page-number:
+    displayName: Page Number
+    description: Number of the page that is requested
+    type: integer
+    required: false
+    example: 20
+    default: 1
+  page-size:
+    displayName: Page Size
+    description: Number of the items in one page
+    type: integer
+    required: false
+    example: 80
+    default: 10
+  
+responses: 
+  200:
+    headers: 
+      aflac-page-number:
+        description: Number of the page that is returned
+        type: integer
+        required: true
+        example: 20
+      aflac-page-size:
+        description: Number of the items in one page
+        type: integer
+        required: true
+        example: 80
+      aflac-total-paged-item-count:
+        description: Total number of all items that are found by the selection criteria
+        type: integer
+        required: true
+        example: 8000

@@ -1,0 +1,38 @@
+#%RAML 1.0 DataType
+
+uses:
+  party-lib: ../libraries/library-party.raml
+
+displayName: Organization
+description:  Organization represents any business 
+
+type: party-lib.party
+additionalProperties: false
+
+properties:
+  organization-name:
+    displayName: Organization Name
+    description:  Full name of the organization
+    required: false
+    type: string
+  date-of-establishment:
+    displayName: Date of Establishment
+    description: Organization's first day of official existence
+    required: false
+    type: date-only
+  date-of-disestablishment:
+    displayName: Date of Disestablishment
+    description: Organization's last day of official existence
+    required: false
+    type: date-only
+  total-employee-count:
+    displayName: Total Employee Count
+    description: Number of employees an organization has
+    required: false
+    type: integer
+  tax-id:
+    displayName: Tax ID
+    description: Government issued tax ID
+    required: false
+    type: property-lib.property
+

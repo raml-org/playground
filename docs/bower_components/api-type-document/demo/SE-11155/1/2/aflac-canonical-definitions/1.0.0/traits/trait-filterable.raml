@@ -1,0 +1,19 @@
+#%RAML 1.0 Trait
+
+queryParameters:
+  filter:
+    description: the comma delimited names of the fields that need to be included or excluded in a returned record.  A single value of a container may also be passed in which case the filter type must be set to "Canned".  The names of fields and canned filters need to be documented separately by the API owner.
+    type: string
+    required: false
+    examples: 
+      fieldNamesExample: person.name.first, person.name.last, person.dob
+      cannedExample: personBioMetricFields
+
+  filter-type:
+    description: the flag that indicates whether the names in the filter value are to be included or excluded.  "In" means included and "Out" means excluded.  "Canned" means that the filter values are not comma delimited and the single value of the filter represents a container where the field anmes are stored.  If not provided, "In" is default.
+    enum:
+      - In
+      - Out
+      - Canned
+    type: string
+    required: false

@@ -1,0 +1,140 @@
+#%RAML 1.0 Trait
+
+queryParameters: 
+  selection-criteria:
+    displayName: Selection Criteria
+    required: false
+    type: string
+    description: |
+      The selection criteria to select records.
+      This is a shorthand notation with <T>(<fieldName> <operator> <fieldValue>) format, where <T> is the type of <fieldValue>.  There are 4 recognized types
+      N for Number
+      S for String
+      D for Date and Time
+      B for Boolean
+
+      <T>(<fieldName> <operator> <fieldValue>) that is wrapped with an open-close parenthesis pair is called a condition.
+
+      One pair of parenthesis can contain one and only one condition.
+      
+      For each of the recognized types there is a list of operators
+      1) Numbers: numbers of any type including integers, longs, floats and doubles.  Exponential expressions are not allowed
+      The allowed operators are 
+      eq -> means equal ... i.e. N(age eq 41)
+      ne -> means not equal ... i.e. N(length ne 5)
+      lt -> means less than ... i.e. N(height lt 3)
+      le -> means less than equal
+      gt -> means greater than
+      ge -> means greater than equal
+
+      2) Dates and Times: 
+      Must be represented in ISO 8601 extended format and must always be in GMT
+      Dates as YYYY-MM-DD
+      Times as hh:mm:ss.sss
+      DateTimes as YYYY-MM-DDThh:mm:ss.sssZ
+      The allowed operators are 
+      eq -> means on that date and/or time
+      be -> means before that date and/or time, excluding the provided field value
+      bi -> means before that date and/or time, including the provided field value
+      af -> means after that and/or time, excluding the provided field value
+      ai -> means after that and/or time, including the provided field value
+
+      examples:
+        D(date-of-birth bi 2000-01-01)
+        D(member-since af 1999-12-31)
+        
+
+      3) Strings:
+      The allowed operators are 
+      eq -> means exactly that string
+      ne -> means not equal to that string
+      sw -> means startsWith 
+      ew -> means endsWith
+      co -> means contains
+
+      example:
+        S(name sw Jo)
+
+      4) Booleans: special value of true or false without single quotes 
+      The allowed operator is
+      eq -> means exactly that boolean value
+      ne -> means exactly the opposite of that boolean value
+
+      example:
+        B(is-active eq true)
+
+      With these types and type operators, conditions can be combined with logical operators of AND and OR.
+
+      Below is a use case for a complex selection criteria.
+      We want all the person records that match the following criteria
+      Person's first name starts with Joh, Tim OR Jam, AND the person is male, AND the person is older than 50
+      OR
+      Person's last name ends with tte, son OR fan, AND the person is female, AND the person's age is 40 or younger
+      AND
+      Person's is a a currently active member AND member since June 1st, 1999
+      AND
+      Person's residence is in one of the following ZIP codes, 90210, 30011, 08765
+
+      for readability purposes we will format the criteria using indentation and line breaks.  
+      (
+        (
+          (
+            S(person.name.first sw Joh) OR
+            S(person.name.first sw Tim) OR
+            S(person.name.first sw Jam)
+          ) AND
+         B (person.gender.male eq true) AND
+          N(person.age gt 50)
+        ) OR
+        (
+          (
+            S(person.name.last ew tte) OR
+            S(person.name.last ew son) OR
+            S(person.name.last ew fan)
+          ) AND
+          B(person.gender.male eq false) AND
+          N(person.age le 40)
+        ) AND
+        (
+          B(person.is-active eq true) AND
+          D(person.member-since bi 1999-06-01)
+        ) AND
+        (
+          S(person.address.zip.ext5 eq 90210) OR
+          S(person.address.zip.ext5 eq 30011) OR
+          S(person.address.zip.ext5 eq 08765)
+        )
+      )
+      
+      Q) What to use in terms of fieldNames?
+      A) The answer to this question is in the payload definition.  Let's assume for the above example the person record is defined as the following structure.
+
+      person
+        name
+          first
+          middle
+          last
+          suffix
+        age
+        date-of-birth
+        is-active
+        gender
+          male
+        member-since
+        address
+          line1
+          line2
+          city
+          state
+          zip
+            ext5
+            ext4
+      
+      Now look at the above example and see how we have used the a dotted notation to reach to the property we need when building our selection criteria.
+      Therefore, when reusing the selection criteria you should always keep the payload structure of the API in mind.
+    examples:
+      simple-example1: (D(startDate eq 2017-12-31))
+      simple-example2: (D(creation-timestamp be 2017-12-31T11:59:59.999Z))
+      ANDing-example: (S(name eq John) AND N(age eq 40))
+      ORing-example: (S(name eq John) OR S(name eq Jane))
+      complex-example: ((S(name eq John) AND N(age ge 40)) OR (S(name eq Jane) AND N(age le 40)) OR (N(weight eq 150.0) AND B(active eq true)))

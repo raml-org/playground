@@ -1,0 +1,44 @@
+#%RAML 1.0 DataType
+
+displayName: Document Statistic
+description: Information regarding the size of a text based document.
+additionalProperties: true
+
+properties:
+  number-of-characters:
+    required: false
+    type: number
+    example: 6457
+  number-of-characters-with-spaces:
+    required: false
+    type: number
+    example: 7301
+  number-of-words:
+    required: false
+    type: number
+    example: 563
+  number-of-sentences:
+    required: false
+    type: number
+    example: 52
+  number-of-paragraphs:
+    required: false
+    type: number
+    example: 8
+  number-of-pages:
+    required: false
+    type: number
+    example: 3
+  number-of-lines:
+    required: false
+    type: number
+    example: 104
+
+example: 
+  number-of-characters: 6457
+  number-of-characters-with-spaces: 7301
+  number-of-words: 563
+  number-of-sentences: 52
+  number-of-paragraphs: 8
+  number-of-pages: 3
+  number-of-lines: 104

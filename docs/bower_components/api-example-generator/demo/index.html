@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+    <title>api-example-generator demo</title>
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <link rel="import" href="../../shadycss/apply-shim.html">
+    <link rel="import" href="../../polymer/lib/elements/custom-style.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-bind.html">
+    <link rel="import" href="../../polymer/lib/elements/dom-repeat.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+    <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+    <link rel="import" href="../../api-navigation/api-navigation.html">
+    <link rel="import" href="../../paper-dropdown-menu/paper-dropdown-menu.html">
+    <link rel="import" href="../../paper-item/paper-item.html">
+    <link rel="import" href="../../paper-listbox/paper-listbox.html">
+    <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+    <link rel="import" href="../../neon-animation/web-animations.html">
+    <link rel="import" href="../api-example-generator.html">
+    <link rel="import" href="examples-render.html">
+    <custom-style>
+      <style is="custom-style" include="demo-pages-shared-styles">
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+
+      api-navigation {
+        width: 320px;
+        min-width: 320px;
+        overflow: auto;
+        height: 100%;
+        background-color: #fff;
+      }
+
+      header {
+        padding: 12px 24px;
+        background-color: #C5E1A5;
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        --iron-icon-fill-color: #3E2723;
+        --paper-input-container-focus-color: #33691E;
+        --paper-input-container-label: {
+          color: #3E2723;
+        };
+      }
+
+      header paper-checkbox:not(:last-of-type) {
+        margin-right: 8px;
+      }
+
+      .container {
+        @apply --layout-horizontal;
+        height: calc(100% - 86px);
+      }
+
+      .demo {
+        @apply --layout-flex;
+        margin-left: 12px;
+        margin-right: 12px;
+        padding-left: 12px;
+      }
+      </style>
+    </custom-style>
+  </head>
+  <body>
+    <dom-bind id="demo">
+      <template is="dom-bind">
+        <header>
+          <paper-dropdown-menu label="Select API">
+            <paper-listbox slot="dropdown-content" id="apisList" on-selected-changed="_apiChanged">
+              <paper-item data-src="demo-api.json">Demo api</paper-item>
+              <paper-item data-src="demo-api-compact.json">Demo api - compact model</paper-item>
+              <paper-item data-src="amf-3-models/demo-api.json">Demo api (AMF 3)</paper-item>
+              <paper-item data-src="amf-3-models/demo-api-compact.json">Demo api (AMF 3) - compact model</paper-item>
+              <paper-item data-src="se-8987.json">SE-8987</paper-item>
+              <paper-item data-src="SE-10469.json">SE-10469</paper-item>
+              <paper-item data-src="SE-10469-compact.json">SE-10469 - compact model</paper-item>
+              <paper-item data-src="tracked-to-linked.json">Tracked elements</paper-item>
+              <paper-item data-src="tracked-to-linked-compact.json">Tracked elements - compact model</paper-item>
+              <paper-item data-src="APIC-188.json">APIC-188</paper-item>
+              <paper-item data-src="APIC-188-compact.json">APIC-188 - compact model</paper-item>
+              <paper-item data-src="APIC-187.json">APIC-187</paper-item>
+              <paper-item data-src="APIC-187-compact.json">APIC-187 - compact model</paper-item>
+            </paper-listbox>
+          </paper-dropdown-menu>
+          <paper-checkbox checked="{{noAuto}}" title="Don't generate examples if missing in API definition">No auto</paper-checkbox>
+          <paper-checkbox checked="{{rawOnly}}" title="Return examples as they were defined in API spec file without translating them to selected mime type.">Raw only</paper-checkbox>
+        </header>
+
+        <div class="container" role="main">
+          <api-navigation amf-model="[[amfModel]]" endpoints-opened></api-navigation>
+
+          <section class="demo">
+            <paper-dropdown-menu label="Select media type" disabled id="mediaDropdown">
+              <paper-listbox slot="dropdown-content" id="mediaList" on-selected-changed="_mediaTypeChanged">
+                <template is="dom-repeat" items="[[mediaTypes]]">
+                  <paper-item data-type$="[[item]]">[[item]]</paper-item>
+                </template>
+              </paper-listbox>
+            </paper-dropdown-menu>
+
+            <api-example-generator amf-model="[[amfModel]]" id="generator"></api-example-generator>
+            <template is="dom-if" if="[[hasData]]">
+
+              <template is="dom-if" if="[[examples]]">
+                <template is="dom-repeat" items="[[examples]]">
+                  <examples-render example="[[item]]"></examples-render>
+                </template>
+              </template>
+
+            </template>
+            <template is="dom-if" if="[[!hasData]]">
+              <p>Select a HTTP method in the navigation to see the demo.</p>
+            </template>
+          </section>
+        </div>
+
+        <demo-element id="helper" amf-model="{{amfModel}}"></demo-element>
+      </template>
+    </dom-bind>
+    <script>
+    (function(app) {
+      app._load = function() {
+        class DemoElement extends ApiElements.AmfHelperMixin(Polymer.Element) {}
+        window.customElements.define('demo-element', DemoElement);
+        document.getElementById('apisList').selected = 0;
+      };
+
+      app._loadFile = function(file) {
+        fetch('./' + file)
+        .then((response) => response.json())
+        .then((data) => {
+          app.amfModel = data;
+        });
+      };
+
+      app._apiChanged = function(e) {
+        app.unionTypes = undefined;
+        const file = e.target.selectedItem.dataset.src;
+        app._loadFile(file);
+      };
+
+      app._navChanged = function(e) {
+        if (e.detail.passive) {
+          return;
+        }
+        app.unionTypes = undefined;
+        const type = e.detail.type;
+        if (type === 'method') {
+          app.setData(e.detail.selected);
+          app.hasData = true;
+        } else {
+          app.hasData = false;
+        }
+      };
+
+      app.setData = function(id) {
+        document.getElementById('mediaList').selected = undefined;
+        app.payloads = undefined;
+        app.unionTypes = undefined;
+        const webApi = app.$.helper._computeWebApi(app.amfModel);
+        const method = app.$.helper._computeMethodModel(webApi, id);
+        const expect = app.$.helper._computeExpects(method);
+        let payloads;
+        if (expect) {
+          payloads = app.$.helper._computePayload(expect);
+        }
+        if (!payloads) {
+          const returns = app.$.helper._computeReturns(method);
+          payloads = [];
+          returns.forEach((item) => {
+            const data = app.$.helper._computePayload(item);
+            if (data) {
+              payloads = payloads.concat(data);
+            }
+          });
+        }
+        app.payloads = payloads;
+        app.setupMediaTypes(payloads);
+      };
+
+      app.setupMediaTypes = function(payloads) {
+        const mimes = app.$.generator.listMedia(payloads);
+        app.mediaTypes = mimes;
+        const dropdown = document.getElementById('mediaDropdown');
+        if (dropdown.hasAttribute('disabled')) {
+          dropdown.removeAttribute('disabled');
+        }
+        document.getElementById('mediaList').selected = 0;
+      };
+
+      app._mediaTypeChanged = function(e) {
+        app.unionTypes = undefined;
+        app.examples = false;
+        const media = app.mediaTypes && app.mediaTypes[e.detail.value];
+        if (!media) {
+          return;
+        }
+        const opts = {};
+        if (app.noAuto) {
+          opts.noAuto = app.noAuto;
+        }
+        if (app.rawOnly) {
+          opts.rawOnly = app.rawOnly;
+        }
+        app.examples = app.$.generator.generatePayloadsExamples(app.payloads, media, opts);
+      };
+      window.addEventListener('WebComponentsReady', app._load);
+      window.addEventListener('api-navigation-selection-changed', app._navChanged);
+    })(document.getElementById('demo'));
+  </script>
+  </body>
+</html>

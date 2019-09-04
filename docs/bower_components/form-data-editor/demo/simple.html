@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>form-data-editor demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../../paper-checkbox/paper-checkbox.html">
+  <link rel="import" href="../../api-view-model-transformer/api-view-model-transformer.html">
+  <link rel="import" href="../form-data-editor.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    output:before {
+      content: 'Current value: '
+    }
+
+    output {
+      color: rgba(0,0,0,0.74);
+      display: block;
+      margin-top: 24px;
+    }
+    </style>
+  </custom-style>
+</head>
+<body>
+  <api-view-model-transformer></api-view-model-transformer>
+  <div class="vertical-section-container centered">
+    <h3>The `form-data-editor`</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind>
+          <template>
+            <form-data-editor value="{{paylaod}}" allow-custom allow-disable-params></form-data-editor>
+            <output>[[paylaod]]</output>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+
+    <h3>Narrow layout</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind>
+          <template>
+            <form-data-editor value="{{paylaod}}" narrow allow-custom allow-disable-params></form-data-editor>
+            <output>[[paylaod]]</output>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+
+    <h3>Predefinied value</h3>
+    <demo-snippet>
+      <template>
+        <dom-bind>
+          <template>
+            <form-data-editor value="grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA&redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb" allow-custom allow-disable-params></form-data-editor>
+          </template>
+        </dom-bind>
+      </template>
+    </demo-snippet>
+  </div>
+</body>
+</html>

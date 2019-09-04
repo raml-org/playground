@@ -1,0 +1,30 @@
+{
+  "name": "@api-components/api-type-document",
+  "description": "A documentation table for type (resource) properties. Works with AMF data model",
+  "version": "2.2.2",
+  "license": "Apache-2.0",
+  "main": "api-type-document.html",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "devDependencies": {
+    "@api-components/api-model-generator": "^0.1.12",
+    "@polymer/gen-typescript-declarations": "^1.6.1"
+  },
+  "private": false,
+  "scripts": {
+    "lint": "polymer lint api-type-document.html",
+    "test-sauce": "polymer test --plugin sauce --job-name \"api-type-document:local-test\"",
+    "test": "polymer test --plugin local",
+    "update-types": "gen-typescript-declarations --deleteExisting --outDir ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/advanced-rest-client/api-type-document.git"
+  },
+  "bugs": {
+    "url": "https://github.com/advanced-rest-client/api-type-document/issues",
+    "email": "arc@mulesoft.com"
+  }
+}

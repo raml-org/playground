@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+
+    <title>api-form-mixin test</title>
+
+    <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+
+    <link rel="import" href="test-element.html">
+    <link rel="import" href="no-form-element.html">
+  </head>
+  <body>
+
+    <test-fixture id="Basic">
+      <template>
+        <test-element></test-element>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="AllowOptional">
+      <template>
+        <test-element allow-hide-optional></test-element>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="AllowCustom">
+      <template>
+        <test-element allow-custom></test-element>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="NoForm">
+      <template>
+        <no-form-element></no-form-element>
+      </template>
+    </test-fixture>
+    <script>
+      suite('Basic computations', () => {
+        test('hasOptional is not computed when model and allowHideOptional is not set', () => {
+          const element = fixture('Basic');
+          assert.isUndefined(element.hasOptional);
+        });
+
+        test('renderOptionalCheckbox is not computed when model and allowHideOptional is not set', () => {
+          const element = fixture('Basic');
+          assert.isUndefined(element.renderOptionalCheckbox);
+        });
+
+        test('hasOptional is computed when allowHideOptional is set', () => {
+          const element = fixture('AllowOptional');
+          assert.isFalse(element.hasOptional);
+        });
+
+        test('renderOptionalCheckbox is computed when allowHideOptional is set', () => {
+          const element = fixture('AllowOptional');
+          assert.isFalse(element.renderOptionalCheckbox);
+        });
+
+        test('renderEmptyMessage is true', () => {
+          const element = fixture('Basic');
+          assert.isTrue(element.renderEmptyMessage);
+        });
+
+        test('renderEmptyMessage is false when custom are allowed', () => {
+          const element = fixture('AllowCustom');
+          assert.isFalse(element.renderEmptyMessage);
+        });
+
+        test('renderEmptyMessage is false when model is set', () => {
+          const element = fixture('Basic');
+          element.model = [{name: '', value: '', schema: {}}];
+          assert.isFalse(element.renderEmptyMessage);
+        });
+
+        test('renderEmptyMessage goes back to false', () => {
+          const element = fixture('Basic');
+          element.model = [{name: '', value: '', schema: {}}];
+          assert.isFalse(element.renderEmptyMessage);
+          element.model = undefined;
+          assert.isTrue(element.renderEmptyMessage);
+        });
+      });
+
+      suite('computeFormRowClass()', () => {
+        let element;
+        suiteSetup(() => {
+          element = fixture('Basic');
+        });
+
+        test('Returns base class without attributes', () => {
+          const result = element.computeFormRowClass();
+          assert.equal(result, 'param-value');
+        });
+
+        test('Adds required name', () => {
+          const result = element.computeFormRowClass({
+            required: true
+          });
+          assert.equal(result, 'param-value required');
+        });
+
+        test('If not requred and optional are allowed then optional', () => {
+          const result = element.computeFormRowClass({
+            required: false
+          }, true);
+          assert.equal(result, 'param-value optional');
+        });
+
+        test('If not requred and optional are not allowed then nothing', () => {
+          const result = element.computeFormRowClass({
+            required: false
+          }, false);
+          assert.equal(result, 'param-value');
+        });
+
+        test('Optional are visible', () => {
+          const result = element.computeFormRowClass({}, true, true);
+          assert.equal(result, 'param-value optional with-optional');
+        });
+
+        test('Disable property is enabled', () => {
+          const result = element.computeFormRowClass({}, false, false, true);
+          assert.equal(result, 'param-value has-enable-button');
+        });
+      });
+
+      suite('toggleOptionalParams()', () => {
+        test('Does nothing when optional are not allowed', () => {
+          const element = fixture('Basic');
+          element.toggleOptionalParams();
+          assert.isUndefined(element.optionalOpened);
+        });
+
+        test('Toggles optionalOpened property', () => {
+          const element = fixture('AllowOptional');
+          element.toggleOptionalParams();
+          assert.isTrue(element.optionalOpened);
+        });
+
+        test('Toggles back optionalOpened property', () => {
+          const element = fixture('AllowOptional');
+          element.optionalOpened = true;
+          element.toggleOptionalParams();
+          assert.isFalse(element.optionalOpened);
+        });
+      });
+
+      suite('_getForm()', () => {
+        test('Returns form element', () => {
+          const element = fixture('Basic');
+          const form = element._getForm();
+          assert.isTrue(form instanceof HTMLElement);
+        });
+
+        test('Sets this.$.form', () => {
+          const element = fixture('Basic');
+          const form = element._getForm();
+          assert.isTrue(element.$.form === form);
+        });
+
+        test('Returns null when no iron-form', () => {
+          const element = fixture('NoForm');
+          const form = element._getForm();
+          assert.equal(form, null);
+        });
+      });
+
+      suite('_getValidity()', () => {
+        const invalidModel = {
+          required: true,
+          name: 'test-name'
+        };
+        const validModel = {
+          required: true,
+          name: 'test-name',
+          value: 'test-value'
+        };
+        let element;
+        setup((done) => {
+          element = fixture('Basic');
+          flush(() => done());
+        });
+
+        test('Validates empty form', () => {
+          const result = element._getValidity();
+          assert.isTrue(result);
+        });
+
+        test('Form with required empty values is not validated', (done) => {
+          element.model = [Object.assign({}, invalidModel)];
+          flush(() => {
+            const result = element._getValidity();
+            assert.isFalse(result);
+            done();
+          });
+        });
+
+        test('Form is validated', (done) => {
+          element.model = [Object.assign({}, validModel)];
+          flush(() => {
+            const result = element._getValidity();
+            assert.isTrue(result);
+            done();
+          });
+        });
+
+        test('Returns true when no iron-form', () => {
+          const element = fixture('NoForm');
+          const result = element._getValidity();
+          assert.isTrue(result);
+        });
+      });
+
+      suite('serializeForm()', () => {
+        const model = [{
+          required: true,
+          name: 'test-name',
+          value: 'test-value'
+        }, {
+          required: true,
+          name: 'test-name-1',
+          value: 'test-value-1'
+        }];
+        test('Returns empty object when no model', () => {
+          const element = fixture('Basic');
+          const result = element.serializeForm();
+          assert.typeOf(result, 'object');
+          assert.lengthOf(Object.keys(result), 0);
+        });
+
+        test('Returns model values', (done) => {
+          const element = fixture('Basic');
+          element.model = model;
+          flush(() => {
+            const result = element.serializeForm();
+            assert.typeOf(result, 'object');
+            assert.lengthOf(Object.keys(result), 2);
+            done();
+          });
+        });
+
+        test('Returns undefined when no iron-form', () => {
+          const element = fixture('NoForm');
+          const result = element.serializeForm();
+          assert.isUndefined(result);
+        });
+      });
+
+      suite('_computeIsCustom()', () => {
+        let element;
+        suiteSetup(() => {
+          element = fixture('Basic');
+        });
+
+        test('Returns false when no model', () => {
+          assert.isFalse(element._computeIsCustom());
+        });
+
+        test('Returns false when no schema', () => {
+          assert.isFalse(element._computeIsCustom({}));
+        });
+
+        test('Returns false when no isCustom', () => {
+          assert.isFalse(element._computeIsCustom({
+            schema: {}
+          }));
+        });
+
+        test('Returns true when isCustom', () => {
+          assert.isTrue(element._computeIsCustom({
+            schema: {
+              isCustom: true
+            }
+          }));
+        });
+      });
+
+      suite('addCustom()', () => {
+        const model = {
+          required: true,
+          name: 'test-name',
+          value: 'test-value'
+        };
+        let element;
+        setup(() => {
+          element = fixture('Basic');
+        });
+
+        test('Adds an item to undefined model', () => {
+          element.addCustom();
+          assert.typeOf(element.model, 'array');
+          assert.lengthOf(element.model, 1);
+        });
+
+        test('Adds an item to existing model', () => {
+          element.model = [model];
+          element.addCustom();
+          assert.lengthOf(element.model, 2);
+        });
+
+        test('Dispatches api-property-model-build event with basic data', (done) => {
+          element.addEventListener('api-property-model-build', (e) => {
+            assert.isTrue(e.cancelable, 'Event is cancelable');
+            assert.typeOf(e.detail, 'object');
+            done();
+          });
+          element.addCustom();
+        });
+      });
+
+      suite('computeIsOptional()', () => {
+        let model;
+        let element;
+        setup(() => {
+          element = fixture('Basic');
+          model = {
+            required: false,
+            name: 'test-name',
+            value: 'test-value'
+          };
+        });
+
+        test('Returns false when hasOptional is false', () => {
+          const result = element.computeIsOptional(false, model);
+          assert.isFalse(result);
+        });
+
+        test('Returns true when required is false', () => {
+          const result = element.computeIsOptional(true, model);
+          assert.isTrue(result);
+        });
+
+        test('Returns false when required is true', () => {
+          model.required = true;
+          const result = element.computeIsOptional(true, model);
+          assert.isFalse(result);
+        });
+      });
+    </script>
+
+  </body>
+</html>

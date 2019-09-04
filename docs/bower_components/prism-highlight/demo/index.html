@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1, user-scalable=yes">
+  <title>prism-highlight demo</title>
+  <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+  <link rel="import" href="../../iron-demo-helpers/demo-pages-shared-styles.html">
+  <link rel="import" href="../../iron-demo-helpers/demo-snippet.html">
+  <link rel="import" href="../prism-highlight.html">
+  <custom-style>
+    <style is="custom-style" include="demo-pages-shared-styles">
+    :root {
+      --error-color: red;
+    }
+    </style>
+  </custom-style>
+</head>
+<body unresolved>
+  <div class="vertical-section-container centered">
+    <h3>The `prism-highlight` - markdown</h3>
+    <demo-snippet>
+      <template>
+        <prism-highlight id="c1" lang="markdown"></prism-highlight>
+        <script>
+        document.querySelector('#c1').code = '# Test highlight\nHello world!\n[link](https://domain.com)';
+        </script>
+      </template>
+    </demo-snippet>
+    <h3>The `prism-highlight` - javascript</h3>
+    <demo-snippet>
+      <template>
+        <prism-highlight id="c2" lang="javascript"></prism-highlight>
+        <script>
+        document.querySelector('#c2').code = 'function(param) {\n' +
+          '  param.forEach((item) => this._parseItem(item))\n' +
+          '  const test = null;\n' +
+          '}';
+        </script>
+      </template>
+    </demo-snippet>
+    <h3>The `prism-highlight` - long text</h3>
+    <demo-snippet>
+      <template>
+        <prism-highlight id="c3" lang="markup" max-read="50"></prism-highlight>
+        <script>
+        fetch(location.href)
+        .then((r) => r.text())
+        .then((r) => document.querySelector('#c3').code = r + '\n' + r + '\n' + r)
+        .catch((e) => document.querySelector('#c3').code = e.message);
+        </script>
+      </template>
+    </demo-snippet>
+  </div>
+</body>
+
+</html>

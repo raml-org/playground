@@ -1,0 +1,257 @@
+#%RAML 1.0
+baseUri: /security/v1
+title: System - Security
+version: v1
+mediaType: application/json
+
+uses:
+  convert-aggregator-quote-model: model-system/convert-aggregator-quote-types.raml
+  credentials-model: model-system/change-credentials-type.raml
+  retrieve-quotes-model: model-system/retrieve-quotes-types.raml
+  create-quote-model: model-system/create-quote-types.raml
+  ping-customer-accounts-model: model-system/customer-accounts-types.raml
+  ping-validate-credentials: model-system/ping-validate-credentials.raml
+  ping-error-messages: model-system/ping-error-messages-types.raml
+  error-model: exchange_modules2/26d603ba-9696-4993-b97e-f568e49c27ac/traits-system/0.0.19/types/error.raml
+
+traits:
+  api-headers : !include model-system/api-headers.raml
+  api-strict-headers: !include model-system/api-strict-headers.raml
+  bad-responses: !include exchange_modules2/26d603ba-9696-4993-b97e-f568e49c27ac/traits-system/0.0.19/bad-responses.raml
+
+
+securitySchemes:
+  auth: !include exchange_modules2/26d603ba-9696-4993-b97e-f568e49c27ac/securityscheme-system/0.0.4/auth.raml
+
+securedBy: [auth]
+
+/convertaggregatorquote:
+    post:
+      is: [api-headers, bad-responses]
+      description: Used to create a P quote from a click-through URL.
+      body: 
+        application/json:
+          type: convert-aggregator-quote-model.AggregatorCreateQuote
+      responses: 
+        201:
+          body:
+            type: convert-aggregator-quote-model.CreatedQuote
+            examples: !include examples/convert-aggregator-quote-post-201.raml
+
+/changecredentials:
+    post:
+      is: [ api-headers, bad-responses ]
+      description: Used to update credentials.
+      body: 
+        application/json:
+         type: credentials-model.UpdateCredentials
+         examples: !include examples/change-credentials-post-201.raml
+      responses: 
+        201:
+        
+/retrievequotes:
+    post:
+      is: [ api-headers, bad-responses ]
+      description: Used to retrieve quotes for valid account.
+      body: 
+        application/json:
+         type: retrieve-quotes-model.RetrieveQuotesRequest
+      responses: 
+        200:
+          body:
+            type: retrieve-quotes-model.RetrieveQuotesResponse
+            examples: !include examples/retrieve-quotes-post-200.raml 
+
+/createquote:
+    post:
+      is: [ api-headers, bad-responses ]
+      description: Functional endpoint used to check if an account with a policy exists and, if it doesn't, create a new account/quote with a blank vehicle.
+      body: 
+        application/json:
+         type: create-quote-model.CreateQuotePostRequest
+         examples: !include examples/create-quote-post-request.raml
+      responses: 
+        200:
+          description: response returned if the account matches
+          body:
+            type: create-quote-model.CreateQuotePostMatchedResponse
+            examples: !include examples/create-quote-post-200.raml
+
+        201:
+          description: response returned if the account has been created since it was not matching any existing one
+          body:
+            type: create-quote-model.CreateQuotePostCreatedResponse
+            examples: !include examples/create-quote-post-201.raml
+  
+/validatecredentials:
+    post:
+      is: [api-strict-headers]
+      description: used to validate the user credentials (email and password). The successful response includes all the customer accounts that match the email where one of them also has the same password as the one passed in. It will also return a ping user id if one is associated with any customer accounts in disc.
+
+      body:
+        properties:
+          email:
+            type: string
+            required: true
+            maxLength: 50
+            pattern: ^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}\b$
+          password:
+            type: string
+            required: true
+
+        example:
+          email: "jsmith@provider.com"
+          password: "XXXXXXXX"
+        
+      responses:
+        200:
+          description: the customer accounts that match the email where one of them also has the same password as the one passed in, plus a ping user id if one is associated with any customer accounts in DISC
+          body:
+            type: ping-validate-credentials.PingValidateCredentialsResponse[]
+            examples: !include examples/validate-credentials-post-200.raml
+        
+        400:
+          description: Bad request with empty body if the RAML contract is violated. Otherwise specific error messages will be returned
+          body:
+            type: ping-error-messages.PingErrorMessagesResponse
+            example:
+              messages:
+                - # match not found
+                  code: "BGLXXXX"
+                  description: "Could not validate email and password"  
+                
+        500:
+          description: Internal Server Error
+
+
+/validatecustomeraccounthash:
+    post:
+      is: [api-strict-headers, bad-responses]
+      description: used after a sales journey to verify if the customer account exists, so it can then be registered in ping.
+
+      body: 
+        application/json:
+          properties:
+            encryptedHash: 
+              type: string
+              required: true
+          examples: !include examples/validate-customer-account-hash-post-request.raml
+
+      responses: 
+        200:
+          description: the list of the matched customer accounts
+          body:
+            type: ping-customer-accounts-model.ValidateCustomerAccountMatchedResponse
+            examples: !include examples/validate-customer-account-post-200.raml
+
+        400:
+          description: Bad Request if the hash cannot be decrypted or the timestamp is out of date
+          body:
+            application/json:
+              type: error-model.Error
+              examples: !include examples/validate-customer-account-hash-post-400.raml
+
+
+/customeraccounts:
+    get:
+      is: [api-strict-headers]
+      description: used to retrieve the list of the Customer Accounts filtered by email address. This API is used as part of the registration flow to identify any other accounts associated with the email so they can be synched with the PING registry.
+
+      queryParameters:
+        emailaddress:
+          type: string
+          required: true
+          maxLength: 50
+          pattern: ^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}\b$
+          example: "hello@provider.co.uk"
+
+      responses: 
+        200:
+          description: the list of the matched customer accounts
+          body:
+            type: ping-customer-accounts-model.PingCustomerAccount[]
+            examples: !include examples/customer-accounts-get-200.raml
+            
+        400:
+          description: Bad request
+                
+        500:
+          description: Internal Server Error
+
+                
+    /{customeraccountid}:
+      uriParameters:
+        customeraccountid:
+          type: string
+          minLength: 9
+          maxLength: 9
+          example: "123456789"
+          
+      patch:
+        is: [ api-strict-headers , bad-responses ]
+        description: This is used to sync disc with the ping user id and sync all customer accounts to the same email and password.  Ping will be required to call this for each customer account id.
+        body:
+          type: ping-customer-accounts-model.PatchPingCustomerAccountRequest
+          examples: !include examples/customer-accounts-patch-request.raml
+        
+        responses:
+          204:
+            description: Success. PING user id, email, password where updated.
+      
+      /initialregistration:
+        post:
+          is: [ api-strict-headers , bad-responses ]
+          description: This is to perform the initial registration of the customer account. This API is used as part of the registration process to setup any new customer in the OLSS system. If the customer is already setup in OLSS then this service will return success.
+          body:
+            properties:
+              encryptedPassword:
+                type: string
+                required: true
+                example: "XXXXX"
+                
+          responses:
+            200:
+              description: Success. The account was created or already existed in OLSS.
+      
+      /sendcorrespondence:
+        post:
+          is: [ api-strict-headers , bad-responses ]
+          description: used as part of the registration process to inform the disc system to send emails to the customer.  These emails are use to confirm things like registration was successful.
+          body:
+            properties:
+              correspondenceTypeCode:
+                type: 
+                  enum: [ registration-confirmation, forgotten-password, password-reset-confirmation, change-password-confirmation, change-email-confirmation, email-verification ]
+                required: true
+              callbackUrl:
+                type: string
+                required: false
+                
+            examples: !include examples/send-correspondence-post-request.raml
+          responses:
+            200:
+             description: Success. Email sent.
+             
+      /validate:
+          post:
+            is: [api-strict-headers, bad-responses]
+            description: This API is used to verify if the customer account
+            body: 
+              application/json:
+                type: ping-customer-accounts-model.ValidateCustomerAccountMatchedRequest
+                examples: !include examples/validate-customer-account-post-request.raml
+            responses: 
+              200:
+                description: response returned if the account matches
+                body:
+                  type: ping-customer-accounts-model.ValidateCustomerAccountMatchedResponse
+                  examples: !include examples/validate-customer-account-post-200.raml
+                  
+              400:
+                description: Bad request
+                body:
+                  application/json:
+                    type: error-model.Error
+                    examples: !include examples/validate-customer-account-post-400.raml
+
+

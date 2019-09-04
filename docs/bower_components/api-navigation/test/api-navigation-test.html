@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1, initial-scale=1, user-scalable=yes">
+  <title>api-navigation test</title>
+  <script src="../../webcomponentsjs/webcomponents-loader.js"></script>
+  <script src="../../web-component-tester/browser.js"></script>
+  <link rel="import" href="../api-navigation.html">
+  <link rel="import" href="../../arc-polyfills/arc-polyfills.html">
+  <link rel="import" href="../../iron-test-helpers/mock-interactions.html">
+  <script src="amf-loader.js"></script>
+  <script src="amf-helper.js"></script>
+</head>
+
+<body>
+  <test-fixture id="Basic">
+    <template>
+      <api-navigation></api-navigation>
+    </template>
+  </test-fixture>
+  <test-fixture id="Summary">
+    <template>
+      <api-navigation summary></api-navigation>
+    </template>
+  </test-fixture>
+  <test-fixture id="Preselected">
+    <template>
+      <api-navigation summary selected="test1"></api-navigation>
+    </template>
+  </test-fixture>
+  <script>
+  /* global MockInteractions, AmfLoader, AmfHelper */
+  suite('api-navigation', () => {
+    suite('Super basics - without model', () => {
+      let element;
+
+      suiteSetup((done) => {
+        element = fixture('Basic');
+        flush(() => done());
+      });
+
+      test('_isFragment is set', () => {
+        assert.isFalse(element._isFragment);
+      });
+
+      test('_renderSummary is not false', () => {
+        assert.isFalse(element._renderSummary);
+      });
+
+      test('summary is not rendered', () => {
+        const panel = element.shadowRoot.querySelector('.summary');
+        assert.notOk(panel);
+      });
+
+      test('documentation is not rendered', () => {
+        const panel = element.shadowRoot.querySelector('.documentation');
+        assert.notOk(panel);
+      });
+
+      test('types is not rendered', () => {
+        const panel = element.shadowRoot.querySelector('.types');
+        assert.notOk(panel);
+      });
+
+      test('security is not rendered', () => {
+        const panel = element.shadowRoot.querySelector('.security');
+        assert.notOk(panel);
+      });
+
+      test('endpoints is not rendered', () => {
+        const panel = element.shadowRoot.querySelector('.endpoints');
+        assert.notOk(panel);
+      });
+    });
+
+    suite('Summary', () => {
+      let element;
+      setup((done) => {
+        element = fixture('Summary');
+        flush(() => done());
+      });
+
+      test('Summary is rendered', () => {
+        const panel = element.shadowRoot.querySelector('.summary');
+        assert.ok(panel);
+      });
+
+      test('Clicking on summary changes selection', () => {
+        const node = element.shadowRoot.querySelector('.list-item.summary');
+        node.click();
+        assert.equal(element.selected, 'summary');
+        assert.equal(element.selectedType, 'summary');
+      });
+    });
+
+    suite('Docs', () => {
+      let element;
+      let model;
+      setup((done) => {
+        model = [{
+          id: 'test1',
+          label: 'test1'
+        }, {
+          id: 'test2',
+          label: 'test2'
+        }];
+        element = fixture('Preselected');
+        element._setDocs(model);
+        flush(() => done());
+      });
+
+      test('hasDocs is computed', () => {
+        assert.isTrue(element.hasDocs);
+      });
+
+      test('Docs is rendered', () => {
+        const panel = element.shadowRoot.querySelector('.documentation');
+        assert.ok(panel);
+      });
+
+      test('Preselected has a selection', () => {
+        const selector = '.documentation [data-api-id="test1"]';
+        const panel = element.shadowRoot.querySelector(selector);
+        assert.ok(panel);
+      });
+
+      test('Clicking on an item changes selection', () => {
+        const node = element.shadowRoot.querySelectorAll('.documentation .list-item')[1];
+        node.click();
+        assert.equal(element.selected, 'test2');
+        assert.equal(element.selectedType, 'documentation');
+      });
+    });
+
+    suite('Types', () => {
+      let element;
+      let model;
+      setup((done) => {
+        model = [{
+          id: 'test1',
+          label: 'test1'
+        }, {
+          id: 'test2',
+          label: 'test2'
+        }];
+        element = fixture('Preselected');
+        element._setTypes(model);
+        flush(() => done());
+      });
+
+      test('hasTypes is computed', () => {
+        assert.isTrue(element.hasTypes);
+      });
+
+      test('Types panel is rendered', () => {
+        const panel = element.shadowRoot.querySelector('section.types');
+        assert.ok(panel);
+      });
+
+      test('Preselected has a selection', () => {
+        const selector = '.types [data-api-id="test1"]';
+        const panel = element.shadowRoot.querySelector(selector);
+        assert.ok(panel);
+      });
+
+      test('Clicking on an item changes selection', () => {
+        const node = element.shadowRoot.querySelectorAll('.types .list-item')[1];
+        node.click();
+        assert.equal(element.selected, 'test2');
+        assert.equal(element.selectedType, 'type');
+      });
+    });
+
+    suite('Security', () => {
+      let element;
+      let model;
+      setup((done) => {
+        model = [{
+          id: 'test1',
+          label: 'test1'
+        }, {
+          id: 'test2',
+          label: 'test2'
+        }];
+        element = fixture('Preselected');
+        element._setSecurity(model);
+        flush(() => done());
+      });
+
+      test('hasSecurity is computed', () => {
+        assert.isTrue(element.hasSecurity);
+      });
+
+      test('Types panel is rendered', () => {
+        const panel = element.shadowRoot.querySelector('section.security');
+        assert.ok(panel);
+      });
+
+      test('Preselected has a selection', () => {
+        const selector = '.security [data-api-id="test1"]';
+        const panel = element.shadowRoot.querySelector(selector);
+        assert.ok(panel);
+      });
+
+      test('Clicking on an item changes selection', () => {
+        const node = element.shadowRoot.querySelectorAll('.security .list-item')[1];
+        node.click();
+        assert.equal(element.selected, 'test2');
+        assert.equal(element.selectedType, 'security');
+      });
+    });
+
+    suite('Endpoints', () => {
+      let element;
+      let model;
+      setup((done) => {
+        model = [{
+          id: 'test1',
+          label: 'test1',
+          methods: [{
+            id: 'method1',
+            method: 'GET'
+          }]
+        }, {
+          id: 'test2',
+          label: 'test2',
+          methods: [{
+            id: 'method2',
+            method: 'GET'
+          }, {
+            id: 'method3',
+            method: 'POST'
+          }]
+        }];
+        element = fixture('Preselected');
+        element._setEndpoints(model);
+        flush(() => done());
+      });
+
+      test('hasEndpoints is computed', () => {
+        assert.isTrue(element.hasEndpoints);
+      });
+
+      test('Types panel is rendered', () => {
+        const panel = element.shadowRoot.querySelector('section.endpoints');
+        assert.ok(panel);
+      });
+
+      test('Preselected has a selection', () => {
+        const selector = '.endpoints [data-api-id="test1"]';
+        const panel = element.shadowRoot.querySelector(selector);
+        assert.ok(panel);
+      });
+
+      test('Clicking on endpoint toggles operation', () => {
+        const node = element.shadowRoot.querySelectorAll('.endpoints .list-item.endpoint')[1];
+        node.click();
+        const collapsable = node.nextElementSibling;
+        assert.isTrue(collapsable.opened);
+      });
+
+      test('Clicking on the overview changes selection', () => {
+        const node = element.shadowRoot.querySelectorAll(
+          '.list-item.operation[data-shape="endpoint"]')[1];
+        node.click();
+        assert.equal(element.selected, 'test2');
+        assert.equal(element.selectedType, 'endpoint');
+      });
+    });
+
+
+    suite('Navigation events`', () => {
+      let element;
+      let model;
+      setup((done) => {
+        model = {
+          docs: [{
+            id: 'test1',
+            label: 'test1'
+          }, {
+            id: 'test2',
+            label: 'test2'
+          }],
+          types: [{
+            id: 'test3',
+            label: 'test3'
+          }, {
+            id: 'test4',
+            label: 'test4'
+          }],
+          security: [{
+            id: 'test5',
+            label: 'test5'
+          }, {
+            id: 'test6',
+            label: 'test6'
+          }],
+          endpoints: [{
+            id: 'test7',
+            label: 'test7',
+            methods: [{
+              id: 'method8',
+              method: 'GET'
+            }]
+          }, {
+            id: 'test9',
+            label: 'test9',
+            methods: [{
+              id: 'method10',
+              method: 'GET'
+            }, {
+              id: 'method11',
+              method: 'POST'
+            }]
+          }]
+        };
+        element = fixture('Basic');
+        element._setDocs(model.docs);
+        element._setTypes(model.types);
+        element._setSecurity(model.security);
+        element._setEndpoints(model.endpoints);
+        flush(() => done());
+      });
+
+      function fire(id, type, node) {
+        const e = new CustomEvent('api-navigation-selection-changed', {
+          bubbles: true,
+          composed: true,
+          detail: {
+            selected: id,
+            type: type
+          }
+        });
+        (node || document.body).dispatchEvent(e);
+      }
+
+      test('Updates selection from the change event', () => {
+        const id = 'test3';
+        fire(id, 'type');
+        assert.equal(element.selected, id);
+        assert.equal(element.selectedType, 'type');
+        const node = element.shadowRoot.querySelector(`[data-api-id="${id}"]`);
+        assert.isTrue(node.classList.contains('iron-selected'));
+      });
+
+      test('Does not update selection if it is the source', () => {
+        const id = 'test3';
+        fire(id, 'type', element);
+        assert.isUndefined(element.selected);
+      });
+
+      test('Does not dispatch selection event', () => {
+        const id = 'test3';
+        const spy = sinon.spy();
+        element.addEventListener('api-navigation-selection-changed', spy);
+        fire(id, 'type');
+        assert.isFalse(spy.called);
+      });
+
+      [
+        ['type', 'test3', '.list-item'],
+        ['security', 'test5', '.list-item'],
+        ['documentation', 'test1', '.list-item'],
+        ['endpoint', 'test7', '.operation']
+      ].forEach((item) => {
+        const [type, id, selector] = item;
+        test(`Dispatches event when clicking on ${type}`, function() {
+          const s = `${selector}[data-api-id="${id}"]`;
+          const node = element.shadowRoot.querySelector(s);
+          let called = false;
+          element.addEventListener('api-navigation-selection-changed', (e) => {
+            called = true;
+            assert.equal(e.detail.selected, id);
+            assert.equal(e.detail.type, type);
+            assert.isUndefined(e.detail.endpointId);
+          });
+          MockInteractions.tap(node);
+          assert.isTrue(called);
+        });
+      });
+
+      test('Dispatches event when clicking on method', function() {
+        const selector = '.operation[data-api-id="method10"]';
+        const node = element.shadowRoot.querySelector(selector);
+        let called = false;
+        element.addEventListener('api-navigation-selection-changed', (e) => {
+          called = true;
+          assert.equal(e.detail.selected, 'method10');
+          assert.equal(e.detail.type, 'method');
+          assert.equal(e.detail.endpointId, 'test9');
+        });
+        MockInteractions.tap(node);
+        assert.isTrue(called);
+      });
+    });
+  });
+
+  suite('_computePathName()', () => {
+    let element;
+    suiteSetup(() => {
+      element = fixture('Basic');
+    });
+
+    test('Computes short path', () => {
+      const base = ['/root', '/root/other'];
+      const current = '/root/other/path';
+      const parts = ['root', 'other'];
+      const indent = 2;
+      const result = element._computePathName(current, parts, indent, base);
+      assert.equal(result, '/path');
+    });
+
+    test('Computes short path for combined endpoint names', () => {
+      const base = ['/root', '/root/other'];
+      const current = '/root/other/path';
+      const parts = ['root', 'other'];
+      const indent = 1;
+      const result = element._computePathName(current, parts, indent, base);
+      assert.equal(result, '/other/path');
+    });
+  });
+
+  suite('_computeEndpointPaddingLeft()', () => {
+    let element;
+    setup((done) => {
+      element = fixture('Basic');
+      flush(() => done());
+    });
+
+    test('Computes default padding', () => {
+      const result = element._computeEndpointPaddingLeft();
+      assert.equal(result, 16);
+    });
+
+    test('Computes value for single value padding', () => {
+      element.updateStyles({
+        '--api-navigation-list-item-padding': '5px'
+      });
+      const result = element._computeEndpointPaddingLeft();
+      assert.equal(result, 5);
+    });
+
+    test('Computes value for double padding value', () => {
+      element.updateStyles({
+        '--api-navigation-list-item-padding': '5px 10px'
+      });
+      const result = element._computeEndpointPaddingLeft();
+      assert.equal(result, 10);
+    });
+
+    test('Computes value for tripple padding value', () => {
+      element.updateStyles({
+        '--api-navigation-list-item-padding': '5px 10px 15px'
+      });
+      const result = element._computeEndpointPaddingLeft();
+      assert.equal(result, 15);
+    });
+
+    test('Computes value for full padding value', () => {
+      element.updateStyles({
+        '--api-navigation-list-item-padding': '5px 10px 15px 20px'
+      });
+      const result = element._computeEndpointPaddingLeft();
+      assert.equal(result, 15);
+    });
+  });
+
+  suite('_computeOperationPaddingLeft()', () => {
+    let element;
+    setup((done) => {
+      element = fixture('Basic');
+      flush(() => done());
+    });
+
+    test('Computes default padding', () => {
+      const result = element._computeOperationPaddingLeft();
+      assert.equal(result, 24);
+    });
+
+    test('Computes padding from css property', () => {
+      element.updateStyles({
+        '--api-navigation-operation-item-padding-left': '5px'
+      });
+      const result = element._computeOperationPaddingLeft();
+      assert.equal(result, 5);
+    });
+  });
+
+  suite('_spaceUpHandler()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+    setup((done) => {
+      element = fixture('Basic');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Calls _spaceUpHandler() when space bar triggers on operation label', () => {
+      const node = element.shadowRoot.querySelector('.list-item.operation');
+      node.parentElement.opened = true;
+      const spy = sinon.spy(element, '_spaceUpHandler');
+      MockInteractions.keyEventOn(node, 'keyup', 32, 'Space');
+      assert.isTrue(spy.called);
+    });
+
+    test('Calls _itemClickHandler()', () => {
+      const node = element.shadowRoot.querySelector('.list-item.operation');
+      node.parentElement.opened = true;
+      const spy = sinon.spy(element, '_itemClickHandler');
+      MockInteractions.keyEventOn(node, 'keyup', 32, 'Space');
+      assert.isTrue(spy.called);
+    });
+  });
+
+  suite('_spaceDownHandler()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Basic');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Calls _spaceDownHandler() when space bar triggers on operation label', () => {
+      const node = element.shadowRoot.querySelector('.list-item.operation');
+      node.parentElement.opened = true;
+      const spy = sinon.spy(element, '_spaceDownHandler');
+      MockInteractions.keyEventOn(node, 'keydown', 32, 'Space');
+      assert.isTrue(spy.called);
+    });
+
+    test('Won\'t call _itemClickHandler()', () => {
+      const node = element.shadowRoot.querySelector('.list-item.operation');
+      node.parentElement.opened = true;
+      const spy = sinon.spy(element, '_itemClickHandler');
+      MockInteractions.keyEventOn(node, 'keydown', 32, 'Space');
+      assert.isFalse(spy.called);
+    });
+  });
+
+  suite('_toggleEndpoint()', () => {
+    let element;
+    setup((done) => {
+      element = fixture('Basic');
+      flush(() => done());
+    });
+
+    test('Does nothing when node with data-endpoint-id is not in the path', () => {
+      const spy = sinon.spy(element, 'toggleOperations');
+      element._toggleEndpoint({
+        composedPath: () => []
+      });
+      assert.isFalse(spy.called);
+    });
+
+    test('Ignores node that are not of a type of 1 (Element)', () => {
+      const spy = sinon.spy(element, 'toggleOperations');
+      element._toggleEndpoint({
+        composedPath: () => [document.createTextNode('test')]
+      });
+      assert.isFalse(spy.called);
+    });
+
+    test('Ignores nodes without data-endpoint-id', () => {
+      const spy = sinon.spy(element, 'toggleOperations');
+      element._toggleEndpoint({
+        composedPath: () => [document.createElement('span')]
+      });
+      assert.isFalse(spy.called);
+    });
+
+    test('Calls toggleOperations()', () => {
+      const spy = sinon.spy(element, 'toggleOperations');
+      const node = document.createElement('span');
+      node.dataset.endpointId = 'testId';
+      element._toggleEndpoint({
+        composedPath: () => [node]
+      });
+      assert.isTrue(spy.called, 'Function called');
+      assert.equal(spy.args[0][0], 'testId', 'Has argument set');
+    });
+  });
+
+  suite('_toggleSection()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Basic');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Does nothing when node not found in path', () => {
+      element._toggleSection({
+        composedPath: () => []
+      });
+      // No error
+    });
+
+    test('Skips element without dataset property', () => {
+      element._toggleSection({
+        composedPath: () => [document.createTextNode('test')]
+      });
+    });
+
+    test('Skips element without data-section attribute', () => {
+      const node = document.createElement('span');
+      element._toggleSection({
+        composedPath: () => [node]
+      });
+    });
+
+    test('Toggles section', () => {
+      const node = document.createElement('span');
+      node.dataset.section = 'endpoints';
+      element._toggleSection({
+        composedPath: () => [node]
+      });
+      assert.isTrue(element.endpointsOpened);
+    });
+  });
+
+  suite('_selectMethodPassive()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Basic');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Does nothing when ID is not in the DOM', () => {
+      element._selectMethodPassive('some-id');
+      assert.isUndefined(element.__hasPassiveSelection);
+    });
+
+    test('Adds "passive-selected" class name to the method label', () => {
+      const id = element.endpoints[0].methods[0].id;
+      element._selectMethodPassive(id);
+      const node = element.shadowRoot.querySelector('.passive-selected');
+      assert.equal(node.dataset.apiId, id);
+    });
+
+    test('Sets __hasPassiveSelection flag', () => {
+      const id = element.endpoints[0].methods[0].id;
+      element._selectMethodPassive(id);
+      assert.isTrue(element.__hasPassiveSelection);
+    });
+
+    test('Renders toggle opened', () => {
+      const id = element.endpoints[0].methods[0].id;
+      element._selectMethodPassive(id);
+      const node = element.shadowRoot.querySelector('.passive-selected');
+      assert.isTrue(node.parentElement.opened);
+    });
+  });
+
+  suite('_itemClickHandler()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Summary');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Uses currentTarget as the target', () => {
+      const node = element.shadowRoot.querySelector('.list-item.summary');
+      const spy = sinon.spy(element, '_selectItem');
+      element._itemClickHandler({
+        currentTarget: node
+      });
+      assert.isTrue(spy.called);
+      assert.isTrue(spy.args[0][0] === node);
+    });
+
+    test('Uses target as the target', () => {
+      const node = element.shadowRoot.querySelector('.list-item.summary');
+      const spy = sinon.spy(element, '_selectItem');
+      element._itemClickHandler({
+        target: node
+      });
+      assert.isTrue(spy.called);
+      assert.isTrue(spy.args[0][0] === node);
+    });
+
+    test('Makes adjustemnts for method label', () => {
+      const node = element.shadowRoot.querySelector('.method-label');
+      const parent = node.parentNode;
+      const spy = sinon.spy(element, '_selectItem');
+      element._itemClickHandler({
+        target: node
+      });
+      assert.isTrue(spy.called);
+      assert.isTrue(spy.args[0][0] === parent);
+    });
+  });
+
+  suite('_labelFilter()', () => {
+    let element;
+    setup(() => {
+      element = fixture('Summary');
+    });
+
+    test('Returns true when __effectiveQuery is not set', () => {
+      const result = element._labelFilter();
+      assert.isTrue(result);
+    });
+
+    test('Returns true when item label contains query', () => {
+      element.__effectiveQuery = 'abc';
+      const result = element._labelFilter({
+        label: 'abcd'
+      });
+      assert.isTrue(result);
+    });
+  });
+
+  suite('_methodFilter()', () => {
+    let element;
+    setup(() => {
+      element = fixture('Summary');
+    });
+
+    test('Returns true when __effectiveQuery is not set', () => {
+      const result = element._methodFilter();
+      assert.isTrue(result);
+    });
+
+    test('Returns true when item label contains query', () => {
+      element.__effectiveQuery = 'abc';
+      const result = element._methodFilter({
+        label: 'abcd'
+      });
+      assert.isTrue(result);
+    });
+
+    test('Returns true when method contains query', () => {
+      element.__effectiveQuery = 'abc';
+      const result = element._methodFilter({
+        method: 'abc'
+      });
+      assert.isTrue(result);
+    });
+  });
+
+  suite('_queryChanged()', () => {
+    let element;
+    setup(() => {
+      element = fixture('Summary');
+    });
+
+    test('Does nothing when __queryDebouncer is already set', () => {
+      element.__queryDebouncer = 1;
+      element.query = 'test';
+      assert.equal(element.__queryDebouncer, 1);
+    });
+
+    test('Sets __queryDebouncer', (done) => {
+      element.query = 'test';
+      assert.isTrue(element.__queryDebouncer);
+      Polymer.RenderStatus.afterNextRender(element, () => {
+        done();
+      });
+    });
+
+    test('Calls _flushQuery()', (done) => {
+      element.query = 'test';
+      const spy = sinon.spy(element, '_flushQuery');
+      Polymer.RenderStatus.afterNextRender(element, () => {
+        assert.isTrue(spy.called);
+        done();
+      });
+    });
+
+    test('Re-sets __queryDebouncer', (done) => {
+      element.query = 'test';
+      Polymer.RenderStatus.afterNextRender(element, () => {
+        assert.isFalse(element.__queryDebouncer);
+        done();
+      });
+    });
+  });
+
+  suite('_flushQuery()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Summary');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Sets __effectiveQuery as a lowecase query', () => {
+      element.__queryDebouncer = true;
+      element.query = 'Files';
+      element._flushQuery();
+      assert.equal(element.__effectiveQuery, 'files');
+    });
+
+    test('Clear the query', () => {
+      element.__queryDebouncer = true;
+      element.query = '';
+      element._flushQuery();
+      assert.equal(element.__effectiveQuery, '');
+    });
+  });
+
+  suite('_computeRenderParth()', () => {
+    let amfModel;
+    let element;
+    suiteSetup(() => {
+      return AmfLoader.load(true)
+      .then((model) => {
+        amfModel = model;
+      });
+    });
+
+    setup((done) => {
+      element = fixture('Summary');
+      element.amfModel = amfModel;
+      flush(() => done());
+    });
+
+    test('Returns true when both arguments are true', () => {
+      const result = element._computeRenderParth(true, true);
+      assert.isTrue(result);
+    });
+
+    test('Returns false when allowPaths is false', () => {
+      const result = element._computeRenderParth(false, true);
+      assert.isFalse(result);
+    });
+
+    test('Returns false when allowPaths is not set', () => {
+      const result = element._computeRenderParth(undefined, true);
+      assert.isFalse(result);
+    });
+
+    test('Returns false when renderPath is false', () => {
+      const result = element._computeRenderParth(true, false);
+      assert.isFalse(result);
+    });
+
+    test('Returns false when renderPath is not set', () => {
+      const result = element._computeRenderParth(true, undefined);
+      assert.isFalse(result);
+    });
+
+    test('Returns false when both undefinerd', () => {
+      const result = element._computeRenderParth(false, false);
+      assert.isFalse(result);
+    });
+
+    test('Paths are hidden by default', () => {
+      const endpoint = AmfHelper.getEndpoint(element, amfModel, '/about');
+      const id = endpoint['@id'];
+      const node = element.shadowRoot.querySelector(`.endpoint[data-endpoint-id="${id}"] .path-name`);
+      assert.notOk(node);
+    });
+
+    test('Renders paths when "allowPaths" is set', (done) => {
+      element.allowPaths = true;
+      flush(() => {
+        const endpoint = AmfHelper.getEndpoint(element, amfModel, '/about');
+        const id = endpoint['@id'];
+        const node = element.shadowRoot.querySelector(`.endpoint[data-endpoint-id="${id}"] .path-name`);
+        assert.ok(node);
+        done();
+      });
+    });
+  });
+  a11ySuite('Basic');
+  </script>
+</body>
+
+</html>

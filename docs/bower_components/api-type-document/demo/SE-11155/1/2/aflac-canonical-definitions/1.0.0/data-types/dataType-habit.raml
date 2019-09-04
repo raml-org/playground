@@ -1,0 +1,61 @@
+#%RAML 1.0 DataType
+
+displayName: Habit
+description: A habit is a repeated behaviour of doing something.  Smoking, vaping, drinking, video game playing can all be habits.  This object captures the amount and frequency of a habit.
+
+type: object
+additionalProperties: false
+
+
+properties:
+  habit-name:
+    displayName: Habit Name
+    description: Name of the habit
+    required: false
+    type: string
+  usage-amount:
+    displayName: Usage Amount
+    description: a number that represents the usage
+    required: false
+    type: number
+  usage-unit:
+    displayName: Usage Unit
+    description: unit of the usage amount
+    required: false
+    type: string
+  time-amount: 
+    displayName: Time Amount
+    description: a number that represents per time
+    required: false
+    type: number
+  time-unit:
+    displayName: Time Unit
+    description: unit that represents time amount
+    required: false
+    type: string
+
+examples:
+  smoking-example:
+    habit-name: smoking
+    usage-amount: 2
+    usage-unit: pack
+    time-amount: 1
+    time-unit: day
+  gaming-example:
+    habit-name: video games
+    usage-amount: 6
+    usage-unit: hour
+    time-amount: 1
+    time-unit: day
+  drinking-example1:
+    habit-name: beer consumption
+    usage-amount: 6
+    usage-unit: can
+    time-amount: 1
+    time-unit: day
+  drinking-example2:
+    habit-name: coffee consumption
+    usage-amount: 10
+    usage-unit: cup
+    time-amount: 1
+    time-unit: week

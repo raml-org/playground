@@ -1,0 +1,53 @@
+{
+  "name": "response-status-view",
+  "description": "HTTP response status view, including status, headers redirects and timings",
+  "version": "2.0.2",
+  "license": "Apache-2.0",
+  "authors": [
+    "Pawel Psztyc",
+    "The Advanced REST client authors <arc@mulesoft.com>"
+  ],
+  "keywords": [
+    "web-components",
+    "polymer",
+    "response",
+    "status",
+    "view"
+  ],
+  "private": true,
+  "main": "response-status-view.html",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:advanced-rest-client/response-status-view.git"
+  },
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^2.0.0",
+    "paper-icon-button": "PolymerElements/paper-icon-button#^2.2.0",
+    "paper-tabs": "PolymerElements/paper-tabs#^2.1.0",
+    "iron-pages": "PolymerElements/iron-pages#^2.1.0",
+    "headers-list-view": "advanced-rest-client/headers-list-view#^2.0.0",
+    "request-timings": "advanced-rest-client/request-timings#^2.0.0",
+    "arc-icons": "advanced-rest-client/arc-icons#^2.0.0",
+    "iron-collapse": "PolymerElements/iron-collapse#^2.2.0",
+    "paper-checkbox": "PolymerElements/paper-checkbox#^2.0.0",
+    "paper-button": "PolymerElements/paper-button#^2.1.0",
+    "iron-icon": "PolymerElements/iron-icon#^2.1.0"
+  },
+  "devDependencies": {
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^2.0.0",
+    "web-component-tester": "Polymer/web-component-tester#^6.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+    "iron-test-helpers": "PolymerElements/iron-test-helpers#^2.0.0",
+    "iron-component-page": "PolymerElements/iron-component-page#^3.0.1",
+    "paper-input": "PolymerElements/paper-input#^2.0.0",
+    "arc-definitions": "advanced-rest-client/arc-definitions#^2.0.0"
+  },
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks"
+  ]
+}

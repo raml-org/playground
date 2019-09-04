@@ -1,0 +1,34 @@
+#%RAML 1.0
+title: Omni Channel Experience API
+version: 1.0.0
+baseUri: http://localhost:8081/api
+mediaType: [ application/json ]
+
+/root:
+  /posts:
+    get:
+    /{postId}:
+      get:
+      /comments:
+        get:
+        /{commentId}:
+  /pictures:
+    get:
+    /{picture}:
+      get:
+      /likes:
+        get:
+        /{likeId}:
+          get:
+  /addresses/{adressId}:
+    get:
+    /postals:
+      get:
+      /{postalId}:
+        get:
+/other:
+  description: test
+  /{param1}/{param2}:
+    get:
+    /posts:
+      get:
