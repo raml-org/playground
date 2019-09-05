@@ -38794,9 +38794,9 @@ class ViewModel extends common_view_model_1.CommonViewModel {
       }).then(graph => {
         var apiCons = document.querySelector('api-console');
         apiCons.amfModel = JSON.parse(graph);
-      }); // .catch((err) => {
-      //   console.error(`Failed to parse file: ${err}`)
-      // })
+      }).catch(err => {
+        console.error(`Failed to parse file: ${err}`);
+      });
     });
   }
 

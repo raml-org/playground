@@ -16,6 +16,14 @@ export class ViewModel extends CommonViewModel {
         .then((parsedModel) => {
           this.model = new ModelProxy(parsedModel, 'raml')
           this.ramlEditor.setValue(parsedModel.raw)
+          return wap.raml10.resolve(parsedModel)
+        })
+        .then(resModel => {
+          return wap.amfGraph.generateString(resModel)
+        })
+        .then(graph => {
+          var apiCons = document.querySelector('api-console')
+          apiCons.amfModel = JSON.parse(graph)
         })
         .catch((err) => {
           console.error(`Failed to parse file: ${err}`)
