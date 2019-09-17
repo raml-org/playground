@@ -7492,11 +7492,11 @@ header {
   .raml-editor .editor-block {
     box-shadow: 1px 0px 3px #808080; }
     .raml-editor .editor-block .monaco-editor .monaco-editor-hover {
-      background-color: #F7FAFF !important;
-      border-color: #DBE8FD !important; }
+      margin-left: 10%; }
     .raml-editor .editor-block .monaco-editor .selected-line-editor-decoration {
       background-color: #DBE8FD;
-      width: 7px !important; }
+      width: 7px !important;
+      margin-left: 1px; }
     .raml-editor .editor-block .monaco-editor .editor-scrollable .view-lines .mtk26, .raml-editor .editor-block .monaco-editor .editor-scrollable .view-lines .mtk23, .raml-editor .editor-block .monaco-editor .editor-scrollable .view-lines .mtk21 {
       font-family: 'RobotoMono-Regular';
       font-weight: 500; }

@@ -620,12 +620,12 @@ header{
     box-shadow: 1px 0px 3px #808080;
     .monaco-editor{
       .monaco-editor-hover{
-        background-color: $lighter-gray !important;
-        border-color: $selected-line !important;
+        margin-left: 10%;
       }
       .selected-line-editor-decoration{
         background-color: $selected-line;
         width: 7px !important;
+        margin-left: 1px;
       }
       .editor-scrollable{
         .view-lines{
