@@ -8589,3 +8589,6 @@ header {
 
 .connection-wrap {
   display: none; }
+
+#api-console-container {
+  overflow-y: scroll; }

@@ -41,8 +41,10 @@
                 <link rel="import" href="html_fragments/starter_guide/editor.html">
             </div>
             <div class="column" style="max-width: 50%;">
-                <link rel="import" href="bower_components/api-console/api-console.html">
-                <api-console app drawer-align="end"></api-console>
+              <div id="api-console-container">
+                <link rel="import" href="html_fragments/starter_guide/api-console.html">
+                <api-console app drawer-align="end" no-try-it no-url-editor no-toolbars></api-console>
+              </div>
             </div>
         </div>
     </div>
@@ -113,7 +115,7 @@
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
             var height = document.documentElement.clientHeight;
-            var containersIds = ["editor-container-raml"];
+            var containersIds = ["editor-container-raml", "api-console-container"];
             containersIds.forEach(id => {
               var container = document.getElementById(id);
               var offset = container.getBoundingClientRect().top + 20;
