@@ -21,6 +21,9 @@ function customizeMonaco () {
     tokenizer:{
       root:[
         [/\/.*(?=:)/,"special"],
+        [/#%.*/,"syntaxTag"],
+        [/\![^ ]*/,"tag"],
+        [/#.*/,"rootComment"],
         {include:"@comment"},
         {include:"@whitespace"},
         [/%[^ ]+.*$/,"meta.directive"],
