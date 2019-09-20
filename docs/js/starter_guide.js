@@ -38784,16 +38784,14 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     super();
     this.ramlEditor = ramlEditor;
     this.base = window.location.href.toString().split('/starter_guide.html')[0];
+    this.wapModel = undefined;
+    ramlEditor.onDidChangeModelContent(this.changeModelContent('ramlChangesFromLastUpdate', 'raml'));
     this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
       return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
-        this.model = new model_proxy_1.ModelProxy(parsedModel, 'raml');
-        this.ramlEditor.setValue(parsedModel.raw);
-        return webapi_parser_1.WebApiParser.raml10.resolve(parsedModel);
-      }).then(resModel => {
-        return webapi_parser_1.WebApiParser.amfGraph.generateString(resModel);
-      }).then(graph => {
-        var apiCons = document.querySelector('api-console');
-        apiCons.amfModel = JSON.parse(graph);
+        this.wapModel = parsedModel;
+        this.model = new model_proxy_1.ModelProxy(this.wapModel, 'raml');
+        this.ramlEditor.setValue(this.wapModel.raw);
+        return this.resetApiConsole();
       }).catch(err => {
         console.error(`Failed to parse file: ${err}`);
       });
@@ -38811,9 +38809,44 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     this.loadModal.save();
   }
 
-  parseEditorSection(section) {}
+  parseEditorSection(section) {
+    console.log(`Parsing text from editor section '${section}'`);
+    let value = this.ramlEditor.getModel().getValue();
 
-  updateEditorsModels() {}
+    if (!value) {
+      return;
+    } // Don't parse editor content if it's empty
+
+
+    return webapi_parser_1.WebApiParser.raml10.parse(value).then(model => {
+      this.wapModel = model;
+      this.model = new model_proxy_1.ModelProxy(this.wapModel, section);
+      this.updateEditorsModels();
+    });
+  }
+
+  updateEditorsModels() {
+    console.log(`Updating editors models`);
+
+    if (this.model === null || this.model.raw === null) {
+      return;
+    }
+
+    this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'));
+    this.resetApiConsole();
+  }
+
+  resetApiConsole() {
+    return webapi_parser_1.WebApiParser.raml10.resolve(this.wapModel).then(resolved => {
+      return webapi_parser_1.WebApiParser.amfGraph.generateString(resolved);
+    }).then(graph => {
+      const apic = document.querySelector('api-console');
+      apic.amfModel = JSON.parse(graph);
+      apic.page = 'docs';
+      apic.selectedShape = 'summary';
+      apic.selectedShapeType = 'summary';
+    });
+  }
 
 }
 
