@@ -1,9 +1,0 @@
-{
-  "demo-api/demo-api.raml": "RAML 1.0",
-  "caro-api/caro-api.raml": "RAML 1.0",
-  "array-example/array-example.raml": "RAML 1.0",
-  "data-types-union/data-types-union.raml": "RAML 1.0",
-  "raml-types/raml-types.raml": "RAML 1.0",
-  "examples-api/examples-api.raml": "RAML 1.0",
-  "SE-11508/SE-11508.raml": "RAML 1.0"
-}

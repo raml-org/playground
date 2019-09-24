@@ -13,6 +13,12 @@
     <script src="js/monaco-customize.js"></script>
     <script src="js/monaco-hover-utils.js" type="text/javascript"></script>
 
+    <!-- API Documentation -->
+    <script type="module">
+      import './node_modules/@api-components/api-documentation/api-documentation.js';
+    </script>
+    <!-- /API Documentation -->
+
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/all.min.css">
@@ -42,8 +48,7 @@
             </div>
             <div class="column" style="max-width: 50%;">
               <div id="api-console-container">
-                <link rel="import" href="html_fragments/starter_guide/api-console.html">
-                <api-console app drawer-align="end" no-try-it no-url-editor no-toolbars></api-console>
+                <api-documentation></api-documentation>
               </div>
             </div>
         </div>

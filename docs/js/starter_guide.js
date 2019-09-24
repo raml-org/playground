@@ -38840,11 +38840,10 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     return webapi_parser_1.WebApiParser.raml10.resolve(this.wapModel).then(resolved => {
       return webapi_parser_1.WebApiParser.amfGraph.generateString(resolved);
     }).then(graph => {
-      const apic = document.querySelector('api-console');
-      apic.amfModel = JSON.parse(graph);
-      apic.page = 'docs';
-      apic.selectedShape = 'summary';
-      apic.selectedShapeType = 'summary';
+      const apid = document.querySelector('api-documentation');
+      apid.amf = JSON.parse(graph);
+      apid.selected = 'summary';
+      apid.selectedType = 'summary';
     });
   }
 

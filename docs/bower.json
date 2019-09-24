@@ -25,7 +25,6 @@
     "lodash": "^4.17.11",
     "dagre": "^0.8.4",
     "webcomponentsjs": "^2.2.10",
-    "rest": "^2.0.0",
-    "api-console": "mulesoft/api-console#^5.0.2"
+    "rest": "^2.0.0"
   }
 }

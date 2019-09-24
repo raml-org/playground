@@ -1,6 +1,0 @@
-{
-  "demo-api/demo-api.raml": "RAML 1.0",
-  "appian-api/appian-api.raml": "RAML 1.0",
-  "nexmo-sms-api/nexmo-sms-api.raml": "RAML 1.0",
-  "exchange-experience-api/exchange-experience-api.raml": "RAML 0.8"
-}

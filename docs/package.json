@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@api-components/api-documentation": "^3.0.1"
+  }
+}

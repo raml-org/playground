@@ -66,11 +66,10 @@ export class ViewModel extends CommonViewModel {
         return wap.amfGraph.generateString(resolved)
       })
       .then(graph => {
-        const apic = document.querySelector('api-console')
-        apic.amfModel = JSON.parse(graph)
-        apic.page = 'docs'
-        apic.selectedShape = 'summary'
-        apic.selectedShapeType = 'summary'
+        const apid = document.querySelector('api-documentation')
+        apid.amf = JSON.parse(graph)
+        apid.selected = 'summary'
+        apid.selectedType = 'summary'
       })
   }
 }
