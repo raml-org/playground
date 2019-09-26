@@ -38842,8 +38842,9 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     }).then(graph => {
       const apid = document.querySelector('api-documentation');
       apid.amf = JSON.parse(graph);
-      apid.selected = 'summary';
-      apid.selectedType = 'summary';
+      console.log(graph);
+      apid.selected = 'http://a.ml/amf/default_document#/web-api/end-points/%2Fsongs%2F%7BsongId%7D';
+      apid.selectedType = 'endpoint';
     });
   }
 

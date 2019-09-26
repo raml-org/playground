@@ -432,3 +432,12 @@
 
 
 
+## [3.0.1](https://github.com/advanced-rest-client/response-body-view/compare/0.1.22...3.0.1) (2019-08-30)
+
+
+### Bug Fixes
+
+* fixing audit errors ([c54c5da](https://github.com/advanced-rest-client/response-body-view/commit/c54c5da))
+
+
+

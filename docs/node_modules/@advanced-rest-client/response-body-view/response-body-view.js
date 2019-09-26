@@ -449,7 +449,7 @@ export class ResponseBodyView extends LitElement {
       return raw;
     }
     if (raw && raw.type === 'Buffer') {
-      raw = new Uint16Array(raw.data);
+      raw = new Uint8Array(raw.data);
     }
     const ce = this.charset || 'utf-8';
     const decoder = new TextDecoder(ce);

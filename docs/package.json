@@ -1,5 +1,20 @@
+/*
+  To make @api-components/api-documentation work with current set up:
+    1. Run: npm install @api-components/api-documentation
+    2. Open in editor: node_modules/@api-components/api-documentation/package.json
+    3. Add "module": "api-documentation.js" to opened package.json
+    4. Run "npm install" again to trigger "pika install". Or run it manually.
+*/
 {
   "dependencies": {
-    "@api-components/api-documentation": "^3.0.1"
+    "@api-components/api-documentation": "^3.0.1",
+    "codemirror": "^5.49.0",
+    "jsonlint": "^1.6.3"
+  },
+  "scripts": {
+    "prepare": "pika install"
+  },
+  "devDependencies": {
+    "@pika/web": "^0.6.1"
   }
 }
