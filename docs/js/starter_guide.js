@@ -37897,7 +37897,12 @@ class ApiConsole {
     }];
     this.elsRanges = [];
     creds.forEach(cred => {
-      wapModel.findByType(cred.type).filter(el => !!el.position).forEach(el => {
+      wapModel.findByType(cred.type).filter(el => {
+        let hasPosition = !!el.position;
+        let notLink = !el.isLink;
+        let notInherited = !el.inherits || el.inherits && el.inherits.length === 0;
+        return hasPosition && notLink && notInherited;
+      }).forEach(el => {
         this.elsRanges.push({
           rng: el.position,
           blockSize: el.position.end.line - el.position.start.line,
@@ -37944,6 +37949,7 @@ class ApiConsole {
     if (nearest !== undefined && this.container.selected !== nearest.id) {
       this.container.selected = nearest.id;
       this.container.selectedType = nearest.selectedType;
+      console.log(nearest.selectedType, nearest.id); // DEBUG
     }
   }
 
