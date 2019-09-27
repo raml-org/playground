@@ -192,9 +192,6 @@
           ramlEditor.getModel().updateOptions({ tabSize: 2 });
 
           hoverUtils.loadLanguages('json', 'xml', 'yaml')
-          monaco.languages.registerHoverProvider('raml', {
-            provideHover: (m, p) => hoverUtils.provideHover(m, p)
-          });
           monaco.languages.registerLinkProvider('raml', {
             provideLinks: (m, t) => hoverUtils.provideLinks(m, t)
           })
@@ -203,6 +200,13 @@
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
           window.appModel.loadInitialDocument();
+
+          monaco.languages.registerHoverProvider('raml', {
+            provideHover: (m, p) => {
+              window.appModel.apiConsole.switchSelected(p)
+              return hoverUtils.provideHover(m, p)
+            }
+          });
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

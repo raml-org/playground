@@ -1,4 +1,5 @@
 import { ModelProxy } from '../main/model_proxy'
+import { ApiConsole } from '../main/api_console'
 import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
 import { CommonViewModel } from '../view_models/common_view_model'
 import { WebApiParser as wap } from 'webapi-parser'
@@ -9,9 +10,12 @@ export type ModelType = 'raml';
 export class ViewModel extends CommonViewModel {
   public base = window.location.href.toString().split('/starter_guide.html')[0];
   public wapModel: any = undefined;
+  public apiConsole: ApiConsole;
 
   constructor (public ramlEditor: any) {
     super()
+
+    this.apiConsole = new ApiConsole()
 
     ramlEditor.onDidChangeModelContent(this.changeModelContent(
       'ramlChangesFromLastUpdate', 'raml'))
@@ -19,7 +23,9 @@ export class ViewModel extends CommonViewModel {
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return this.parseRamlInput(evt.location)
         .then(this.updateEditorsModels.bind(this))
-        .then(this.resetApiConsole.bind(this))
+        .then(() => {
+          return this.apiConsole.reset(this.wapModel)
+        })
     })
   }
 
@@ -50,8 +56,9 @@ export class ViewModel extends CommonViewModel {
     let value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     return this.parseRamlInput(value)
-      .then(this.updateEditorsModels.bind(this))
-      .then(this.resetApiConsole.bind(this))
+      .then(() => {
+        return this.apiConsole.reset(this.wapModel)
+      })
   }
 
   protected updateEditorsModels () {
@@ -59,19 +66,6 @@ export class ViewModel extends CommonViewModel {
     if (this.model === null || this.model.raw === null) {
       return
     }
-    this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
-  }
-
-  private resetApiConsole () {
-    return wap.raml10.resolve(this.wapModel)
-      .then(resolved => {
-        return wap.amfGraph.generateString(resolved)
-      })
-      .then(graph => {
-        const apid = document.querySelector('api-documentation')
-        apid.amf = JSON.parse(graph)
-        apid.selected = 'summary'
-        apid.selectedType = 'summary'
-      })
+    this.ramlEditor.setValue(this.model.raw)
   }
 }
