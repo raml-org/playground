@@ -38787,14 +38787,17 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     this.wapModel = undefined;
     ramlEditor.onDidChangeModelContent(this.changeModelContent('ramlChangesFromLastUpdate', 'raml'));
     this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
-      return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
-        this.wapModel = parsedModel;
-        this.model = new model_proxy_1.ModelProxy(this.wapModel, 'raml');
-        this.ramlEditor.setValue(this.wapModel.raw);
-        return this.resetApiConsole();
-      }).catch(err => {
-        console.error(`Failed to parse file: ${err}`);
-      });
+      return this.commonParse(evt.location);
+    });
+  }
+
+  commonParse(inp) {
+    return webapi_parser_1.WebApiParser.raml10.parse(inp).then(parsedModel => {
+      this.wapModel = parsedModel;
+      this.model = new model_proxy_1.ModelProxy(this.wapModel, 'raml');
+      return this.updateEditorsModels();
+    }).catch(err => {
+      console.error(`Failed to parse: ${err}`);
     });
   }
 
@@ -38818,11 +38821,7 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     } // Don't parse editor content if it's empty
 
 
-    return webapi_parser_1.WebApiParser.raml10.parse(value).then(model => {
-      this.wapModel = model;
-      this.model = new model_proxy_1.ModelProxy(this.wapModel, section);
-      this.updateEditorsModels();
-    });
+    return this.commonParse(value);
   }
 
   updateEditorsModels() {
@@ -38842,9 +38841,8 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     }).then(graph => {
       const apid = document.querySelector('api-documentation');
       apid.amf = JSON.parse(graph);
-      console.log(graph);
-      apid.selected = 'http://a.ml/amf/default_document#/web-api/end-points/%2Fsongs%2F%7BsongId%7D';
-      apid.selectedType = 'endpoint';
+      apid.selected = 'summary';
+      apid.selectedType = 'summary';
     });
   }
 

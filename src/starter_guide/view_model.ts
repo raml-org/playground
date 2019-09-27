@@ -17,17 +17,20 @@ export class ViewModel extends CommonViewModel {
       'ramlChangesFromLastUpdate', 'raml'))
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
-      return wap.raml10.parse(evt.location)
-        .then(parsedModel => {
-          this.wapModel = parsedModel
-          this.model = new ModelProxy(this.wapModel, 'raml')
-          this.ramlEditor.setValue(this.wapModel.raw)
-          return this.resetApiConsole()
-        })
-        .catch((err) => {
-          console.error(`Failed to parse file: ${err}`)
-        })
+      return this.parseRamlInput(evt.location)
     })
+  }
+
+  public parseRamlInput (inp) {
+    return wap.raml10.parse(inp)
+      .then(parsedModel => {
+        this.wapModel = parsedModel
+        this.model = new ModelProxy(this.wapModel, 'raml')
+        return this.updateEditorsModels()
+      })
+      .catch(err => {
+        console.error(`Failed to parse: ${err}`)
+      })
   }
 
   public loadInitialDocument () {
@@ -45,12 +48,9 @@ export class ViewModel extends CommonViewModel {
     console.log(`Parsing text from editor section '${section}'`)
     let value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
-    return wap.raml10.parse(value).then(model => {
-      this.wapModel = model
-      this.model = new ModelProxy(this.wapModel, section as 'raml')
-      this.updateEditorsModels()
-    })
+    return this.parseRamlInput(value)
   }
+
   protected updateEditorsModels () {
     console.log(`Updating editors models`)
     if (this.model === null || this.model.raw === null) {
