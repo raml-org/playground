@@ -1,5 +1,4 @@
-import { WebApiParser as wap, core } from 'webapi-parser'
-
+import { WebApiParser as wap } from 'webapi-parser'
 
 export class ApiConsole {
   public elsRanges: any[]
@@ -11,7 +10,7 @@ export class ApiConsole {
     this.reloadContainer()
   }
 
-  reloadContainer() {
+  reloadContainer () {
     this.container = document.querySelector('api-documentation')
     return this.container
   }
@@ -30,11 +29,11 @@ export class ApiConsole {
   /* Collects elements ranges info. */
   collectElementsRanges (wapModel: any) {
     const creds = [
-      {type: 'http://www.w3.org/ns/shacl#NodeShape', selectedType: 'type'},
-      {type: 'http://a.ml/vocabularies/http#EndPoint', selectedType: 'endpoint'},
-      {type: 'http://www.w3.org/ns/hydra/core#Operation', selectedType: 'method'},
-      {type: 'http://a.ml/vocabularies/security#SecurityScheme', selectedType: 'security'},
-      {type: 'http://schema.org/CreativeWork', selectedType: 'documentation'}
+      { type: 'http://www.w3.org/ns/shacl#NodeShape', selectedType: 'type' },
+      { type: 'http://a.ml/vocabularies/http#EndPoint', selectedType: 'endpoint' },
+      { type: 'http://www.w3.org/ns/hydra/core#Operation', selectedType: 'method' },
+      { type: 'http://a.ml/vocabularies/security#SecurityScheme', selectedType: 'security' },
+      { type: 'http://schema.org/CreativeWork', selectedType: 'documentation' }
     ]
     this.elsRanges = []
     creds.forEach(cred => {
