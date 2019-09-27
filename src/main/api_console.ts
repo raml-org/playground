@@ -58,7 +58,6 @@ export class ApiConsole {
   */
   findNearestElement (pos: monaco.Position): any | undefined {
     let withinRange = this.elsRanges.filter(el => {
-      console.log(el.id, el.rng.start.line, pos.lineNumber, el.rng.end.line) // DEBUG
       return (
         pos.lineNumber >= el.rng.start.line &&
         pos.lineNumber < el.rng.end.line
@@ -84,7 +83,6 @@ export class ApiConsole {
     if (nearest !== undefined && this.container.selected !== nearest.id) {
       this.container.selected = nearest.id
       this.container.selectedType = nearest.selectedType
-      console.log(nearest.selectedType, nearest.id) // DEBUG
     }
   }
 }
