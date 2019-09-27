@@ -38491,6 +38491,13 @@ class ModelProxy {
     }
   }
 
+  collectElementsRanges() {
+    let elType = 'http://a.ml/vocabularies/document#DomainElement';
+    this.elsRanges = this.model.findByType(elType).map(el => {
+      return [el.position, el.id];
+    });
+  }
+
 }
 
 exports.ModelProxy = ModelProxy;
@@ -38787,15 +38794,14 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     this.wapModel = undefined;
     ramlEditor.onDidChangeModelContent(this.changeModelContent('ramlChangesFromLastUpdate', 'raml'));
     this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
-      return this.commonParse(evt.location);
+      return this.parseRamlInput(evt.location).then(this.updateEditorsModels.bind(this)).then(this.resetApiConsole.bind(this));
     });
   }
 
-  commonParse(inp) {
+  parseRamlInput(inp) {
     return webapi_parser_1.WebApiParser.raml10.parse(inp).then(parsedModel => {
       this.wapModel = parsedModel;
       this.model = new model_proxy_1.ModelProxy(this.wapModel, 'raml');
-      return this.updateEditorsModels();
     }).catch(err => {
       console.error(`Failed to parse: ${err}`);
     });
@@ -38821,7 +38827,7 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     } // Don't parse editor content if it's empty
 
 
-    return this.commonParse(value);
+    return this.parseRamlInput(value).then(this.updateEditorsModels.bind(this)).then(this.resetApiConsole.bind(this));
   }
 
   updateEditorsModels() {
@@ -38832,7 +38838,6 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     }
 
     this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'));
-    this.resetApiConsole();
   }
 
   resetApiConsole() {

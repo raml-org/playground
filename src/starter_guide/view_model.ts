@@ -18,6 +18,8 @@ export class ViewModel extends CommonViewModel {
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return this.parseRamlInput(evt.location)
+        .then(this.updateEditorsModels.bind(this))
+        .then(this.resetApiConsole.bind(this))
     })
   }
 
@@ -26,7 +28,6 @@ export class ViewModel extends CommonViewModel {
       .then(parsedModel => {
         this.wapModel = parsedModel
         this.model = new ModelProxy(this.wapModel, 'raml')
-        return this.updateEditorsModels()
       })
       .catch(err => {
         console.error(`Failed to parse: ${err}`)
@@ -49,6 +50,8 @@ export class ViewModel extends CommonViewModel {
     let value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     return this.parseRamlInput(value)
+      .then(this.updateEditorsModels.bind(this))
+      .then(this.resetApiConsole.bind(this))
   }
 
   protected updateEditorsModels () {
@@ -57,7 +60,6 @@ export class ViewModel extends CommonViewModel {
       return
     }
     this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
-    this.resetApiConsole()
   }
 
   private resetApiConsole () {
