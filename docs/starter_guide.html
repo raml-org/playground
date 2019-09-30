@@ -54,13 +54,11 @@
 <div class="section" style="padding: 0px">
     <div id="the-app" class="container is-marginless is-fluid">
         <div class="columns">
-            <div class="column" style="max-width: 50%;">
+            <div class="column">
                 <link rel="import" href="html_fragments/starter_guide/editor.html">
-            </div>
-            <div class="column" style="max-width: 50%;">
-              <div id="api-console-container">
-                <api-documentation></api-documentation>
-              </div>
+                <div id="api-console-container">
+                  <api-documentation noTryIt="true"></api-documentation>
+                </div>
             </div>
         </div>
     </div>
@@ -131,12 +129,16 @@
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
             var height = document.documentElement.clientHeight;
-            var containersIds = ["editor-container-raml", "api-console-container"];
+            var containersIds = ["editor-container-raml"];
             containersIds.forEach(id => {
               var container = document.getElementById(id);
               var offset = container.getBoundingClientRect().top + 20;
               container.setAttribute("style", "height: " + (height - offset) + "px");
             })
+            var container = document.getElementById("api-console-container");
+            var offset = container.getBoundingClientRect().top + 40;
+            container.setAttribute("style", "height: " + (height - offset) + "px");
+
           }
           window.onresize = resize;
           window.resizeFn = resize;

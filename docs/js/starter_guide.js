@@ -37949,7 +37949,6 @@ class ApiConsole {
     if (nearest !== undefined && this.container.selected !== nearest.id) {
       this.container.selected = nearest.id;
       this.container.selectedType = nearest.selectedType;
-      console.log(nearest.selectedType, nearest.id); // DEBUG
     }
   }
 
