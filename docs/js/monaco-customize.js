@@ -24,7 +24,7 @@ function customizeMonaco () {
         [/#%.*/,"syntaxTag"],
         [/\![^ ]*/,"tag"],
         [/#.*/,"rootComment"],
-        [/(get|patch|put|post|delete|head|options)\??:/,"httpMethod"],
+        [/(get|patch|put|post|delete|head|options|trace|connect)\??:/,"httpMethod"],
         {include:"@comment"},
         {include:"@whitespace"},
         [/%[^ ]+.*$/,"meta.directive"],
