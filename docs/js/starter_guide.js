@@ -37950,6 +37950,13 @@ class ApiConsole {
       this.container.selected = nearest.id;
       this.container.selectedType = nearest.selectedType;
     }
+
+    this.changeContainerVisibility(nearest !== undefined);
+  }
+
+  changeContainerVisibility(show) {
+    const container = document.getElementById('api-console-container');
+    container.style.display = show ? 'block' : 'none';
   }
 
 }
