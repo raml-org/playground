@@ -12,11 +12,7 @@
 // tslint:disable:variable-name Describing an API that's defined elsewhere.
 // tslint:disable:no-any describes the API as best we are able today
 
-import {PolymerElement} from '@polymer/polymer/polymer-element.js';
-
-import {afterNextRender} from '@polymer/polymer/lib/utils/render-status.js';
-
-import {html} from '@polymer/polymer/lib/utils/html-tag.js';
+import {html, css, LitElement} from 'lit-element';
 
 import {AmfHelperMixin} from '@api-components/amf-helper-mixin/amf-helper-mixin.js';
 
@@ -31,7 +27,7 @@ declare namespace ApiElements {
    * To properly compute all the information relevant to method documentation
    * set the following properties:
    *
-   * - amfModel - as AMF's WebApi data model
+   * - amf - as AMF's WebApi data model
    * - endpoint - As AMF's EndPoint data model
    * - method - As AMF's SupportedOperation property
    *
@@ -56,7 +52,7 @@ declare namespace ApiElements {
    * - if `baseUri` is set it uses this value as a base uri for the endpoint
    * - else if `iron-meta` with key `ApiBaseUri` exists and contains a value
    * it uses it uses this value as a base uri for the endpoint
-   * - else if `amfModel` is set then it computes base uri value from main
+   * - else if `amf` is set then it computes base uri value from main
    * model document
    * Then it concatenates computed base URI with `endpoint`'s path property.
    *
@@ -72,7 +68,7 @@ declare namespace ApiElements {
    * ```
    *
    * Note: The element will not get notified about the change in `iron-meta`.
-   * The change will be reflected whehn `amfModel` or `endpoint` property chnage.
+   * The change will be reflected whehn `amf` or `endpoint` property chnage.
    *
    * ## Styling
    *
@@ -121,21 +117,7 @@ declare namespace ApiElements {
   class ApiMethodDocumentation extends
     AmfHelperMixin(
     Object) {
-
-    /**
-     * Generated AMF json/ld model form the API spec.
-     * The element assumes the object of the first array item to be a
-     * type of `"http://raml.org/vocabularies/document#Document`
-     * on AMF vocabulary.
-     *
-     * It is only usefult for the element to resolve references.
-     */
-    amfModel: object|any[]|null;
-
-    /**
-     * `raml-aware` scope property to use.
-     */
-    aware: string|null|undefined;
+    legacy: boolean|null|undefined;
 
     /**
      * AMF method definition as a `http://www.w3.org/ns/hydra/core#supportedOperation`
@@ -150,6 +132,25 @@ declare namespace ApiElements {
     endpoint: object|null|undefined;
 
     /**
+     * A property to set to override AMF's model base URI information.
+     * When this property is set, the `endpointUri` property is recalculated.
+     */
+    baseUri: string|null|undefined;
+
+    /**
+     * Computed value of `http://www.w3.org/ns/hydra/core#expects`
+     * of AMF model from current `method`
+     */
+    expects: object|null|undefined;
+    readonly _titleHidden: any;
+    readonly _exampleGenerator: any;
+
+    /**
+     * `raml-aware` scope property to use.
+     */
+    aware: string|null|undefined;
+
+    /**
      * The try it button is not rendered when set.
      */
     noTryIt: boolean|null|undefined;
@@ -158,131 +159,93 @@ declare namespace ApiElements {
      * Computed value from the method model, name of the method.
      * It is either a `displayName` or HTTP method name
      */
-    readonly methodName: string|null|undefined;
+    methodName: string|null|undefined;
 
     /**
      * HTTP method name string.
      *
      * It is computed from `endpoint`.
      */
-    readonly httpMethod: string|null|undefined;
-
-    /**
-     * A property to set to override AMF's model base URI information.
-     * When this property is set, the `endpointUri` property is recalculated.
-     */
-    baseUri: string|null|undefined;
+    httpMethod: string|null|undefined;
 
     /**
      * Computed value, API version name
      */
-    readonly apiVersion: string|null|undefined;
+    apiVersion: string|null|undefined;
 
     /**
      * Endpoint URI to display in main URL field.
-     * This value is computed when `amfModel`, `endpoint` or `baseUri` change.
+     * This value is computed when `amf`, `endpoint` or `baseUri` change.
      */
-    readonly endpointUri: string|null|undefined;
+    endpointUri: string|null|undefined;
 
     /**
      * Computed value of method description from `method` property.
      */
-    readonly description: string|null|undefined;
+    description: string|null|undefined;
 
     /**
      * Computed value from current `method`. True if the model contains
      * custom properties (annotations in RAML).
      */
-    readonly hasCustomProperties: boolean|null|undefined;
-
-    /**
-     * Computed value of `http://www.w3.org/ns/hydra/core#expects`
-     * of AMF model from current `method`
-     */
-    readonly expects: object|null|undefined;
+    hasCustomProperties: boolean|null|undefined;
 
     /**
      * Computed value of the `http://raml.org/vocabularies/http#server`
-     * from `amfModel`
+     * from `amf`
      */
-    readonly server: object|null|undefined;
+    server: object|null|undefined;
 
     /**
      * API base URI parameters defined in AMF api model
      */
-    readonly serverVariables: any[]|null|undefined;
+    serverVariables: any[]|null|undefined;
 
     /**
      * Endpoint's path parameters.
      */
-    readonly endpointVariables: any[]|null|undefined;
+    endpointVariables: any[]|null|undefined;
 
     /**
      * Computed value if server and endpoint definition of API model has
      * defined any variables.
      */
-    readonly hasPathParameters: boolean|null|undefined;
+    hasPathParameters: boolean|null|undefined;
 
     /**
      * Computed value of method's query parameters.
      */
-    readonly queryParameters: any[]|null|undefined;
-
-    /**
-     * Computed value if server definition of API model has defined
-     * variables.
-     */
-    readonly hasQueryParameters: boolean|null|undefined;
+    queryParameters: any[]|null|undefined;
 
     /**
      * Computed value, true when either has path or query parameters.
      * This renders `api-parameters-document` if true.
      */
-    readonly hasParameters: boolean|null|undefined;
+    hasParameters: boolean|null|undefined;
 
     /**
      * Computed value of AMF payload definition from `expects`
      * property.
      */
-    readonly payload: object|null|undefined;
-
-    /**
-     * Computed value, true if `payload` has values.
-     */
-    readonly hasPayload: boolean|null|undefined;
+    payload: any[]|null|undefined;
 
     /**
      * Computed value of AMF payload definition from `expects`
      * property.
      */
-    readonly headers: object|null|undefined;
-
-    /**
-     * Computed value, true if `payload` has values.
-     */
-    readonly hasHeaders: boolean|null|undefined;
+    headers: any[]|null|undefined;
 
     /**
      * Computed value of AMF response definition from `returns`
      * property.
      */
-    readonly returns: object|null|undefined;
-
-    /**
-     * Computed value, true if `returns` has values.
-     */
-    readonly hasReturns: boolean|null|undefined;
+    returns: any[]|null|undefined;
 
     /**
      * Computed value of AMF security definition from `method`
      * property.
      */
-    readonly security: object|null|undefined;
-
-    /**
-     * Computed value, true if `returns` has values.
-     */
-    readonly hasSecurity: boolean|null|undefined;
+    security: any[]|null|undefined;
 
     /**
      * If set it will renders the view in the narrow layout.
@@ -296,30 +259,15 @@ declare namespace ApiElements {
     previous: object|null|undefined;
 
     /**
-     * Computed value, true if `previous` is set
-     */
-    readonly hasPreviousLink: boolean|null|undefined;
-
-    /**
      * Model to generate a link to next HTTP method.
      * It should contain `id` and `label` properties
      */
     next: object|null|undefined;
 
     /**
-     * Computed value, true if `next` is set
-     */
-    readonly hasNextLink: boolean|null|undefined;
-
-    /**
-     * Computed value, true to render bottom navigation
-     */
-    readonly hasPagination: boolean|null|undefined;
-
-    /**
      * When set code snippets are rendered.
      */
-    snippetsOpened: boolean|null|undefined;
+    _snippetsOpened: boolean|null|undefined;
 
     /**
      * When set security details are rendered.
@@ -339,17 +287,34 @@ declare namespace ApiElements {
     /**
      * List of traits and resource types, if any.
      */
-    readonly extendsTypes: Array<object|null>|null;
+    extendsTypes: Array<object|null>|null;
 
     /**
      * List of traits appied to this endpoint
      */
-    readonly traits: Array<object|null>|null;
+    traits: Array<object|null>|null;
 
     /**
-     * Computed value, true if the endpoint has traits.
+     * Enables compatibility with Anypoint components.
      */
-    readonly hasTraits: boolean|null|undefined;
+    compatibility: boolean|null|undefined;
+
+    /**
+     * When enabled it renders external types as links and dispatches
+     * `api-navigation-selection-changed` when clicked.
+     */
+    graph: boolean|null|undefined;
+
+    /**
+     * OAS summary field.
+     */
+    methodSummary: string|null|undefined;
+    _renderSnippets: boolean|null|undefined;
+
+    /**
+     * When set it hiddes bottom navigation links
+     */
+    noNavigation: boolean|null|undefined;
 
     /**
      * Tries to find an example value (whether it's default value or from an
@@ -358,6 +323,13 @@ declare namespace ApiElements {
      * @param item A http://raml.org/vocabularies/http#Parameter property
      */
     _computePropertyValue(item: object|null): String|null|undefined;
+    _methodChanged(): void;
+    _endpointChanged(): void;
+    _processModelChange(): void;
+    _processMethodChange(): void;
+    _processEndpointChange(): void;
+    _expectsChanged(expects: any): void;
+    _processEndpointVariables(): void;
 
     /**
      * Computes value for `methodName` property.
@@ -385,31 +357,9 @@ declare namespace ApiElements {
     _computeHasPathParameters(sVars: any[]|null, eVars: any[]|null): Boolean|null;
 
     /**
-     * Computes value for `hasParameters` property.
-     *
-     * @returns True if any argument is true
-     */
-    _computeHasParameters(hasPath: Boolean|null, hasQuery: Boolean|null): Boolean|null;
-
-    /**
      * "Try it" button click handler. Dispatches `tryit-requested` custom event
      */
     _tryIt(): void;
-
-    /**
-     * Computes value for `hasPreviousLink` property
-     */
-    _computeHasPreviousLink(previous: object|null): Boolean|null;
-
-    /**
-     * Computes value for `hasNextLink` property
-     */
-    _computeHasNextLink(next: object|null): Boolean|null;
-
-    /**
-     * Computes value for `hasPagination` property
-     */
-    _computeHasNavigation(previous: Boolean|null, next: Boolean|null): Boolean|null;
 
     /**
      * Navigates to next method. Calls `_navigate` with id of previous item.
@@ -426,23 +376,11 @@ declare namespace ApiElements {
      * can update their state.
      */
     _navigate(id: String|null, type: String|null): void;
-    _copyUrlClipboard(e: any): void;
 
     /**
      * Toggles code snippets section.
      */
     _toggleSnippets(): void;
-
-    /**
-     * Renders or hides code snippets section.
-     *
-     * @param state Current state of `snippetsOpened`
-     */
-    _snippetsOpenedChanegd(state: Boolean|null): void;
-
-    /**
-     * Removes code snippets element if should not be rendered.
-     */
     _snippetsTransitionEnd(): void;
 
     /**
@@ -475,7 +413,6 @@ declare namespace ApiElements {
      * Computes class for the toggle's button icon.
      */
     _computeToggleIconClass(opened: any): any;
-    _titleHidden(methodName: any, httpMethod: any, noTryIt: any): any;
 
     /**
      * Computes list of "extends" from the shape.
@@ -499,6 +436,19 @@ declare namespace ApiElements {
      * @returns Trait name if defined.
      */
     _computeTraitNames(traits: Array<object|null>|null): String|null|undefined;
+    _apiChanged(e: any): void;
+    render(): any;
+    _getTitleTemplate(): any;
+    _getUrlTemplate(): any;
+    _getTraitsTemplate(): any;
+    _getDescriptionTemplate(): any;
+    _getCodeSnippetsTemplate(): any;
+    _getSecurityTemplate(): any;
+    _getParametersTemplate(): any;
+    _getHeadersTemplate(): any;
+    _getBodyTemplate(): any;
+    _getReturnsTemplate(): any;
+    _getNavigationTemplate(): any;
   }
 }
 

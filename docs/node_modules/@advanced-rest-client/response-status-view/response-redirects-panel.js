@@ -50,7 +50,7 @@ class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
     ];
   }
 
-  _listItemTemplate(item, index) {
+  _listItemTemplate(item, index, narrow) {
     const loc = this._computeRedirectLocation(item.headers);
     return html`<div class="status-label text">
       #<span>${index + 1}</span>
@@ -61,18 +61,20 @@ class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
         <span class="redirect-location">
           to: <a href="${loc}" class="auto-link">${loc}</a></span>
       </div>
-      <headers-list-view .headers="${item.headers}"></headers-list-view>
+      <headers-list-view
+        .headers="${item.headers}"
+        ?narrow="${narrow}"></headers-list-view>
     </div>`;
   }
 
   render() {
-    const { redirects } = this;
+    const { redirects, narrow } = this;
     const hasRedirects = !!(redirects && redirects.length);
     return html`
     ${hasRedirects ?
       redirects.map((item, index) =>
         html`<div class="status-row">
-          ${this._listItemTemplate(item, index)}
+          ${this._listItemTemplate(item, index, narrow)}
           </div>`) :
       html`<div class="no-info-container">
           <p class="no-info">There is no redirects information to display</p>

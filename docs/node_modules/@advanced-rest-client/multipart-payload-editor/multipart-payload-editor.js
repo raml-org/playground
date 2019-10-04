@@ -18,7 +18,7 @@ import { cache } from 'lit-html/directives/cache.js';
 import { ApiFormMixin } from '@api-components/api-form-mixin/api-form-mixin.js';
 import formStyles from '@api-components/api-form-mixin/api-form-styles.js';
 import prismStyles from '@advanced-rest-client/prism-highlight/prism-styles.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { removeCircleOutline } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@polymer/iron-form/iron-form.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
 import '@polymer/paper-toast/paper-toast.js';
@@ -111,6 +111,13 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -167,7 +174,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
         ?compatibility="${compatibility}">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>
     </div>`;
   }

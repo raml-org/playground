@@ -57,4 +57,11 @@ anypoint-input,
 anypoint-masked-input {
   margin: 20px 8px;
 }
+
+.icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
 `;

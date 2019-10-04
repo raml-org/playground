@@ -5,9 +5,8 @@ import formStyles from '@api-components/api-form-mixin/api-form-styles.js';
 import '@polymer/iron-form/iron-form.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
 import '@anypoint-web-components/anypoint-checkbox/anypoint-checkbox.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { addCircleOutline, removeCircleOutline } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@advanced-rest-client/arc-definitions/arc-definitions.js';
-import '@polymer/iron-icon/iron-icon.js';
 import './api-headers-form-item.js';
 /**
  * HTTP headers form build from AMF json/ld model.
@@ -41,6 +40,13 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
       .empty-info {
         color: var(--empty-info-color, rgba(0, 0, 0, 0.74));
         font-size: var(--empty-info-font-size, 16px);
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -99,7 +105,8 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
             ?narrow="${narrow}"
             .noDocs="${noDocs}"
             ?outlined="${outlined}"
-            ?compatibility="${compatibility}">
+            ?compatibility="${compatibility}"
+          >
             <anypoint-icon-button
               title="Remove this header"
               aria-label="Press to remove header ${name}"
@@ -109,8 +116,9 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
               slot="suffix"
               ?disabled="${readOnly}"
               ?outlined="${outlined}"
-              ?compatibility="${compatibility}">
-              <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+              ?compatibility="${compatibility}"
+            >
+              <span class="icon action-icon">${removeCircleOutline}</span>
             </anypoint-icon-button>
           </api-headers-form-item>
         </div>`)}
@@ -123,11 +131,9 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
         @tap="${this.add}"
         title="Add new header"
         aria-label="Press to create a new header"
-        ?disabled="${readOnly}">
-        <iron-icon
-          class="action-icon"
-          icon="arc:add-circle-outline"
-          alt="Add header icon"></iron-icon>
+        ?disabled="${readOnly}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add header
       </anypoint-button>
     </div>` : undefined}

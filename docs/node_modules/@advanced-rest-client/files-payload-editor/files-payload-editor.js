@@ -13,10 +13,9 @@ the License.
 */
 import { LitElement, html, css } from 'lit-element';
 import { ValidatableMixin } from '@anypoint-web-components/validatable-mixin/validatable-mixin.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { insertDriveFile, removeCircleOutline } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-button/anypoint-button.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@polymer/iron-icon/iron-icon.js';
 /**
  * `<files-payload-editor>` A request body editor to add files as a payload.
  *
@@ -72,6 +71,13 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
       display: flex;
       flex-direction: row;
       align-items: center;
+    }
+
+    .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -85,13 +91,14 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
 
     ${hasFile ? html`<div class="list">
       <div class="card">
-        <iron-icon class="file-icon" icon="${this._computeIcon('insert-drive-file')}"></iron-icon>
+        <span class="file-icon icon">${insertDriveFile}</span>
         <span class="file-name">${fileName}</span>
         <anypoint-icon-button
           class="action-icon delete-icon"
           title="Clear file"
-          @click="${this.removeFile}">
-          <iron-icon icon="${this._computeIcon('remove-circle-outline')}"></iron-icon>
+          @click="${this.removeFile}"
+        >
+          <span class="icon">${removeCircleOutline}</span>
         </anypoint-icon-button>
       </div>
     </div>` : undefined}
@@ -117,14 +124,7 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
        *
        * @type {Blob}
        */
-      value: { },
-      /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
-       */
-      iconPrefix: { type: String }
+      value: { }
     };
   }
   /**
@@ -174,10 +174,6 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
     this.addEventListener('value-changed', value);
   }
 
-  constructor() {
-    super();
-    this.iconPrefix = 'arc';
-  }
   /**
    * Returns a reference to the input element.
    *
@@ -353,14 +349,6 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
    */
   clearCache() {
     this.latestFile = undefined;
-  }
-
-  _computeIcon(name) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + name;
   }
 }
 window.customElements.define('files-payload-editor', FilesPayloadEditor);

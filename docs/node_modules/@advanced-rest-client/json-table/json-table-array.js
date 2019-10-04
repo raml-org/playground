@@ -17,8 +17,7 @@ import '@anypoint-web-components/anypoint-dropdown-menu/anypoint-dropdown-menu.j
 import '@anypoint-web-components/anypoint-listbox/anypoint-listbox.js';
 import '@anypoint-web-components/anypoint-item/anypoint-item.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@polymer/iron-icon/iron-icon.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { chevronLeft, chevronRight } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import './json-table-object.js';
 import './json-table-primitive-teaser.js';
 /**
@@ -119,6 +118,13 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
      display: flex;
      flex-direction: row;
      align-items: center;
+   }
+
+   .icon {
+     width: 24px;
+     height: 24px;
+     fill: currentColor;
+     display: inline-block;
    }`;
   }
 
@@ -133,10 +139,10 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
         <anypoint-dropdown-menu
           nolabelfloat
           ?outlined="${outlined}"
-          ?legacy="${compatibility}">
+          ?compatibility="${compatibility}">
           <label slot="label">Select</label>
           <anypoint-listbox
-            ?legacy="${compatibility}"
+            ?compatibility="${compatibility}"
             slot="dropdown-content"
             attrforselected="data-value"
             .selected="${itemsPerPage}"
@@ -158,15 +164,15 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
           aria-label="Activate to render previous page"
           @click="${this.previousPage}"
           ?disabled="${this._isDisabedPrevious(page)}"
-          ?legacy="${compatibility}">
-          <iron-icon icon="arc:chevron-left"></iron-icon>
+          ?compatibility="${compatibility}">
+          <span class="icon">${chevronLeft}</span>
         </anypoint-icon-button>
         <anypoint-icon-button
           aria-label="Activate to render next page"
           @click="${this.nextPage}"
           ?disabled="${this._isDisabedNext(_maxItemsLabel, _endItemLabel)}"
-          ?legacy="${compatibility}">
-          <iron-icon icon="arc:chevron-right"></iron-icon>
+          ?compatibility="${compatibility}">
+          <span class="icon">${chevronRight}</span>
         </anypoint-icon-button>
       </div>
     </div>`;

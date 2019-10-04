@@ -3,7 +3,6 @@ import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixi
 import '@api-components/raml-aware/raml-aware.js';
 import markdownStyles from '@advanced-rest-client/markdown-styles/markdown-styles.js';
 import '@advanced-rest-client/arc-marked/arc-marked.js';
-import '@polymer/iron-flex-layout/iron-flex-layout.js';
 import '@api-components/api-annotation-document/api-annotation-document.js';
 import '@api-components/api-parameters-document/api-parameters-document.js';
 import '@api-components/api-headers-document/api-headers-document.js';
@@ -94,7 +93,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     ${hasCustomProperties ? html`<api-annotation-document
       .shape="${security}"></api-annotation-document>`:undefined}
 
-    ${description ? html`<arc-marked .markdown="${description}">
+    ${description ? html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>`:undefined}
 

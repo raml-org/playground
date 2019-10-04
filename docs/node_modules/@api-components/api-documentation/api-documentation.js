@@ -133,7 +133,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _methodTemplate() {
-    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, baseUri, noTryIt, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, baseUri, noTryIt, graph, noBottomNavigation } = this;
     const prev = this._computeMethodPrevious(amf, selected);
     const next = this._computeMethodNext(amf, selected);
     return html`<api-method-documentation
@@ -147,6 +147,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .baseUri="${baseUri}"
       .noTryIt="${noTryIt}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       rendersecurity
       rendercodesnippets></api-method-documentation>`;
   }
@@ -158,7 +159,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _inlineEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, outlined, selected, baseUri, scrollTarget, redirectUri, noUrlEditor, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, outlined, selected, baseUri, scrollTarget, redirectUri, noUrlEditor, graph, noBottomNavigation } = this;
     const prev = this._computeEndpointPrevious(amf, selected, true);
     const next = this._computeEndpointNext(amf, selected, true);
     return html`<api-endpoint-documentation
@@ -175,12 +176,13 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .redirectUri="${redirectUri}"
       .noUrlEditor="${noUrlEditor}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       notryit
       inlinemethods></api-endpoint-documentation>`;
   }
 
   _simpleEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, selected, baseUri, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, selected, baseUri, graph, noBottomNavigation } = this;
     const prev = this._computeEndpointPrevious(amf, selected);
     const next = this._computeEndpointNext(amf, selected);
 
@@ -194,6 +196,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .next="${next}"
       .baseUri="${baseUri}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       ></api-endpoint-documentation>`;
   }
 
@@ -294,7 +297,11 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       /**
        * Computed value of currently rendered endpoint.
        */
-      _endpoint: { type: Object }
+      _endpoint: { type: Object },
+      /**
+       * When set it hiddes bottom navigation links
+       */
+      noBottomNavigation: { type: Boolean }
     };
   }
 

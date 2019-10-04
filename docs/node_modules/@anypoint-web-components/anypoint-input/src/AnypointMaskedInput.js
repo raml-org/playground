@@ -1,12 +1,24 @@
-import { html } from 'lit-element';
+import { html, css } from 'lit-element';
 import { AnypointInput } from './AnypointInput.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
-import '@polymer/iron-icon/iron-icon.js';
+import { visibilityOff, visibility } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
 
 export class AnypointMaskedInput extends AnypointInput {
+  static get styles() {
+    return [
+      AnypointInput.styles,
+      css`
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+      }`
+    ];
+  }
+
   get _visibilityToggleIcon() {
-    return this.visible ? 'arc:visibility-off' : 'arc:visibility';
+    return this.visible ? visibilityOff : visibility;
   }
 
   get _visibilityToggleTitle() {
@@ -58,8 +70,9 @@ export class AnypointMaskedInput extends AnypointInput {
         @click="${this.toggleVisibility}"
         title="${_visibilityToggleTitle}"
         aria-label="${_visibilityToggleLabel}"
-        ?disabled="${disabled}">
-        <iron-icon icon="${_visibilityToggleIcon}"></iron-icon>
+        ?disabled="${disabled}"
+      >
+        <span class="icon">${_visibilityToggleIcon}</span>
       </anypoint-icon-button>
       <slot name="suffix"></slot>
     </div>`;

@@ -39,7 +39,7 @@ declare namespace UiElements {
     /**
      * Raw response as a response text.
      */
-    responseText: string|null|undefined;
+    responseText: String|ArrayBuffer|Buffer|object|null;
 
     /**
      * When set it opens the "raw" view.
@@ -101,12 +101,20 @@ declare namespace UiElements {
      * When true then the text in "raw" preview will be wrapped.
      */
     rawTextWrap: boolean|null|undefined;
+
+    /**
+     * Enables Anypoint compatibility
+     */
+    compatibility: boolean|null|undefined;
+    _imageDataUrl: string|null|undefined;
     constructor();
     connectedCallback(): void;
     disconnectedCallback(): void;
     render(): any;
     _activeTemplate(activeView: any, content: any): any;
     _downloadTemplate(): any;
+    _imageTemplate(): any;
+    _pdfTemplate(): any;
 
     /**
      * Set's `_raw` property that it propagated to current viewer.
@@ -120,6 +128,14 @@ declare namespace UiElements {
      * @param contentType Current content type of the response
      */
     _contentTypeChanged(contentType: String|null): void;
+
+    /**
+     * Converts current `_raw` data to an image data URL string.
+     *
+     * @param contentType Response content type
+     * @returns Procerssed image data or undefined when error.
+     */
+    _prepareImageDataUrl(contentType: String|null, raw: Buffer|ArrayBuffer|null): String|null|undefined;
 
     /**
      * When response's content type is JSON the view renders the
@@ -152,7 +168,19 @@ declare namespace UiElements {
      * Creates a file object form current response text and opens a dialog
      * with the link to a file.
      */
-    saveToFile(): void;
+    saveToFile(data: String|ArrayBuffer|null, fileName: String|null): void;
+
+    /**
+     * Creates file extension name based on current content type.
+     *
+     * @returns A file extension. `txt` as default
+     */
+    _fileExtension(): String|null;
+
+    /**
+     * @returns content pre-processed for export.
+     */
+    _exportContent(): String|ArrayBuffer|Buffer|null;
 
     /**
      * Handler for download link click to prevent default and close the dialog.

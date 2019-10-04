@@ -17,11 +17,10 @@ import { AmfHelperMixin } from '@api-components/amf-helper-mixin/amf-helper-mixi
 import authStyles from './auth-methods-styles.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
 import '@anypoint-web-components/anypoint-button/anypoint-button.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { cached } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-input/anypoint-input.js';
 import '@anypoint-web-components/anypoint-input/anypoint-masked-input.js';
 import '@polymer/iron-form/iron-form.js';
-import '@polymer/iron-icon/iron-icon.js';
 import '@anypoint-web-components/anypoint-dropdown-menu/anypoint-dropdown-menu.js';
 import '@anypoint-web-components/anypoint-listbox/anypoint-listbox.js';
 import '@anypoint-web-components/anypoint-item/anypoint-item.js';
@@ -145,7 +144,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               .compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
-              attrforselected="data-value">
+              attrforselected="data-value"
+            >
               <anypoint-item .compatibility="${compatibility}" data-value="GET">GET</anypoint-item>
               <anypoint-item .compatibility="${compatibility}" data-value="POST">POST</anypoint-item>
             </anypoint-listbox>
@@ -170,7 +170,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               .compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
-              attrforselected="data-value">
+              attrforselected="data-value"
+            >
               <anypoint-item .compatibility="${compatibility}" data-value="querystring">Query string</anypoint-item>
               <anypoint-item .compatibility="${compatibility}"
                 data-value="authorization">Authorization header</anypoint-item>
@@ -188,7 +189,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
-            invalidmessage="Consumer key is required">
+            invalidmessage="Consumer key is required"
+          >
             <label slot="label">Consumer key</label>
           </anypoint-masked-input>
 
@@ -200,7 +202,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Consumer secret</label>
           </anypoint-masked-input>
 
@@ -212,7 +215,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token</label>
           </anypoint-masked-input>
 
@@ -224,7 +228,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token secret</label>
           </anypoint-masked-input>
 
@@ -237,7 +242,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Request token URL</label>
           </anypoint-input>
 
@@ -250,7 +256,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token Authorization URL</label>
           </anypoint-input>
 
@@ -263,7 +270,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">User authorization dialog URL</label>
           </anypoint-input>
 
@@ -276,7 +284,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Redirect URL</label>
           </anypoint-input>
 
@@ -298,8 +307,9 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               slot="suffix"
               title="Regenerate timestamp"
               aria-label="Press to regenerate timestamp"
-              @click="${this._genTimestamp}">
-              <iron-icon alt="Regenerate input icon" icon="arc:help"></iron-icon>
+              @click="${this._genTimestamp}"
+            >
+              <span class="icon">${cached}</span>
             </anypoint-icon-button>
           </anypoint-input>
 
@@ -321,8 +331,9 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               slot="suffix"
               title="Regenerate nonce"
               aria-label="Press to regenerate nonce"
-              @click="${this._genNonce}">
-              <iron-icon alt="Regenerate input icon" icon="arc:help"></iron-icon>
+              @click="${this._genNonce}"
+            >
+              <span class="icon">${cached}</span>
             </anypoint-icon-button>
           </anypoint-input>
 

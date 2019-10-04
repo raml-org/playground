@@ -70,7 +70,6 @@ export class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElem
       anypoint-icon-button {
         width: 40px;
         height: 40px;
-        /* padding: 12px; */
         margin: 0 4px;
       }
 
@@ -78,6 +77,7 @@ export class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElem
         width: 24px;
         height: 24px;
         display: block;
+        fill: currentColor;
       }
 
       #selectionBar {

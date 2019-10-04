@@ -19,8 +19,7 @@ import '@anypoint-web-components/anypoint-button/anypoint-button.js';
 import '@advanced-rest-client/request-timings/request-timings-panel.js';
 import '@advanced-rest-client/headers-list-view/headers-list-view.js';
 import '@polymer/iron-collapse/iron-collapse.js';
-import '@polymer/iron-icon/iron-icon.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { expandMore } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import './http-source-message-view.js';
 import './response-redirects-panel.js';
 import statusStypes from './response-status-styles.js';
@@ -373,6 +372,13 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
 
       [hidden] {
         display: none !important;
+      }
+
+      .icon {
+        display: block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -390,7 +396,8 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
       responseHeaders,
       requestHeaders,
       isXhr,
-      scrollableTab
+      scrollableTab,
+      compatibility
     } = this;
     let  {
       redirects
@@ -412,9 +419,15 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
           ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : undefined}
         </div>
         <div class="status-details">
-          <anypoint-button @click="${this.toggleCollapse}" class="toggle-button" title="Toogles response headers">
+          <anypoint-button
+            @click="${this.toggleCollapse}"
+            class="toggle-button"
+            title="Toogles response headers"
+            aria-label="Activate to toggle response headers"
+            ?compatibility="${compatibility}"
+          >
             Details
-            <iron-icon icon="${this._computeIcon('expand-more')}" class="${this._computeToggleIconClass(opened)}"></iron-icon>
+            <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
           </anypoint-button>
         </div>`}
       </div>
@@ -426,20 +439,25 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
         <span class="request-url">${requestUrl}</span>
       </div>` : undefined}
 
-      <anypoint-tabs .selected="${selectedTab}" ?scrollable="${scrollableTab}" @selected-changed="${this._tabChangeHandler}">
-        <anypoint-tab>
+      <anypoint-tabs
+        .selected="${selectedTab}"
+        ?scrollable="${scrollableTab}"
+        @selected-changed="${this._tabChangeHandler}"
+        ?compatibility="${compatibility}"
+      >
+        <anypoint-tab ?compatibility="${compatibility}">
           <span>Response headers</span>
           <span class="${this._computeBageClass(responseHeaders)}">${this._computeHeadersLength(responseHeaders)}</span>
         </anypoint-tab>
-        <anypoint-tab>
+        <anypoint-tab ?compatibility="${compatibility}">
           <span>Request headers</span>
           <span class="${this._computeBageClass(requestHeaders)}">${this._computeHeadersLength(requestHeaders)}</span>
         </anypoint-tab>
-        ${isXhr ? undefined : html`<anypoint-tab>
+        ${isXhr ? undefined : html`<anypoint-tab ?compatibility="${compatibility}">
           <span>Redirects</span>
           <span class="${this._computeBageClass(redirects.length)}">${redirects.length}</span>
         </anypoint-tab>
-        <anypoint-tab>Timings</anypoint-tab>`}
+        <anypoint-tab ?compatibility="${compatibility}">Timings</anypoint-tab>`}
       </anypoint-tabs>
       ${this._selectedTemplate(selectedTab)}
     </iron-collapse>`;
@@ -460,21 +478,7 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
           <p class="no-info">No response headers recorded.</p>
         </div>`}
       </section>`;
-      case 1: return html`<section class="request-headers-panel">
-        ${this.requestHeaders ?
-          html`<headers-list-view
-            ?narrow="${narrow}"
-            type="request"
-            @click="${this._handleLink}"
-            .headers="${this.requestHeaders}"
-            data-source="request-headers"></headers-list-view>` :
-          html`<div class="no-info-container">
-            <p class="no-info">No request headers recorded.</p>
-          </div>`}
-        ${this.httpMessage ? html`<http-source-message-view
-          .message="${this.httpMessage}"
-          .iconPrefix="${this.iconPrefix}"></http-source-message-view>` : undefined}
-      </section>`;
+      case 1: return this._headersTemplate();
       case 2: return html`<response-redirects-panel
         .redirects="${this.redirects}"
         ?narrow="${narrow}"></response-redirects-panel>`;
@@ -483,6 +487,33 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
         .timings="${this.timings}"
         ?narrow="${narrow}"></request-timings-panel>`;
     }
+  }
+
+  _headersTemplate() {
+    const {
+      requestHeaders,
+      httpMessage,
+      narrow,
+      compatibility
+    } = this;
+    return html`<section class="request-headers-panel">
+      ${requestHeaders ?
+        html`<headers-list-view
+          ?narrow="${narrow}"
+          type="request"
+          @click="${this._handleLink}"
+          .headers="${requestHeaders}"
+          data-source="request-headers"></headers-list-view>` :
+        html`<div class="no-info-container">
+          <p class="no-info">No request headers were recorded.</p>
+        </div>`}
+      ${httpMessage ?
+        html`
+        <http-source-message-view
+          .message="${httpMessage}"
+          ?compatibility="${compatibility}"
+        ></http-source-message-view>` : ''}
+    </section>`
   }
 
   static get properties() {
@@ -565,12 +596,9 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
        */
       narrow: { type: Boolean },
       /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
+       * Enables compatibility view with Anypoint platform
        */
-      iconPrefix: { type: String }
+      compatibility: { type: Boolean }
     };
   }
 
@@ -661,7 +689,6 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
     this.loadingTime = 0;
     this.selectedTab = 0;
     this.opened = false;
-    this.iconPrefix = 'arc';
   }
 
   connectedCallback() {
@@ -763,18 +790,6 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
    */
   _tabChangeHandler(e) {
     this.selectedTab = e.detail.value;
-  }
-  /**
-   * Computes icon name depending on `opened` state
-   * @param {String} iconName
-   * @return {String}
-   */
-  _computeIcon(iconName) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + iconName;
   }
 }
 window.customElements.define('response-status-view', ResponseStatusView);

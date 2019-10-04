@@ -2,8 +2,7 @@ import { LitElement, html, css } from 'lit-element';
 import '@api-components/raml-aware/raml-aware.js';
 import '@api-components/api-type-document/api-type-document.js';
 import '@polymer/iron-collapse/iron-collapse.js';
-import '@polymer/iron-icon/iron-icon.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { expandMore } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-button/anypoint-button.js';
 /**
  * `api-headers-document`
@@ -75,6 +74,13 @@ export class ApiHeadersDocument extends LitElement {
 
     :host([narrow]) .headers-title {
       font-size: var(--api-headers-document-title-narrow-font-size, 17px);
+    }
+
+    .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -90,7 +96,7 @@ export class ApiHeadersDocument extends LitElement {
       <div class="title-area-actions">
         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
           ${this._computeToggleActionLabel(opened)}
-          <iron-icon icon="arc:expand-more" class="${this._computeToggleIconClass(opened)}"></iron-icon>
+          <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
         </anypoint-button>
       </div>
     </div>

@@ -20,6 +20,14 @@ the License.
  * @return {Function}
  */
 export const ResponseStatusMixin = (base) => class extends base {
+  static get properties() {
+    return {
+      /**
+       * Renders mobile frinedly view
+       */
+      narrow: { type: Boolean }
+    };
+  }
   /**
    * Comnputes CSS class name depending on response status code.
    * @param {Number} code Status code

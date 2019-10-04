@@ -13,8 +13,7 @@ the License.
 */
 import { LitElement, html, css } from 'lit-element';
 import '@polymer/iron-collapse/iron-collapse.js';
-import '@polymer/iron-icon/iron-icon.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { info } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 /* eslint-disable max-len */
 class JsMaxNumberError extends LitElement {
   static get styles() {
@@ -37,10 +36,12 @@ class JsMaxNumberError extends LitElement {
       cursor: pointer;
     }
 
-    iron-icon {
+    .icon {
       height: 18px;
       width: 18px;
       margin-right: 8px;
+      display: inline-block;
+      fill: currentColor;
     }
 
     #collapse {
@@ -69,8 +70,11 @@ class JsMaxNumberError extends LitElement {
 
   render() {
     return html`
-    <div class="content" @click="${this.toggle}">
-      <iron-icon icon="arc:info"></iron-icon>
+    <div
+      class="content"
+      @click="${this.toggle}"
+    >
+      <span class="icon">${info}</span>
       <div class="parsed-value">
         <slot></slot>
       </div>

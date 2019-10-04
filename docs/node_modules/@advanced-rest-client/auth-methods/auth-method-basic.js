@@ -16,8 +16,6 @@ import { AuthMethodBase } from './auth-method-base.js';
 import authStyles from './auth-methods-styles.js';
 import '@anypoint-web-components/anypoint-input/anypoint-input.js';
 import '@anypoint-web-components/anypoint-input/anypoint-masked-input.js';
-import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
 import '@polymer/iron-form/iron-form.js';
 /**
  * The `<auth-method-basic>` element displays a form to provide the Basic

@@ -238,3 +238,12 @@
 
 
 
+## 3.0.1 (2019-09-04)
+
+
+### Features
+
+* adding `compatibility` and `graph` properties ([cf7d3a9](https://github.com/advanced-rest-client/api-type-documentation/commit/cf7d3a9))
+
+
+

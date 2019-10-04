@@ -13,9 +13,8 @@ the License.
 */
 import { LitElement, html, css } from 'lit-element';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@polymer/iron-icon/iron-icon.js';
 import '@polymer/iron-collapse/iron-collapse.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { expandLess, expandMore } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 /**
  * The element displays the HTTP source message that has been sent to the remote mchine.
  *
@@ -43,22 +42,36 @@ class HttpSourceMessageView extends LitElement {
       display: flex;
       align-items: center;
       cursor: pointer;
+    }
 
+    .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
   render() {
-    const { opened, message } = this;
+    const { opened, message, compatibility, toggleIcon } = this;
     return html`
-    <div class="title" @click="${this.toggle}">
+    <div
+      class="title"
+      @click="${this.toggle}"
+    >
       Source message
       <anypoint-icon-button
         title="Toggles source view"
-        aria-label="Press to toggle source view">
-          <iron-icon icon="${this._computeIcon(opened)}"></iron-icon>
+        aria-label="Press to toggle source view"
+        ?compatibility="${compatibility}"
+      >
+        <span class="icon">${toggleIcon}</span>
       </anypoint-icon-button>
     </div>
-    <iron-collapse id="collapse" .opened="${opened}">
+    <iron-collapse
+      id="collapse"
+      .opened="${opened}"
+    >
       <pre>${message}</pre>
     </iron-collapse>`;
   }
@@ -70,13 +83,14 @@ class HttpSourceMessageView extends LitElement {
       // True if the message is visible.
       opened: { type: Boolean },
       /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
+       * Enables compatibility view with Anypoint platform
        */
-      iconPrefix: { type: String }
+      compatibility: { type: Boolean }
     };
+  }
+
+  get toggleIcon() {
+    return this.opened ? expandLess : expandMore;
   }
 
   get opened() {
@@ -96,28 +110,11 @@ class HttpSourceMessageView extends LitElement {
       this.setAttribute('aria-expanded', 'false');
     }
   }
-
-  constructor() {
-    super();
-    this.iconPrefix = 'arc';
-  }
   /**
    * Toggles source message visibility
    */
   toggle() {
     this.opened = !this.opened;
-  }
-  /**
-   * Computes icon name depending on `opened` state
-   * @param {Boolean} opened
-   * @return {String}
-   */
-  _computeIcon(opened) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + (opened ? 'expand-less' : 'expand-more');
   }
 }
 window.customElements.define('http-source-message-view', HttpSourceMessageView);

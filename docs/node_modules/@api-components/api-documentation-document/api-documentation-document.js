@@ -10,7 +10,6 @@ import '@advanced-rest-client/arc-marked/arc-marked.js';
  * Markdown styles are defined in `advanced-rest-client/markdown-styles`.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
@@ -43,7 +42,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
     return html`
     <div id="preview">
       ${hasTitle ? html`<h1>${title}</h1>` : undefined}
-      <arc-marked .markdown="${content}">
+      <arc-marked .markdown="${content}" sanitize>
         <div slot="markdown-html" part="markdown-html" class="markdown-html"></div>
       </arc-marked>
     </div>`;

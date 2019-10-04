@@ -16,7 +16,7 @@ import { ValidatableMixin } from '@anypoint-web-components/validatable-mixin/val
 import { PayloadParserMixin } from '@advanced-rest-client/payload-parser-mixin/payload-parser-mixin.js';
 import { ApiFormMixin } from '@api-components/api-form-mixin/api-form-mixin.js';
 import formStyles from '@api-components/api-form-mixin/api-form-styles.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { addCircleOutline } from  '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@polymer/iron-form/iron-form.js';
 import '@anypoint-web-components/anypoint-button/anypoint-button.js';
 import '@anypoint-web-components/anypoint-checkbox/anypoint-checkbox.js';
@@ -54,6 +54,13 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }
       `
     ];
@@ -133,11 +140,9 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
           @click="${this.add}"
           title="Add new parameter"
           aria-label="Press to create a new parameter"
-          ?disabled="${readOnly || disabled}">
-          <iron-icon
-            class="action-icon"
-            icon="arc:add-circle-outline"
-            alt="Add parameter icon"></iron-icon>
+          ?disabled="${readOnly || disabled}"
+        >
+          <span class="icon action-icon">${addCircleOutline}</span>
           Add parameter
         </anypoint-button>
       </div>` : undefined}
@@ -188,11 +193,9 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         @click="${this.add}"
         title="Add new parameter"
         aria-label="Press to create a new parameter"
-        ?disabled="${readOnly || disabled}">
-        <iron-icon
-          class="action-icon"
-          icon="arc:add-circle-outline"
-          alt="Add parameter icon"></iron-icon>
+        ?disabled="${readOnly || disabled}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add next
       </anypoint-button>` : ''}
     `;

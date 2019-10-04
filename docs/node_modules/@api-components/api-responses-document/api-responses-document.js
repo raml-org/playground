@@ -94,7 +94,7 @@ export class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
       html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
     ${this._codesSelectorTemplate()}
     ${_hasCustomProperties ? html`<api-annotation-document ?legacy="${compatibility}" .shape="${_selectedResponse}"></api-annotation-document>`:undefined}
-    ${_description ? html`<arc-marked .markdown="${_description}">
+    ${_description ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>` : undefined}
     ${hasHeaders ? html`<api-headers-document

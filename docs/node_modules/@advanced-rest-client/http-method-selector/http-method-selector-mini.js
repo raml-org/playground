@@ -19,7 +19,7 @@ import '@anypoint-web-components/anypoint-listbox/anypoint-listbox.js';
 import '@anypoint-web-components/anypoint-item/anypoint-item.js';
 import '@anypoint-web-components/anypoint-input/anypoint-input.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { close } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 /**
  * A HTTP method selector in a dropdown list of predefined HTTP methods.
  *
@@ -60,6 +60,13 @@ class HttpMethodSelectorMini extends HttpMethodSelectorMixin(EventsTargetMixin(L
 
     anypoint-listbox {
       box-shadow: var(--anypoiont-dropdown-shaddow);
+    }
+
+    .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -90,8 +97,9 @@ class HttpMethodSelectorMini extends HttpMethodSelectorMixin(EventsTargetMixin(L
         aria-label="Activate to clear and close custom editor"
         title="Clear and close custom editor"
         slot="suffix"
-        @click="${this.closeCustom}">
-        <iron-icon icon="arc:close"></iron-icon>
+        @click="${this.closeCustom}"
+      >
+        <span class="icon">${close}</span>
       </anypoint-icon-button>
     </anypoint-input>` :
     html`<anypoint-dropdown-menu

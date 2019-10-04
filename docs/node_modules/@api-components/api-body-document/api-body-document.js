@@ -573,7 +573,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
 
     return html`
     ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
-    ${hasDescription ? html`<arc-marked .markdown="${_description}">
+    ${hasDescription ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
     </arc-marked>` : undefined}
     <p class="any-info">Any instance of data is allowed.</p>
@@ -626,7 +626,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
     ${hasTypeName ? html`<div class="type-title">${_typeName}</div>` : undefined}
     ${hasDescription ? html`
-    <arc-marked .markdown="${_description}">
+    <arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
     </arc-marked>` : undefined}
 

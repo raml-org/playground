@@ -393,3 +393,24 @@
 
 
 
+## 3.0.9 (2019-08-30)
+
+
+### Bug Fixes
+
+* adding missing import ([9970a41](https://github.com/advanced-rest-client/api-url-params-editor/commit/9970a41))
+* changging `isCustom` event property default value to false ([11528ff](https://github.com/advanced-rest-client/api-url-params-editor/commit/11528ff))
+* fixes validation states for query parameetrs ([a92d224](https://github.com/advanced-rest-client/api-url-params-editor/commit/a92d224))
+* fixing optional style - flex direction ([dc474fb](https://github.com/advanced-rest-client/api-url-params-editor/commit/dc474fb))
+* fixing package description ([90e7981](https://github.com/advanced-rest-client/api-url-params-editor/commit/90e7981))
+* removing duplicated import ([39a3d08](https://github.com/advanced-rest-client/api-url-params-editor/commit/39a3d08))
+* setting cutom field inputs flex to 1 ([62034a9](https://github.com/advanced-rest-client/api-url-params-editor/commit/62034a9))
+
+
+### Features
+
+* adding ebvents API for changed properties ([4375606](https://github.com/advanced-rest-client/api-url-params-editor/commit/4375606))
+* upgrading to used viewModel's extended description ([b121b41](https://github.com/advanced-rest-client/api-url-params-editor/commit/b121b41))
+
+
+

@@ -19834,9 +19834,19 @@ var labelStyles = css`
 
 /* eslint-disable max-len */
 const iconWrapper = (tpl) => svg`<svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;">${tpl}</svg>`;
+const addCircleOutline = iconWrapper(svg`<path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>`);
+const cached = iconWrapper(svg`<path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"></path>`);
 const chevronLeft = iconWrapper(svg`<path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path>`);
 const chevronRight = iconWrapper(svg`<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path>`);
+const expandLess = iconWrapper(svg`<path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"></path>`);
 const expandMore = iconWrapper(svg`<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path>`);
+const help = iconWrapper(svg`<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path>`);
+const info = iconWrapper(svg`<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>`);
+const insertDriveFile = iconWrapper(svg`<path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"></path>`);
+const removeCircleOutline = iconWrapper(svg`<path d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>`);
+const sentimentVeryDissatisfied = iconWrapper(svg`<path d="M11.99 2C6.47 2 2 6.47 2 12s4.47 10 9.99 10S22 17.53 22 12 17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm4.18-12.24l-1.06 1.06-1.06-1.06L13 8.82l1.06 1.06L13 10.94 14.06 12l1.06-1.06L16.18 12l1.06-1.06-1.06-1.06 1.06-1.06zM7.82 12l1.06-1.06L9.94 12 11 10.94 9.94 9.88 11 8.82 9.94 7.76 8.88 8.82 7.82 7.76 6.76 8.82l1.06 1.06-1.06 1.06zM12 14c-2.33 0-4.31 1.46-5.11 3.5h10.22c-.8-2.04-2.78-3.5-5.11-3.5z"></path>`);
+const visibility = iconWrapper(svg`<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path>`);
+const visibilityOff = iconWrapper(svg`<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path>`);
 
 /**
  * `api-annotation-document`
@@ -32651,738 +32661,6 @@ window.customElements.define('anypoint-item', AnypointItem);
 
 /**
 @license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-/**
-The `<iron-flex-layout>` component provides simple ways to use
-[CSS flexible box
-layout](https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Flexible_boxes),
-also known as flexbox. Note that this is an old element, that was written
-before all modern browsers had non-prefixed flex styles. As such, nowadays you
-don't really need to use this element anymore, and can use CSS flex styles
-directly in your code.
-
-This component provides two different ways to use flexbox:
-
-1. [Layout
-classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/iron-flex-layout-classes.html).
-The layout class stylesheet provides a simple set of class-based flexbox rules,
-that let you specify layout properties directly in markup. You must include this
-file in every element that needs to use them.
-
-    Sample use:
-
-    ```
-    <custom-element-demo>
-      <template>
-        <script src="../webcomponentsjs/webcomponents-lite.js"></script>
-        <next-code-block></next-code-block>
-      </template>
-    </custom-element-demo>
-    ```
-
-    ```js
-    import {html} from '@polymer/polymer/lib/utils/html-tag.js';
-    import '@polymer/iron-flex-layout/iron-flex-layout-classes.js';
-
-    const template = html`
-      <style is="custom-style" include="iron-flex iron-flex-alignment"></style>
-      <style>
-        .test { width: 100px; }
-      </style>
-      <div class="layout horizontal center-center">
-        <div class="test">horizontal layout center alignment</div>
-      </div>
-    `;
-    document.body.appendChild(template.content);
-    ```
-
-2. [Custom CSS
-mixins](https://github.com/PolymerElements/iron-flex-layout/blob/master/iron-flex-layout.html).
-The mixin stylesheet includes custom CSS mixins that can be applied inside a CSS
-rule using the `@apply` function.
-
-Please note that the old [/deep/ layout
-classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/classes)
-are deprecated, and should not be used. To continue using layout properties
-directly in markup, please switch to using the new `dom-module`-based
-[layout
-classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/iron-flex-layout-classes.html).
-Please note that the new version does not use `/deep/`, and therefore requires
-you to import the `dom-modules` in every element that needs to use them.
-
-@group Iron Elements
-@pseudoElement iron-flex-layout
-@demo demo/index.html
-*/
-const template = html$1`
-<custom-style>
-  <style is="custom-style">
-    [hidden] {
-      display: none !important;
-    }
-  </style>
-</custom-style>
-<custom-style>
-  <style is="custom-style">
-    html {
-
-      --layout: {
-        display: -ms-flexbox;
-        display: -webkit-flex;
-        display: flex;
-      };
-
-      --layout-inline: {
-        display: -ms-inline-flexbox;
-        display: -webkit-inline-flex;
-        display: inline-flex;
-      };
-
-      --layout-horizontal: {
-        @apply --layout;
-
-        -ms-flex-direction: row;
-        -webkit-flex-direction: row;
-        flex-direction: row;
-      };
-
-      --layout-horizontal-reverse: {
-        @apply --layout;
-
-        -ms-flex-direction: row-reverse;
-        -webkit-flex-direction: row-reverse;
-        flex-direction: row-reverse;
-      };
-
-      --layout-vertical: {
-        @apply --layout;
-
-        -ms-flex-direction: column;
-        -webkit-flex-direction: column;
-        flex-direction: column;
-      };
-
-      --layout-vertical-reverse: {
-        @apply --layout;
-
-        -ms-flex-direction: column-reverse;
-        -webkit-flex-direction: column-reverse;
-        flex-direction: column-reverse;
-      };
-
-      --layout-wrap: {
-        -ms-flex-wrap: wrap;
-        -webkit-flex-wrap: wrap;
-        flex-wrap: wrap;
-      };
-
-      --layout-wrap-reverse: {
-        -ms-flex-wrap: wrap-reverse;
-        -webkit-flex-wrap: wrap-reverse;
-        flex-wrap: wrap-reverse;
-      };
-
-      --layout-flex-auto: {
-        -ms-flex: 1 1 auto;
-        -webkit-flex: 1 1 auto;
-        flex: 1 1 auto;
-      };
-
-      --layout-flex-none: {
-        -ms-flex: none;
-        -webkit-flex: none;
-        flex: none;
-      };
-
-      --layout-flex: {
-        -ms-flex: 1 1 0.000000001px;
-        -webkit-flex: 1;
-        flex: 1;
-        -webkit-flex-basis: 0.000000001px;
-        flex-basis: 0.000000001px;
-      };
-
-      --layout-flex-2: {
-        -ms-flex: 2;
-        -webkit-flex: 2;
-        flex: 2;
-      };
-
-      --layout-flex-3: {
-        -ms-flex: 3;
-        -webkit-flex: 3;
-        flex: 3;
-      };
-
-      --layout-flex-4: {
-        -ms-flex: 4;
-        -webkit-flex: 4;
-        flex: 4;
-      };
-
-      --layout-flex-5: {
-        -ms-flex: 5;
-        -webkit-flex: 5;
-        flex: 5;
-      };
-
-      --layout-flex-6: {
-        -ms-flex: 6;
-        -webkit-flex: 6;
-        flex: 6;
-      };
-
-      --layout-flex-7: {
-        -ms-flex: 7;
-        -webkit-flex: 7;
-        flex: 7;
-      };
-
-      --layout-flex-8: {
-        -ms-flex: 8;
-        -webkit-flex: 8;
-        flex: 8;
-      };
-
-      --layout-flex-9: {
-        -ms-flex: 9;
-        -webkit-flex: 9;
-        flex: 9;
-      };
-
-      --layout-flex-10: {
-        -ms-flex: 10;
-        -webkit-flex: 10;
-        flex: 10;
-      };
-
-      --layout-flex-11: {
-        -ms-flex: 11;
-        -webkit-flex: 11;
-        flex: 11;
-      };
-
-      --layout-flex-12: {
-        -ms-flex: 12;
-        -webkit-flex: 12;
-        flex: 12;
-      };
-
-      /* alignment in cross axis */
-
-      --layout-start: {
-        -ms-flex-align: start;
-        -webkit-align-items: flex-start;
-        align-items: flex-start;
-      };
-
-      --layout-center: {
-        -ms-flex-align: center;
-        -webkit-align-items: center;
-        align-items: center;
-      };
-
-      --layout-end: {
-        -ms-flex-align: end;
-        -webkit-align-items: flex-end;
-        align-items: flex-end;
-      };
-
-      --layout-baseline: {
-        -ms-flex-align: baseline;
-        -webkit-align-items: baseline;
-        align-items: baseline;
-      };
-
-      /* alignment in main axis */
-
-      --layout-start-justified: {
-        -ms-flex-pack: start;
-        -webkit-justify-content: flex-start;
-        justify-content: flex-start;
-      };
-
-      --layout-center-justified: {
-        -ms-flex-pack: center;
-        -webkit-justify-content: center;
-        justify-content: center;
-      };
-
-      --layout-end-justified: {
-        -ms-flex-pack: end;
-        -webkit-justify-content: flex-end;
-        justify-content: flex-end;
-      };
-
-      --layout-around-justified: {
-        -ms-flex-pack: distribute;
-        -webkit-justify-content: space-around;
-        justify-content: space-around;
-      };
-
-      --layout-justified: {
-        -ms-flex-pack: justify;
-        -webkit-justify-content: space-between;
-        justify-content: space-between;
-      };
-
-      --layout-center-center: {
-        @apply --layout-center;
-        @apply --layout-center-justified;
-      };
-
-      /* self alignment */
-
-      --layout-self-start: {
-        -ms-align-self: flex-start;
-        -webkit-align-self: flex-start;
-        align-self: flex-start;
-      };
-
-      --layout-self-center: {
-        -ms-align-self: center;
-        -webkit-align-self: center;
-        align-self: center;
-      };
-
-      --layout-self-end: {
-        -ms-align-self: flex-end;
-        -webkit-align-self: flex-end;
-        align-self: flex-end;
-      };
-
-      --layout-self-stretch: {
-        -ms-align-self: stretch;
-        -webkit-align-self: stretch;
-        align-self: stretch;
-      };
-
-      --layout-self-baseline: {
-        -ms-align-self: baseline;
-        -webkit-align-self: baseline;
-        align-self: baseline;
-      };
-
-      /* multi-line alignment in main axis */
-
-      --layout-start-aligned: {
-        -ms-flex-line-pack: start;  /* IE10 */
-        -ms-align-content: flex-start;
-        -webkit-align-content: flex-start;
-        align-content: flex-start;
-      };
-
-      --layout-end-aligned: {
-        -ms-flex-line-pack: end;  /* IE10 */
-        -ms-align-content: flex-end;
-        -webkit-align-content: flex-end;
-        align-content: flex-end;
-      };
-
-      --layout-center-aligned: {
-        -ms-flex-line-pack: center;  /* IE10 */
-        -ms-align-content: center;
-        -webkit-align-content: center;
-        align-content: center;
-      };
-
-      --layout-between-aligned: {
-        -ms-flex-line-pack: justify;  /* IE10 */
-        -ms-align-content: space-between;
-        -webkit-align-content: space-between;
-        align-content: space-between;
-      };
-
-      --layout-around-aligned: {
-        -ms-flex-line-pack: distribute;  /* IE10 */
-        -ms-align-content: space-around;
-        -webkit-align-content: space-around;
-        align-content: space-around;
-      };
-
-      /*******************************
-                Other Layout
-      *******************************/
-
-      --layout-block: {
-        display: block;
-      };
-
-      --layout-invisible: {
-        visibility: hidden !important;
-      };
-
-      --layout-relative: {
-        position: relative;
-      };
-
-      --layout-fit: {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-      };
-
-      --layout-scroll: {
-        -webkit-overflow-scrolling: touch;
-        overflow: auto;
-      };
-
-      --layout-fullbleed: {
-        margin: 0;
-        height: 100vh;
-      };
-
-      /* fixed position */
-
-      --layout-fixed-top: {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-      };
-
-      --layout-fixed-right: {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-      };
-
-      --layout-fixed-bottom: {
-        position: fixed;
-        right: 0;
-        bottom: 0;
-        left: 0;
-      };
-
-      --layout-fixed-left: {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-      };
-
-    }
-  </style>
-</custom-style>`;
-
-template.setAttribute('style', 'display: none;');
-document.head.appendChild(template.content);
-
-var style$1 = document.createElement('style');
-style$1.textContent = '[hidden] { display: none !important; }';
-document.head.appendChild(style$1);
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-/**
-
-The `iron-icon` element displays an icon. By default an icon renders as a 24px
-square.
-
-Example using src:
-
-    <iron-icon src="star.png"></iron-icon>
-
-Example setting size to 32px x 32px:
-
-    <iron-icon class="big" src="big_star.png"></iron-icon>
-
-    <style is="custom-style">
-      .big {
-        --iron-icon-height: 32px;
-        --iron-icon-width: 32px;
-      }
-    </style>
-
-The iron elements include several sets of icons. To use the default set of
-icons, import `iron-icons.js` and use the `icon` attribute to specify an icon:
-
-    <script type="module">
-      import "@polymer/iron-icons/iron-icons.js";
-    </script>
-
-    <iron-icon icon="menu"></iron-icon>
-
-To use a different built-in set of icons, import the specific
-`iron-icons/<iconset>-icons.js`, and specify the icon as `<iconset>:<icon>`.
-For example, to use a communication icon, you would use:
-
-    <script type="module">
-      import "@polymer/iron-icons/communication-icons.js";
-    </script>
-
-    <iron-icon icon="communication:email"></iron-icon>
-
-You can also create custom icon sets of bitmap or SVG icons.
-
-Example of using an icon named `cherry` from a custom iconset with the ID
-`fruit`:
-
-    <iron-icon icon="fruit:cherry"></iron-icon>
-
-See `<iron-iconset>` and `<iron-iconset-svg>` for more information about how to
-create a custom iconset.
-
-See the `iron-icons` demo to see the icons available in the various iconsets.
-
-### Styling
-
-The following custom properties are available for styling:
-
-Custom property | Description | Default
-----------------|-------------|----------
-`--iron-icon` | Mixin applied to the icon | {}
-`--iron-icon-width` | Width of the icon | `24px`
-`--iron-icon-height` | Height of the icon | `24px`
-`--iron-icon-fill-color` | Fill color of the svg icon | `currentcolor`
-`--iron-icon-stroke-color` | Stroke color of the svg icon | none
-
-@group Iron Elements
-@element iron-icon
-@demo demo/index.html
-@hero hero.svg
-@homepage polymer.github.io
-*/
-Polymer({
-  _template: html$1`
-    <style>
-      :host {
-        @apply --layout-inline;
-        @apply --layout-center-center;
-        position: relative;
-
-        vertical-align: middle;
-
-        fill: var(--iron-icon-fill-color, currentcolor);
-        stroke: var(--iron-icon-stroke-color, none);
-
-        width: var(--iron-icon-width, 24px);
-        height: var(--iron-icon-height, 24px);
-        @apply --iron-icon;
-      }
-
-      :host([hidden]) {
-        display: none;
-      }
-    </style>
-`,
-
-  is: 'iron-icon',
-
-  properties: {
-
-    /**
-     * The name of the icon to use. The name should be of the form:
-     * `iconset_name:icon_name`.
-     */
-    icon: {type: String},
-
-    /**
-     * The name of the theme to used, if one is specified by the
-     * iconset.
-     */
-    theme: {type: String},
-
-    /**
-     * If using iron-icon without an iconset, you can set the src to be
-     * the URL of an individual icon image file. Note that this will take
-     * precedence over a given icon attribute.
-     */
-    src: {type: String},
-
-    /**
-     * @type {!IronMeta}
-     */
-    _meta: {value: Base.create('iron-meta', {type: 'iconset'})}
-
-  },
-
-  observers: [
-    '_updateIcon(_meta, isAttached)',
-    '_updateIcon(theme, isAttached)',
-    '_srcChanged(src, isAttached)',
-    '_iconChanged(icon, isAttached)'
-  ],
-
-  _DEFAULT_ICONSET: 'icons',
-
-  _iconChanged: function(icon) {
-    var parts = (icon || '').split(':');
-    this._iconName = parts.pop();
-    this._iconsetName = parts.pop() || this._DEFAULT_ICONSET;
-    this._updateIcon();
-  },
-
-  _srcChanged: function(src) {
-    this._updateIcon();
-  },
-
-  _usesIconset: function() {
-    return this.icon || !this.src;
-  },
-
-  /** @suppress {visibility} */
-  _updateIcon: function() {
-    if (this._usesIconset()) {
-      if (this._img && this._img.parentNode) {
-        dom(this.root).removeChild(this._img);
-      }
-      if (this._iconName === '') {
-        if (this._iconset) {
-          this._iconset.removeIcon(this);
-        }
-      } else if (this._iconsetName && this._meta) {
-        this._iconset = /** @type {?Polymer.Iconset} */ (
-            this._meta.byKey(this._iconsetName));
-        if (this._iconset) {
-          this._iconset.applyIcon(this, this._iconName, this.theme);
-          this.unlisten(window, 'iron-iconset-added', '_updateIcon');
-        } else {
-          this.listen(window, 'iron-iconset-added', '_updateIcon');
-        }
-      }
-    } else {
-      if (this._iconset) {
-        this._iconset.removeIcon(this);
-      }
-      if (!this._img) {
-        this._img = document.createElement('img');
-        this._img.style.width = '100%';
-        this._img.style.height = '100%';
-        this._img.draggable = false;
-      }
-      this._img.src = this.src;
-      dom(this.root).appendChild(this._img);
-    }
-  }
-});
-
-/**
-@license
-Copyright 2016 Pawel Psztyc, The ARC team
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/* eslint-disable max-len */
-const $documentContainer$1 = document.createElement('template');
-$documentContainer$1.innerHTML = `<iron-iconset-svg size="24" name="arc">
-<svg>
-  <defs>
-    <g id="account-circle"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"></path></g>
-    <g id="add-circle-outline"><path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path></g>
-    <g id="add"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></g>
-    <g id="arc-icon"><path style="fill:#2196F3" d="M2.3,1h19.3C22.4,1,23,1.6,23,2.3v19.4c0,0.7-0.6,1.3-1.3,1.3H2.3C1.6,23,1,22.4,1,21.7 V2.3C1,1.6,1.6,1,2.3,1z"></path><path style="opacity:0.42;fill:#FFFFFF" d="M15.8,7.1v5.1h-1.9l3.7,4.7l3.7-4.7h-1.9V7.1H15.8L15.8,7.1z"></path><path style="fill:#FFFFFF" d="M10.7,19.3v-7.6h2.8L8.1,4.8l-5.5,6.9h2.8v7.6H10.7z"></path></g>
-    <g id="arc-icon-arrows"><polygon style="fill:#2196F3;" points="13.3,11.7 8.3,5.2 3.2,11.7 5.7,11.7 5.7,11.7 5.8,11.7 5.8,18.8 10.7,18.8 10.7,11.7 "></polygon><polygon style="opacity:0.42;fill:#2196F3;" points="19,12.5 19,7.7 15.7,7.7 15.7,12.5 13.9,12.5 17.4,16.8 20.8,12.5 "></polygon></g>
-    <g id="archive"><path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"></path></g>
-    <g id="arrow-back"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></g>
-    <g id="arrow-drop-down"><path d="M7 10l5 5 5-5z"></path></g>
-    <g id="arrow-drop-up"><path d="M7 14l5-5 5 5z"></path></g>
-    <g id="assignment"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></g>
-    <g id="bug-report"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"></path></g>
-    <g id="build"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"></path></g>
-    <g id="cached"><path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"></path></g>
-    <g id="chevron-left"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path></g>
-    <g id="chevron-right"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></g>
-    <g id="cancel"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"></path></g>
-    <g id="clear"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></g>
-    <g id="clear-all"><path d="M5 13h14v-2H5v2zm-2 4h14v-2H3v2zM7 7v2h14V7H7z"></path></g>
-    <g id="close"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></g>
-    <g id="cloud-download"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"></path></g>
-    <g id="code"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"></path></g>
-    <g id="collections-bookmark"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 10l-2.5-1.5L15 12V4h5v8z"></path></g>
-    <g id="insert-comment"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"></path></g>
-    <g id="content-copy"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></g>
-    <g id="delete"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></g>
-    <g id="desktop-windows"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"></path></g>
-    <g id="done"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"></path></g>
-    <g id="drive-color" transform="matrix(1.597046e-4,0,0,1.6517796e-4,1.3671875,2.9482084)"><polygon points="133156,76894 110963,115341 22194,115341 44385,76894 " style="fill:#3777e3"></polygon><polygon points="88772,0 44385,0 88772,76894 133156,76894 " style="fill:#ffcf63"></polygon><polygon points="66578,38447 44385,0 0,76894 22194,115341 " style="fill:#11a861"></polygon></g>
-    <g id="drive" transform="matrix(1.597046e-4,0,0,1.6517796e-4,1.3671875,2.9482084)"><polygon points="22194,115341 44385,76894 133156,76894 110963,115341"></polygon><polygon points="88772,76894 133156,76894 88772,0 44385,0"></polygon><polygon points="0,76894 22194,115341 66578,38447 44385,0"></polygon></g>
-    <g id="edit"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></g>
-    <g id="error"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></g>
-    <g id="expand-less"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"></path></g>
-    <g id="expand-more"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></g>
-    <g id="export-variant"><path d="M12,1L8,5H11V14H13V5H16M18,23H6C4.89,23 4,22.1 4,21V9A2,2 0 0,1 6,7H9V9H6V21H18V9H15V7H18A2,2 0 0,1 20,9V21A2,2 0 0,1 18,23Z"></path></g>
-    <g id="file-download"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path></g>
-    <g id="filter-list"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"></path></g>
-    <g id="folder-shared"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5 3c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 8h-8v-1c0-1.33 2.67-2 4-2s4 .67 4 2v1z"></path></g>
-    <g id="help"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path></g>
-    <g id="help-outline"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"></path></g>
-    <g id="history"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"></path></g>
-    <g id="home"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path></g>
-    <g id="import-export"><path d="M9 3L5 6.99h3V14h2V6.99h3L9 3zm7 14.01V10h-2v7.01h-3L15 21l4-3.99h-3z"></path></g>
-    <g id="info"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path></g>
-    <g id="info-outline"><path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path></g>
-    <g id="insert-chart"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"></path></g>
-    <g id="insert-drive-file"><path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"></path></g>
-    <g id="keyboard-arrow-down"><path d="M7.41 7.84L12 12.42l4.59-4.58L18 9.25l-6 6-6-6z"></path></g>
-    <g id="keyboard-arrow-up"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"></path></g>
-    <g id="keyboard-arrow-right"><path d="M8.59 16.34l4.58-4.59-4.58-4.59L10 5.75l6 6-6 6z"></path></g>
-    <g id="list"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"></path></g>
-    <g id="markdown" transform="matrix(0.04690339,0,0,0.04690339,0,5.225434)"><path d="m 123.38173,73.504 -50.39773,0 0,167.496 52.516,0 0,-93 50,60 47.62725,-60 0,93 49.87275,0 0,-167.496 -49.87276,0 L 175.5,135.5 Z M 39.998409,0 474.00159,0 C 496.08284,0 514,17.906303 514,39.994846 l 0,235.010304 C 514,297.09032 496.0921,315 474.00159,315 L 39.998409,315 C 17.917157,315 0,297.0937 0,275.00515 L 0,39.994846 C 0,17.909682 17.907898,0 39.998409,0 Z M 360,74.5 l -0.49739,0 -1e-5,86 -48.0026,0 74,80.5 74.00256,-80.99442 -49.97984,0 0,-85.50558 z m 0,0"></path></g>
-    <g id="menu"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></g>
-    <g id="mode-edit"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></g>
-    <g id="more-vert"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></g>
-    <g id="new-releases"><path d="M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 3 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.69 3.61.82 1.89 3.18L12 21l3.4 1.46 1.89-3.18 3.61-.82-.34-3.68L23 12zm-10 5h-2v-2h2v2zm0-4h-2V7h2v6z"></path></g>
-    <g id="notifications-active"><path d="M7.58 4.08L6.15 2.65C3.75 4.48 2.17 7.3 2.03 10.5h2c.15-2.65 1.51-4.97 3.55-6.42zm12.39 6.42h2c-.15-3.2-1.73-6.02-4.12-7.85l-1.42 1.43c2.02 1.45 3.39 3.77 3.54 6.42zM18 11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2v-5zm-6 11c.14 0 .27-.01.4-.04.65-.14 1.18-.58 1.44-1.18.1-.24.15-.5.15-.78h-4c.01 1.1.9 2 2.01 2z"></path></g>
-    <g id="open-in-new"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></g>
-    <g id="raml-r"><path d="M14.44,1.48H3L4.16,3.3H14.37a4.59,4.59,0,0,1,3.31,1.41A4.8,4.8,0,0,1,19,8.07,4.45,4.45,0,0,1,17.7,11.3a5.72,5.72,0,0,1-3.28,1.54H13.17l-3.45,0,1,1.72h1.51l.08.13h0l4.45,7.51,0,0,0,0a1,1,0,0,0,1.7-.71.54.54,0,0,0-.15-.41,1.21,1.21,0,0,1-.14-.2l-3.68-6.26a6.47,6.47,0,0,0,4.51-1.92A6.61,6.61,0,0,0,14.44,1.48Z"></path></g>
-    <g id="rate-review"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 14v-2.47l6.88-6.88c.2-.2.51-.2.71 0l1.77 1.77c.2.2.2.51 0 .71L8.47 14H6zm12 0h-7.5l2-2H18v2z"></path></g>
-    <g id="refresh"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"></path></g>
-    <g id="remove-circle-outline"><path d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path></g>
-    <g id="pin-drawer"><path d="M 15.462891 4.0332031 L 15.462891 20.007812 L 18.392578 20.007812 L 18.392578 4.0332031 L 15.462891 4.0332031 z M 6.9921875 6.0195312 L 5.5820312 7.4296875 L 10.162109 12.019531 L 5.5820312 16.609375 L 6.9921875 18.019531 L 12.992188 12.019531 L 6.9921875 6.0195312 z M 16.017578 11.873047 L 17.865234 11.873047 L 17.865234 19.509766 L 16.017578 19.509766 L 16.017578 11.873047 z"></path></g>
-    <g id="spellcheck"><path d="M12.45 16h2.09L9.43 3H7.57L2.46 16h2.09l1.12-3h5.64l1.14 3zm-6.02-5L8.5 5.48 10.57 11H6.43zm15.16.59l-8.09 8.09L9.83 16l-1.41 1.41 5.09 5.09L23 13l-1.41-1.41z"></path></g>
-    <g id="sentiment-very-dissatisfied"><path d="M11.99 2C6.47 2 2 6.47 2 12s4.47 10 9.99 10S22 17.53 22 12 17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm4.18-12.24l-1.06 1.06-1.06-1.06L13 8.82l1.06 1.06L13 10.94 14.06 12l1.06-1.06L16.18 12l1.06-1.06-1.06-1.06 1.06-1.06zM7.82 12l1.06-1.06L9.94 12 11 10.94 9.94 9.88 11 8.82 9.94 7.76 8.88 8.82 7.82 7.76 6.76 8.82l1.06 1.06-1.06 1.06zM12 14c-2.33 0-4.31 1.46-5.11 3.5h10.22c-.8-2.04-2.78-3.5-5.11-3.5z"></path></g>
-    <g id="sentiment-neutral"><path d="M9 14h6v1.5H9z"></path><circle cx="15.5" cy="9.5" r="1.5"></circle><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"></path></g>
-    <g id="save"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"></path></g>
-    <g id="save-alt"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"></path><path fill="none" d="M0 0h24v24H0z"></path></g>
-    <g id="search"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></g>
-    <g id="send"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></g>
-    <g id="settings"><path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></g>
-    <g id="shield" transform="translate(0,-1028.3622)"><circle r="11.962877" cy="1040.3993" cx="11.962877" style="color:#000000;clip-rule:nonzero;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:#000000;solid-opacity:1;fill:#1c8adb;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.40000001;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto;enable-background:accumulate"></circle><path d="m 5.7226134,1035.2177 -5.71610049,5.7162 c 0.25024909,5.9429 3.35576479,9.2981 8.15641339,11.1171 2.1658257,-2.1563 4.3267587,-4.3171 6.4790417,-6.5004 z" style="fill:url(#linearGradient5637);fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" inkscape:connector-curvature="0"></path><path d="m 11.962898,1033.391 c -2.0501345,1.0013 -4.3555189,1.8135 -6.240256,1.8267 1.1575901,7.1589 1.8218083,9.9255 6.240256,12.1899 4.418427,-2.2644 5.082673,-5.031 6.240258,-12.1899 -1.884728,-0.013 -4.190132,-0.8254 -6.240258,-1.8267 z" style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" inkscape:connector-curvature="0"></path><path d="m 11.962878,1033.391 0,7.0084 5.261505,0 c 0.352779,-1.4257 0.64548,-3.121 0.978701,-5.1818 -1.884728,-0.013 -4.19008,-0.8254 -6.240206,-1.8266 z m 0,7.0084 -5.2615633,0 c 0.8727443,3.5268 2.1150231,5.3956 5.2615633,7.0082 l 0,-7.0082 z" style="fill:#000000;fill-opacity:0.13473056;fill-rule:evenodd;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" inkscape:connector-curvature="0"></path></g>
-    <g id="short-text"><path d="M4 9h16v2H4zm0 4h10v2H4z"></path></g>
-    <g id="star"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></g>
-    <g id="star-border"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"></path></g>
-    <g id="view-column"><path d="M10 18h5V5h-5v13zm-6 0h5V5H4v13zM16 5v13h5V5h-5z"></path></g>
-    <g id="view-list"><path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"></path></g>
-    <g id="visibility"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"></path></g>
-    <g id="visibility-off"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"></path></g>
-    <g id="warning"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"></path></g>
-    <g id="wrap-text"><path d="M4 19h6v-2H4v2zM20 5H4v2h16V5zm-3 6H4v2h13.25c1.1 0 2 .9 2 2s-.9 2-2 2H15v-2l-3 3 3 3v-2h2c2.21 0 4-1.79 4-4s-1.79-4-4-4z"></path></g>
-    <g id="zoom-in"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm2.5-4h-2v2H9v-2H7V9h2V7h1v2h2v1z"></path></g>
-  </defs></svg>
-</iron-iconset-svg>`;
-
-document.head.appendChild($documentContainer$1.content);
-
-/**
-@license
 Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -33626,6 +32904,13 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
      display: flex;
      flex-direction: row;
      align-items: center;
+   }
+
+   .icon {
+     width: 24px;
+     height: 24px;
+     fill: currentColor;
+     display: inline-block;
    }`;
   }
 
@@ -33640,10 +32925,10 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
         <anypoint-dropdown-menu
           nolabelfloat
           ?outlined="${outlined}"
-          ?legacy="${compatibility}">
+          ?compatibility="${compatibility}">
           <label slot="label">Select</label>
           <anypoint-listbox
-            ?legacy="${compatibility}"
+            ?compatibility="${compatibility}"
             slot="dropdown-content"
             attrforselected="data-value"
             .selected="${itemsPerPage}"
@@ -33665,15 +32950,15 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
           aria-label="Activate to render previous page"
           @click="${this.previousPage}"
           ?disabled="${this._isDisabedPrevious(page)}"
-          ?legacy="${compatibility}">
-          <iron-icon icon="arc:chevron-left"></iron-icon>
+          ?compatibility="${compatibility}">
+          <span class="icon">${chevronLeft}</span>
         </anypoint-icon-button>
         <anypoint-icon-button
           aria-label="Activate to render next page"
           @click="${this.nextPage}"
           ?disabled="${this._isDisabedNext(_maxItemsLabel, _endItemLabel)}"
-          ?legacy="${compatibility}">
-          <iron-icon icon="arc:chevron-right"></iron-icon>
+          ?compatibility="${compatibility}">
+          <span class="icon">${chevronRight}</span>
         </anypoint-icon-button>
       </div>
     </div>`;
@@ -38830,15 +38115,7 @@ class ArcMarked extends LitElement {
     }
     let data;
     if (this.sanitize) {
-      if (this.sanitizer) {
-        data = this.sanitizer(this.markdown);
-      } else {
-        data = purify.sanitize(this.markdown);
-        if (typeof data !== 'string') {
-          data = this.markdown;
-        }
-      }
-      data = SafeHtmlUtils.htmlEscape(data);
+      data = SafeHtmlUtils.htmlEscape(this.markdown);
     } else {
       data = this.markdown;
     }
@@ -38849,7 +38126,20 @@ class ArcMarked extends LitElement {
       pedantic: this.pedantic,
       smartypants: this.smartypants
     };
-    this._outputElement.innerHTML = marked(data, opts);
+    let out = marked(data, opts);
+    if (this.sanitize) {
+      if (this.sanitizer) {
+        out = this.sanitizer(out);
+      } else {
+        const result = purify.sanitize(out);
+        if (typeof result === 'string') {
+          out = result;
+        } else {
+          out = result.toString();
+        }
+      }
+    }
+    this._outputElement.innerHTML = out;
     this.dispatchEvent(
       new CustomEvent('marked-render-complete', {
         composed: true
@@ -39847,35 +39137,35 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
         font-size: var(--api-type-document-property-name-font-size, 16px);
       }
 
-      .doc-wrapper {
+      api-type-document,
+      property-range-document {
         transition: background-color 0.4s linear;
       }
-      .doc-wrapper.with-description {
-        margin-top: 20px;
-      }
 
-      :host([isobject]) .doc-wrapper.complex,
-      :host([isunion]) .doc-wrapper.complex,
-      :host([isarray]) .doc-wrapper.complex {
+      :host([isobject]) api-type-document.complex,
+      :host([isunion]) api-type-document.complex,
+      :host([isarray]) api-type-document.complex {
         padding-left: var(--api-type-document-child-docs-padding-left, 20px);
         margin-left: var(--api-type-document-child-docs-margin-left, 0px);
-        margin-top: 12px;
         padding-right: var(--api-type-document-child-docs-padding-right, initial);
       }
 
-      :host([isobject]) .doc-wrapper {
+      :host([isobject]) api-type-document,
+      :host([isobject]) property-range-document {
         border-left-color: var(--property-shape-document-object-color, #FF9800);
         border-left-width: 2px;
         border-left-style: solid;
         padding-left: 12px;
       }
 
-      :host([isarray]) .doc-wrapper {
+      :host([isarray]) api-type-document,
+      :host([isarray]) property-range-document {
         border-left: 2px var(--property-shape-document-array-color, #8BC34A) solid;
         padding-left: 12px;
       }
 
-      :host([isunion]) .doc-wrapper {
+      :host([isunion]) api-type-document,
+      :host([isunion]) property-range-document {
         border-left: 2px var(--property-shape-document-union-color, #FFEB3B) solid;
         padding-left: 12px;
       }
@@ -39884,6 +39174,7 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
+        margin-bottom: 8px;
       }
 
       .property-traits > span {
@@ -39903,69 +39194,26 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
         font-weight: var(--api-type-document-trait-data-type-font-weight, normal);
       }
 
-      :host([narrow]) .property-description {
-        margin: 20px 0;
-      }
-
-      .content-wrapper,
-      .shape-docs {
-        margin-top: 12px;
-      }
-
-      /* .content-wrapper {
-        display: flex;
-        flex-direction: row;
-      } */
-
-      .shape-properties {
-        min-width: var(--api-type-document-property-name-width, 120px);
-      }
-
-      .shape-docs {
-        flex: 1;
-        flex-basis: 0.000000001px;
-        word-break: break-word;
-        overflow: hidden;
-      }
-
-      .shape-docs .doc-wrapper {
-        border-left: none !important;
-        padding-left: 0 !important;
-      }
-
-      /* :host([narrow]) .content-wrapper {
-        display: block;
-        -ms-flex-direction: initial;
-        -webkit-flex-direction: initial;
-        flex-direction: initial;
-      } */
-
-      :host([narrow]) .shape-docs {
-        -ms-flex: initial;
-        -webkit-flex: initial;
-        flex: initial;
-        -webkit-flex-basis: initial;
-        flex-basis: initial;
-      }
-
-      :host([narrow]) .shape-properties {
-        min-width: 100%;
-      }
-
-      :host([narrow]) .shape-properties > * {
-        display: inline-block;
-        vertical-align: middle;
-        margin-right: 8px;
-      }
-
       arc-marked {
         background-color: transparent;
         padding: 0;
+        margin-top: 20px;
+        margin-bottom: 20px;
       }
 
       .link-label {
         text-decoration: underline;
         cursor: pointer;
+      }
+
+      .shape-header {
+        display: flex;
+        flex-direction: row;
+        align-items: start;
+      }
+
+      .name-area {
+        flex: 1;
       }`
     ];
   }
@@ -40064,7 +39312,12 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
       noExamplesActions: { type: Boolean },
 
       _targetTypeId: { type: String },
-      _targetTypeName: { type: String }
+      _targetTypeName: { type: String },
+      /**
+       * When `isComplex` is true this determines if ther complex structure
+       * is currently rendered.
+       */
+      opened: { type: Boolean }
     };
   }
 
@@ -40098,6 +39351,10 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     if (this._setObservableProperty('parentTypeName', value)) {
       this.hasParentTypeName = !!value;
     }
+  }
+
+  get complexToggleLabel() {
+    return this.opened ? 'Hide' : 'Show';
   }
 
   constructor() {
@@ -40303,27 +39560,28 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     }
   }
 
+  toggle() {
+    this.opened = !this.opened;
+  }
+
   _complexTemplate() {
-    if (!this.isComplex) {
+    if (!this.isComplex || !this.opened) {
       return;
     }
     const range = this._resolve(this.range);
     const parentTypeName = this.isArray ? 'item' : this.displayName;
-    return html`<div class="doc-wrapper complex">
-      <div class="doc-content">
-      <api-type-document
-        class="children"
-        .amf="${this.amf}"
-        .type="${range}"
-        .parentTypeName="${parentTypeName}"
-        ?narrow="${this.narrow}"
-        ?compatibility="${this.compatibility}"
-        ?noexamplesactions="${this.noExamplesActions}"
-        nomainexample
-        .mediaType="${this.mediaType}"
-        ?graph="${this.graph}"></api-type-document>
-      </div>
-    </div>`;
+    return html`<api-type-document
+      class="children complex"
+      .amf="${this.amf}"
+      .type="${range}"
+      .parentTypeName="${parentTypeName}"
+      ?narrow="${this.narrow}"
+      ?compatibility="${this.compatibility}"
+      ?noexamplesactions="${this.noExamplesActions}"
+      nomainexample
+      .mediaType="${this.mediaType}"
+      ?graph="${this.graph}"
+    ></api-type-document>`;
   }
 
   _getTypeNameTemplate() {
@@ -40344,47 +39602,71 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     return html`<span class="data-type">${dataType}</span>`;
   }
 
+  _descriptionTemplate() {
+    if (!this.hasPropertyDescription) {
+      return '';
+    }
+    return html`
+    <arc-marked .markdown="${this.propertyDescription}" sanitize>
+      <div slot="markdown-html" class="markdown-body"></div>
+    </arc-marked>
+    `;
+  }
+
+  _headerTemplate() {
+    const {
+      isComplex
+    } = this;
+    return isComplex ? html`<div class="shape-header">
+      <div class="name-area">
+        ${this._headerNameTemplate()}
+      </div>
+      ${isComplex ? html`<anypoint-button
+        class="complex-toggle"
+        @click="${this.toggle}"
+        ?compatibility="${this.compatibility}"
+        title="Toggles complex propery documentation"
+      >${this.complexToggleLabel}</anypoint-button>` : ''}
+    </div>` : this._headerNameTemplate();
+  }
+
+  _headerNameTemplate() {
+    const {
+      hasDisplayName,
+      displayName,
+      propertyName,
+      parentTypeName,
+      hasParentTypeName
+    } = this;
+    return html`
+    ${hasDisplayName ? html`<div class="property-display-name">${displayName}</div>` : ''}
+    ${propertyName ? html`<div class="property-title" ?secondary="${hasDisplayName}">
+      <span class="parent-label" ?hidden="${!hasParentTypeName}">${parentTypeName}.</span>
+      <span class="property-name">${propertyName}</span>
+    </div>` : undefined}`;
+  }
+
   render() {
     return html`
-    ${this.hasDisplayName ? html`<div class="property-display-name">${this.displayName}</div>` : undefined}
-    ${this.propertyName ? html`<div class="property-title" ?secondary="${this.hasDisplayName}">
-      <span class="parent-label" ?hidden="${!this.hasParentTypeName}">${this.parentTypeName}.</span>
-      <span class="property-name">${this.propertyName}</span>
-    </div>` : undefined}
-
-    <div class="content-wrapper">
-      <div class="shape-properties">
-        <div class="property-traits">
-          ${this._getTypeNameTemplate()}
-          ${this.isRequired ?
-            html`<span class="required-type" title="This property is required by the API">Required</span>` : undefined}
-          ${this.isEnum ?
-            html`<span class="enum-type" title="This property represent enumerable value">Enum</span>` : undefined}
-        </div>
-      </div>
-      <div class="shape-docs">
-      ${this.hasPropertyDescription ? html`<div class="property-description">
-          <arc-marked .markdown="${this.propertyDescription}">
-            <div slot="markdown-html" class="markdown-body"></div>
-          </arc-marked>
-        </div>` : undefined}
-
-        <div class="doc-wrapper ${this.hasPropertyDescription ? 'with-description' : ''}">
-          <div class="doc-content">
-            <property-range-document
-              .amf="${this.amf}"
-              .shape="${this.shape}"
-              .range="${this.range}"
-              ?compatibility="${this.compatibility}"
-              ?noexamplesactions="${this.noExamplesActions}"
-              .mediaType="${this.mediaType}"
-              .propertyName="${this.propertyName}"
-              ?graph="${this.graph}"></property-range-document>
-          </div>
-        </div>
-      </div>
+    ${this._headerTemplate()}
+    <div class="property-traits">
+      ${this._getTypeNameTemplate()}
+      ${this.isRequired ?
+        html`<span class="required-type" title="This property is required by the API">Required</span>` : undefined}
+      ${this.isEnum ?
+        html`<span class="enum-type" title="This property represent enumerable value">Enum</span>` : undefined}
     </div>
-
+    ${this._descriptionTemplate()}
+    <property-range-document
+      .amf="${this.amf}"
+      .shape="${this.shape}"
+      .range="${this.range}"
+      ?compatibility="${this.compatibility}"
+      ?noexamplesactions="${this.noExamplesActions}"
+      .mediaType="${this.mediaType}"
+      .propertyName="${this.propertyName}"
+      ?graph="${this.graph}"
+    ></property-range-document>
     ${this._complexTemplate()}`;
   }
 }
@@ -41993,6 +41275,634 @@ const AnypointMenubarMixin = (base) => class extends AnypointMenuMixin(base) {
   }
 };
 
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+/**
+The `<iron-flex-layout>` component provides simple ways to use
+[CSS flexible box
+layout](https://developer.mozilla.org/en-US/docs/Web/Guide/CSS/Flexible_boxes),
+also known as flexbox. Note that this is an old element, that was written
+before all modern browsers had non-prefixed flex styles. As such, nowadays you
+don't really need to use this element anymore, and can use CSS flex styles
+directly in your code.
+
+This component provides two different ways to use flexbox:
+
+1. [Layout
+classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/iron-flex-layout-classes.html).
+The layout class stylesheet provides a simple set of class-based flexbox rules,
+that let you specify layout properties directly in markup. You must include this
+file in every element that needs to use them.
+
+    Sample use:
+
+    ```
+    <custom-element-demo>
+      <template>
+        <script src="../webcomponentsjs/webcomponents-lite.js"></script>
+        <next-code-block></next-code-block>
+      </template>
+    </custom-element-demo>
+    ```
+
+    ```js
+    import {html} from '@polymer/polymer/lib/utils/html-tag.js';
+    import '@polymer/iron-flex-layout/iron-flex-layout-classes.js';
+
+    const template = html`
+      <style is="custom-style" include="iron-flex iron-flex-alignment"></style>
+      <style>
+        .test { width: 100px; }
+      </style>
+      <div class="layout horizontal center-center">
+        <div class="test">horizontal layout center alignment</div>
+      </div>
+    `;
+    document.body.appendChild(template.content);
+    ```
+
+2. [Custom CSS
+mixins](https://github.com/PolymerElements/iron-flex-layout/blob/master/iron-flex-layout.html).
+The mixin stylesheet includes custom CSS mixins that can be applied inside a CSS
+rule using the `@apply` function.
+
+Please note that the old [/deep/ layout
+classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/classes)
+are deprecated, and should not be used. To continue using layout properties
+directly in markup, please switch to using the new `dom-module`-based
+[layout
+classes](https://github.com/PolymerElements/iron-flex-layout/tree/master/iron-flex-layout-classes.html).
+Please note that the new version does not use `/deep/`, and therefore requires
+you to import the `dom-modules` in every element that needs to use them.
+
+@group Iron Elements
+@pseudoElement iron-flex-layout
+@demo demo/index.html
+*/
+const template = html$1`
+<custom-style>
+  <style is="custom-style">
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</custom-style>
+<custom-style>
+  <style is="custom-style">
+    html {
+
+      --layout: {
+        display: -ms-flexbox;
+        display: -webkit-flex;
+        display: flex;
+      };
+
+      --layout-inline: {
+        display: -ms-inline-flexbox;
+        display: -webkit-inline-flex;
+        display: inline-flex;
+      };
+
+      --layout-horizontal: {
+        @apply --layout;
+
+        -ms-flex-direction: row;
+        -webkit-flex-direction: row;
+        flex-direction: row;
+      };
+
+      --layout-horizontal-reverse: {
+        @apply --layout;
+
+        -ms-flex-direction: row-reverse;
+        -webkit-flex-direction: row-reverse;
+        flex-direction: row-reverse;
+      };
+
+      --layout-vertical: {
+        @apply --layout;
+
+        -ms-flex-direction: column;
+        -webkit-flex-direction: column;
+        flex-direction: column;
+      };
+
+      --layout-vertical-reverse: {
+        @apply --layout;
+
+        -ms-flex-direction: column-reverse;
+        -webkit-flex-direction: column-reverse;
+        flex-direction: column-reverse;
+      };
+
+      --layout-wrap: {
+        -ms-flex-wrap: wrap;
+        -webkit-flex-wrap: wrap;
+        flex-wrap: wrap;
+      };
+
+      --layout-wrap-reverse: {
+        -ms-flex-wrap: wrap-reverse;
+        -webkit-flex-wrap: wrap-reverse;
+        flex-wrap: wrap-reverse;
+      };
+
+      --layout-flex-auto: {
+        -ms-flex: 1 1 auto;
+        -webkit-flex: 1 1 auto;
+        flex: 1 1 auto;
+      };
+
+      --layout-flex-none: {
+        -ms-flex: none;
+        -webkit-flex: none;
+        flex: none;
+      };
+
+      --layout-flex: {
+        -ms-flex: 1 1 0.000000001px;
+        -webkit-flex: 1;
+        flex: 1;
+        -webkit-flex-basis: 0.000000001px;
+        flex-basis: 0.000000001px;
+      };
+
+      --layout-flex-2: {
+        -ms-flex: 2;
+        -webkit-flex: 2;
+        flex: 2;
+      };
+
+      --layout-flex-3: {
+        -ms-flex: 3;
+        -webkit-flex: 3;
+        flex: 3;
+      };
+
+      --layout-flex-4: {
+        -ms-flex: 4;
+        -webkit-flex: 4;
+        flex: 4;
+      };
+
+      --layout-flex-5: {
+        -ms-flex: 5;
+        -webkit-flex: 5;
+        flex: 5;
+      };
+
+      --layout-flex-6: {
+        -ms-flex: 6;
+        -webkit-flex: 6;
+        flex: 6;
+      };
+
+      --layout-flex-7: {
+        -ms-flex: 7;
+        -webkit-flex: 7;
+        flex: 7;
+      };
+
+      --layout-flex-8: {
+        -ms-flex: 8;
+        -webkit-flex: 8;
+        flex: 8;
+      };
+
+      --layout-flex-9: {
+        -ms-flex: 9;
+        -webkit-flex: 9;
+        flex: 9;
+      };
+
+      --layout-flex-10: {
+        -ms-flex: 10;
+        -webkit-flex: 10;
+        flex: 10;
+      };
+
+      --layout-flex-11: {
+        -ms-flex: 11;
+        -webkit-flex: 11;
+        flex: 11;
+      };
+
+      --layout-flex-12: {
+        -ms-flex: 12;
+        -webkit-flex: 12;
+        flex: 12;
+      };
+
+      /* alignment in cross axis */
+
+      --layout-start: {
+        -ms-flex-align: start;
+        -webkit-align-items: flex-start;
+        align-items: flex-start;
+      };
+
+      --layout-center: {
+        -ms-flex-align: center;
+        -webkit-align-items: center;
+        align-items: center;
+      };
+
+      --layout-end: {
+        -ms-flex-align: end;
+        -webkit-align-items: flex-end;
+        align-items: flex-end;
+      };
+
+      --layout-baseline: {
+        -ms-flex-align: baseline;
+        -webkit-align-items: baseline;
+        align-items: baseline;
+      };
+
+      /* alignment in main axis */
+
+      --layout-start-justified: {
+        -ms-flex-pack: start;
+        -webkit-justify-content: flex-start;
+        justify-content: flex-start;
+      };
+
+      --layout-center-justified: {
+        -ms-flex-pack: center;
+        -webkit-justify-content: center;
+        justify-content: center;
+      };
+
+      --layout-end-justified: {
+        -ms-flex-pack: end;
+        -webkit-justify-content: flex-end;
+        justify-content: flex-end;
+      };
+
+      --layout-around-justified: {
+        -ms-flex-pack: distribute;
+        -webkit-justify-content: space-around;
+        justify-content: space-around;
+      };
+
+      --layout-justified: {
+        -ms-flex-pack: justify;
+        -webkit-justify-content: space-between;
+        justify-content: space-between;
+      };
+
+      --layout-center-center: {
+        @apply --layout-center;
+        @apply --layout-center-justified;
+      };
+
+      /* self alignment */
+
+      --layout-self-start: {
+        -ms-align-self: flex-start;
+        -webkit-align-self: flex-start;
+        align-self: flex-start;
+      };
+
+      --layout-self-center: {
+        -ms-align-self: center;
+        -webkit-align-self: center;
+        align-self: center;
+      };
+
+      --layout-self-end: {
+        -ms-align-self: flex-end;
+        -webkit-align-self: flex-end;
+        align-self: flex-end;
+      };
+
+      --layout-self-stretch: {
+        -ms-align-self: stretch;
+        -webkit-align-self: stretch;
+        align-self: stretch;
+      };
+
+      --layout-self-baseline: {
+        -ms-align-self: baseline;
+        -webkit-align-self: baseline;
+        align-self: baseline;
+      };
+
+      /* multi-line alignment in main axis */
+
+      --layout-start-aligned: {
+        -ms-flex-line-pack: start;  /* IE10 */
+        -ms-align-content: flex-start;
+        -webkit-align-content: flex-start;
+        align-content: flex-start;
+      };
+
+      --layout-end-aligned: {
+        -ms-flex-line-pack: end;  /* IE10 */
+        -ms-align-content: flex-end;
+        -webkit-align-content: flex-end;
+        align-content: flex-end;
+      };
+
+      --layout-center-aligned: {
+        -ms-flex-line-pack: center;  /* IE10 */
+        -ms-align-content: center;
+        -webkit-align-content: center;
+        align-content: center;
+      };
+
+      --layout-between-aligned: {
+        -ms-flex-line-pack: justify;  /* IE10 */
+        -ms-align-content: space-between;
+        -webkit-align-content: space-between;
+        align-content: space-between;
+      };
+
+      --layout-around-aligned: {
+        -ms-flex-line-pack: distribute;  /* IE10 */
+        -ms-align-content: space-around;
+        -webkit-align-content: space-around;
+        align-content: space-around;
+      };
+
+      /*******************************
+                Other Layout
+      *******************************/
+
+      --layout-block: {
+        display: block;
+      };
+
+      --layout-invisible: {
+        visibility: hidden !important;
+      };
+
+      --layout-relative: {
+        position: relative;
+      };
+
+      --layout-fit: {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      };
+
+      --layout-scroll: {
+        -webkit-overflow-scrolling: touch;
+        overflow: auto;
+      };
+
+      --layout-fullbleed: {
+        margin: 0;
+        height: 100vh;
+      };
+
+      /* fixed position */
+
+      --layout-fixed-top: {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+      };
+
+      --layout-fixed-right: {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+      };
+
+      --layout-fixed-bottom: {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      };
+
+      --layout-fixed-left: {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+      };
+
+    }
+  </style>
+</custom-style>`;
+
+template.setAttribute('style', 'display: none;');
+document.head.appendChild(template.content);
+
+var style$1 = document.createElement('style');
+style$1.textContent = '[hidden] { display: none !important; }';
+document.head.appendChild(style$1);
+
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+/**
+
+The `iron-icon` element displays an icon. By default an icon renders as a 24px
+square.
+
+Example using src:
+
+    <iron-icon src="star.png"></iron-icon>
+
+Example setting size to 32px x 32px:
+
+    <iron-icon class="big" src="big_star.png"></iron-icon>
+
+    <style is="custom-style">
+      .big {
+        --iron-icon-height: 32px;
+        --iron-icon-width: 32px;
+      }
+    </style>
+
+The iron elements include several sets of icons. To use the default set of
+icons, import `iron-icons.js` and use the `icon` attribute to specify an icon:
+
+    <script type="module">
+      import "@polymer/iron-icons/iron-icons.js";
+    </script>
+
+    <iron-icon icon="menu"></iron-icon>
+
+To use a different built-in set of icons, import the specific
+`iron-icons/<iconset>-icons.js`, and specify the icon as `<iconset>:<icon>`.
+For example, to use a communication icon, you would use:
+
+    <script type="module">
+      import "@polymer/iron-icons/communication-icons.js";
+    </script>
+
+    <iron-icon icon="communication:email"></iron-icon>
+
+You can also create custom icon sets of bitmap or SVG icons.
+
+Example of using an icon named `cherry` from a custom iconset with the ID
+`fruit`:
+
+    <iron-icon icon="fruit:cherry"></iron-icon>
+
+See `<iron-iconset>` and `<iron-iconset-svg>` for more information about how to
+create a custom iconset.
+
+See the `iron-icons` demo to see the icons available in the various iconsets.
+
+### Styling
+
+The following custom properties are available for styling:
+
+Custom property | Description | Default
+----------------|-------------|----------
+`--iron-icon` | Mixin applied to the icon | {}
+`--iron-icon-width` | Width of the icon | `24px`
+`--iron-icon-height` | Height of the icon | `24px`
+`--iron-icon-fill-color` | Fill color of the svg icon | `currentcolor`
+`--iron-icon-stroke-color` | Stroke color of the svg icon | none
+
+@group Iron Elements
+@element iron-icon
+@demo demo/index.html
+@hero hero.svg
+@homepage polymer.github.io
+*/
+Polymer({
+  _template: html$1`
+    <style>
+      :host {
+        @apply --layout-inline;
+        @apply --layout-center-center;
+        position: relative;
+
+        vertical-align: middle;
+
+        fill: var(--iron-icon-fill-color, currentcolor);
+        stroke: var(--iron-icon-stroke-color, none);
+
+        width: var(--iron-icon-width, 24px);
+        height: var(--iron-icon-height, 24px);
+        @apply --iron-icon;
+      }
+
+      :host([hidden]) {
+        display: none;
+      }
+    </style>
+`,
+
+  is: 'iron-icon',
+
+  properties: {
+
+    /**
+     * The name of the icon to use. The name should be of the form:
+     * `iconset_name:icon_name`.
+     */
+    icon: {type: String},
+
+    /**
+     * The name of the theme to used, if one is specified by the
+     * iconset.
+     */
+    theme: {type: String},
+
+    /**
+     * If using iron-icon without an iconset, you can set the src to be
+     * the URL of an individual icon image file. Note that this will take
+     * precedence over a given icon attribute.
+     */
+    src: {type: String},
+
+    /**
+     * @type {!IronMeta}
+     */
+    _meta: {value: Base.create('iron-meta', {type: 'iconset'})}
+
+  },
+
+  observers: [
+    '_updateIcon(_meta, isAttached)',
+    '_updateIcon(theme, isAttached)',
+    '_srcChanged(src, isAttached)',
+    '_iconChanged(icon, isAttached)'
+  ],
+
+  _DEFAULT_ICONSET: 'icons',
+
+  _iconChanged: function(icon) {
+    var parts = (icon || '').split(':');
+    this._iconName = parts.pop();
+    this._iconsetName = parts.pop() || this._DEFAULT_ICONSET;
+    this._updateIcon();
+  },
+
+  _srcChanged: function(src) {
+    this._updateIcon();
+  },
+
+  _usesIconset: function() {
+    return this.icon || !this.src;
+  },
+
+  /** @suppress {visibility} */
+  _updateIcon: function() {
+    if (this._usesIconset()) {
+      if (this._img && this._img.parentNode) {
+        dom(this.root).removeChild(this._img);
+      }
+      if (this._iconName === '') {
+        if (this._iconset) {
+          this._iconset.removeIcon(this);
+        }
+      } else if (this._iconsetName && this._meta) {
+        this._iconset = /** @type {?Polymer.Iconset} */ (
+            this._meta.byKey(this._iconsetName));
+        if (this._iconset) {
+          this._iconset.applyIcon(this, this._iconName, this.theme);
+          this.unlisten(window, 'iron-iconset-added', '_updateIcon');
+        } else {
+          this.listen(window, 'iron-iconset-added', '_updateIcon');
+        }
+      }
+    } else {
+      if (this._iconset) {
+        this._iconset.removeIcon(this);
+      }
+      if (!this._img) {
+        this._img = document.createElement('img');
+        this._img.style.width = '100%';
+        this._img.style.height = '100%';
+        this._img.draggable = false;
+      }
+      this._img.src = this.src;
+      dom(this.root).appendChild(this._img);
+    }
+  }
+});
+
 class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
   static get styles() {
     return css`
@@ -42059,7 +41969,6 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
       anypoint-icon-button {
         width: 40px;
         height: 40px;
-        /* padding: 12px; */
         margin: 0 4px;
       }
 
@@ -42067,6 +41976,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
         width: 24px;
         height: 24px;
         display: block;
+        fill: currentColor;
       }
 
       #selectionBar {
@@ -43873,7 +43783,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
 
     return html`
     ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
-    ${hasDescription ? html`<arc-marked .markdown="${_description}">
+    ${hasDescription ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
     </arc-marked>` : undefined}
     <p class="any-info">Any instance of data is allowed.</p>
@@ -43926,7 +43836,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
     ${hasTypeName ? html`<div class="type-title">${_typeName}</div>` : undefined}
     ${hasDescription ? html`
-    <arc-marked .markdown="${_description}">
+    <arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
     </arc-marked>` : undefined}
 
@@ -44060,6 +43970,13 @@ class ApiHeadersDocument extends LitElement {
 
     :host([narrow]) .headers-title {
       font-size: var(--api-headers-document-title-narrow-font-size, 17px);
+    }
+
+    .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -44075,7 +43992,7 @@ class ApiHeadersDocument extends LitElement {
       <div class="title-area-actions">
         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
           ${this._computeToggleActionLabel(opened)}
-          <iron-icon icon="arc:expand-more" class="${this._computeToggleIconClass(opened)}"></iron-icon>
+          <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
         </anypoint-button>
       </div>
     </div>
@@ -44278,7 +44195,7 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
       html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
     ${this._codesSelectorTemplate()}
     ${_hasCustomProperties ? html`<api-annotation-document ?legacy="${compatibility}" .shape="${_selectedResponse}"></api-annotation-document>`:undefined}
-    ${_description ? html`<arc-marked .markdown="${_description}">
+    ${_description ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>` : undefined}
     ${hasHeaders ? html`<api-headers-document
@@ -47154,7 +47071,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     ${hasCustomProperties ? html`<api-annotation-document
       .shape="${security}"></api-annotation-document>`:undefined}
 
-    ${description ? html`<arc-marked .markdown="${description}">
+    ${description ? html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>`:undefined}
 
@@ -47501,9 +47418,6 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       labelStyles,
       css`:host {
         display: block;
-        font-size: var(--arc-font-body1-font-size, inherit);
-        font-weight: var(--arc-font-body1-font-weight, inherit);
-        line-height: var(--arc-font-body1-line-height, inherit);
       }
 
       [hidden] {
@@ -47548,16 +47462,16 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       }
 
       :host([narrow]) .title {
-        font-size: 20px;
+        font-size: var(--arc-font-headline-narrow-font-size, 20px);
         margin: 0;
       }
 
       :host([narrow]) .heading2 {
-        font-size: 18px;
+        font-size: var(--arc-font-title-narrow-font-size, 18px);
       }
 
       :host([narrow]) .heading3 {
-        font-size: 17px;
+        font-size: var(--arc-font-subhead-narrow-font-size, 17px);
       }
 
       .title {
@@ -47570,7 +47484,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
         flex-direction: row;
         align-items: center;
         font-family: var(--arc-font-code-family);
-        font-size: var(--api-method-documentation-url-font-size, 16px);
+        font-size: var(--api-method-documentation-url-font-size, 1.07rem);
         margin-bottom: 40px;
         margin-top: 20px;
         background-color: var(--code-background-color);
@@ -47652,13 +47566,13 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
         margin: 16px 0;
         border-top: 1px var(--api-method-documentation-bottom-navigation-border-color, #cfd8dc) solid;
         color: var(--api-method-documentation-bottom-navigation-color, #000);
-        font-size: 18px;
       }
 
       .bottom-link {
         cursor: pointer;
         max-width: 50%;
         word-break: break-all;
+        text-decoration: underline;
       }
 
       .bottom-link.previous {
@@ -47877,7 +47791,11 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
        */
       methodSummary: { type: String },
 
-      _renderSnippets: { type: Boolean }
+      _renderSnippets: { type: Boolean },
+      /**
+       * When set it hiddes bottom navigation links
+       */
+      noNavigation: { type: Boolean }
     };
   }
 
@@ -48354,7 +48272,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     if (!description) {
       return html``;
     }
-    return html`<arc-marked .markdown="${description}">
+    return html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>`;
   }
@@ -48511,8 +48429,8 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _getNavigationTemplate() {
-    const { next, previous } = this;
-    if (!next && !previous) {
+    const { next, previous, noNavigation } = this;
+    if (!next && !previous || noNavigation) {
       return;
     }
     const { compatibility } = this;
@@ -54292,15 +54210,6 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       align-items: center;
     }
 
-    .action-icon {
-      color: var(--from-row-action-icon-color, var(--icon-button-color, rgba(0, 0, 0, 0.74)));
-      transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
-    }
-
-    .action-icon:hover {
-      color: var(--from-row-action-icon-color-hover, var(--accent-color, rgba(0, 0, 0, 0.88)));
-    }
-
     .array-item {
       display: flex;
       flex-direction: row;
@@ -54313,7 +54222,7 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       width: auto;
     }
 
-    anypoint-button iron-icon {
+    anypoint-button .icon {
       margin-right: 12px;
     }
 
@@ -54323,6 +54232,13 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
 
     .array-label {
       margin-left: 8px;
+    }
+
+    .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -54446,8 +54362,9 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
         ?compatibility="${compatibility}"
         @click="${this._removeArrayValue}"
         title="Remove array value"
-        ?disabled="${this.readOnly || disabled}">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        ?disabled="${this.readOnly || disabled}"
+      >
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>` : undefined}
     </div>`)}
     <div class="add-action">
@@ -54456,8 +54373,9 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
         title="Add array velue button"
         ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
-        ?compatibility="${compatibility}">
-        <iron-icon class="action-icon" icon="arc:add-circle-outline" alt="Add array value icon"></iron-icon>
+        ?compatibility="${compatibility}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add array value
       </anypoint-button>
     </div>
@@ -56607,6 +56525,13 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
       .is-array .hint-icon {
         margin-top: 8px;
       }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+      }
       `
     ];
   }
@@ -56686,7 +56611,7 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
             .model="${item}"
             ?required="${item.required}"
             .readOnly="${readOnly}"
-            .disabled=${disabled}
+            .disabled="${disabled}"
             ?narrow="${narrow}"
             .noDocs="${noDocs}"
             ?outlined="${outlined}"
@@ -56699,8 +56624,9 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
           ?outlined="${outlined}"
           ?compatibility="${compatibility}"
           ?disabled="${disabled}"
-          @click="${this._toggleItemDocs}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this._toggleItemDocs}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
 
         ${item.schema.isCustom ? html`<anypoint-icon-button
@@ -56712,12 +56638,13 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
           slot="suffix"
           ?disabled="${readOnly || disabled}"
           ?outlined="${outlined}"
-          ?compatibility="${compatibility}">
-          <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+          ?compatibility="${compatibility}"
+        >
+          <span class="icon">${removeCircleOutline}</span>
         </anypoint-icon-button>` : undefined}
       </div>
 
-      ${renderDocs ? html`<arc-marked .markdown="${this._computeDocumentation(item)}">
+      ${renderDocs ? html`<arc-marked .markdown="${this._computeDocumentation(item)}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>` : undefined}
     </div>`;
@@ -56757,11 +56684,9 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
         @click="${this.add}"
         title="Add new parameter"
         aria-label="Press to create a new parameter"
-        ?disabled="${readOnly || disabled}">
-        <iron-icon
-          class="action-icon"
-          icon="arc:add-circle-outline"
-          alt="Add parameter icon"></iron-icon>
+        ?disabled="${readOnly || disabled}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add parameter
       </anypoint-button>
     </div>` : undefined}`;
@@ -58086,11 +58011,31 @@ anypoint-input,
 anypoint-masked-input {
   margin: 20px 8px;
 }
+
+.icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
 `;
 
 class AnypointMaskedInput extends AnypointInput {
+  static get styles() {
+    return [
+      AnypointInput.styles,
+      css`
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+      }`
+    ];
+  }
+
   get _visibilityToggleIcon() {
-    return this.visible ? 'arc:visibility-off' : 'arc:visibility';
+    return this.visible ? visibilityOff : visibility;
   }
 
   get _visibilityToggleTitle() {
@@ -58142,8 +58087,9 @@ class AnypointMaskedInput extends AnypointInput {
         @click="${this.toggleVisibility}"
         title="${_visibilityToggleTitle}"
         aria-label="${_visibilityToggleLabel}"
-        ?disabled="${disabled}">
-        <iron-icon icon="${_visibilityToggleIcon}"></iron-icon>
+        ?disabled="${disabled}"
+      >
+        <span class="icon">${_visibilityToggleIcon}</span>
       </anypoint-icon-button>
       <slot name="suffix"></slot>
     </div>`;
@@ -64433,7 +64379,14 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
      font-weight: 400;
      line-height: 20px;
      color: var(--oauth2-scope-selector-item-description-color, #737373);
-   }`;
+   }
+
+   .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }`;
   }
 
   _scopesListTemplate() {
@@ -64459,8 +64412,9 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
         @click="${this._removeScope}"
         ?disabled="${readOnly || disabled}"
         aria-label="Press to remove this scope from the list"
-        title="Remove scope">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        title="Remove scope"
+      >
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>
     </li>`);
   }
@@ -64504,8 +64458,9 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
             @click="${this._appendScope}"
             ?disabled="${readOnly || disabled}"
             aria-label="Press to add current scope to the list"
-            title="Add scope">
-            <iron-icon icon="arc:add-circle-outline"></iron-icon>
+            title="Add scope"
+          >
+            <span class="icon">${addCircleOutline}</span>
           </anypoint-icon-button>
         </anypoint-input>
 
@@ -66513,11 +66468,11 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
             data-type="${type}"
             data-index="${index}"
             @click="${this._toggleDocumentation}">
-            <iron-icon icon="arc:help"></iron-icon>
+            <span class="icon">${help}</span>
           </anypoint-icon-button>` : undefined}
       </div>
       ${item.hasDescription && !noDocs && item.docsOpened ? html`<div class="docs-container">
-        <arc-marked .markdown="${item.description}">
+        <arc-marked .markdown="${item.description}" sanitize>
           <div slot="markdown-html" class="markdown-body"></div>
         </arc-marked>
       </div>` : ''}
@@ -66967,7 +66922,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               .compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
-              attrforselected="data-value">
+              attrforselected="data-value"
+            >
               <anypoint-item .compatibility="${compatibility}" data-value="GET">GET</anypoint-item>
               <anypoint-item .compatibility="${compatibility}" data-value="POST">POST</anypoint-item>
             </anypoint-listbox>
@@ -66992,7 +66948,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               .compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
-              attrforselected="data-value">
+              attrforselected="data-value"
+            >
               <anypoint-item .compatibility="${compatibility}" data-value="querystring">Query string</anypoint-item>
               <anypoint-item .compatibility="${compatibility}"
                 data-value="authorization">Authorization header</anypoint-item>
@@ -67010,7 +66967,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
-            invalidmessage="Consumer key is required">
+            invalidmessage="Consumer key is required"
+          >
             <label slot="label">Consumer key</label>
           </anypoint-masked-input>
 
@@ -67022,7 +66980,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Consumer secret</label>
           </anypoint-masked-input>
 
@@ -67034,7 +66993,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token</label>
           </anypoint-masked-input>
 
@@ -67046,7 +67006,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token secret</label>
           </anypoint-masked-input>
 
@@ -67059,7 +67020,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Request token URL</label>
           </anypoint-input>
 
@@ -67072,7 +67034,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Token Authorization URL</label>
           </anypoint-input>
 
@@ -67085,7 +67048,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">User authorization dialog URL</label>
           </anypoint-input>
 
@@ -67098,7 +67062,8 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
             .outlined="${outlined}"
             .compatibility="${compatibility}"
             .readOnly="${readOnly}"
-            .disabled="${disabled}">
+            .disabled="${disabled}"
+          >
             <label slot="label">Redirect URL</label>
           </anypoint-input>
 
@@ -67120,8 +67085,9 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               slot="suffix"
               title="Regenerate timestamp"
               aria-label="Press to regenerate timestamp"
-              @click="${this._genTimestamp}">
-              <iron-icon alt="Regenerate input icon" icon="arc:help"></iron-icon>
+              @click="${this._genTimestamp}"
+            >
+              <span class="icon">${cached}</span>
             </anypoint-icon-button>
           </anypoint-input>
 
@@ -67143,8 +67109,9 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
               slot="suffix"
               title="Regenerate nonce"
               aria-label="Press to regenerate nonce"
-              @click="${this._genNonce}">
-              <iron-icon alt="Regenerate input icon" icon="arc:help"></iron-icon>
+              @click="${this._genNonce}"
+            >
+              <span class="icon">${cached}</span>
             </anypoint-icon-button>
           </anypoint-input>
 
@@ -67670,12 +67637,13 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
               aria-label="Press to toggle schema description"
               ?outlined="${outlined}"
               ?compatibility="${compatibility}"
-              @click="${this.toggleSchemeDocumentation}">
-              <iron-icon icon="arc:help"></iron-icon>
+              @click="${this.toggleSchemeDocumentation}"
+            >
+              <span class="icon">${help}</span>
             </anypoint-icon-button>` : ''}
           </div>
           ${_hasSchemeDescription && documentationOpened ? html`<div class="docs-container">
-            <arc-marked .markdown="${_schemeDescription}" main-docs>
+            <arc-marked .markdown="${_schemeDescription}" main-docs sanitize>
               <div slot="markdown-html" class="markdown-body"></div>
             </arc-marked>
           </div>` : ''}
@@ -67822,12 +67790,13 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
           aria-label="Press to toggle description"
           data-type="${type}"
           data-index="${index}"
-          @click="${this._toggleDocumentation}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this._toggleDocumentation}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
     </div>
     ${item.hasDescription && !noDocs && item.docsOpened ? html`<div class="docs-container">
-      <arc-marked .markdown="${item.description}">
+      <arc-marked .markdown="${item.description}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>
     </div>` : ''}`;
@@ -69352,18 +69321,17 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
         margin-top: 8px;
       }
 
-      anypoint-icon-button {
-        /* margin-top: var(--api-headers-editore-hint-icon-margin-top, 16px); */
-      }
-
-      :host([narrow]) anypoint-icon-button {
-        /* margin-top: var(--api-headers-editore-hint-icon-margin-top-narrow, 16px); */
-      }
-
       .custom-wrapper {
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }
       `
     ];
@@ -69427,8 +69395,9 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
           title="Show documentation"
           ?outlined="${outlined}"
           ?compatibility="${compatibility}"
-          @click="${this.toggleDocs}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this.toggleDocs}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
         <slot name="suffix"></slot>
       </div>
@@ -69456,12 +69425,15 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
         ?readonly="${readOnly}"
         ?outlined="${outlined}"
         ?compatibility="${compatibility}"
-        @value-changed="${this._valueChangeHandler}"></api-property-form-item>
+        @value-changed="${this._valueChangeHandler}"
+      ></api-property-form-item>
         ${model.hasDescription && !noDocs ? html`<anypoint-icon-button
           class="hint-icon"
           title="Show documentation"
-          @click="${this.toggleDocs}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this.toggleDocs}"
+          ?compatibility="${compatibility}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
       <slot name="suffix"></slot>
     </div>`;
@@ -69481,9 +69453,10 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
     return html`
     ${isCustom ? this._customTemplate() : this._modelTemplate()}
 
-    ${!noDocs && docsOpened && model.description ? html`<arc-marked .markdown="${model.description}">
+    ${!noDocs && docsOpened && model.description ?
+    html`<arc-marked .markdown="${model.description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
-    </arc-marked>` : undefined}
+    </arc-marked>` : ''}
 
     ${hasAutocomplete ? html`<anypoint-autocomplete
       class="value-autocomplete"
@@ -69880,6 +69853,13 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
       .empty-info {
         color: var(--empty-info-color, rgba(0, 0, 0, 0.74));
         font-size: var(--empty-info-font-size, 16px);
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -69938,7 +69918,8 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
             ?narrow="${narrow}"
             .noDocs="${noDocs}"
             ?outlined="${outlined}"
-            ?compatibility="${compatibility}">
+            ?compatibility="${compatibility}"
+          >
             <anypoint-icon-button
               title="Remove this header"
               aria-label="Press to remove header ${name}"
@@ -69948,8 +69929,9 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
               slot="suffix"
               ?disabled="${readOnly}"
               ?outlined="${outlined}"
-              ?compatibility="${compatibility}">
-              <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+              ?compatibility="${compatibility}"
+            >
+              <span class="icon action-icon">${removeCircleOutline}</span>
             </anypoint-icon-button>
           </api-headers-form-item>
         </div>`)}
@@ -69962,11 +69944,9 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
         @tap="${this.add}"
         title="Add new header"
         aria-label="Press to create a new header"
-        ?disabled="${readOnly}">
-        <iron-icon
-          class="action-icon"
-          icon="arc:add-circle-outline"
-          alt="Add header icon"></iron-icon>
+        ?disabled="${readOnly}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add header
       </anypoint-button>
     </div>` : undefined}
@@ -73956,6 +73936,13 @@ class FormDataEditorItem extends LitElement {
 
       [hidden] {
         display: none !important;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -74007,8 +73994,9 @@ class FormDataEditorItem extends LitElement {
       slot="suffix"
       ?disabled="${readOnly || disabled}"
       ?outlined="${outlined}"
-      ?compatibility="${compatibility}">
-      <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+      ?compatibility="${compatibility}"
+    >
+      <span class="icon">${removeCircleOutline}</span>
     </anypoint-icon-button>`;
   }
 
@@ -74045,8 +74033,9 @@ class FormDataEditorItem extends LitElement {
         ?outlined="${outlined}"
         ?compatibility="${compatibility}"
         ?disabled="${disabled}"
-        @click="${this._toggleItemDocs}">
-        <iron-icon icon="arc:help"></iron-icon>
+        @click="${this._toggleItemDocs}"
+      >
+        <span class="icon">${help}</span>
       </anypoint-icon-button>` : undefined}
     </div>`;
   }
@@ -74067,7 +74056,7 @@ class FormDataEditorItem extends LitElement {
       ${isCustom ? this._customTemplate() : this._modelTemplate(model, hasDocs, noDocs)}
     </div>
     ${renderDocs ? html`<div class="docs">
-      <arc-marked .markdown="${this._computeDocumentation(model)}">
+      <arc-marked .markdown="${this._computeDocumentation(model)}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>
     </div>` : undefined}`;
@@ -74321,6 +74310,13 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         flex-direction: row;
         align-items: center;
       }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+      }
       `
     ];
   }
@@ -74399,11 +74395,9 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
           @click="${this.add}"
           title="Add new parameter"
           aria-label="Press to create a new parameter"
-          ?disabled="${readOnly || disabled}">
-          <iron-icon
-            class="action-icon"
-            icon="arc:add-circle-outline"
-            alt="Add parameter icon"></iron-icon>
+          ?disabled="${readOnly || disabled}"
+        >
+          <span class="icon action-icon">${addCircleOutline}</span>
           Add parameter
         </anypoint-button>
       </div>` : undefined}
@@ -74454,11 +74448,9 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         @click="${this.add}"
         title="Add new parameter"
         aria-label="Press to create a new parameter"
-        ?disabled="${readOnly || disabled}">
-        <iron-icon
-          class="action-icon"
-          icon="arc:add-circle-outline"
-          alt="Add parameter icon"></iron-icon>
+        ?disabled="${readOnly || disabled}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add next
       </anypoint-button>` : ''}
     `;
@@ -85663,6 +85655,13 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
       .name-field {
         max-width: 360px;
         flex: 1;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -85729,14 +85728,15 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
           ?outlined="${outlined}"
           ?compatibility="${compatibility}"
           ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this.toggleDocumentation}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
       </div>
     </div>
 
     ${docsOpened && model.hasDescription ? html`<div class="docs">
-      <arc-marked .markdown="${model.description}">
+      <arc-marked .markdown="${model.description}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>
     </div>` : undefined}`;
@@ -85790,7 +85790,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
       disabled: { type: Boolean }
     };
   }
-  
+
   get legacy() {
     return this.compatibility;
   }
@@ -85901,6 +85901,13 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
       .name-field {
         max-width: 360px;
         flex: 1;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -85953,13 +85960,14 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
           ?outlined="${outlined}"
           ?compatibility="${compatibility}"
           ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}">
-          <iron-icon icon="arc:help"></iron-icon>
+          @click="${this.toggleDocumentation}"
+        >
+          <span class="icon">${help}</span>
         </anypoint-icon-button>` : undefined}
       </div>
 
       ${docsOpened && model.hasDescription ? html`<div class="docs">
-        <arc-marked .markdown="${model.description}">
+        <arc-marked .markdown="${model.description}" sanitize>
           <div slot="markdown-html" class="markdown-body"></div>
         </arc-marked>
       </div>` : undefined}
@@ -86207,6 +86215,13 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .icon {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -86263,7 +86278,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
         ?compatibility="${compatibility}">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>
     </div>`;
   }
@@ -86992,6 +87007,13 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
       display: flex;
       flex-direction: row;
       align-items: center;
+    }
+
+    .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -87005,13 +87027,14 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
 
     ${hasFile ? html`<div class="list">
       <div class="card">
-        <iron-icon class="file-icon" icon="${this._computeIcon('insert-drive-file')}"></iron-icon>
+        <span class="file-icon icon">${insertDriveFile}</span>
         <span class="file-name">${fileName}</span>
         <anypoint-icon-button
           class="action-icon delete-icon"
           title="Clear file"
-          @click="${this.removeFile}">
-          <iron-icon icon="${this._computeIcon('remove-circle-outline')}"></iron-icon>
+          @click="${this.removeFile}"
+        >
+          <span class="icon">${removeCircleOutline}</span>
         </anypoint-icon-button>
       </div>
     </div>` : undefined}
@@ -87037,14 +87060,7 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
        *
        * @type {Blob}
        */
-      value: { },
-      /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
-       */
-      iconPrefix: { type: String }
+      value: { }
     };
   }
   /**
@@ -87094,10 +87110,6 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
     this.addEventListener('value-changed', value);
   }
 
-  constructor() {
-    super();
-    this.iconPrefix = 'arc';
-  }
   /**
    * Returns a reference to the input element.
    *
@@ -87273,14 +87285,6 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
    */
   clearCache() {
     this.latestFile = undefined;
-  }
-
-  _computeIcon(name) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + name;
   }
 }
 window.customElements.define('files-payload-editor', FilesPayloadEditor);
@@ -88752,13 +88756,17 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
    * A function to be called to refres current state of editor panel.
    * It is only called for the panels that support refreshing (raw editor)
    */
-  refreshPanel() {
+  refresh() {
     if (this.selected === 0) {
       const panel = this.currentPanel;
       if (panel) {
         panel.refresh();
       }
     }
+  }
+
+  refreshPanel() {
+    this.refresh();
   }
 
   _modelHandler(e) {
@@ -90041,6 +90049,14 @@ the License.
  * @return {Function}
  */
 const ResponseStatusMixin = (base) => class extends base {
+  static get properties() {
+    return {
+      /**
+       * Renders mobile frinedly view
+       */
+      narrow: { type: Boolean }
+    };
+  }
   /**
    * Comnputes CSS class name depending on response status code.
    * @param {Number} code Status code
@@ -91451,22 +91467,36 @@ class HttpSourceMessageView extends LitElement {
       display: flex;
       align-items: center;
       cursor: pointer;
+    }
 
+    .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
   render() {
-    const { opened, message } = this;
+    const { opened, message, compatibility, toggleIcon } = this;
     return html`
-    <div class="title" @click="${this.toggle}">
+    <div
+      class="title"
+      @click="${this.toggle}"
+    >
       Source message
       <anypoint-icon-button
         title="Toggles source view"
-        aria-label="Press to toggle source view">
-          <iron-icon icon="${this._computeIcon(opened)}"></iron-icon>
+        aria-label="Press to toggle source view"
+        ?compatibility="${compatibility}"
+      >
+        <span class="icon">${toggleIcon}</span>
       </anypoint-icon-button>
     </div>
-    <iron-collapse id="collapse" .opened="${opened}">
+    <iron-collapse
+      id="collapse"
+      .opened="${opened}"
+    >
       <pre>${message}</pre>
     </iron-collapse>`;
   }
@@ -91478,13 +91508,14 @@ class HttpSourceMessageView extends LitElement {
       // True if the message is visible.
       opened: { type: Boolean },
       /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
+       * Enables compatibility view with Anypoint platform
        */
-      iconPrefix: { type: String }
+      compatibility: { type: Boolean }
     };
+  }
+
+  get toggleIcon() {
+    return this.opened ? expandLess : expandMore;
   }
 
   get opened() {
@@ -91504,28 +91535,11 @@ class HttpSourceMessageView extends LitElement {
       this.setAttribute('aria-expanded', 'false');
     }
   }
-
-  constructor() {
-    super();
-    this.iconPrefix = 'arc';
-  }
   /**
    * Toggles source message visibility
    */
   toggle() {
     this.opened = !this.opened;
-  }
-  /**
-   * Computes icon name depending on `opened` state
-   * @param {Boolean} opened
-   * @return {String}
-   */
-  _computeIcon(opened) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + (opened ? 'expand-less' : 'expand-more');
   }
 }
 window.customElements.define('http-source-message-view', HttpSourceMessageView);
@@ -91661,7 +91675,7 @@ class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
     ];
   }
 
-  _listItemTemplate(item, index) {
+  _listItemTemplate(item, index, narrow) {
     const loc = this._computeRedirectLocation(item.headers);
     return html`<div class="status-label text">
       #<span>${index + 1}</span>
@@ -91672,18 +91686,20 @@ class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
         <span class="redirect-location">
           to: <a href="${loc}" class="auto-link">${loc}</a></span>
       </div>
-      <headers-list-view .headers="${item.headers}"></headers-list-view>
+      <headers-list-view
+        .headers="${item.headers}"
+        ?narrow="${narrow}"></headers-list-view>
     </div>`;
   }
 
   render() {
-    const { redirects } = this;
+    const { redirects, narrow } = this;
     const hasRedirects = !!(redirects && redirects.length);
     return html`
     ${hasRedirects ?
       redirects.map((item, index) =>
         html`<div class="status-row">
-          ${this._listItemTemplate(item, index)}
+          ${this._listItemTemplate(item, index, narrow)}
           </div>`) :
       html`<div class="no-info-container">
           <p class="no-info">There is no redirects information to display</p>
@@ -92086,6 +92102,13 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
 
       [hidden] {
         display: none !important;
+      }
+
+      .icon {
+        display: block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
       }`
     ];
   }
@@ -92103,7 +92126,8 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
       responseHeaders,
       requestHeaders,
       isXhr,
-      scrollableTab
+      scrollableTab,
+      compatibility
     } = this;
     let  {
       redirects
@@ -92125,9 +92149,15 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
           ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : undefined}
         </div>
         <div class="status-details">
-          <anypoint-button @click="${this.toggleCollapse}" class="toggle-button" title="Toogles response headers">
+          <anypoint-button
+            @click="${this.toggleCollapse}"
+            class="toggle-button"
+            title="Toogles response headers"
+            aria-label="Activate to toggle response headers"
+            ?compatibility="${compatibility}"
+          >
             Details
-            <iron-icon icon="${this._computeIcon('expand-more')}" class="${this._computeToggleIconClass(opened)}"></iron-icon>
+            <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
           </anypoint-button>
         </div>`}
       </div>
@@ -92139,20 +92169,25 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
         <span class="request-url">${requestUrl}</span>
       </div>` : undefined}
 
-      <anypoint-tabs .selected="${selectedTab}" ?scrollable="${scrollableTab}" @selected-changed="${this._tabChangeHandler}">
-        <anypoint-tab>
+      <anypoint-tabs
+        .selected="${selectedTab}"
+        ?scrollable="${scrollableTab}"
+        @selected-changed="${this._tabChangeHandler}"
+        ?compatibility="${compatibility}"
+      >
+        <anypoint-tab ?compatibility="${compatibility}">
           <span>Response headers</span>
           <span class="${this._computeBageClass(responseHeaders)}">${this._computeHeadersLength(responseHeaders)}</span>
         </anypoint-tab>
-        <anypoint-tab>
+        <anypoint-tab ?compatibility="${compatibility}">
           <span>Request headers</span>
           <span class="${this._computeBageClass(requestHeaders)}">${this._computeHeadersLength(requestHeaders)}</span>
         </anypoint-tab>
-        ${isXhr ? undefined : html`<anypoint-tab>
+        ${isXhr ? undefined : html`<anypoint-tab ?compatibility="${compatibility}">
           <span>Redirects</span>
           <span class="${this._computeBageClass(redirects.length)}">${redirects.length}</span>
         </anypoint-tab>
-        <anypoint-tab>Timings</anypoint-tab>`}
+        <anypoint-tab ?compatibility="${compatibility}">Timings</anypoint-tab>`}
       </anypoint-tabs>
       ${this._selectedTemplate(selectedTab)}
     </iron-collapse>`;
@@ -92173,21 +92208,7 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
           <p class="no-info">No response headers recorded.</p>
         </div>`}
       </section>`;
-      case 1: return html`<section class="request-headers-panel">
-        ${this.requestHeaders ?
-          html`<headers-list-view
-            ?narrow="${narrow}"
-            type="request"
-            @click="${this._handleLink}"
-            .headers="${this.requestHeaders}"
-            data-source="request-headers"></headers-list-view>` :
-          html`<div class="no-info-container">
-            <p class="no-info">No request headers recorded.</p>
-          </div>`}
-        ${this.httpMessage ? html`<http-source-message-view
-          .message="${this.httpMessage}"
-          .iconPrefix="${this.iconPrefix}"></http-source-message-view>` : undefined}
-      </section>`;
+      case 1: return this._headersTemplate();
       case 2: return html`<response-redirects-panel
         .redirects="${this.redirects}"
         ?narrow="${narrow}"></response-redirects-panel>`;
@@ -92196,6 +92217,33 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
         .timings="${this.timings}"
         ?narrow="${narrow}"></request-timings-panel>`;
     }
+  }
+
+  _headersTemplate() {
+    const {
+      requestHeaders,
+      httpMessage,
+      narrow,
+      compatibility
+    } = this;
+    return html`<section class="request-headers-panel">
+      ${requestHeaders ?
+        html`<headers-list-view
+          ?narrow="${narrow}"
+          type="request"
+          @click="${this._handleLink}"
+          .headers="${requestHeaders}"
+          data-source="request-headers"></headers-list-view>` :
+        html`<div class="no-info-container">
+          <p class="no-info">No request headers were recorded.</p>
+        </div>`}
+      ${httpMessage ?
+        html`
+        <http-source-message-view
+          .message="${httpMessage}"
+          ?compatibility="${compatibility}"
+        ></http-source-message-view>` : ''}
+    </section>`
   }
 
   static get properties() {
@@ -92278,12 +92326,9 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
        */
       narrow: { type: Boolean },
       /**
-       * Icon prefix from the svg icon set. This can be used to replace the set
-       * without changing the icon.
-       *
-       * Defaults to `arc`.
+       * Enables compatibility view with Anypoint platform
        */
-      iconPrefix: { type: String }
+      compatibility: { type: Boolean }
     };
   }
 
@@ -92374,7 +92419,6 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
     this.loadingTime = 0;
     this.selectedTab = 0;
     this.opened = false;
-    this.iconPrefix = 'arc';
   }
 
   connectedCallback() {
@@ -92477,18 +92521,6 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
   _tabChangeHandler(e) {
     this.selectedTab = e.detail.value;
   }
-  /**
-   * Computes icon name depending on `opened` state
-   * @param {String} iconName
-   * @return {String}
-   */
-  _computeIcon(iconName) {
-    let icon = '';
-    if (this.iconPrefix) {
-      icon = this.iconPrefix + ':';
-    }
-    return icon + iconName;
-  }
 }
 window.customElements.define('response-status-view', ResponseStatusView);
 
@@ -92589,12 +92621,8 @@ the License.
  *
  * Custom property | Description | Default
  * ----------------|-------------|----------
- * `--response-error-view` | Mixin applied to the element | `{}`
  * `--error-message-icon-color` | Color of the icon | `rgba(0, 0, 0, 0.56)`
- * `--error-message-icon` | Mixin apllied to the icon | `{}`
- * `--arc-font-subhead` | Theme mixin, applied to the predefined description message. | `{}`
  * `--error-message-color` | Color of the predefined description message | `#db4437`
- * `--error-message-text` | Mixin applied ot the predefined description message | `{}`
  * `--error-message-code-color` | Color of the message passed to the element. It's meant to be a less visible information and probably define an error code. | `#9e9e9e`
  *
  * @customElement
@@ -92620,9 +92648,11 @@ class ResponseErrorView extends LitElement {
       }
 
       .error-icon {
+        min-width: 128px;
         width: 128px;
         height: 128px;
-        color: var(--error-message-icon-color, rgba(0, 0, 0, 0.56));
+        fill: var(--error-message-icon-color, rgba(0, 0, 0, 0.56));
+        display: block;
       }
 
       .error-desc {
@@ -92669,7 +92699,11 @@ class ResponseErrorView extends LitElement {
               href="http://restforchrome.blogspot.co.uk/2016/04/advanced-rest-client.html"
               target="_blank"
             >
-              <anypoint-button emphasis="high" tabindex="-1">Tell me more</anypoint-button>
+              <anypoint-button
+                emphasis="high"
+                tabindex="-1"
+                ?compatibility="${this.compatibility}"
+              >Tell me more</anypoint-button>
             </a>
             <p class="error-code">${message}</p>
           </section>
@@ -92711,10 +92745,10 @@ class ResponseErrorView extends LitElement {
               href="http://restforchrome.blogspot.co.uk/2016/04/advanced-rest-client.html"
               target="_blank"
             >
-              <anypoint-button emphasis="high" tabindex="-1">Tell me more</anypoint-button>
+              <anypoint-button emphasis="high" tabindex="-1" ?compatibility="${this.compatibility}">Tell me more</anypoint-button>
             </a>
             <a class="inherit" href="https://bugs.chromium.org/p/chromium/issues/detail?id=603104" target="_blank">
-              <anypoint-button emphasis="high" tabindex="-1">See CR bug</anypoint-button>
+              <anypoint-button emphasis="high" tabindex="-1" ?compatibility="${this.compatibility}">See CR bug</anypoint-button>
             </a>
             <p class="error-code">${message}</p>
           </section>
@@ -92833,7 +92867,7 @@ class ResponseErrorView extends LitElement {
               href="http://restforchrome.blogspot.co.uk/2016/04/advanced-rest-client.html"
               target="_blank"
             >
-              <anypoint-button emphasis="high" tabindex="-1">Tell me more</anypoint-button>
+              <anypoint-button emphasis="high" tabindex="-1" ?compatibility="${this.compatibility}">Tell me more</anypoint-button>
             </a>
             <p class="error-code">${message}</p>
           </section>
@@ -93139,12 +93173,10 @@ class ResponseErrorView extends LitElement {
   }
 
   render() {
-    const { icon, detailsPage, message } = this;
+    const { detailsPage, message } = this;
     return html`
       <div class="message-wrapper">
-        <div>
-          <iron-icon class="error-icon" .icon="${icon}"></iron-icon>
-        </div>
+        <div class="error-icon">${sentimentVeryDissatisfied}</div>
         <div class="error-desc">
           ${this._renderPageTemplate(detailsPage, message)}
         </div>
@@ -93161,12 +93193,12 @@ class ResponseErrorView extends LitElement {
        * case the element will display predefined message.
        */
       message: { type: String },
-      /**
-       * An icon to display.
-       */
-      icon: { type: String },
       // Opened detailed message page.
-      detailsPage: { type: Number }
+      detailsPage: { type: Number },
+      /**
+       * Enables compatibility view for Anypoint
+       */
+      compatibility: { type: Boolean }
     };
   }
 
@@ -93179,13 +93211,9 @@ class ResponseErrorView extends LitElement {
     if (old === value) {
       return;
     }
+    this._message = value;
     this.requestUpdate('message', old);
     this._messageChanged(value);
-  }
-
-  constructor() {
-    super();
-    this.icon = 'arc:sentiment-very-dissatisfied';
   }
 
   connectedCallback() {
@@ -93517,10 +93545,12 @@ class JsMaxNumberError extends LitElement {
       cursor: pointer;
     }
 
-    iron-icon {
+    .icon {
       height: 18px;
       width: 18px;
       margin-right: 8px;
+      display: inline-block;
+      fill: currentColor;
     }
 
     #collapse {
@@ -93549,8 +93579,11 @@ class JsMaxNumberError extends LitElement {
 
   render() {
     return html`
-    <div class="content" @click="${this.toggle}">
-      <iron-icon icon="arc:info"></iron-icon>
+    <div
+      class="content"
+      @click="${this.toggle}"
+    >
+      <span class="icon">${info}</span>
       <div class="parsed-value">
         <slot></slot>
       </div>
@@ -94970,6 +95003,7 @@ class ResponseBodyView extends LitElement {
       display: flex;
       flex-direction: row;
       align-items: center;
+      margin-bottom: 8px;
     }
 
     .download-link {
@@ -94989,6 +95023,15 @@ class ResponseBodyView extends LitElement {
       font-size: 1.5rem;
       font-weight: 400;
       letter-spacing: 0.01rem;
+    }
+
+    .img-preview {
+      max-width: 100%;
+    }
+
+    .content-info {
+      text-align: center;
+      margin: 24px 0;
     }`;
   }
 
@@ -95001,13 +95044,16 @@ class ResponseBodyView extends LitElement {
         .responseText="${content}"
         .contentType="${this.contentType}"></response-highlighter>`;
       case 2: return html`<json-viewer .json="${content}"></json-viewer>`;
-      case 3: return html`<json-table .json="${content}"></json-table>`;
+      case 3: return html`<json-table .json="${content}" ?compatibility="${this.compatibility}"></json-table>`;
+      case 4: return this._imageTemplate();
+      case 5: return this._pdfTemplate();
       default:
     }
   }
 
   _downloadTemplate() {
     const {
+      compatibility,
       _downloadFileUrl,
       _downloadFileName
     } = this;
@@ -95017,17 +95063,35 @@ class ResponseBodyView extends LitElement {
         <p>Your file is now ready to download.</p>
       </div>
       <div>
-        <anypoint-button emphasis="low" @click="${this._downloadDialogClose}">Cancel</anypoint-button>
+        <anypoint-button
+          emphasis="low"
+          @click="${this._downloadDialogClose}"
+          ?compatibility="${compatibility}"
+        >Cancel</anypoint-button>
         <a
           href="${_downloadFileUrl}"
           download="${_downloadFileName}"
           @click="${this._downloadHandler}"
           target="_blank"
           class="download-link">
-          <anypoint-button emphasis="high">Download file</anypoint-button>
+          <anypoint-button
+            emphasis="high"
+            ?compatibility="${compatibility}"
+          >Download file</anypoint-button>
         </a>
       </div>
     </div>`;
+  }
+
+  _imageTemplate() {
+    return html`<img class="img-preview" src="${this._imageDataUrl}" alt="">`;
+  }
+
+  _pdfTemplate() {
+    return html`<p class="content-info">
+      The response conatin <b>PDF</b> data.<br/>
+      Save the file to preview its contents.
+    </p>`;
   }
 
   render() {
@@ -95037,6 +95101,7 @@ class ResponseBodyView extends LitElement {
       activeView,
       jsonTableView,
       rawTextWrap,
+      compatibility,
       _downloadFileUrl,
       _raw,
       _isJson
@@ -95049,6 +95114,7 @@ class ResponseBodyView extends LitElement {
         class="action-button"
         data-action="copy"
         emphasis="medium"
+        ?compatibility="${compatibility}"
         @click="${this._copyToClipboard}"
         aria-label="Press to copy response to clipboard"
         title="Copy response to clipboard">Copy</anypoint-button>
@@ -95057,6 +95123,7 @@ class ResponseBodyView extends LitElement {
         class="action-button"
         data-action="save-file"
         emphasis="medium"
+        ?compatibility="${compatibility}"
         @click="${this._saveFile}"
         aria-label="Press to save content to file"
         title="Save content to file">Save</anypoint-button>
@@ -95065,6 +95132,7 @@ class ResponseBodyView extends LitElement {
         class="action-button"
         data-action="raw-toggle"
         emphasis="medium"
+        ?compatibility="${compatibility}"
         toggles
         .active="${rawView}"
         @active-changed="${this._sourceViewHandler}"
@@ -95075,6 +95143,7 @@ class ResponseBodyView extends LitElement {
         part="content-action-button, code-content-action-button"
         class="action-button"
         data-action="json-table"
+        ?compatibility="${compatibility}"
         toggles
         .active="${jsonTableView}"
         @active-changed="${this._jsonTableViewHandler}"
@@ -95085,6 +95154,7 @@ class ResponseBodyView extends LitElement {
         part="content-action-button, code-content-action-button"
         class="action-button"
         data-action="text-wrap"
+        ?compatibility="${compatibility}"
         toggles
         .active="${rawTextWrap}"
         @active-changed="${this._rawTextWrapViewHandler}"
@@ -95101,8 +95171,9 @@ class ResponseBodyView extends LitElement {
     return {
       /**
        * Raw response as a response text.
+       * @type {String|ArrayBuffer|Buffer|Object}
        */
-      responseText: { type: String },
+      responseText: { },
       /**
        * A variable to be set after the `responseText` change
        */
@@ -95152,7 +95223,12 @@ class ResponseBodyView extends LitElement {
       /**
        * If set it opens the JSON table view.
        */
-      jsonTableView: { type: Boolean }
+      jsonTableView: { type: Boolean },
+      /**
+       * Enables Anypoint compatibility
+       */
+      compatibility: { type: Boolean },
+      _imageDataUrl: { type: String }
     };
   }
 
@@ -95290,10 +95366,25 @@ class ResponseBodyView extends LitElement {
   _contentTypeChanged(contentType) {
     let parsed = false;
     let json = false;
+    let imageDataUrl = undefined;
+    let isImage = false;
+    let isPdf = false;
     if (contentType) {
       if (contentType.indexOf('json') !== -1) {
         this.activeView = 2;
         json = true;
+      } else if (contentType.indexOf('image/') === 0) {
+        imageDataUrl = this._prepareImageDataUrl(contentType, this._raw);
+        if (imageDataUrl) {
+          this.activeView = 4;
+          isImage = true;
+        } else {
+          this.activeView = 1;
+          parsed = true;
+        }
+      } else if (contentType === 'application/pdf') {
+        isPdf = true;
+        this.activeView = 5;
       } else {
         this.activeView = 1;
         parsed = true;
@@ -95301,10 +95392,33 @@ class ResponseBodyView extends LitElement {
     }
     this._isJson = json;
     this._isParsed = parsed;
+    this._imageDataUrl = imageDataUrl;
+    this._isImage = isImage;
+    this._isPdf = isPdf;
     if (json) {
       this._ensureJsonTable();
     }
   }
+  /**
+   * Converts current `_raw` data to an image data URL string.
+   * @param {String} contentType Response content type
+   * @param {Buffer|ArrayBuffer} raw
+   * @return {String|undefined} Procerssed image data or undefined when error.
+   */
+  _prepareImageDataUrl(contentType, raw) {
+    if (raw && raw.type === 'Buffer') {
+      raw = raw.data;
+    }
+    try {
+      const arr = new Uint8Array(raw);
+      const str = arr.reduce((data, byte) => data + String.fromCharCode(byte), '');
+      const enc = btoa(str);
+      return `data:${contentType};base64, ${enc}`;
+    } catch (_) {
+      // ..
+    }
+  }
+
   /**
    * When response's content type is JSON the view renders the
    * JSON table element. This function reads current state for the table
@@ -95337,7 +95451,7 @@ class ResponseBodyView extends LitElement {
       return raw;
     }
     if (raw && raw.type === 'Buffer') {
-      raw = new Uint16Array(raw.data);
+      raw = new Uint8Array(raw.data);
     }
     const ce = this.charset || 'utf-8';
     const decoder = new TextDecoder(ce);
@@ -95386,20 +95500,23 @@ class ResponseBodyView extends LitElement {
       button.part.remove('code-content-action-button-disabled');
     }
   }
-
   /**
    * Fires the `export-data` custom event. If the event is not canceled
    * then it will use default web implementation for file saving.
    */
   _saveFile() {
+    const ext = this._fileExtension();
+    const now = new Date().toISOString();
+    const file = `response-${now}.${ext}`;
+    const data = this._exportContent();
     const e = new CustomEvent('export-data', {
       bubbles: true,
       composed: true,
       cancelable: true,
       detail: {
         destination: 'file',
-        data: this._getRawContent(),
-        file: 'response-data',
+        data,
+        file,
         providerOptions: {
           contentType: this.contentType
         }
@@ -95409,27 +95526,64 @@ class ResponseBodyView extends LitElement {
     if (e.defaultPrevented) {
       return;
     }
-    this.saveToFile();
+    this.saveToFile(data, file);
   }
   /**
    * Creates a file object form current response text and opens a dialog
    * with the link to a file.
+   *
+   * @param {String|ArrayBuffer} data
+   * @param {String} fileName
    */
-  saveToFile() {
-    let ext = '.';
-    if (this.isJson) {
-      ext += 'json';
-    } else {
-      ext += 'txt';
-    }
+  saveToFile(data, fileName) {
     const ct = this.contentType || 'text/plain';
-    const raw = this._getRawContent();
-    const file = new Blob([raw], {
+    if (typeof data !== 'string') {
+      data = new Uint8Array(data);
+    }
+    const file = new Blob([data], {
       type: ct
     });
-    const fileName = 'response-' + new Date().toISOString() + ext;
     this._downloadFileUrl = URL.createObjectURL(file);
     this._downloadFileName = fileName;
+  }
+  /**
+   * Creates file extension name based on current content type.
+   * @return {String} A file extension. `txt` as default
+   */
+  _fileExtension() {
+    if (this._isJson) {
+      return 'json';
+    }
+    const { contentType } = this;
+    if (!contentType) {
+      return 'txt';
+    }
+    let mime = contentType.split('/')[1];
+    if (!mime) {
+      return 'txt';
+    }
+    const charsetIndex = mime.indexOf(';');
+    if (charsetIndex !== -1) {
+      mime = mime.substr(0, charsetIndex);
+    }
+    const plusIndex = mime.indexOf('+');
+    if (plusIndex !== -1) {
+      mime = mime.substr(0, plusIndex);
+    }
+    return mime;
+  }
+  /**
+   * @return {String|ArrayBuffer|Buffer} content pre-processed for export.
+   */
+  _exportContent() {
+    if (this._isImage || this._isPdf) {
+      let raw = this._raw;
+      if (raw && raw.type === 'Buffer') {
+        raw = raw.data;
+      }
+      return raw;
+    }
+    return this._getRawContent();
   }
   /**
    * Handler for download link click to prevent default and close the dialog.
@@ -95672,25 +95826,29 @@ class ResponseView extends LitElement {
   }
 
   _errorTemplate() {
-    const { responseError } = this;
-    const message = responseError && responseError.message || 'unknown error';
-    return html`<response-error-view .message="${message}"></response-error-view>`;
+    return html`
+    <response-error-view
+      .message="${this.errorMessage}"
+      ?compatibility="${this.compatibility}"
+    ></response-error-view>`;
   }
 
   _responseTemplate() {
-    const { _charset, isError, responseBody, contentType } = this;
+    const { _charset, isError, responseBody, contentType, compatibility } = this;
     const _renderError = !!(isError && !responseBody);
     return html`
     ${_renderError ? this._errorTemplate() : ''}
     ${responseBody ? html`<response-body-view
       .responseText="${responseBody}"
       .contentType="${contentType}"
-      .charset="${_charset}"></response-body-view>` : ''}`;
+      .charset="${_charset}"
+      ?compatibility="${compatibility}"
+    ></response-body-view>` : ''}`;
   }
 
   render() {
     const {
-      _hasResponse,
+      hasResponse,
       statusCode,
       statusMessage,
       requestHeaders,
@@ -95701,7 +95859,9 @@ class ResponseView extends LitElement {
       responseTimings,
       isXhr,
       requestUrl,
-      requestMethod
+      requestMethod,
+      compatibility,
+      narrow
     } = this;
     return html`
     <response-status-view
@@ -95714,11 +95874,14 @@ class ResponseView extends LitElement {
       .redirects="${redirects}"
       .redirectTimings="${redirectTimings}"
       .timings="${responseTimings}"
-      isxhr="${isXhr}"
+      ?isxhr="${isXhr}"
       .requestUrl="${requestUrl}"
-      .requestMethod="${requestMethod}"></response-status-view>
+      .requestMethod="${requestMethod}"
+      ?compatibility="${compatibility}"
+      ?narrow="${narrow}"
+    ></response-status-view>
 
-    ${_hasResponse ?
+    ${hasResponse ?
       this._responseTemplate() :
       html`<p class="empty-info">This response does not carry a payload.</p>`}`;
   }
@@ -95831,11 +95994,6 @@ class ResponseView extends LitElement {
        * The list should be ordered list.
        */
       redirectTimings: { type: Array },
-      /**
-       * Computed value, false if the response is set and it is a HEAD type
-       * request (which can't have the response).
-       */
-      _hasResponse: { type: Boolean },
       // Set to `true` if the response has error object set.
       isError: { type: Boolean },
       /**
@@ -95849,6 +96007,14 @@ class ResponseView extends LitElement {
       requestUrl: { type: String },
       // A HTTP method used to make a request
       requestMethod: { type: String },
+      /**
+       * Adds a compatybility with ANypoint styling
+       */
+      compatibility: { type: Boolean },
+      /**
+       * Renders mobile friendly view
+       */
+      narrow: { type: Boolean },
       /**
        * Response's character encoding.
        * This value is set when the response is changed. Can be undefined in which case
@@ -95887,6 +96053,24 @@ class ResponseView extends LitElement {
     this._response = value;
     this.requestUpdate('response', old);
     this._responseChanged(value);
+  }
+  /**
+   * @return {Boolean} True if the current request can carry a response.
+   * HEAD request won't have response per HTTP spec.
+   */
+  get hasResponse() {
+    const { request } = this;
+    if (request && request.method === 'HEAD') {
+      return false;
+    }
+    return true;
+  }
+  /**
+   * @return {String} Response error message
+   */
+  get errorMessage() {
+    const { responseError } = this;
+    return responseError && responseError.message || 'unknown error';
   }
 
   constructor() {
@@ -95955,26 +96139,12 @@ class ResponseView extends LitElement {
    */
   _requestChanged(request) {
     this.requestHeaders = undefined;
-    this._hasResponse = this._computeHasResponse(request);
     if (!request) {
       return;
     }
     this.requestUrl = request.url;
     this.requestMethod = request.method;
     this.requestHeaders = request.headers;
-  }
-  /**
-   * Computes if the response panel should be displayed.
-   * If the request method is `HEAD` then it never can have response.
-   *
-   * @param {Object} request ARC request object.
-   * @return {Boolean}
-   */
-  _computeHasResponse(request) {
-    if (request && request.method === 'HEAD') {
-      return false;
-    }
-    return true;
   }
   /**
    * Computes charset value from the `content-type` header.
@@ -96703,9 +96873,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       labelStyles,
       css`:host {
         display: block;
-        font-size: var(--arc-font-body1-font-size, inherit);
-        font-weight: var(--arc-font-body1-font-weight, inherit);
-        line-height: var(--arc-font-body1-line-height, inherit);
       }
 
       .title {
@@ -96732,12 +96899,16 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       }
 
       :host([narrow]) .title {
-        font-size: 20px;
+        font-size: var(--arc-font-headline-narrow-font-size, 20px);
         margin: 0;
       }
 
       :host([narrow]) .heading2 {
-        font-size: 18px;
+        font-size: var(--arc-font-title-narrow-font-size, 18px);
+      }
+
+      :host([narrow]) .heading3 {
+        font-size: var(--arc-font-subhead-narrow-font-size, 17px);
       }
 
       arc-marked {
@@ -96766,13 +96937,13 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
         padding: 32px 0;
         margin: 16px 0;
         color: var(--api-endpoint-documentation-bottom-navigation-color, #000);
-        font-size: 18px;
       }
 
       .bottom-link {
         cursor: pointer;
         max-width: 50%;
         word-break: break-all;
+        text-decoration: underline;
       }
 
       .bottom-link.previous {
@@ -96793,7 +96964,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
         flex-direction: row;
         align-items: center;
         font-family: var(--arc-font-code-family);
-        font-size: var(--api-endpoint-documentation-url-font-size, 16px);
+        font-size: var(--api-endpoint-documentation-url-font-size, 1.07rem);
         margin-bottom: 40px;
         margin-top: 20px;
         background-color: var(--code-background-color);
@@ -96818,10 +96989,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       .method-anchor {
         text-decoration: none;
         color: inherit;
-        font-size: var(--arc-font-body1-font-size, inherit);
-        font-weight: var(--arc-font-body1-font-weight, inherit);
-        line-height: var(--arc-font-body1-line-height, inherit);
-        font-size: 16px;
       }
 
       .method-anchor:hover {
@@ -97078,7 +97245,11 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
        */
       graph: { type: Boolean },
 
-      _editorEventTarget: { type: Object }
+      _editorEventTarget: { type: Object },
+      /**
+       * When set it hiddes bottom navigation links
+       */
+      noNavigation: { type: Boolean }
     };
   }
 
@@ -97394,7 +97565,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   _methodNavigate(e) {
     e.stopPropagation();
     e.preventDefault();
-    const target = e.composedPath().find((node) => node.nodeName === 'A');
+    const target = (e.path || e.composedPath()).find((node) => node.nodeName === 'A');
     const id = target.dataset.apiId;
     this._navigate(id, 'method');
   }
@@ -97781,7 +97952,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (!description) {
       return html``;
     }
-    return html`<arc-marked .markdown="${description}">
+    return html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
     </arc-marked>`;
   }
@@ -97950,8 +98121,8 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _getNavigationTemplate() {
-    const { next, previous } = this;
-    if (!next && !previous) {
+    const { next, previous, noNavigation } = this;
+    if (!next && !previous || noNavigation) {
       return;
     }
     const { compatibility } = this;
@@ -98040,7 +98211,7 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
     ${hasCustomProperties ?
       html`<api-annotation-document .amf="${amf}" .shape="${type}"></api-annotation-document>` : undefined}
 
-    ${this.description ? html`<arc-marked .markdown="${this.description}">
+    ${this.description ? html`<arc-marked .markdown="${this.description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html"></div>
     </arc-marked>` : undefined}
 
@@ -98234,7 +98405,6 @@ window.customElements.define('api-type-documentation', ApiTypeDocumentation);
  * Markdown styles are defined in `advanced-rest-client/markdown-styles`.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
@@ -98267,7 +98437,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
     return html`
     <div id="preview">
       ${hasTitle ? html`<h1>${title}</h1>` : undefined}
-      <arc-marked .markdown="${content}">
+      <arc-marked .markdown="${content}" sanitize>
         <div slot="markdown-html" part="markdown-html" class="markdown-html"></div>
       </arc-marked>
     </div>`;
@@ -98339,7 +98509,6 @@ window.customElements.define('api-documentation-document', ApiDocumentationDocum
  * `--api-summary-separator-color` | Color of section separator | `rgba(0, 0, 0, 0.12)`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
@@ -98352,17 +98521,10 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
       css`
         :host {
           display: block;
-          font-size: 1rem;
           color: var(--api-summary-color, inherit);
-          font-weight: var(--arc-font-body1-font-weight, initial);
-          line-height: var(--arc-font-body1-line-height, initial);
         }
 
         .api-title {
-          font-size: var(--api-summary-title-font-size, 1.5rem);
-          font-weight: var(--api-summary-title-font-weight, 200);
-          letter-spacing: var(--api-summary-title-letter-spacing);
-          line-height: var(--api-summary-title-line-height);
           margin: 12px 0;
         }
 
@@ -98402,7 +98564,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
         }
 
         .url-value {
-          font-size: var(--api-endpoint-documentation-url-font-size, 16px);
+          font-size: var(--api-endpoint-documentation-url-font-size, 1.07rem);
           word-break: break-all;
         }
 
@@ -98414,7 +98576,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
         label.section {
           font-weight: var(--arc-font-subhead-font-weight);
           line-height: var(--arc-font-subhead-line-height);
-          font-size: 18px;
+          /* font-size: 18px; */
           margin-top: 20px;
           display: block;
         }
@@ -98468,8 +98630,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
           margin-right: 8px;
           margin-bottom: 8px;
           text-decoration: none;
-          font-size: var(--api-summary-method-font-size, 1.1rem);
-          padding: var(--api-summary-method-padding, 4px 6px);
+          /* padding: var(--api-summary-method-padding, 4px 6px); */
         }
 
         .method-label:hover,
@@ -98484,9 +98645,8 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
           margin-bottom: 4px;
           display: inline-block;
           font-weight: 500;
-          font-size: var(--api-summary-endpoint-path-font-size, 1.5rem);
           color: var(--link-color, #0277BD);
-          margin: 12px 0;
+          margin: 4px 0;
           word-break: break-all;
         }
 
@@ -98501,12 +98661,12 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
         }
 
         .section.endpoints-title {
-          font-size: var(--api-summary-endpoints-font-size, 1.5rem);
           font-weight: 500;
         }
 
         .endpoint-path-name {
           word-break: break-all;
+          margin: 8px 0;
         }
       `
     ];
@@ -98517,7 +98677,11 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     if (!_apiTitle) {
       return '';
     }
-    return html`<div class="api-title" role="heading" aria-level="${titleLevel}">${_apiTitle}</div>`;
+    return html`
+    <div class="api-title" role="heading" aria-level="${titleLevel}">
+    <label>API title:</label>
+    <span>${_apiTitle}</span>
+    </div>`;
   }
 
   _versionTemplate() {
@@ -98539,7 +98703,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     }
     return html`
     <div role="region" class="marked-description">
-      <arc-marked .markdown="${_description}">
+      <arc-marked .markdown="${_description}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>
     </div>`;
@@ -98612,7 +98776,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     return html`
     <section role="region" aria-labelledby="tocLabel" class="docs-section">
       <label class="section" id="tocLabel">Terms of service</label>
-      <arc-marked .markdown="${_termsOfService}">
+      <arc-marked .markdown="${_termsOfService}" sanitize>
         <div slot="markdown-html" class="markdown-body"></div>
       </arc-marked>
     </section>`;
@@ -99097,7 +99261,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _methodTemplate() {
-    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, baseUri, noTryIt, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, baseUri, noTryIt, graph, noBottomNavigation } = this;
     const prev = this._computeMethodPrevious(amf, selected);
     const next = this._computeMethodNext(amf, selected);
     return html`<api-method-documentation
@@ -99111,6 +99275,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .baseUri="${baseUri}"
       .noTryIt="${noTryIt}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       rendersecurity
       rendercodesnippets></api-method-documentation>`;
   }
@@ -99122,7 +99287,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
   }
 
   _inlineEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, outlined, selected, baseUri, scrollTarget, redirectUri, noUrlEditor, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, outlined, selected, baseUri, scrollTarget, redirectUri, noUrlEditor, graph, noBottomNavigation } = this;
     const prev = this._computeEndpointPrevious(amf, selected, true);
     const next = this._computeEndpointNext(amf, selected, true);
     return html`<api-endpoint-documentation
@@ -99139,12 +99304,13 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .redirectUri="${redirectUri}"
       .noUrlEditor="${noUrlEditor}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       notryit
       inlinemethods></api-endpoint-documentation>`;
   }
 
   _simpleEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, selected, baseUri, graph } = this;
+    const { amf, _docsModel, narrow, compatibility, selected, baseUri, graph, noBottomNavigation } = this;
     const prev = this._computeEndpointPrevious(amf, selected);
     const next = this._computeEndpointNext(amf, selected);
 
@@ -99158,6 +99324,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       .next="${next}"
       .baseUri="${baseUri}"
       ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
       ></api-endpoint-documentation>`;
   }
 
@@ -99258,7 +99425,11 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       /**
        * Computed value of currently rendered endpoint.
        */
-      _endpoint: { type: Object }
+      _endpoint: { type: Object },
+      /**
+       * When set it hiddes bottom navigation links
+       */
+      noBottomNavigation: { type: Boolean }
     };
   }
 

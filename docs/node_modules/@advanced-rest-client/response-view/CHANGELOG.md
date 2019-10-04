@@ -197,3 +197,7 @@
 
 
 
+## [3.0.1](https://github.com/advanced-rest-client/response-view/compare/0.1.14...3.0.1) (2019-09-18)
+
+
+

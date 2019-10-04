@@ -26,8 +26,7 @@ import '@anypoint-web-components/anypoint-input/anypoint-input.js';
 import '@anypoint-web-components/anypoint-button/anypoint-icon-button.js';
 import '@anypoint-web-components/anypoint-autocomplete/anypoint-autocomplete.js';
 import '@polymer/paper-toast/paper-toast.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
-import '@polymer/iron-icon/iron-icon.js';
+import { addCircleOutline, removeCircleOutline } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 /**
 A selector for OAuth 2.0 scope. Provides the UI to enter a scope for OAuth 2.0 settings.
 
@@ -175,7 +174,14 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
      font-weight: 400;
      line-height: 20px;
      color: var(--oauth2-scope-selector-item-description-color, #737373);
-   }`;
+   }
+
+   .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }`;
   }
 
   _scopesListTemplate() {
@@ -201,8 +207,9 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
         @click="${this._removeScope}"
         ?disabled="${readOnly || disabled}"
         aria-label="Press to remove this scope from the list"
-        title="Remove scope">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        title="Remove scope"
+      >
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>
     </li>`);
   }
@@ -246,8 +253,9 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
             @click="${this._appendScope}"
             ?disabled="${readOnly || disabled}"
             aria-label="Press to add current scope to the list"
-            title="Add scope">
-            <iron-icon icon="arc:add-circle-outline"></iron-icon>
+            title="Add scope"
+          >
+            <span class="icon">${addCircleOutline}</span>
           </anypoint-icon-button>
         </anypoint-input>
 

@@ -148,3 +148,12 @@
 
 
 
+## [3.1.2](https://github.com/advanced-rest-client/json-viewer/compare/1.0.0...3.1.2) (2019-08-30)
+
+
+### Bug Fixes
+
+* adding missing dependencies ([3c11fb1](https://github.com/advanced-rest-client/json-viewer/commit/3c11fb1))
+
+
+

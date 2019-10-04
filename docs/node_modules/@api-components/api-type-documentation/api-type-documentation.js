@@ -65,7 +65,7 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
     ${hasCustomProperties ?
       html`<api-annotation-document .amf="${amf}" .shape="${type}"></api-annotation-document>` : undefined}
 
-    ${this.description ? html`<arc-marked .markdown="${this.description}">
+    ${this.description ? html`<arc-marked .markdown="${this.description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html"></div>
     </arc-marked>` : undefined}
 

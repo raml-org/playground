@@ -787,13 +787,17 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
    * A function to be called to refres current state of editor panel.
    * It is only called for the panels that support refreshing (raw editor)
    */
-  refreshPanel() {
+  refresh() {
     if (this.selected === 0) {
       const panel = this.currentPanel;
       if (panel) {
         panel.refresh();
       }
     }
+  }
+
+  refreshPanel() {
+    this.refresh();
   }
 
   _modelHandler(e) {

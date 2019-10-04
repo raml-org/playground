@@ -1,8 +1,7 @@
 import { html, css, LitElement } from 'lit-element';
 import { ValidatableMixin } from '@anypoint-web-components/validatable-mixin/validatable-mixin.js';
 import '@anypoint-web-components/anypoint-button/anypoint-button.js';
-import '@polymer/iron-icon/iron-icon.js';
-import '@advanced-rest-client/arc-icons/arc-icons.js';
+import { addCircleOutline, removeCircleOutline } from  '@advanced-rest-client/arc-icons/ArcIcons.js';
 import '@anypoint-web-components/anypoint-listbox/anypoint-listbox.js';
 import '@anypoint-web-components/anypoint-item/anypoint-item.js';
 import '@anypoint-web-components/anypoint-dropdown-menu/anypoint-dropdown-menu.js';
@@ -52,15 +51,6 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       align-items: center;
     }
 
-    .action-icon {
-      color: var(--from-row-action-icon-color, var(--icon-button-color, rgba(0, 0, 0, 0.74)));
-      transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
-    }
-
-    .action-icon:hover {
-      color: var(--from-row-action-icon-color-hover, var(--accent-color, rgba(0, 0, 0, 0.88)));
-    }
-
     .array-item {
       display: flex;
       flex-direction: row;
@@ -73,7 +63,7 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       width: auto;
     }
 
-    anypoint-button iron-icon {
+    anypoint-button .icon {
       margin-right: 12px;
     }
 
@@ -83,6 +73,13 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
 
     .array-label {
       margin-left: 8px;
+    }
+
+    .icon {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
     }`;
   }
 
@@ -206,8 +203,9 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
         ?compatibility="${compatibility}"
         @click="${this._removeArrayValue}"
         title="Remove array value"
-        ?disabled="${this.readOnly || disabled}">
-        <iron-icon icon="arc:remove-circle-outline"></iron-icon>
+        ?disabled="${this.readOnly || disabled}"
+      >
+        <span class="icon">${removeCircleOutline}</span>
       </anypoint-icon-button>` : undefined}
     </div>`)}
     <div class="add-action">
@@ -216,8 +214,9 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
         title="Add array velue button"
         ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
-        ?compatibility="${compatibility}">
-        <iron-icon class="action-icon" icon="arc:add-circle-outline" alt="Add array value icon"></iron-icon>
+        ?compatibility="${compatibility}"
+      >
+        <span class="icon action-icon">${addCircleOutline}</span>
         Add array value
       </anypoint-button>
     </div>
