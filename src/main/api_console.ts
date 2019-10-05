@@ -88,15 +88,12 @@ export class ApiConsole {
 
   switchSelected (pos: monaco.Position) {
     const nearest = this.findNearestElement(pos)
-    if (nearest !== undefined && this.container.selected !== nearest.id) {
+    if (nearest === undefined) {
+      this.container.selected = this.defaultSelected
+      this.container.selectedType = this.defaultSelectedType
+    } else if (this.container.selected !== nearest.id) {
       this.container.selected = nearest.id
       this.container.selectedType = nearest.selectedType
     }
-    this.changeContainerVisibility(nearest !== undefined)
-  }
-
-  changeContainerVisibility (show: boolean) {
-    const container = document.getElementById('api-console-container')
-    container.style.display = show ? 'block' : 'none'
   }
 }
