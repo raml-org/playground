@@ -12,6 +12,7 @@ const sourcemaps = require('gulp-sourcemaps')
 const browserSync = require('browser-sync').create()
 const bower = require('gulp-bower')
 const sass = require('gulp-sass')
+const cleanCSS = require('gulp-clean-css');
 
 gulp.task('bower', function () {
   return bower({cwd: 'docs'})
@@ -22,6 +23,15 @@ gulp.task('sass', function () {
     .pipe(sass().on('error', sass.logError))
     .pipe(gulp.dest('./docs/css'))
 })
+
+gulp.task('css', gulp.series(
+  'sass',
+  function () {
+    return gulp.src('./docs/css/styles.css')
+      .pipe(cleanCSS({level: {2: {all: true}}}))
+      .pipe(gulp.dest('./docs/css'))
+  })
+)
 
 const optionsRamlOas = {'standalone': 'raml_oas'}
 const bRamlOas = browserify(optionsRamlOas)
@@ -87,7 +97,7 @@ gulp.task('bundleStarterGuide', function () {
 
 
 gulp.task('serveRamlOas', gulp.series(
-  'sass',
+  'css',
   'bower',
   'bundleRamlOas',
   function () {
@@ -99,7 +109,7 @@ gulp.task('serveRamlOas', gulp.series(
 ))
 
 gulp.task('serveVisualization', gulp.series(
-  'sass',
+  'css',
   'bower',
   'bundleVisualization',
   function () {
@@ -111,7 +121,7 @@ gulp.task('serveVisualization', gulp.series(
 ))
 
 gulp.task('serveStarterGuide', gulp.series(
-  'sass',
+  'css',
   'bower',
   'bundleStarterGuide',
   function () {
@@ -124,7 +134,7 @@ gulp.task('serveStarterGuide', gulp.series(
 
 // Bundle all the demos
 gulp.task('bundle', gulp.series(
-  'sass',
+  'css',
   'bower',
   'bundleRamlOas',
   'bundleVisualization',
