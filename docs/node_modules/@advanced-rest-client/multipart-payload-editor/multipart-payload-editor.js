@@ -95,6 +95,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
       multipart-text-form-item,
       multipart-file-form-item {
         margin: 8px 0;
+        width: 100%;
       }
 
       code {
@@ -132,7 +133,8 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
       disabled,
       compatibility,
       outlined,
-      hasOptional
+      hasOptional,
+      narrow
     } = this;
     const isOptional = this.computeIsOptional(hasOptional, item);
     return html`<div class="form-item" data-file="${item.schema.isFile}" ?data-optional="${isOptional}">
@@ -144,11 +146,14 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         .value="${item.value}"
         @value-changed="${this._valueChangeHandler}"
         .model="${item}"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled=${disabled}
-        ></multipart-file-form-item>` :
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        ?narrow="${narrow}"
+      >
+        ${this._removeIconTemplate(item, index)}
+      </multipart-file-form-item>` :
       html`<multipart-text-form-item
         .hasFormData="${hasFormDataSupport}"
         data-index="${index}"
@@ -159,24 +164,37 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         .type="${item.contentType}"
         @type-changed="${this._typeChangeHandler}"
         .model="${item}"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled=${disabled}></multipart-text-form-item>`}
-
-      <anypoint-icon-button
-        title="Remove this parameter"
-        aria-label="Press to remove parameter ${item.name}"
-        class="action-icon delete-icon"
-        data-index="${index}"
-        @click="${this._removeCustom}"
-        slot="suffix"
-        ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
-        ?compatibility="${compatibility}">
-        <span class="icon">${removeCircleOutline}</span>
-      </anypoint-icon-button>
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        ?narrow="${narrow}"
+      >
+        ${this._removeIconTemplate(item, index)}
+      </multipart-text-form-item>`}
     </div>`;
+  }
+
+  _removeIconTemplate(item, index) {
+    const {
+      readOnly,
+      disabled,
+      compatibility,
+      outlined
+    } = this;
+    return html`<anypoint-icon-button
+      slot="action-icon"
+      title="Remove this parameter"
+      aria-label="Press to remove parameter ${item.name}"
+      class="action-icon delete-icon"
+      data-index="${index}"
+      @click="${this._removeCustom}"
+      slot="suffix"
+      ?disabled="${readOnly || disabled}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}">
+      <span class="icon">${removeCircleOutline}</span>
+    </anypoint-icon-button>`;
   }
 
   _formTemplate() {

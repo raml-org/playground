@@ -42,7 +42,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
     return html`
     <div id="preview">
       ${hasTitle ? html`<h1>${title}</h1>` : undefined}
-      <arc-marked .markdown="${content}" sanitize>
+      <arc-marked .markdown="${content}" sanitize @click="${this._clickHandler}">
         <div slot="markdown-html" part="markdown-html" class="markdown-html"></div>
       </arc-marked>
     </div>`;
@@ -91,6 +91,25 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
   _shapeChanged(shape) {
     this._title = this._getValue(shape, this.ns.schema.title);
     this._content = this._getValue(shape, this.ns.schema.desc);
+  }
+  /**
+   * At current state there's no way to tell where to navigate when relative
+   * link is clicked. To prevent 404 anchores this prevents any relative link click.
+   * @param {Event} e
+   */
+  _clickHandler(e) {
+    const { target } = e;
+    if (target.localName !== 'a') {
+      return;
+    }
+    // target.href is always absolute, need attribute value to test for
+    // relative links.
+    const href = target.getAttribute('href');
+    const ch0 = href[0];
+    if (['.', '/'].indexOf(ch0) !== -1) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   }
 }
 window.customElements.define('api-documentation-document', ApiDocumentationDocument);

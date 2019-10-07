@@ -317,15 +317,10 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     }
   }
 
-  get amf() {
-    return this._amf;
+  __amfChanged() {
+    this._bodyChanged();
   }
 
-  set amf(value) {
-    if (this._sop('amf', value)) {
-      this._bodyChanged();
-    }
-  }
   /**
    * Sets observable property that causes render action.
    * @param {String} prop Property name

@@ -37759,6 +37759,7 @@ marked.parse = marked;
 });
 
 var marked$2 = /*#__PURE__*/Object.freeze({
+    __proto__: null,
     'default': marked$1,
     __moduleExports: marked$1
 });
@@ -43527,15 +43528,10 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     }
   }
 
-  get amf() {
-    return this._amf;
+  __amfChanged() {
+    this._bodyChanged();
   }
 
-  set amf(value) {
-    if (this._sop('amf', value)) {
-      this._bodyChanged();
-    }
-  }
   /**
    * Sets observable property that causes render action.
    * @param {String} prop Property name
@@ -85637,15 +85633,43 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
         position: relative;
       }
 
-      .value-selector {
+      .value-row {
         display: flex;
         flex-direction: row;
         align-items: center;
       }
 
+      .inputs {
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      :host([narrow]) .inputs {
+        flex-direction: column;
+        align-items: start;
+        margin-right: 8px;
+      }
+
       api-property-form-item {
         flex: 1;
         margin-left: 12px;
+      }
+
+      :host([narrow]) .inputs anypoint-input,
+      :host([narrow]) .inputs api-property-form-item {
+        max-width: initial;
+        flex: auto;
+      }
+
+      :host([narrow]) .inputs anypoint-input {
+        width: calc(100% - 16px);
+      }
+
+      :host([narrow]) api-property-form-item {
+        margin-left: 0px;
+        width: 100%;
       }
 
       .mime-selector anypoint-input {
@@ -85666,10 +85690,36 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     ];
   }
 
-  render() {
+  _mimeSeelctorTemplate() {
     const {
       hasFormData,
       type,
+      readOnly,
+      disabled,
+      compatibility,
+      outlined,
+    } = this;
+    if (!hasFormData) {
+      return '';
+    }
+    return html`<div class="mime-selector">
+      <anypoint-input
+        class="type-field"
+        .value="${type}"
+        @value-changed="${this._typeHandler}"
+        type="text"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        .readOnly="${readOnly}"
+        .disabled=${disabled}
+      >
+        <label slot="label">Content type (Optional)</label>
+      </anypoint-input>
+    </div>`;
+  }
+
+  render() {
+    const {
       name,
       value,
       docsOpened,
@@ -85680,23 +85730,9 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     } = this;
     const model = this.model || { schema: {} };
     return html`
-    <div class="multipart-item">
-      ${hasFormData ? html`<div class="mime-selector">
-        <anypoint-input
-          class="type-field"
-          .value="${type}"
-          @value-changed="${this._typeHandler}"
-          type="text"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled=${disabled}
-        >
-          <label slot="label">Content type (Optional)</label>
-        </anypoint-input>
-      </div>` : undefined}
-
-      <div class="value-selector">
+    ${this._mimeSeelctorTemplate()}
+    <div class="value-row">
+      <div class="inputs">
         <anypoint-input
           class="name-field"
           invalidmessage="The name is required"
@@ -85722,17 +85758,18 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
           .readOnly="${readOnly}"
           .disabled=${disabled}
         ></api-property-form-item>
-        ${model.hasDescription ? html`<anypoint-icon-button
-          class="hint-icon"
-          title="Toggle documentation"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}"
-        >
-          <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
       </div>
+      ${model.hasDescription ? html`<anypoint-icon-button
+        class="hint-icon"
+        title="Toggle documentation"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?disabled="${disabled}"
+        @click="${this.toggleDocumentation}"
+      >
+        <span class="icon">${help}</span>
+      </anypoint-icon-button>` : undefined}
+      <slot name="action-icon"></slot>
     </div>
 
     ${docsOpened && model.hasDescription ? html`<div class="docs">
@@ -85870,19 +85907,10 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
         display: none !important;
       }
 
-      .file-row {
-        margin: 8px 0;
-      }
-
-      .controls {
+      .inputs {
         display: flex;
         flex-direction: row;
         align-items: center;
-        flex: 1;
-      }
-
-      .controls > *:not(:last-child) {
-        margin-right: 12px;
       }
 
       .file-trigger,
@@ -85892,10 +85920,11 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
 
       .files-counter-message {
         color: var(--multipart-file-form-item-counter-color, rgba(0, 0, 0, 0.74));
-        flex: 1;
-        font-size: var(--arc-font-body1-font-size);
-        font-weight: var(--arc-font-body1-font-weight);
-        line-height: var(--arc-font-body1-line-height);
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-left: 8px;
       }
 
       .name-field {
@@ -85912,66 +85941,83 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     ];
   }
 
+  _helpButtonTemplate(model) {
+    if (!model.hasDescription) {
+      return '';
+    }
+    const {
+      disabled,
+      compatibility,
+      outlined
+    } = this;
+    return html`<anypoint-icon-button
+      class="hint-icon"
+      title="Toggle documentation"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?disabled="${disabled}"
+      @click="${this.toggleDocumentation}"
+    >
+      <span class="icon">${help}</span>
+    </anypoint-icon-button>`;
+  }
+
+  _fileLabelTemplate() {
+    const {
+      value,
+      _hasFile
+    } = this;
+    if (!_hasFile) {
+      return '';
+    }
+    return html`<span class="files-counter-message">
+      ${value.name} (${value.size} bytes)
+    </span>`;
+  }
+
   render() {
     const {
       name,
-      value,
       docsOpened,
       readOnly,
       disabled,
       compatibility,
-      outlined,
-      _hasFile
+      outlined
     } = this;
     const model = this.model || { };
     return html`
-    <div class="file-row">
-      <div class="controls">
-        <anypoint-input
-          class="name-field"
-          invalidmessage="The name is required"
-          required
-          autovalidate
-          .value="${name}"
-          @value-changed="${this._nameHandler}"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled=${disabled}
-          >
-            <label slot="label">Field name</label>
-        </anypoint-input>
-
-        <anypoint-button
-          emphasis="high"
-          @click="${this._selectFile}"
-          class="file-trigger"
-          ?disabled="${disabled || readOnly}">Choose file</anypoint-button>
-
-        ${_hasFile ?
-          html`<span
-          class="files-counter-message">
-            ${value.name} (${value.size} bytes)
-          </span>` : undefined}
-
-        ${model.hasDescription ? html`<anypoint-icon-button
-          class="hint-icon"
-          title="Toggle documentation"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}"
+    <div class="inputs">
+      <anypoint-input
+        class="name-field"
+        invalidmessage="The name is required"
+        required
+        autovalidate
+        .value="${name}"
+        @value-changed="${this._nameHandler}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        .readOnly="${readOnly}"
+        .disabled=${disabled}
         >
-          <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
-      </div>
-
-      ${docsOpened && model.hasDescription ? html`<div class="docs">
-        <arc-marked .markdown="${model.description}" sanitize>
-          <div slot="markdown-html" class="markdown-body"></div>
-        </arc-marked>
-      </div>` : undefined}
+          <label slot="label">Field name</label>
+      </anypoint-input>
+      <anypoint-button
+        emphasis="high"
+        @click="${this._selectFile}"
+        class="file-trigger"
+        ?disabled="${disabled || readOnly}"
+        ?compatibility="${compatibility}"
+      >Choose file</anypoint-button>
+      ${this._helpButtonTemplate(model)}
+      <slot name="action-icon"></slot>
     </div>
+    ${this._fileLabelTemplate()}
+
+    ${docsOpened && model.hasDescription ? html`<div class="docs">
+      <arc-marked .markdown="${model.description}" sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>` : undefined}
 
     <input type="file" hidden @change="${this._fileObjectChanged}" accept="${this._computeAccept(model)}">`;
   }
@@ -85988,9 +86034,9 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
        */
       name: { type: String },
       /**
-       * Valuie of this control.
+       * Value of this control.
        */
-      value: { type: String },
+      value: { },
       /**
        * A view model.
        */
@@ -86042,6 +86088,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     }
     this._value = value;
     this._hasFile = this._computeHasFile(value);
+    this.requestUpdate('value', old);
     this.dispatchEvent(new CustomEvent('value-changed', {
       detail: {
         value
@@ -86199,6 +86246,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
       multipart-text-form-item,
       multipart-file-form-item {
         margin: 8px 0;
+        width: 100%;
       }
 
       code {
@@ -86236,7 +86284,8 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
       disabled,
       compatibility,
       outlined,
-      hasOptional
+      hasOptional,
+      narrow
     } = this;
     const isOptional = this.computeIsOptional(hasOptional, item);
     return html`<div class="form-item" data-file="${item.schema.isFile}" ?data-optional="${isOptional}">
@@ -86248,11 +86297,14 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         .value="${item.value}"
         @value-changed="${this._valueChangeHandler}"
         .model="${item}"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled=${disabled}
-        ></multipart-file-form-item>` :
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        ?narrow="${narrow}"
+      >
+        ${this._removeIconTemplate(item, index)}
+      </multipart-file-form-item>` :
       html`<multipart-text-form-item
         .hasFormData="${hasFormDataSupport}"
         data-index="${index}"
@@ -86263,24 +86315,37 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
         .type="${item.contentType}"
         @type-changed="${this._typeChangeHandler}"
         .model="${item}"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled=${disabled}></multipart-text-form-item>`}
-
-      <anypoint-icon-button
-        title="Remove this parameter"
-        aria-label="Press to remove parameter ${item.name}"
-        class="action-icon delete-icon"
-        data-index="${index}"
-        @click="${this._removeCustom}"
-        slot="suffix"
-        ?disabled="${readOnly || disabled}"
         ?outlined="${outlined}"
-        ?compatibility="${compatibility}">
-        <span class="icon">${removeCircleOutline}</span>
-      </anypoint-icon-button>
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        ?narrow="${narrow}"
+      >
+        ${this._removeIconTemplate(item, index)}
+      </multipart-text-form-item>`}
     </div>`;
+  }
+
+  _removeIconTemplate(item, index) {
+    const {
+      readOnly,
+      disabled,
+      compatibility,
+      outlined
+    } = this;
+    return html`<anypoint-icon-button
+      slot="action-icon"
+      title="Remove this parameter"
+      aria-label="Press to remove parameter ${item.name}"
+      class="action-icon delete-icon"
+      data-index="${index}"
+      @click="${this._removeCustom}"
+      slot="suffix"
+      ?disabled="${readOnly || disabled}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}">
+      <span class="icon">${removeCircleOutline}</span>
+    </anypoint-icon-button>`;
   }
 
   _formTemplate() {
@@ -98437,7 +98502,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
     return html`
     <div id="preview">
       ${hasTitle ? html`<h1>${title}</h1>` : undefined}
-      <arc-marked .markdown="${content}" sanitize>
+      <arc-marked .markdown="${content}" sanitize @click="${this._clickHandler}">
         <div slot="markdown-html" part="markdown-html" class="markdown-html"></div>
       </arc-marked>
     </div>`;
@@ -98486,6 +98551,25 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
   _shapeChanged(shape) {
     this._title = this._getValue(shape, this.ns.schema.title);
     this._content = this._getValue(shape, this.ns.schema.desc);
+  }
+  /**
+   * At current state there's no way to tell where to navigate when relative
+   * link is clicked. To prevent 404 anchores this prevents any relative link click.
+   * @param {Event} e
+   */
+  _clickHandler(e) {
+    const { target } = e;
+    if (target.localName !== 'a') {
+      return;
+    }
+    // target.href is always absolute, need attribute value to test for
+    // relative links.
+    const href = target.getAttribute('href');
+    const ch0 = href[0];
+    if (['.', '/'].indexOf(ch0) !== -1) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   }
 }
 window.customElements.define('api-documentation-document', ApiDocumentationDocument);

@@ -51,15 +51,43 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
         position: relative;
       }
 
-      .value-selector {
+      .value-row {
         display: flex;
         flex-direction: row;
         align-items: center;
       }
 
+      .inputs {
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      :host([narrow]) .inputs {
+        flex-direction: column;
+        align-items: start;
+        margin-right: 8px;
+      }
+
       api-property-form-item {
         flex: 1;
         margin-left: 12px;
+      }
+
+      :host([narrow]) .inputs anypoint-input,
+      :host([narrow]) .inputs api-property-form-item {
+        max-width: initial;
+        flex: auto;
+      }
+
+      :host([narrow]) .inputs anypoint-input {
+        width: calc(100% - 16px);
+      }
+
+      :host([narrow]) api-property-form-item {
+        margin-left: 0px;
+        width: 100%;
       }
 
       .mime-selector anypoint-input {
@@ -80,10 +108,36 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     ];
   }
 
-  render() {
+  _mimeSeelctorTemplate() {
     const {
       hasFormData,
       type,
+      readOnly,
+      disabled,
+      compatibility,
+      outlined,
+    } = this;
+    if (!hasFormData) {
+      return '';
+    }
+    return html`<div class="mime-selector">
+      <anypoint-input
+        class="type-field"
+        .value="${type}"
+        @value-changed="${this._typeHandler}"
+        type="text"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        .readOnly="${readOnly}"
+        .disabled=${disabled}
+      >
+        <label slot="label">Content type (Optional)</label>
+      </anypoint-input>
+    </div>`;
+  }
+
+  render() {
+    const {
       name,
       value,
       docsOpened,
@@ -94,23 +148,9 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     } = this;
     const model = this.model || { schema: {} };
     return html`
-    <div class="multipart-item">
-      ${hasFormData ? html`<div class="mime-selector">
-        <anypoint-input
-          class="type-field"
-          .value="${type}"
-          @value-changed="${this._typeHandler}"
-          type="text"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled=${disabled}
-        >
-          <label slot="label">Content type (Optional)</label>
-        </anypoint-input>
-      </div>` : undefined}
-
-      <div class="value-selector">
+    ${this._mimeSeelctorTemplate()}
+    <div class="value-row">
+      <div class="inputs">
         <anypoint-input
           class="name-field"
           invalidmessage="The name is required"
@@ -136,17 +176,18 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
           .readOnly="${readOnly}"
           .disabled=${disabled}
         ></api-property-form-item>
-        ${model.hasDescription ? html`<anypoint-icon-button
-          class="hint-icon"
-          title="Toggle documentation"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}"
-        >
-          <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
       </div>
+      ${model.hasDescription ? html`<anypoint-icon-button
+        class="hint-icon"
+        title="Toggle documentation"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?disabled="${disabled}"
+        @click="${this.toggleDocumentation}"
+      >
+        <span class="icon">${help}</span>
+      </anypoint-icon-button>` : undefined}
+      <slot name="action-icon"></slot>
     </div>
 
     ${docsOpened && model.hasDescription ? html`<div class="docs">

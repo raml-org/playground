@@ -41,19 +41,10 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
         display: none !important;
       }
 
-      .file-row {
-        margin: 8px 0;
-      }
-
-      .controls {
+      .inputs {
         display: flex;
         flex-direction: row;
         align-items: center;
-        flex: 1;
-      }
-
-      .controls > *:not(:last-child) {
-        margin-right: 12px;
       }
 
       .file-trigger,
@@ -63,10 +54,11 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
 
       .files-counter-message {
         color: var(--multipart-file-form-item-counter-color, rgba(0, 0, 0, 0.74));
-        flex: 1;
-        font-size: var(--arc-font-body1-font-size);
-        font-weight: var(--arc-font-body1-font-weight);
-        line-height: var(--arc-font-body1-line-height);
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-left: 8px;
       }
 
       .name-field {
@@ -83,66 +75,83 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     ];
   }
 
+  _helpButtonTemplate(model) {
+    if (!model.hasDescription) {
+      return '';
+    }
+    const {
+      disabled,
+      compatibility,
+      outlined
+    } = this;
+    return html`<anypoint-icon-button
+      class="hint-icon"
+      title="Toggle documentation"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?disabled="${disabled}"
+      @click="${this.toggleDocumentation}"
+    >
+      <span class="icon">${help}</span>
+    </anypoint-icon-button>`;
+  }
+
+  _fileLabelTemplate() {
+    const {
+      value,
+      _hasFile
+    } = this;
+    if (!_hasFile) {
+      return '';
+    }
+    return html`<span class="files-counter-message">
+      ${value.name} (${value.size} bytes)
+    </span>`;
+  }
+
   render() {
     const {
       name,
-      value,
       docsOpened,
       readOnly,
       disabled,
       compatibility,
-      outlined,
-      _hasFile
+      outlined
     } = this;
     const model = this.model || { };
     return html`
-    <div class="file-row">
-      <div class="controls">
-        <anypoint-input
-          class="name-field"
-          invalidmessage="The name is required"
-          required
-          autovalidate
-          .value="${name}"
-          @value-changed="${this._nameHandler}"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled=${disabled}
-          >
-            <label slot="label">Field name</label>
-        </anypoint-input>
-
-        <anypoint-button
-          emphasis="high"
-          @click="${this._selectFile}"
-          class="file-trigger"
-          ?disabled="${disabled || readOnly}">Choose file</anypoint-button>
-
-        ${_hasFile ?
-          html`<span
-          class="files-counter-message">
-            ${value.name} (${value.size} bytes)
-          </span>` : undefined}
-
-        ${model.hasDescription ? html`<anypoint-icon-button
-          class="hint-icon"
-          title="Toggle documentation"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          ?disabled="${disabled}"
-          @click="${this.toggleDocumentation}"
+    <div class="inputs">
+      <anypoint-input
+        class="name-field"
+        invalidmessage="The name is required"
+        required
+        autovalidate
+        .value="${name}"
+        @value-changed="${this._nameHandler}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        .readOnly="${readOnly}"
+        .disabled=${disabled}
         >
-          <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
-      </div>
-
-      ${docsOpened && model.hasDescription ? html`<div class="docs">
-        <arc-marked .markdown="${model.description}" sanitize>
-          <div slot="markdown-html" class="markdown-body"></div>
-        </arc-marked>
-      </div>` : undefined}
+          <label slot="label">Field name</label>
+      </anypoint-input>
+      <anypoint-button
+        emphasis="high"
+        @click="${this._selectFile}"
+        class="file-trigger"
+        ?disabled="${disabled || readOnly}"
+        ?compatibility="${compatibility}"
+      >Choose file</anypoint-button>
+      ${this._helpButtonTemplate(model)}
+      <slot name="action-icon"></slot>
     </div>
+    ${this._fileLabelTemplate()}
+
+    ${docsOpened && model.hasDescription ? html`<div class="docs">
+      <arc-marked .markdown="${model.description}" sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>` : undefined}
 
     <input type="file" hidden @change="${this._fileObjectChanged}" accept="${this._computeAccept(model)}">`;
   }
@@ -159,9 +168,9 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
        */
       name: { type: String },
       /**
-       * Valuie of this control.
+       * Value of this control.
        */
-      value: { type: String },
+      value: { },
       /**
        * A view model.
        */
@@ -213,6 +222,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     }
     this._value = value;
     this._hasFile = this._computeHasFile(value);
+    this.requestUpdate('value', old);
     this.dispatchEvent(new CustomEvent('value-changed', {
       detail: {
         value

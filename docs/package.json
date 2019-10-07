@@ -4,10 +4,12 @@
     "codemirror": "^5.49.0",
     "jsonlint": "^1.6.3"
   },
-  "scripts": {
-    "prepare": "pika install"
+  "@pika/web": {
+    "webDependencies": [
+      "@api-components/api-documentation"
+    ]
   },
-  "devDependencies": {
-    "@pika/web": "^0.6.1"
+  "scripts": {
+    "prepare": "npx @pika/web"
   }
 }
