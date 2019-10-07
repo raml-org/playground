@@ -37857,19 +37857,21 @@ class ApiConsole {
   constructor() {
     this.defaultSelected = 'summary';
     this.defaultSelectedType = 'summary';
-    this.reloadContainer();
+    this.reloadContainers();
   }
 
-  reloadContainer() {
+  reloadContainers() {
     this.container = document.querySelector('api-documentation');
-    return this.container;
+    this.navContainer = document.querySelector('api-navigation');
   }
   /* Resets container amf, selected and selectedType. */
 
 
   reset(wapModel) {
     return webapi_parser_1.WebApiParser.amfGraph.generateString(wapModel).then(graph => {
-      this.container.amf = JSON.parse(graph);
+      const parsedGraph = JSON.parse(graph);
+      this.container.amf = parsedGraph;
+      this.navContainer.amf = parsedGraph;
       this.container.selected = this.defaultSelected;
       this.container.selectedType = this.defaultSelectedType;
       this.collectElementsRanges(wapModel);

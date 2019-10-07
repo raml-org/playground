@@ -3,23 +3,26 @@ import { WebApiParser as wap } from 'webapi-parser'
 export class ApiConsole {
   public elsRanges: any[]
   public container: any
+  public navContainer: any
   public defaultSelected: string = 'summary'
   public defaultSelectedType: string = 'summary'
 
   constructor () {
-    this.reloadContainer()
+    this.reloadContainers()
   }
 
-  reloadContainer () {
+  reloadContainers () {
     this.container = document.querySelector('api-documentation')
-    return this.container
+    this.navContainer = document.querySelector('api-navigation')
   }
 
   /* Resets container amf, selected and selectedType. */
   reset (wapModel: any) {
     return wap.amfGraph.generateString(wapModel)
       .then(graph => {
-        this.container.amf = JSON.parse(graph)
+        const parsedGraph = JSON.parse(graph)
+        this.container.amf = parsedGraph
+        this.navContainer.amf = parsedGraph
         this.container.selected = this.defaultSelected
         this.container.selectedType = this.defaultSelectedType
         this.collectElementsRanges(wapModel)
