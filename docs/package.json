@@ -1,9 +1,7 @@
 {
   "dependencies": {
     "@api-components/api-documentation": "^3.0.3",
-    "codemirror": "^5.49.0",
-    "jsonlint": "^1.6.3",
-    "marked": "^0.7.0"
+    "@pika/web": "^0.6.1"
   },
   "@pika/web": {
     "webDependencies": [
@@ -11,6 +9,6 @@
     ]
   },
   "scripts": {
-    "prepare": "npx @pika/web && npm uninstall @api-components/api-documentation --no-save"
+    "prepare": "pika install"
   }
 }
