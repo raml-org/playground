@@ -27,9 +27,28 @@
 </div>
 
 <!-- Load RAML File modal -->
-<link rel="import" href="html_fragments/load_modal.html">
+<!-- <link rel="import" href="html_fragments/load_modal.html"> -->
 <!-- Nav -->
 <link rel="import" href="html_fragments/diff/nav.html">
+
+<!-- tabs -->
+<div class="tabs">
+  <ul>
+    <li data-bind="click: () => { editorSection('editor') }, css: { 'is-active': editorSection() === 'editor' }">
+      <a>Editors</a></li>
+    <li data-bind="click: () => { editorSection('report') }, css: { 'is-active': editorSection() === 'report' }">
+      <a>Report</a></li>
+    <li data-bind="click: () => { editorSection('graph') }, css: { 'is-active': editorSection() === 'graph' }">
+      <a>Graph</a></li>
+  </ul>
+  <div class="navbar-item" data-bind="visible: started() && leftHash().hash !== rightHash().hash && !isLoading()">
+    <span class="tag is-success diff-number-plus" data-bind="text: '+'+(diff().assertionsAdded || 0)"></span>
+    <span class="tag is-danger diff-number-minus" data-bind="text: '-'+(diff().assertionsRemoved || 0)"></span>
+  </div>
+  <div class="navbar-item" data-bind="visible: started() && leftHash().hash === rightHash().hash && !isLoading()">
+    <span class="tag is-info diff-number-identical">Identical</span>
+  </div>
+</div>
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
@@ -112,15 +131,26 @@
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
             var height = document.documentElement.clientHeight;
-            var ramlContainerDiv = document.getElementById("editor-left-container");
-            if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+            var container
+            container = document.getElementById("editor-left-container");
+            if (window.getComputedStyle(container).display !== "none") {
+              container.style.height = (height - 300) + "px";
             }
-            var oasContainerDiv = document.getElementById("editor-right-container");
-            if (window.getComputedStyle(oasContainerDiv).display !== "none") {
-              oasContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+            container = document.getElementById("editor-right-container");
+            if (window.getComputedStyle(container).display !== "none") {
+              container.style.height = (height - 300) + "px";
+            }
+            container = document.getElementById("graphContainer");
+            if (window.getComputedStyle(container).display !== "none") {
+              container.style.height = (height - 200) + "px";
+            }
+            container = document.getElementById("report-table");
+            if (window.getComputedStyle(container).display !== "none") {
+              container.style.height = (height - 200) + "px";
             }
           }
+
+
           window.onresize = resize;
           window.resizeFn = resize;
           resize();
@@ -151,7 +181,7 @@
 
           window.appModel = new diff.ViewModel(editorLeft, editorRight);
           window.appModel.apply();
-          window.appModel.loadRamlFromQueryParam();
+          // window.appModel.loadRamlFromQueryParam();
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

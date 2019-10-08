@@ -8583,3 +8583,51 @@ header {
 
 .connection-wrap {
   display: none; }
+
+/* Diff */
+.diff-number-plus {
+  margin-right: 5px;
+  width: 60px;
+  font-size: 14px;
+  font-weight: bolder; }
+
+.diff-number-minus {
+  width: 60px;
+  font-size: 14px;
+  font-weight: bolder; }
+
+.diff-number-identical {
+  font-size: 14px;
+  font-weight: bolder; }
+
+#diff-modal .modal-content {
+  width: 70%; }
+  #diff-modal .modal-content .modal-card {
+    width: 100%; }
+    #diff-modal .modal-content .modal-card .modal-card-body table {
+      font-size: 120%; }
+      #diff-modal .modal-content .modal-card .modal-card-body table thead th:last-child {
+        text-align: center; }
+      #diff-modal .modal-content .modal-card .modal-card-body table tbody td:last-child {
+        text-align: center; }
+
+#diff-panel {
+  padding-bottom: 15px; }
+  #diff-panel .level-item div .title {
+    font-size: 12px;
+    font-weight: bolder; }
+  #diff-panel .has-text-centered {
+    margin-top: 5px; }
+
+#report-table {
+  overflow: auto; }
+  #report-table table thead tr .tag {
+    font-size: 14px;
+    font-weight: bolder; }
+  #report-table table thead tr .text-centered {
+    text-align: center; }
+  #report-table table tbody .text-centered {
+    text-align: center; }
+
+#graphContainer {
+  background-color: #272b30; }

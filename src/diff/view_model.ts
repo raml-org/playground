@@ -4,6 +4,7 @@ import * as jsonld from 'jsonld'
 import { HashGenerator } from './hash_generator'
 import { DiffGenerator, NodeDiff } from './diff_generator'
 import { Graph } from './graph'
+import { CommonViewModel } from '../view_models/common_view_model'
 
 export class ViewModel {
   public leftHash: ko.KnockoutObservable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
@@ -17,6 +18,8 @@ export class ViewModel {
   public sortDirection: number = 1;
   public selectedNode: ko.KnockoutObservable<NodeDiff> = ko.observable<NodeDiff>(new NodeDiff('', ''));
   public isLoading: ko.KnockoutObservable<boolean> = ko.observable<boolean>(false);
+
+  public constructor(public leftEditor: any, public rightEditor: any) {}
 
   public apply (location: Node) {
     window['viewModel'] = this

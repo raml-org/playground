@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<div class="modal imported" data-bind="css: {'is-active': selectedNode().assertionPairs().length > 0}">
+<div id="diff-modal" class="modal imported" data-bind="css: {'is-active': selectedNode().assertionPairs().length > 0}">
     <div class="modal-background"></div>
-    <div class="modal-content" style="width: 70%">
+    <div class="modal-content">
         <!-- Any other Bulma elements you want -->
-        <div class="modal-card" style="width: 100%">
+        <div class="modal-card">
             <section class="modal-card-body">
-                <table class="table" style="font-size: 120%;">
+                <table class="table">
                     <thead>
                     <tr>
                         <th>Property</th>
                         <th>Value</th>
-                        <th style="text-align: center">Change</th>
+                        <th>Change</th>
                     </tr>
                     </thead>
                     <tbody data-bind="foreach: selectedNode().assertionPairs()">
@@ -21,7 +21,7 @@
                             <span class="tag is-info" data-bind="visible: $data[2].datatype != null, text: $data[2].datatype"></span>
                             <span class="tag is-primary" data-bind="visible: $data[2].kind === 'uri'">link</span>
                         </td>
-                        <td style="text-align: center">
+                        <td>
                             <span class="tag"
                                   data-bind="text:($data[0].change === 'added' ? 'Added' : ( ($data[0].change === 'removed') ? 'Removed' : '-')),
                                              css:($data[0].change === 'added' ? 'is-success' : ( ($data[0].change === 'removed') ? 'is-danger' : 'is-white'))">

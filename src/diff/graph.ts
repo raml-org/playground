@@ -6,9 +6,11 @@ export class Graph {
   public network: vis.Network;
   public minScale: number = null;
   public maxScale: number = null;
+  public containerId = 'graphContainer'
+
 
   constructor (public diff: DiffGenerator) {
-    const container = document.getElementById('graphContainer')
+    const container = document.getElementById(this.containerId)
     const data = {
       nodes: this.nodes(),
       edges: this.edges()
@@ -86,19 +88,19 @@ export class Graph {
 
   resize () {
     var height = document.documentElement.clientHeight
-    var editors = ['graphContainer']
+    var editors = [this.containerId]
     editors.forEach(function (editor) {
       var containerDiv = document.getElementById(editor)
       var style = window.getComputedStyle(containerDiv)
       var hidden = style.display === 'none'
       if (!hidden) {
-        containerDiv.setAttribute('style', 'height: ' + (height - 150) + 'px; background-color: #272b30')
+        containerDiv.style.height = (height - 200) + 'px;'
       }
     })
   }
 
   clear () {
-    let container = document.getElementById('graphContainer')
+    let container = document.getElementById(this.containerId)
     container.removeChild(container.firstChild)
   }
 
