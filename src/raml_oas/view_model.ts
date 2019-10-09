@@ -39,6 +39,10 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getMainModel(): monaco.editor.ITextModel {
+    return this.ramlEditor.getModel()
+  }
+
   public updateModels (section: EditorSection) {
     this.oasChangesFromLastUpdate = 0
     super.updateModels(section)
