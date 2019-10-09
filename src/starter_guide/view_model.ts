@@ -29,6 +29,10 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getMainModel(): monaco.editor.ITextModel {
+    return this.ramlEditor.getModel()
+  }
+
   public parseRamlInput (inp) {
     return wap.raml10.parse(inp)
       .then(parsedModel => {
