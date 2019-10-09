@@ -32,9 +32,13 @@ export abstract class CommonViewModel {
     })
   }
 
+  public getModel () {
+    return this.ramlEditor.getModel()
+  }
+
   public switchDemo (obj, event) {
     let href = event.target.value
-    const value = this.ramlEditor.getValue()
+    const value = this.getModel().getValue()
     if (value) {
       href += `?${this.queryParamName}=${encodeURIComponent(value)}`
     }
@@ -75,7 +79,7 @@ export abstract class CommonViewModel {
     } catch (e) {
       // Query param value is a RAML file content
       try { value = decodeURIComponent(value) } catch (err) {}
-      this.ramlEditor.setValue(value.trim())
+      this.getModel().setValue(value.trim())
       this.updateModels('raml')
     }
   }

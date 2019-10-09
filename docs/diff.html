@@ -27,44 +27,18 @@
 </div>
 
 <!-- Load RAML File modal -->
-<!-- <link rel="import" href="html_fragments/load_modal.html"> -->
+<link rel="import" href="html_fragments/load_modal.html">
 <!-- Nav -->
 <link rel="import" href="html_fragments/diff/nav.html">
-
-<!-- tabs -->
-<div class="tabs">
-  <ul>
-    <li data-bind="click: () => { editorSection('editor') }, css: { 'is-active': editorSection() === 'editor' }">
-      <a>Editors</a></li>
-    <li data-bind="click: () => { editorSection('report') }, css: { 'is-active': editorSection() === 'report' }">
-      <a>Report</a></li>
-    <li data-bind="click: () => { editorSection('graph') }, css: { 'is-active': editorSection() === 'graph' }">
-      <a>Graph</a></li>
-  </ul>
-  <div class="navbar-item" data-bind="visible: started() && leftHash().hash !== rightHash().hash && !isLoading()">
-    <span class="tag is-success diff-number-plus" data-bind="text: '+'+(diff().assertionsAdded || 0)"></span>
-    <span class="tag is-danger diff-number-minus" data-bind="text: '-'+(diff().assertionsRemoved || 0)"></span>
-  </div>
-  <div class="navbar-item" data-bind="visible: started() && leftHash().hash === rightHash().hash && !isLoading()">
-    <span class="tag is-info diff-number-identical">Identical</span>
-  </div>
-</div>
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
     <div id="the-app" class="container is-marginless is-fluid">
-        <div class="columns" data-bind="visible: editorSection()=='editor'">
+        <div class="columns">
             <div class="column">
-                <link rel="import" href="html_fragments/diff/editor_left.html">
-            </div>
-            <div class="column">
-                <link rel="import" href="html_fragments/diff/editor_right.html">
+                <link rel="import" href="html_fragments/diff/editor.html">
             </div>
         </div>
-        <link rel="import" href="html_fragments/diff/panel.html">
-        <link rel="import" href="html_fragments/diff/report.html">
-        <link rel="import" href="html_fragments/diff/graph.html">
-        <link rel="import" href="html_fragments/diff/modal.html">
     </div>
 </div>
 
@@ -132,21 +106,9 @@
           var resize = function() {
             var height = document.documentElement.clientHeight;
             var container
-            container = document.getElementById("editor-left-container");
+            container = document.getElementById("diff-editor-container");
             if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 300) + "px";
-            }
-            container = document.getElementById("editor-right-container");
-            if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 300) + "px";
-            }
-            container = document.getElementById("graphContainer");
-            if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 200) + "px";
-            }
-            container = document.getElementById("report-table");
-            if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 200) + "px";
+              container.style.height = (height - 130) + "px";
             }
           }
 
@@ -157,31 +119,18 @@
 
           customizeMonaco();
 
-          var editorLeft = monaco.editor
-            .create(document.getElementById("editor-left-container"), {
-              value: '',
-              language: 'raml',
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              minimap: {
-                enabled: false
-              }
+          var diffEditor = monaco.editor.createDiffEditor(
+            document.getElementById("diff-editor-container"), {
+              originalEditable: true
             });
+          diffEditor.setModel({
+            original: monaco.editor.createModel("", "raml"),
+            modified: monaco.editor.createModel("", "raml")
+          });
 
-          var editorRight = monaco.editor
-            .create(document.getElementById("editor-right-container"), {
-              value: '',
-              language: 'raml',
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              minimap: {
-                enabled: false
-              }
-            });
-
-          window.appModel = new diff.ViewModel(editorLeft, editorRight);
+          window.appModel = new diff.ViewModel(diffEditor);
           window.appModel.apply();
-          // window.appModel.loadRamlFromQueryParam();
+          window.appModel.loadRamlFromQueryParam();
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";
