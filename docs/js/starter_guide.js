@@ -38794,6 +38794,10 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     });
   }
 
+  getMainModel() {
+    return this.ramlEditor.getModel();
+  }
+
   loadInitialDocument() {
     const params = new URLSearchParams(window.location.search);
 
@@ -38897,7 +38901,7 @@ class CommonViewModel {
 
   switchDemo(obj, event) {
     let href = event.target.value;
-    const value = this.ramlEditor.getValue();
+    const value = this.getMainModel().getValue();
 
     if (value) {
       href += `?${this.queryParamName}=${encodeURIComponent(value)}`;
@@ -38945,7 +38949,7 @@ class CommonViewModel {
         value = decodeURIComponent(value);
       } catch (err) {}
 
-      this.ramlEditor.setValue(value.trim());
+      this.getMainModel().setValue(value.trim());
       this.updateModels('raml');
     }
   }

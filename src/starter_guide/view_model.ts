@@ -23,6 +23,10 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getMainModel(): monaco.editor.ITextModel {
+    return this.ramlEditor.getModel()
+  }
+
   public loadInitialDocument () {
     const params = new URLSearchParams(window.location.search)
     if (params.get(this.queryParamName)) {
