@@ -34,6 +34,10 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getMainModel(): monaco.editor.ITextModel {
+    return this.ramlEditor.getModel()
+  }
+
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
     let value = this.ramlEditor.getModel().getValue()
