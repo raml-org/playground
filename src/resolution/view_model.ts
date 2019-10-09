@@ -7,17 +7,17 @@ export type EditorSection = 'raml';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
-  constructor (public ramlEditor: any, public resRamlEditor: any) {
+  constructor (public unresRamlEditor: any, public resRamlEditor: any) {
     super()
 
-    ramlEditor.onDidChangeModelContent(this.changeModelContent(
+    unresRamlEditor.onDidChangeModelContent(this.changeModelContent(
       'ramlChangesFromLastUpdate', 'raml'))
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
         .then((parsedModel) => {
           this.model = new ModelProxy(parsedModel, 'raml')
-          this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
+          this.unresRamlEditor.setModel(this.createModel(this.model.raw, 'raml'))
           return this.updateEditorsModels()
         })
         .catch((err) => {
@@ -26,9 +26,13 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getMainModel(): monaco.editor.ITextModel {
+    return this.unresRamlEditor.getModel()
+  }
+
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
-    const value = this.ramlEditor.getValue()
+    const value = this.unresRamlEditor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     return wap.raml10.parse(value).then(model => {
       this.model = new ModelProxy(model, 'raml')
