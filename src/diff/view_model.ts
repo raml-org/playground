@@ -35,7 +35,7 @@ export class ViewModel extends CommonViewModel {
     this.diffEditor.setModel(editorModel)
   }
 
-  public getModel () {
+  public getMainModel (): monaco.editor.ITextModel {
     return this.diffEditor.getModel().original
   }
 

@@ -21,8 +21,6 @@ export abstract class CommonViewModel {
   public modelChanged = false;
   public RELOAD_PERIOD = 2000;
 
-  public ramlEditor: any;
-
   public queryParamName = 'raml';
 
   public apply () {
@@ -32,13 +30,9 @@ export abstract class CommonViewModel {
     })
   }
 
-  public getModel () {
-    return this.ramlEditor.getModel()
-  }
-
   public switchDemo (obj, event) {
     let href = event.target.value
-    const value = this.getModel().getValue()
+    const value = this.getMainModel().getValue()
     if (value) {
       href += `?${this.queryParamName}=${encodeURIComponent(value)}`
     }
@@ -79,7 +73,7 @@ export abstract class CommonViewModel {
     } catch (e) {
       // Query param value is a RAML file content
       try { value = decodeURIComponent(value) } catch (err) {}
-      this.getModel().setValue(value.trim())
+      this.getMainModel().setValue(value.trim())
       this.updateModels('raml')
     }
   }
@@ -93,6 +87,7 @@ export abstract class CommonViewModel {
     this.parseEditorSection(section)
   }
 
+  abstract getMainModel (): monaco.editor.ITextModel
   abstract parseEditorSection (section?: EditorSection): void
   protected abstract updateEditorsModels (): void
 }

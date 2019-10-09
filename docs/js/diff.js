@@ -37968,7 +37968,7 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     this.diffEditor.setModel(editorModel);
   }
 
-  getModel() {
+  getMainModel() {
     return this.diffEditor.getModel().original;
   }
 
@@ -38980,13 +38980,9 @@ class CommonViewModel {
     });
   }
 
-  getModel() {
-    return this.ramlEditor.getModel();
-  }
-
   switchDemo(obj, event) {
     let href = event.target.value;
-    const value = this.getModel().getValue();
+    const value = this.getMainModel().getValue();
 
     if (value) {
       href += `?${this.queryParamName}=${encodeURIComponent(value)}`;
@@ -39034,7 +39030,7 @@ class CommonViewModel {
         value = decodeURIComponent(value);
       } catch (err) {}
 
-      this.getModel().setValue(value.trim());
+      this.getMainModel().setValue(value.trim());
       this.updateModels('raml');
     }
   }

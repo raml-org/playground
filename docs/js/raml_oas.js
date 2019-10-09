@@ -816,7 +816,7 @@ utils.forEach(['post', 'put', 'patch'], function forEachMethodWithData(method) {
 module.exports = defaults;
 
 }).call(this,require('_process'))
-},{"./adapters/http":2,"./adapters/xhr":2,"./helpers/normalizeHeaderName":22,"./utils":25,"_process":75}],16:[function(require,module,exports){
+},{"./adapters/http":2,"./adapters/xhr":2,"./helpers/normalizeHeaderName":22,"./utils":25,"_process":76}],16:[function(require,module,exports){
 'use strict';
 
 module.exports = function bind(fn, thisArg) {
@@ -3981,7 +3981,7 @@ function numberIsNaN (obj) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"base64-js":27,"buffer":31,"ieee754":38}],32:[function(require,module,exports){
+},{"base64-js":27,"buffer":31,"ieee754":39}],32:[function(require,module,exports){
 module.exports = {
   "100": "Continue",
   "101": "Switching Protocols",
@@ -4048,6 +4048,44 @@ module.exports = {
 }
 
 },{}],33:[function(require,module,exports){
+/* jshint esversion: 6 */
+/* jslint node: true */
+'use strict';
+
+module.exports = function (object) {
+  return serialize(object);
+
+  function serialize (object) {
+    if (object === null || typeof object !== 'object' || object.toJSON != null) {
+      return JSON.stringify(object);
+    }
+    if (Array.isArray(object) && object.length === 0) {
+      return '[]';
+    }
+    if (Array.isArray(object) && object.length === 1) {
+      return '[' + serialize(object[0]) + ']';
+    }
+    if (Array.isArray(object)) {
+      return '[' + object.reduce((t, cv, ci) => {
+        t = (ci === 1 ? serialize(t) : t);
+        return t + ',' + serialize(cv);
+      }) + ']';
+    }
+    const keys = Object.keys(object);
+    if (keys.length === 0) {
+      return '{}';
+    }
+    if (keys.length === 1) {
+      return '{' + serialize(keys[0]) + ':' + serialize(object[keys[0]]) + '}';
+    }
+    return '{' + keys.sort().reduce((t, cv, ci) => {
+      t = (ci === 1 ? serialize(t) + ':' + serialize(object[t]) : t);
+      return t + ',' + serialize(cv) + ':' + serialize(object[cv]);
+    }) + '}';
+  }
+};
+
+},{}],34:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -4158,7 +4196,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":40}],34:[function(require,module,exports){
+},{"../../is-buffer/index.js":41}],35:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -4683,7 +4721,7 @@ function functionBindPolyfill(context) {
   };
 }
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 'use strict';
 
 var isArray = Array.isArray;
@@ -4740,7 +4778,7 @@ module.exports = function equal(a, b) {
   return a!==a && b!==b;
 };
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 
 module.exports = function (data, opts) {
@@ -4801,7 +4839,7 @@ module.exports = function (data, opts) {
     })(data);
 };
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 var http = require('http')
 var url = require('url')
 
@@ -4834,7 +4872,7 @@ function validateParams (params) {
   return params
 }
 
-},{"http":100,"url":108}],38:[function(require,module,exports){
+},{"http":101,"url":109}],39:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = (nBytes * 8) - mLen - 1
@@ -4920,7 +4958,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -4945,7 +4983,7 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -4968,14 +5006,14 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 'use strict';
 
 var traverse = module.exports = function (schema, opts, cb) {
@@ -5066,7 +5104,7 @@ function escapeJsonPtr(str) {
   return str.replace(/~/g, '~0').replace(/\//g, '~1');
 }
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 /*
  * Copyright (c) 2017-2018 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5112,7 +5150,7 @@ module.exports = class ActiveContextCache {
   }
 };
 
-},{"./util":64}],44:[function(require,module,exports){
+},{"./util":65}],45:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5137,7 +5175,7 @@ module.exports = class JsonLdError extends Error {
   }
 };
 
-},{}],45:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5191,7 +5229,7 @@ module.exports = jsonld => {
   return JsonLdProcessor;
 };
 
-},{}],46:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5200,7 +5238,7 @@ module.exports = jsonld => {
 // TODO: move `NQuads` to its own package
 module.exports = require('rdf-canonize').NQuads;
 
-},{"rdf-canonize":88}],47:[function(require,module,exports){
+},{"rdf-canonize":89}],48:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5342,7 +5380,7 @@ function getXMLSerializerClass() {
   return XMLSerializer;
 }
 
-},{"./constants":50,"xmldom":28}],48:[function(require,module,exports){
+},{"./constants":51,"xmldom":28}],49:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5387,7 +5425,7 @@ module.exports = class RequestQueue {
   }
 };
 
-},{"./util":64}],49:[function(require,module,exports){
+},{"./util":65}],50:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -5526,6 +5564,22 @@ api.compact = ({
         options.link[element['@id']].push({expanded: element, compacted: rval});
       }
       return rval;
+    }
+
+    // if expanded property is @list and we're contained within a list
+    // container, recursively compact this item to an array
+    if(_isList(element)) {
+      const container = _getContextValue(
+        activeCtx, activeProperty, '@container') || [];
+      if(container.includes('@list')) {
+        return api.compact({
+          activeCtx,
+          activeProperty,
+          element: element['@list'],
+          options,
+          compactionMap
+        });
+      }
     }
 
     // FIXME: avoid misuse of active property as an expanded property?
@@ -5789,14 +5843,12 @@ api.compact = ({
                 relativeTo: {vocab: true}
               })] = expandedItem['@index'];
             }
-          } else if(nestResult.hasOwnProperty(itemActiveProperty)) {
-            // can't use @list container for more than 1 list
-            throw new JsonLdError(
-              'JSON-LD compact error; property has a "@list" @container ' +
-              'rule but there is more than a single @list that matches ' +
-              'the compacted term in the document. Compaction might mix ' +
-              'unwanted items into the list.',
-              'jsonld.SyntaxError', {code: 'compaction to list of lists'});
+          } else {
+            _addValue(nestResult, itemActiveProperty, compactedItem, {
+              valueIsArray: true,
+              allowDuplicate: true
+            });
+            continue;
           }
         }
 
@@ -6486,7 +6538,7 @@ function _checkNestProperty(activeCtx, nestProperty, options) {
   }
 }
 
-},{"./JsonLdError":44,"./context":51,"./graphTypes":58,"./types":62,"./url":63,"./util":64}],50:[function(require,module,exports){
+},{"./JsonLdError":45,"./context":52,"./graphTypes":59,"./types":63,"./url":64,"./util":65}],51:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -6506,6 +6558,7 @@ module.exports = {
   RDF_TYPE: RDF + 'type',
   RDF_PLAIN_LITERAL: RDF + 'PlainLiteral',
   RDF_XML_LITERAL: RDF + 'XMLLiteral',
+  RDF_JSON_LITERAL: RDF + 'JSON',
   RDF_OBJECT: RDF + 'object',
   RDF_LANGSTRING: RDF + 'langString',
 
@@ -6516,7 +6569,7 @@ module.exports = {
   XSD_STRING: XSD + 'string',
 };
 
-},{}],51:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -7018,7 +7071,7 @@ api.createTermDefinition = (
         {code: 'invalid type mapping', context: localCtx});
     }
 
-    if(type !== '@id' && type !== '@vocab') {
+    if(type !== '@id' && type !== '@vocab' && type !== '@json') {
       // expand @type to full IRI
       type = _expandIri(
         activeCtx, type, {vocab: true, base: false}, localCtx, defined,
@@ -7633,6 +7686,7 @@ api.isKeyword = v => {
     case '@graph':
     case '@id':
     case '@index':
+    case '@json':
     case '@language':
     case '@list':
     case '@nest':
@@ -7884,7 +7938,7 @@ function _deepCompare(x1, x2) {
   return true;
 }
 
-},{"./ActiveContextCache":43,"./JsonLdError":44,"./types":62,"./url":63,"./util":64}],52:[function(require,module,exports){
+},{"./ActiveContextCache":44,"./JsonLdError":45,"./types":63,"./url":64,"./util":65}],53:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -8050,7 +8104,7 @@ function _request(request, options) {
   });
 }
 
-},{"../JsonLdError":44,"../RequestQueue":48,"../constants":50,"../util":64,"http":28,"request":28}],53:[function(require,module,exports){
+},{"../JsonLdError":45,"../RequestQueue":49,"../constants":51,"../util":65,"http":28,"request":28}],54:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -8158,7 +8212,7 @@ function _get(xhr, url, headers) {
   });
 }
 
-},{"../JsonLdError":44,"../RequestQueue":48,"../constants":50,"../util":64}],54:[function(require,module,exports){
+},{"../JsonLdError":45,"../RequestQueue":49,"../constants":51,"../util":65}],55:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -8184,7 +8238,8 @@ const {
   expandIri: _expandIri,
   getContextValue: _getContextValue,
   isKeyword: _isKeyword,
-  process: _processContext
+  process: _processContext,
+  processingMode: _processingMode
 } = require('./context');
 
 const {
@@ -8283,11 +8338,8 @@ api.expand = ({
         insideIndex,
         typeScopedContext
       });
-      if(insideList && (_isArray(e) || _isList(e))) {
-        // lists of lists are illegal
-        throw new JsonLdError(
-          'Invalid JSON-LD syntax; lists of lists are not permitted.',
-          'jsonld.SyntaxError', {code: 'list of lists'});
+      if(insideList && _isArray(e)) {
+        e = {'@list': e};
       }
 
       if(e === null) {
@@ -8453,6 +8505,9 @@ api.expand = ({
         'Invalid JSON-LD syntax; only strings may be language-tagged.',
         'jsonld.SyntaxError',
         {code: 'invalid language-tagged value', element: rval});
+    } else if(_processingMode(activeCtx, 1.1) && types.includes('@json') &&
+      types.length === 1) {
+      // Any value of @value is okay if @type: @json
     } else if(!types.every(t =>
       (_isAbsoluteIri(t) && !(_isString(t) && t.indexOf('_:') === 0) ||
       _isEmptyObject(t)))) {
@@ -8658,16 +8713,7 @@ function _expandObject({
         'jsonld.SyntaxError', {code: 'invalid @graph value', value});
     }
 
-    // @value must not be an object or an array (unless framing)
     if(expandedProperty === '@value') {
-      if((_isObject(value) || _isArray(value)) && !options.isFrame) {
-        throw new JsonLdError(
-          'Invalid JSON-LD syntax; "@value" value must not be an ' +
-          'object or an array.',
-          'jsonld.SyntaxError',
-          {code: 'invalid value object value', value});
-      }
-
       _addValue(
         expandedParent, '@value', value, {propertyIsArray: options.isFrame});
       continue;
@@ -8833,11 +8879,12 @@ function _expandObject({
           insideList: isList,
           expansionMap
         });
-        if(isList && _isList(expandedValue)) {
-          throw new JsonLdError(
-            'Invalid JSON-LD syntax; lists of lists are not permitted.',
-            'jsonld.SyntaxError', {code: 'list of lists'});
-        }
+      } else if(
+        _getContextValue(activeCtx, key, '@type') === '@json') {
+        expandedValue = {
+          '@type': '@json',
+          '@value': value
+        };
       } else {
         // recursively expand value with key as new active property
         expandedValue = api.expand({
@@ -8914,6 +8961,22 @@ function _expandObject({
     _addValue(expandedParent, expandedProperty, expandedValue, {
       propertyIsArray: useArray
     });
+  }
+
+  // @value must not be an object or an array (unless framing) or if @type is
+  // @json
+  if('@value' in element) {
+    const value = element['@value'];
+    if(element['@type'] === '@json' && _processingMode(activeCtx, 1.1)) {
+      // allow any value, to be verified when the object is fully expanded and
+      // the @type is @json.
+    } else if((_isObject(value) || _isArray(value)) && !options.isFrame) {
+      throw new JsonLdError(
+        'Invalid JSON-LD syntax; "@value" value must not be an ' +
+        'object or an array.',
+        'jsonld.SyntaxError',
+        {code: 'invalid value object value', value});
+    }
   }
 
   // expand each nested key
@@ -9110,7 +9173,7 @@ function _expandIndexMap(
   return rval;
 }
 
-},{"./JsonLdError":44,"./context":51,"./graphTypes":58,"./types":62,"./url":63,"./util":64}],55:[function(require,module,exports){
+},{"./JsonLdError":45,"./context":52,"./graphTypes":59,"./types":63,"./url":64,"./util":65}],56:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -9150,7 +9213,7 @@ api.flatten = input => {
   return flattened;
 };
 
-},{"./graphTypes":58,"./nodeMap":60}],56:[function(require,module,exports){
+},{"./graphTypes":59,"./nodeMap":61}],57:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -9807,12 +9870,13 @@ function _valueMatch(pattern, value) {
   return true;
 }
 
-},{"./JsonLdError":44,"./context":51,"./graphTypes":58,"./nodeMap":60,"./types":62,"./util":64}],57:[function(require,module,exports){
+},{"./JsonLdError":45,"./context":52,"./graphTypes":59,"./nodeMap":61,"./types":63,"./util":65}],58:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
 'use strict';
 
+const JsonLdError = require('./JsonLdError');
 const graphTypes = require('./graphTypes');
 const types = require('./types');
 const util = require('./util');
@@ -9827,6 +9891,7 @@ const {
   RDF_TYPE,
   // RDF_PLAIN_LITERAL,
   // RDF_XML_LITERAL,
+  RDF_JSON_LITERAL,
   // RDF_OBJECT,
   // RDF_LANGSTRING,
 
@@ -10034,24 +10099,6 @@ api.fromRDF = async (
         }
       }
 
-      // the list is nested in another list
-      if(property === RDF_FIRST) {
-        // empty list
-        if(node['@id'] === RDF_NIL) {
-          // can't convert rdf:nil to a @list object because it would
-          // result in a list of lists which isn't supported
-          continue;
-        }
-
-        // preserve list head
-        if(RDF_REST in graphObject[head['@id']]) {
-          head = graphObject[head['@id']][RDF_REST][0];
-        }
-
-        list.pop();
-        listNodes.pop();
-      }
-
       // transform list into @list object
       delete head['@id'];
       head['@list'] = list.reverse();
@@ -10113,6 +10160,17 @@ function _RDFToObject(o, useNativeTypes) {
     if(!type) {
       type = XSD_STRING;
     }
+    if(type === RDF_JSON_LITERAL) {
+      type = '@json';
+      try {
+        rval['@value'] = JSON.parse(rval['@value']);
+      } catch(e) {
+        throw new JsonLdError(
+          'JSON literal could not be parsed.',
+          'jsonld.InvalidJsonLiteral',
+          {code: 'invalid JSON literal', value: rval['@value'], cause: e});
+      }
+    }
     // use native types for certain xsd types
     if(useNativeTypes) {
       if(type === XSD_BOOLEAN) {
@@ -10143,7 +10201,7 @@ function _RDFToObject(o, useNativeTypes) {
   return rval;
 }
 
-},{"./constants":50,"./graphTypes":58,"./types":62,"./util":64}],58:[function(require,module,exports){
+},{"./JsonLdError":45,"./constants":51,"./graphTypes":59,"./types":63,"./util":65}],59:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -10264,7 +10322,7 @@ api.isBlankNode = v => {
   return false;
 };
 
-},{"./types":62}],59:[function(require,module,exports){
+},{"./types":63}],60:[function(require,module,exports){
 (function (process,global){
 /**
  * A JavaScript implementation of the JSON-LD API.
@@ -10354,6 +10412,9 @@ const _browser = !_nodejs &&
 /* eslint-disable indent */
 // attaches jsonld API to the given object
 const wrapper = function(jsonld) {
+
+/** Registered RDF dataset parsers hashed by content-type. */
+const _rdfParsers = {};
 
 /* Core API */
 
@@ -10732,11 +10793,10 @@ jsonld.frame = util.callbackify(async function(input, frame, options) {
 
   // if the unexpanded frame includes a key expanding to @graph, frame the
   // default graph, otherwise, the merged graph
-  let framed;
   // FIXME should look for aliases of @graph
   opts.merged = !('@graph' in frame);
   // do framing
-  framed = _frameMergedOrDefault(expanded, expandedFrame, opts);
+  const framed = _frameMergedOrDefault(expanded, expandedFrame, opts);
 
   // compact result (force @graph option to true, skip expansion,
   // check for linked embeds)
@@ -10862,7 +10922,8 @@ jsonld.fromRDF = util.callbackify(async function(dataset, options) {
     format: _isString(dataset) ? 'application/n-quads' : undefined
   });
 
-  let {format, rdfParser} = options;
+  const {format} = options;
+  let {rdfParser} = options;
 
   // handle special format
   if(format) {
@@ -11237,9 +11298,6 @@ jsonld.useDocumentLoader = function(type) {
     jsonld, Array.prototype.slice.call(arguments, 1));
 };
 
-/** Registered RDF dataset parsers hashed by content-type. */
-const _rdfParsers = {};
-
 /**
  * Registers an RDF dataset parser by content-type, for use with
  * jsonld.fromRDF. An RDF dataset parser will always be given two parameters,
@@ -11343,7 +11401,7 @@ wrapper(factory);
 module.exports = factory;
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./JsonLdError":44,"./JsonLdProcessor":45,"./NQuads":46,"./Rdfa":47,"./RequestQueue":48,"./compact":49,"./context":51,"./documentLoaders/node":52,"./documentLoaders/xhr":53,"./expand":54,"./flatten":55,"./frame":56,"./fromRdf":57,"./graphTypes":58,"./nodeMap":60,"./toRdf":61,"./types":62,"./url":63,"./util":64,"_process":75,"rdf-canonize":88}],60:[function(require,module,exports){
+},{"./JsonLdError":45,"./JsonLdProcessor":46,"./NQuads":47,"./Rdfa":48,"./RequestQueue":49,"./compact":50,"./context":52,"./documentLoaders/node":53,"./documentLoaders/xhr":54,"./expand":55,"./flatten":56,"./frame":57,"./fromRdf":58,"./graphTypes":59,"./nodeMap":61,"./toRdf":62,"./types":63,"./url":64,"./util":65,"_process":76,"rdf-canonize":89}],61:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -11393,8 +11451,8 @@ api.createMergedNodeMap = (input, options) => {
 api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
   // recurse through array
   if(types.isArray(input)) {
-    for(let i = 0; i < input.length; ++i) {
-      api.createNodeMap(input[i], graphs, graph, issuer, undefined, list);
+    for(const node of input) {
+      api.createNodeMap(node, graphs, graph, issuer, undefined, list);
     }
     return;
   }
@@ -11420,6 +11478,11 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
       list.push(input);
     }
     return;
+  } else if(list && graphTypes.isList(input)) {
+    const _list = [];
+    api.createNodeMap(input['@list'], graphs, graph, issuer, name, _list);
+    list.push({'@list': _list});
+    return;
   }
 
   // Note: At this point, input must be a subject.
@@ -11427,8 +11490,7 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
   // spec requires @type to be named first, so assign names early
   if('@type' in input) {
     const types = input['@type'];
-    for(let i = 0; i < types.length; ++i) {
-      const type = types[i];
+    for(const type of types) {
       if(type.indexOf('_:') === 0) {
         issuer.getId(type);
       }
@@ -11451,9 +11513,7 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
   const subject = subjects[name] = subjects[name] || {};
   subject['@id'] = name;
   const properties = Object.keys(input).sort();
-  for(let pi = 0; pi < properties.length; ++pi) {
-    let property = properties[pi];
-
+  for(let property of properties) {
     // skip @id
     if(property === '@id') {
       continue;
@@ -11465,8 +11525,7 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
       const reverseMap = input['@reverse'];
       for(const reverseProperty in reverseMap) {
         const items = reverseMap[reverseProperty];
-        for(let ii = 0; ii < items.length; ++ii) {
-          const item = items[ii];
+        for(const item of items) {
           let itemName = item['@id'];
           if(graphTypes.isBlankNode(item)) {
             itemName = issuer.getId(itemName);
@@ -11517,9 +11576,7 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
       util.addValue(subject, property, [], {propertyIsArray: true});
       continue;
     }
-    for(let oi = 0; oi < objects.length; ++oi) {
-      let o = objects[oi];
-
+    for(let o of objects) {
       if(property === '@type') {
         // rename @type blank nodes
         o = (o.indexOf('_:') === 0) ? issuer.getId(o) : o;
@@ -11536,6 +11593,10 @@ api.createNodeMap = (input, graphs, graph, issuer, name, list) => {
           subject, property, {'@id': id},
           {propertyIsArray: true, allowDuplicate: false});
         api.createNodeMap(o, graphs, graph, issuer, id);
+      } else if(graphTypes.isValue(o)) {
+        util.addValue(
+          subject, property, o,
+          {propertyIsArray: true, allowDuplicate: false});
       } else if(graphTypes.isList(o)) {
         // handle @list
         const _list = [];
@@ -11595,8 +11656,7 @@ api.mergeNodeMaps = graphs => {
   // add all non-default graphs to default graph
   const defaultGraph = graphs['@default'];
   const graphNames = Object.keys(graphs).sort();
-  for(let i = 0; i < graphNames.length; ++i) {
-    const graphName = graphNames[i];
+  for(const graphName of graphNames) {
     if(graphName === '@default') {
       continue;
     }
@@ -11611,9 +11671,8 @@ api.mergeNodeMaps = graphs => {
       subject['@graph'] = [];
     }
     const graph = subject['@graph'];
-    const ids = Object.keys(nodeMap).sort();
-    for(let ii = 0; ii < ids.length; ++ii) {
-      const node = nodeMap[ids[ii]];
+    for(const id of Object.keys(nodeMap).sort()) {
+      const node = nodeMap[id];
       // only add full subjects
       if(!graphTypes.isSubjectReference(node)) {
         graph.push(node);
@@ -11623,7 +11682,7 @@ api.mergeNodeMaps = graphs => {
   return defaultGraph;
 };
 
-},{"./JsonLdError":44,"./context":51,"./graphTypes":58,"./types":62,"./util":64}],61:[function(require,module,exports){
+},{"./JsonLdError":45,"./context":52,"./graphTypes":59,"./types":63,"./util":65}],62:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -11632,6 +11691,7 @@ api.mergeNodeMaps = graphs => {
 const {createNodeMap} = require('./nodeMap');
 const {isKeyword} = require('./context');
 const graphTypes = require('./graphTypes');
+const jsonCanonicalize = require('canonicalize');
 const types = require('./types');
 const util = require('./util');
 
@@ -11644,6 +11704,7 @@ const {
   RDF_TYPE,
   // RDF_PLAIN_LITERAL,
   // RDF_XML_LITERAL,
+  RDF_JSON_LITERAL,
   // RDF_OBJECT,
   RDF_LANGSTRING,
 
@@ -11711,8 +11772,7 @@ api.toRDF = (input, options) => {
  */
 function _graphToRDF(dataset, graph, graphTerm, issuer, options) {
   const ids = Object.keys(graph).sort();
-  for(let i = 0; i < ids.length; ++i) {
-    const id = ids[i];
+  for(const id of ids) {
     const node = graph[id];
     const properties = Object.keys(node).sort();
     for(let property of properties) {
@@ -11752,22 +11812,16 @@ function _graphToRDF(dataset, graph, graphTerm, issuer, options) {
           continue;
         }
 
-        // convert @list to triples
-        if(graphTypes.isList(item)) {
-          _listToRDF(
-            item['@list'], issuer, subject, predicate, dataset, graphTerm);
-        } else {
-          // convert value or node object to triple
-          const object = _objectToRDF(item);
-          // skip null objects (they are relative IRIs)
-          if(object) {
-            dataset.push({
-              subject,
-              predicate,
-              object,
-              graph: graphTerm
-            });
-          }
+        // convert list, value or node object to triple
+        const object = _objectToRDF(item, issuer, dataset, graphTerm);
+        // skip null objects (they are relative IRIs)
+        if(object) {
+          dataset.push({
+            subject,
+            predicate,
+            object,
+            graph: graphTerm
+          });
         }
       }
     }
@@ -11780,59 +11834,71 @@ function _graphToRDF(dataset, graph, graphTerm, issuer, options) {
  *
  * @param list the @list value.
  * @param issuer a IdentifierIssuer for assigning blank node names.
- * @param subject the subject for the head of the list.
- * @param predicate the predicate for the head of the list.
  * @param dataset the array of quads to append to.
  * @param graphTerm the graph term for each quad.
+ *
+ * @return the head of the list.
  */
-function _listToRDF(list, issuer, subject, predicate, dataset, graphTerm) {
+function _listToRDF(list, issuer, dataset, graphTerm) {
   const first = {termType: 'NamedNode', value: RDF_FIRST};
   const rest = {termType: 'NamedNode', value: RDF_REST};
   const nil = {termType: 'NamedNode', value: RDF_NIL};
 
+  const last = list.pop();
+  // Result is the head of the list
+  const result = last ? {termType: 'BlankNode', value: issuer.getId()} : nil;
+  let subject = result;
+
   for(const item of list) {
-    const blankNode = {termType: 'BlankNode', value: issuer.getId()};
+    const object = _objectToRDF(item, issuer, dataset, graphTerm);
+    const next = {termType: 'BlankNode', value: issuer.getId()};
     dataset.push({
       subject,
-      predicate,
-      object: blankNode,
+      predicate: first,
+      object,
       graph: graphTerm
     });
-
-    subject = blankNode;
-    predicate = first;
-    const object = _objectToRDF(item);
-
-    // skip null objects (they are relative IRIs)
-    if(object) {
-      dataset.push({
-        subject,
-        predicate,
-        object,
-        graph: graphTerm
-      });
-    }
-
-    predicate = rest;
+    dataset.push({
+      subject,
+      predicate: rest,
+      object: next,
+      graph: graphTerm
+    });
+    subject = next;
   }
 
-  dataset.push({
-    subject,
-    predicate,
-    object: nil,
-    graph: graphTerm
-  });
+  // Tail of list
+  if(last) {
+    const object = _objectToRDF(last, issuer, dataset, graphTerm);
+    dataset.push({
+      subject,
+      predicate: first,
+      object,
+      graph: graphTerm
+    });
+    dataset.push({
+      subject,
+      predicate: rest,
+      object: nil,
+      graph: graphTerm
+    });
+  }
+
+  return result;
 }
 
 /**
- * Converts a JSON-LD value object to an RDF literal or a JSON-LD string or
- * node object to an RDF resource.
+ * Converts a JSON-LD value object to an RDF literal or a JSON-LD string,
+ * node object to an RDF resource, or adds a list.
  *
  * @param item the JSON-LD value or node object.
+ * @param issuer a IdentifierIssuer for assigning blank node names.
+ * @param dataset the dataset to append RDF quads to.
+ * @param graphTerm the graph term for each quad.
  *
  * @return the RDF literal or RDF resource.
  */
-function _objectToRDF(item) {
+function _objectToRDF(item, issuer, dataset, graphTerm) {
   const object = {};
 
   // convert value object to RDF
@@ -11845,8 +11911,11 @@ function _objectToRDF(item) {
     let value = item['@value'];
     const datatype = item['@type'] || null;
 
-    // convert to XSD datatypes as appropriate
-    if(types.isBoolean(value)) {
+    // convert to XSD/JSON datatypes as appropriate
+    if(datatype === '@json') {
+      object.value = jsonCanonicalize(value);
+      object.datatype.value = RDF_JSON_LITERAL;
+    } else if(types.isBoolean(value)) {
       object.value = value.toString();
       object.datatype.value = datatype || XSD_BOOLEAN;
     } else if(types.isDouble(value) || datatype === XSD_DOUBLE) {
@@ -11867,6 +11936,10 @@ function _objectToRDF(item) {
       object.value = value;
       object.datatype.value = datatype || XSD_STRING;
     }
+  } else if(graphTypes.isList(item)) {
+    const _list = _listToRDF(item['@list'], issuer, dataset, graphTerm);
+    object.termType = _list.termType;
+    object.value = _list.value;
   } else {
     // convert string/node object to RDF
     const id = types.isObject(item) ? item['@id'] : item;
@@ -11882,7 +11955,7 @@ function _objectToRDF(item) {
   return object;
 }
 
-},{"./constants":50,"./context":51,"./graphTypes":58,"./nodeMap":60,"./types":62,"./url":63,"./util":64}],62:[function(require,module,exports){
+},{"./constants":51,"./context":52,"./graphTypes":59,"./nodeMap":61,"./types":63,"./url":64,"./util":65,"canonicalize":33}],63:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -11975,7 +12048,7 @@ api.isString = v => (typeof v === 'string' ||
  */
 api.isUndefined = v => typeof v === 'undefined';
 
-},{}],63:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -11997,6 +12070,7 @@ api.parsers = {
     keys: [
       'href', 'scheme', 'authority', 'path', 'query', 'fragment'
     ],
+    /* eslint-disable-next-line max-len */
     regex: /^(?:([^:\/?#]+):)?(?:\/\/([^\/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/
   },
   full: {
@@ -12004,6 +12078,7 @@ api.parsers = {
       'href', 'protocol', 'scheme', 'authority', 'auth', 'user', 'password',
       'hostname', 'port', 'path', 'directory', 'file', 'query', 'fragment'
     ],
+    /* eslint-disable-next-line max-len */
     regex: /^(([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?(?:(((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/
   }
 };
@@ -12276,7 +12351,7 @@ api.isAbsolute = v => types.isString(v) && isAbsoluteRegex.test(v);
  */
 api.isRelative = v => types.isString(v);
 
-},{"./types":62}],64:[function(require,module,exports){
+},{"./types":63}],65:[function(require,module,exports){
 (function (process,setImmediate){
 /*
  * Copyright (c) 2017 Digital Bazaar, Inc. All rights reserved.
@@ -12529,6 +12604,8 @@ api.hasValue = (subject, property, value) => {
  * @param [options] the options to use:
  *        [propertyIsArray] true if the property is always an array, false
  *          if not (default: false).
+ *        [valueIsArray] true if the value to be added should be preserved as
+ *          an array (lists) (default: false).
  *        [allowDuplicate] true to allow duplicates, false not to (uses a
  *          simple shallow comparison of subject ID or value) (default: true).
  */
@@ -12537,11 +12614,16 @@ api.addValue = (subject, property, value, options) => {
   if(!('propertyIsArray' in options)) {
     options.propertyIsArray = false;
   }
+  if(!('valueIsArray' in options)) {
+    options.valueIsArray = false;
+  }
   if(!('allowDuplicate' in options)) {
     options.allowDuplicate = true;
   }
 
-  if(types.isArray(value)) {
+  if(options.valueIsArray) {
+    subject[property] = value;
+  } else if(types.isArray(value)) {
     if(value.length === 0 && options.propertyIsArray &&
       !subject.hasOwnProperty(property)) {
       subject[property] = [];
@@ -12787,7 +12869,7 @@ function _labelBlankNodes(issuer, element) {
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"./JsonLdError":44,"./graphTypes":58,"./types":62,"_process":75,"rdf-canonize":88,"timers":105}],65:[function(require,module,exports){
+},{"./JsonLdError":45,"./graphTypes":59,"./types":63,"_process":76,"rdf-canonize":89,"timers":106}],66:[function(require,module,exports){
 /*!
  * Knockout JavaScript library v3.5.0
  * (c) The Knockout.js team - http://knockoutjs.com/
@@ -12927,7 +13009,7 @@ h.beforeRemove?a.na:a.removeNode);var M,O,P;try{P=e.ownerDocument.activeElement}
 !v.tmpl)return 0;try{if(0<=v.tmpl.tag.tmpl.open.toString().indexOf("__"))return 2}catch(a){}return 1}();this.renderTemplateSource=function(b,e,f,g){g=g||w;f=f||{};if(2>a)throw Error("Your version of jQuery.tmpl is too old. Please upgrade to jQuery.tmpl 1.0.0pre or later.");var h=b.data("precompiled");h||(h=b.text()||"",h=v.template(null,"{{ko_with $item.koBindingContext}}"+h+"{{/ko_with}}"),b.data("precompiled",h));b=[e.$data];e=v.extend({koBindingContext:e},f.templateOptions);e=v.tmpl(h,b,e);e.appendTo(g.createElement("div"));
 v.fragments={};return e};this.createJavaScriptEvaluatorBlock=function(a){return"{{ko_code ((function() { return "+a+" })()) }}"};this.addTemplate=function(a,b){w.write("<script type='text/html' id='"+a+"'>"+b+"\x3c/script>")};0<a&&(v.tmpl.tag.ko_code={open:"__.push($1 || '');"},v.tmpl.tag.ko_with={open:"with($1) {",close:"} "})};a.Za.prototype=new a.ca;a.Za.prototype.constructor=a.Za;var b=new a.Za;0<b.Gd&&a.ec(b);a.b("jqueryTmplTemplateEngine",a.Za)})()})})();})();
 
-},{}],66:[function(require,module,exports){
+},{}],67:[function(require,module,exports){
 (function (Buffer){
 /**
  * Base-N/Base-X encoding/decoding functions.
@@ -13117,7 +13199,7 @@ function _encodeWithByteBuffer(input, alphabet) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":28}],67:[function(require,module,exports){
+},{"buffer":28}],68:[function(require,module,exports){
 /**
  * Node.js module for Forge.
  *
@@ -13132,7 +13214,7 @@ module.exports = {
   }
 };
 
-},{}],68:[function(require,module,exports){
+},{}],69:[function(require,module,exports){
 /**
  * Node.js module for Forge message digests.
  *
@@ -13145,7 +13227,7 @@ var forge = require('./forge');
 module.exports = forge.md = forge.md || {};
 forge.md.algorithms = forge.md.algorithms || {};
 
-},{"./forge":67}],69:[function(require,module,exports){
+},{"./forge":68}],70:[function(require,module,exports){
 /**
  * Secure Hash Algorithm with 160-bit digest (SHA-1) implementation.
  *
@@ -13466,7 +13548,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":67,"./md":68,"./util":71}],70:[function(require,module,exports){
+},{"./forge":68,"./md":69,"./util":72}],71:[function(require,module,exports){
 /**
  * Secure Hash Algorithm with 256-bit digest (SHA-256) implementation.
  *
@@ -13795,7 +13877,7 @@ function _update(s, w, bytes) {
   }
 }
 
-},{"./forge":67,"./md":68,"./util":71}],71:[function(require,module,exports){
+},{"./forge":68,"./md":69,"./util":72}],72:[function(require,module,exports){
 (function (process,global,Buffer,__argument0,__argument1,__argument2,__argument3,setImmediate){
 /**
  * Utility functions for web applications.
@@ -16792,7 +16874,7 @@ util.estimateCores = function(options, callback) {
 };
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer,arguments[3],arguments[4],arguments[5],arguments[6],require("timers").setImmediate)
-},{"./baseN":66,"./forge":67,"_process":75,"buffer":28,"timers":105}],72:[function(require,module,exports){
+},{"./baseN":67,"./forge":68,"_process":76,"buffer":28,"timers":106}],73:[function(require,module,exports){
 exports.endianness = function () { return 'LE' };
 
 exports.hostname = function () {
@@ -16843,7 +16925,7 @@ exports.homedir = function () {
 	return '/'
 };
 
-},{}],73:[function(require,module,exports){
+},{}],74:[function(require,module,exports){
 (function (process){
 // .dirname, .basename, and .extname methods are extracted from Node.js v8.11.1,
 // backported and transplited with Babel, with backwards-compat fixes
@@ -17149,7 +17231,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":75}],74:[function(require,module,exports){
+},{"_process":76}],75:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -17197,7 +17279,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 
 
 }).call(this,require('_process'))
-},{"_process":75}],75:[function(require,module,exports){
+},{"_process":76}],76:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -17383,7 +17465,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],76:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -17469,7 +17551,7 @@ var isArray = Array.isArray || function (xs) {
   return Object.prototype.toString.call(xs) === '[object Array]';
 };
 
-},{}],77:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -17556,13 +17638,13 @@ var objectKeys = Object.keys || function (obj) {
   return res;
 };
 
-},{}],78:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 'use strict';
 
 exports.decode = exports.parse = require('./decode');
 exports.encode = exports.stringify = require('./encode');
 
-},{"./decode":76,"./encode":77}],79:[function(require,module,exports){
+},{"./decode":77,"./encode":78}],80:[function(require,module,exports){
 /**
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -17691,7 +17773,7 @@ module.exports = class AsyncAlgorithm {
   }
 };
 
-},{"./util":89}],80:[function(require,module,exports){
+},{"./util":90}],81:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -17764,7 +17846,7 @@ module.exports = class IdentifierIssuer {
   }
 };
 
-},{"./util":89}],81:[function(require,module,exports){
+},{"./util":90}],82:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -17794,7 +17876,7 @@ module.exports = class MessageDigest {
   }
 };
 
-},{"node-forge/lib/forge":67,"node-forge/lib/md":68,"node-forge/lib/sha1":69,"node-forge/lib/sha256":70}],82:[function(require,module,exports){
+},{"node-forge/lib/forge":68,"node-forge/lib/md":69,"node-forge/lib/sha1":70,"node-forge/lib/sha256":71}],83:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -18175,7 +18257,7 @@ function _unescape(s) {
   });
 }
 
-},{}],83:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -18262,7 +18344,7 @@ module.exports = class Permutator {
 };
 
 
-},{}],84:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -18827,7 +18909,7 @@ module.exports = class URDNA2015 extends AsyncAlgorithm {
   }
 };
 
-},{"./AsyncAlgorithm":79,"./IdentifierIssuer":80,"./MessageDigest":81,"./NQuads":82,"./Permutator":83,"./util":89}],85:[function(require,module,exports){
+},{"./AsyncAlgorithm":80,"./IdentifierIssuer":81,"./MessageDigest":82,"./NQuads":83,"./Permutator":84,"./util":90}],86:[function(require,module,exports){
 /*
  * Copyright (c) 2016 Digital Bazaar, Inc. All rights reserved.
  */
@@ -19319,7 +19401,7 @@ module.exports = class URDNA2015Sync {
   }
 };
 
-},{"./IdentifierIssuer":80,"./MessageDigest":81,"./NQuads":82,"./Permutator":83,"./util":89}],86:[function(require,module,exports){
+},{"./IdentifierIssuer":81,"./MessageDigest":82,"./NQuads":83,"./Permutator":84,"./util":90}],87:[function(require,module,exports){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
  */
@@ -19408,7 +19490,7 @@ module.exports = class URDNA2012 extends URDNA2015 {
   }
 };
 
-},{"./URDNA2015":84,"./util":89}],87:[function(require,module,exports){
+},{"./URDNA2015":85,"./util":90}],88:[function(require,module,exports){
 /*
  * Copyright (c) 2016 Digital Bazaar, Inc. All rights reserved.
  */
@@ -19494,7 +19576,7 @@ module.exports = class URDNA2012Sync extends URDNA2015Sync {
   }
 };
 
-},{"./URDNA2015Sync":85,"./util":89}],88:[function(require,module,exports){
+},{"./URDNA2015Sync":86,"./util":90}],89:[function(require,module,exports){
 /**
  * An implementation of the RDF Dataset Normalization specification.
  * This library works in the browser and node.js.
@@ -19656,7 +19738,7 @@ api.canonizeSync = function(dataset, options) {
     'Invalid RDF Dataset Canonicalization algorithm: ' + options.algorithm);
 };
 
-},{"./IdentifierIssuer":80,"./NQuads":82,"./URDNA2015":84,"./URDNA2015Sync":85,"./URGNA2012":86,"./URGNA2012Sync":87,"./util":89,"rdf-canonize-native":28}],89:[function(require,module,exports){
+},{"./IdentifierIssuer":81,"./NQuads":83,"./URDNA2015":85,"./URDNA2015Sync":86,"./URGNA2012":87,"./URGNA2012Sync":88,"./util":90,"rdf-canonize-native":28}],90:[function(require,module,exports){
 (function (process,setImmediate){
 /*
  * Copyright (c) 2016-2017 Digital Bazaar, Inc. All rights reserved.
@@ -19770,7 +19852,7 @@ function _invokeCallback(callback, err, result) {
 }
 
 }).call(this,require('_process'),require("timers").setImmediate)
-},{"_process":75,"timers":105}],90:[function(require,module,exports){
+},{"_process":76,"timers":106}],91:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -19902,7 +19984,7 @@ Duplex.prototype._destroy = function (err, cb) {
 
   pna.nextTick(cb, err);
 };
-},{"./_stream_readable":92,"./_stream_writable":94,"core-util-is":33,"inherits":39,"process-nextick-args":74}],91:[function(require,module,exports){
+},{"./_stream_readable":93,"./_stream_writable":95,"core-util-is":34,"inherits":40,"process-nextick-args":75}],92:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -19950,7 +20032,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":93,"core-util-is":33,"inherits":39}],92:[function(require,module,exports){
+},{"./_stream_transform":94,"core-util-is":34,"inherits":40}],93:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -20972,7 +21054,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./_stream_duplex":90,"./internal/streams/BufferList":95,"./internal/streams/destroy":96,"./internal/streams/stream":97,"_process":75,"core-util-is":33,"events":34,"inherits":39,"isarray":41,"process-nextick-args":74,"safe-buffer":99,"string_decoder/":104,"util":28}],93:[function(require,module,exports){
+},{"./_stream_duplex":91,"./internal/streams/BufferList":96,"./internal/streams/destroy":97,"./internal/streams/stream":98,"_process":76,"core-util-is":34,"events":35,"inherits":40,"isarray":42,"process-nextick-args":75,"safe-buffer":100,"string_decoder/":105,"util":28}],94:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -21187,7 +21269,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":90,"core-util-is":33,"inherits":39}],94:[function(require,module,exports){
+},{"./_stream_duplex":91,"core-util-is":34,"inherits":40}],95:[function(require,module,exports){
 (function (process,global,setImmediate){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -21877,7 +21959,7 @@ Writable.prototype._destroy = function (err, cb) {
   cb(err);
 };
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("timers").setImmediate)
-},{"./_stream_duplex":90,"./internal/streams/destroy":96,"./internal/streams/stream":97,"_process":75,"core-util-is":33,"inherits":39,"process-nextick-args":74,"safe-buffer":99,"timers":105,"util-deprecate":110}],95:[function(require,module,exports){
+},{"./_stream_duplex":91,"./internal/streams/destroy":97,"./internal/streams/stream":98,"_process":76,"core-util-is":34,"inherits":40,"process-nextick-args":75,"safe-buffer":100,"timers":106,"util-deprecate":111}],96:[function(require,module,exports){
 'use strict';
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -21957,7 +22039,7 @@ if (util && util.inspect && util.inspect.custom) {
     return this.constructor.name + ' ' + obj;
   };
 }
-},{"safe-buffer":99,"util":28}],96:[function(require,module,exports){
+},{"safe-buffer":100,"util":28}],97:[function(require,module,exports){
 'use strict';
 
 /*<replacement>*/
@@ -22032,10 +22114,10 @@ module.exports = {
   destroy: destroy,
   undestroy: undestroy
 };
-},{"process-nextick-args":74}],97:[function(require,module,exports){
+},{"process-nextick-args":75}],98:[function(require,module,exports){
 module.exports = require('events').EventEmitter;
 
-},{"events":34}],98:[function(require,module,exports){
+},{"events":35}],99:[function(require,module,exports){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = exports;
 exports.Readable = exports;
@@ -22044,7 +22126,7 @@ exports.Duplex = require('./lib/_stream_duplex.js');
 exports.Transform = require('./lib/_stream_transform.js');
 exports.PassThrough = require('./lib/_stream_passthrough.js');
 
-},{"./lib/_stream_duplex.js":90,"./lib/_stream_passthrough.js":91,"./lib/_stream_readable.js":92,"./lib/_stream_transform.js":93,"./lib/_stream_writable.js":94}],99:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":91,"./lib/_stream_passthrough.js":92,"./lib/_stream_readable.js":93,"./lib/_stream_transform.js":94,"./lib/_stream_writable.js":95}],100:[function(require,module,exports){
 /* eslint-disable node/no-deprecated-api */
 var buffer = require('buffer')
 var Buffer = buffer.Buffer
@@ -22108,7 +22190,7 @@ SafeBuffer.allocUnsafeSlow = function (size) {
   return buffer.SlowBuffer(size)
 }
 
-},{"buffer":31}],100:[function(require,module,exports){
+},{"buffer":31}],101:[function(require,module,exports){
 (function (global){
 var ClientRequest = require('./lib/request')
 var response = require('./lib/response')
@@ -22196,7 +22278,7 @@ http.METHODS = [
 	'UNSUBSCRIBE'
 ]
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./lib/request":102,"./lib/response":103,"builtin-status-codes":32,"url":108,"xtend":153}],101:[function(require,module,exports){
+},{"./lib/request":103,"./lib/response":104,"builtin-status-codes":32,"url":109,"xtend":154}],102:[function(require,module,exports){
 (function (global){
 exports.fetch = isFunction(global.fetch) && isFunction(global.ReadableStream)
 
@@ -22273,7 +22355,7 @@ function isFunction (value) {
 xhr = null // Help gc
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],102:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 (function (process,global,Buffer){
 var capability = require('./capability')
 var inherits = require('inherits')
@@ -22604,7 +22686,7 @@ var unsafeHeaders = [
 ]
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./capability":101,"./response":103,"_process":75,"buffer":31,"inherits":39,"readable-stream":98,"to-arraybuffer":106}],103:[function(require,module,exports){
+},{"./capability":102,"./response":104,"_process":76,"buffer":31,"inherits":40,"readable-stream":99,"to-arraybuffer":107}],104:[function(require,module,exports){
 (function (process,global,Buffer){
 var capability = require('./capability')
 var inherits = require('inherits')
@@ -22832,7 +22914,7 @@ IncomingMessage.prototype._onXHRProgress = function () {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"./capability":101,"_process":75,"buffer":31,"inherits":39,"readable-stream":98}],104:[function(require,module,exports){
+},{"./capability":102,"_process":76,"buffer":31,"inherits":40,"readable-stream":99}],105:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -23129,7 +23211,7 @@ function simpleWrite(buf) {
 function simpleEnd(buf) {
   return buf && buf.length ? this.write(buf) : '';
 }
-},{"safe-buffer":99}],105:[function(require,module,exports){
+},{"safe-buffer":100}],106:[function(require,module,exports){
 (function (setImmediate,clearImmediate){
 var nextTick = require('process/browser.js').nextTick;
 var apply = Function.prototype.apply;
@@ -23208,7 +23290,7 @@ exports.clearImmediate = typeof clearImmediate === "function" ? clearImmediate :
   delete immediateIds[id];
 };
 }).call(this,require("timers").setImmediate,require("timers").clearImmediate)
-},{"process/browser.js":75,"timers":105}],106:[function(require,module,exports){
+},{"process/browser.js":76,"timers":106}],107:[function(require,module,exports){
 var Buffer = require('buffer').Buffer
 
 module.exports = function (buf) {
@@ -23237,7 +23319,7 @@ module.exports = function (buf) {
 	}
 }
 
-},{"buffer":31}],107:[function(require,module,exports){
+},{"buffer":31}],108:[function(require,module,exports){
 /** @license URI.js v4.2.1 (c) 2011 Gary Court. License: http://github.com/garycourt/uri-js */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -24628,7 +24710,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 })));
 
 
-},{}],108:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -25362,7 +25444,7 @@ Url.prototype.parseHost = function() {
   if (host) this.hostname = host;
 };
 
-},{"./util":109,"punycode":30,"querystring":78}],109:[function(require,module,exports){
+},{"./util":110,"punycode":30,"querystring":79}],110:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -25380,7 +25462,7 @@ module.exports = {
   }
 };
 
-},{}],110:[function(require,module,exports){
+},{}],111:[function(require,module,exports){
 (function (global){
 
 /**
@@ -25451,7 +25533,7 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],111:[function(require,module,exports){
+},{}],112:[function(require,module,exports){
 'use strict';
 
 var compileSchema = require('./compile')
@@ -25956,7 +26038,7 @@ function setLogger(self) {
 
 function noop() {}
 
-},{"./cache":112,"./compile":116,"./compile/async":113,"./compile/error_classes":114,"./compile/formats":115,"./compile/resolve":117,"./compile/rules":118,"./compile/schema_obj":119,"./compile/util":121,"./data":122,"./keyword":149,"./refs/data.json":150,"./refs/json-schema-draft-07.json":151,"fast-json-stable-stringify":36}],112:[function(require,module,exports){
+},{"./cache":113,"./compile":117,"./compile/async":114,"./compile/error_classes":115,"./compile/formats":116,"./compile/resolve":118,"./compile/rules":119,"./compile/schema_obj":120,"./compile/util":122,"./data":123,"./keyword":150,"./refs/data.json":151,"./refs/json-schema-draft-07.json":152,"fast-json-stable-stringify":37}],113:[function(require,module,exports){
 'use strict';
 
 
@@ -25984,7 +26066,7 @@ Cache.prototype.clear = function Cache_clear() {
   this._cache = {};
 };
 
-},{}],113:[function(require,module,exports){
+},{}],114:[function(require,module,exports){
 'use strict';
 
 var MissingRefError = require('./error_classes').MissingRef;
@@ -26076,7 +26158,7 @@ function compileAsync(schema, meta, callback) {
   }
 }
 
-},{"./error_classes":114}],114:[function(require,module,exports){
+},{"./error_classes":115}],115:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve');
@@ -26112,7 +26194,7 @@ function errorSubclass(Subclass) {
   return Subclass;
 }
 
-},{"./resolve":117}],115:[function(require,module,exports){
+},{"./resolve":118}],116:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -26263,7 +26345,7 @@ function regex(str) {
   }
 }
 
-},{"./util":121}],116:[function(require,module,exports){
+},{"./util":122}],117:[function(require,module,exports){
 'use strict';
 
 var resolve = require('./resolve')
@@ -26644,7 +26726,7 @@ function vars(arr, statement) {
   return code;
 }
 
-},{"../dotjs/validate":148,"./error_classes":114,"./resolve":117,"./util":121,"fast-deep-equal":35,"fast-json-stable-stringify":36}],117:[function(require,module,exports){
+},{"../dotjs/validate":149,"./error_classes":115,"./resolve":118,"./util":122,"fast-deep-equal":36,"fast-json-stable-stringify":37}],118:[function(require,module,exports){
 'use strict';
 
 var URI = require('uri-js')
@@ -26916,7 +26998,7 @@ function resolveIds(schema) {
   return localRefs;
 }
 
-},{"./schema_obj":119,"./util":121,"fast-deep-equal":35,"json-schema-traverse":42,"uri-js":107}],118:[function(require,module,exports){
+},{"./schema_obj":120,"./util":122,"fast-deep-equal":36,"json-schema-traverse":43,"uri-js":108}],119:[function(require,module,exports){
 'use strict';
 
 var ruleModules = require('../dotjs')
@@ -26984,7 +27066,7 @@ module.exports = function rules() {
   return RULES;
 };
 
-},{"../dotjs":137,"./util":121}],119:[function(require,module,exports){
+},{"../dotjs":138,"./util":122}],120:[function(require,module,exports){
 'use strict';
 
 var util = require('./util');
@@ -26995,7 +27077,7 @@ function SchemaObject(obj) {
   util.copy(obj, this);
 }
 
-},{"./util":121}],120:[function(require,module,exports){
+},{"./util":122}],121:[function(require,module,exports){
 'use strict';
 
 // https://mathiasbynens.be/notes/javascript-encoding
@@ -27017,7 +27099,7 @@ module.exports = function ucs2length(str) {
   return length;
 };
 
-},{}],121:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 'use strict';
 
 
@@ -27286,7 +27368,7 @@ function unescapeJsonPointer(str) {
   return str.replace(/~1/g, '/').replace(/~0/g, '~');
 }
 
-},{"./ucs2length":120,"fast-deep-equal":35}],122:[function(require,module,exports){
+},{"./ucs2length":121,"fast-deep-equal":36}],123:[function(require,module,exports){
 'use strict';
 
 var KEYWORDS = [
@@ -27337,7 +27419,7 @@ module.exports = function (metaSchema, keywordsJsonPointers) {
   return metaSchema;
 };
 
-},{}],123:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limit(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27494,7 +27576,7 @@ module.exports = function generate__limit(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],124:[function(require,module,exports){
+},{}],125:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27572,7 +27654,7 @@ module.exports = function generate__limitItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],125:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27655,7 +27737,7 @@ module.exports = function generate__limitLength(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],126:[function(require,module,exports){
+},{}],127:[function(require,module,exports){
 'use strict';
 module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27733,7 +27815,7 @@ module.exports = function generate__limitProperties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],127:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 'use strict';
 module.exports = function generate_allOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27778,7 +27860,7 @@ module.exports = function generate_allOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],128:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 'use strict';
 module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27853,7 +27935,7 @@ module.exports = function generate_anyOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],129:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 'use strict';
 module.exports = function generate_comment(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27869,7 +27951,7 @@ module.exports = function generate_comment(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],130:[function(require,module,exports){
+},{}],131:[function(require,module,exports){
 'use strict';
 module.exports = function generate_const(it, $keyword, $ruleType) {
   var out = ' ';
@@ -27926,7 +28008,7 @@ module.exports = function generate_const(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],131:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 'use strict';
 module.exports = function generate_contains(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28009,7 +28091,7 @@ module.exports = function generate_contains(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],132:[function(require,module,exports){
+},{}],133:[function(require,module,exports){
 'use strict';
 module.exports = function generate_custom(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28237,7 +28319,7 @@ module.exports = function generate_custom(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],133:[function(require,module,exports){
+},{}],134:[function(require,module,exports){
 'use strict';
 module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28406,7 +28488,7 @@ module.exports = function generate_dependencies(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],134:[function(require,module,exports){
+},{}],135:[function(require,module,exports){
 'use strict';
 module.exports = function generate_enum(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28473,7 +28555,7 @@ module.exports = function generate_enum(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],135:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 'use strict';
 module.exports = function generate_format(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28624,7 +28706,7 @@ module.exports = function generate_format(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],136:[function(require,module,exports){
+},{}],137:[function(require,module,exports){
 'use strict';
 module.exports = function generate_if(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28729,7 +28811,7 @@ module.exports = function generate_if(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],137:[function(require,module,exports){
+},{}],138:[function(require,module,exports){
 'use strict';
 
 //all requires must be explicit because browserify won't work with dynamic requires
@@ -28764,7 +28846,7 @@ module.exports = {
   validate: require('./validate')
 };
 
-},{"./_limit":123,"./_limitItems":124,"./_limitLength":125,"./_limitProperties":126,"./allOf":127,"./anyOf":128,"./comment":129,"./const":130,"./contains":131,"./dependencies":133,"./enum":134,"./format":135,"./if":136,"./items":138,"./multipleOf":139,"./not":140,"./oneOf":141,"./pattern":142,"./properties":143,"./propertyNames":144,"./ref":145,"./required":146,"./uniqueItems":147,"./validate":148}],138:[function(require,module,exports){
+},{"./_limit":124,"./_limitItems":125,"./_limitLength":126,"./_limitProperties":127,"./allOf":128,"./anyOf":129,"./comment":130,"./const":131,"./contains":132,"./dependencies":134,"./enum":135,"./format":136,"./if":137,"./items":139,"./multipleOf":140,"./not":141,"./oneOf":142,"./pattern":143,"./properties":144,"./propertyNames":145,"./ref":146,"./required":147,"./uniqueItems":148,"./validate":149}],139:[function(require,module,exports){
 'use strict';
 module.exports = function generate_items(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28906,7 +28988,7 @@ module.exports = function generate_items(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],139:[function(require,module,exports){
+},{}],140:[function(require,module,exports){
 'use strict';
 module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -28984,7 +29066,7 @@ module.exports = function generate_multipleOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],140:[function(require,module,exports){
+},{}],141:[function(require,module,exports){
 'use strict';
 module.exports = function generate_not(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29069,7 +29151,7 @@ module.exports = function generate_not(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],141:[function(require,module,exports){
+},{}],142:[function(require,module,exports){
 'use strict';
 module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29143,7 +29225,7 @@ module.exports = function generate_oneOf(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],142:[function(require,module,exports){
+},{}],143:[function(require,module,exports){
 'use strict';
 module.exports = function generate_pattern(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29219,7 +29301,7 @@ module.exports = function generate_pattern(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],143:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 'use strict';
 module.exports = function generate_properties(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29549,7 +29631,7 @@ module.exports = function generate_properties(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],144:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 'use strict';
 module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29632,7 +29714,7 @@ module.exports = function generate_propertyNames(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],145:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 'use strict';
 module.exports = function generate_ref(it, $keyword, $ruleType) {
   var out = ' ';
@@ -29757,7 +29839,7 @@ module.exports = function generate_ref(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],146:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 'use strict';
 module.exports = function generate_required(it, $keyword, $ruleType) {
   var out = ' ';
@@ -30027,7 +30109,7 @@ module.exports = function generate_required(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],147:[function(require,module,exports){
+},{}],148:[function(require,module,exports){
 'use strict';
 module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   var out = ' ';
@@ -30114,7 +30196,7 @@ module.exports = function generate_uniqueItems(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],148:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
 'use strict';
 module.exports = function generate_validate(it, $keyword, $ruleType) {
   var out = '';
@@ -30561,7 +30643,7 @@ module.exports = function generate_validate(it, $keyword, $ruleType) {
   return out;
 }
 
-},{}],149:[function(require,module,exports){
+},{}],150:[function(require,module,exports){
 'use strict';
 
 var IDENTIFIER = /^[a-z_$][a-z0-9_$-]*$/i;
@@ -30698,7 +30780,7 @@ function removeKeyword(keyword) {
   return this;
 }
 
-},{"./dotjs/custom":132}],150:[function(require,module,exports){
+},{"./dotjs/custom":133}],151:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "https://raw.githubusercontent.com/epoberezkin/ajv/master/lib/refs/data.json#",
@@ -30717,7 +30799,7 @@ module.exports={
     "additionalProperties": false
 }
 
-},{}],151:[function(require,module,exports){
+},{}],152:[function(require,module,exports){
 module.exports={
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "http://json-schema.org/draft-07/schema#",
@@ -30887,7 +30969,7 @@ module.exports={
     "default": true
 }
 
-},{}],152:[function(require,module,exports){
+},{}],153:[function(require,module,exports){
 (function (global){
 Ajv = require("ajv")
 'use strict';
@@ -37823,7 +37905,7 @@ m.model.domain.MatrixShape=function(){var a=new jn;jn.prototype.a.call(a);return
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"ajv":111,"fs":29,"http":100,"https":37,"os":72,"path":73}],153:[function(require,module,exports){
+},{"ajv":112,"fs":29,"http":101,"https":38,"os":73,"path":74}],154:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -37844,7 +37926,7 @@ function extend() {
     return target
 }
 
-},{}],154:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38276,7 +38358,7 @@ class DomainModel {
 
 exports.DomainModel = DomainModel;
 
-},{}],155:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38495,7 +38577,7 @@ class ModelProxy {
 
 exports.ModelProxy = ModelProxy;
 
-},{"./units_model":156,"jsonld":59,"webapi-parser":152}],156:[function(require,module,exports){
+},{"./units_model":157,"jsonld":60,"webapi-parser":153}],157:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38764,7 +38846,7 @@ class UnitModel {
 
 exports.UnitModel = UnitModel;
 
-},{"../utils":158,"./domain_model":154}],157:[function(require,module,exports){
+},{"../utils":159,"./domain_model":155}],158:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38808,6 +38890,10 @@ class ViewModel extends common_view_model_1.CommonViewModel {
         console.error(`Failed to parse file: ${err}`);
       });
     });
+  }
+
+  getMainModel() {
+    return this.ramlEditor.getModel();
   }
 
   updateModels(section) {
@@ -38884,7 +38970,7 @@ class ViewModel extends common_view_model_1.CommonViewModel {
 
 exports.ViewModel = ViewModel;
 
-},{"../main/model_proxy":155,"../view_models/common_view_model":159,"../view_models/load_modal":160,"knockout":65,"webapi-parser":152}],158:[function(require,module,exports){
+},{"../main/model_proxy":156,"../view_models/common_view_model":160,"../view_models/load_modal":161,"knockout":66,"webapi-parser":153}],159:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38931,7 +39017,7 @@ function nestedLabel(parent, child) {
 
 exports.nestedLabel = nestedLabel;
 
-},{"./main/domain_model":154}],159:[function(require,module,exports){
+},{"./main/domain_model":155}],160:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38968,7 +39054,7 @@ class CommonViewModel {
 
   switchDemo(obj, event) {
     let href = event.target.value;
-    const value = this.ramlEditor.getValue();
+    const value = this.getMainModel().getValue();
 
     if (value) {
       href += `?${this.queryParamName}=${encodeURIComponent(value)}`;
@@ -39016,7 +39102,7 @@ class CommonViewModel {
         value = decodeURIComponent(value);
       } catch (err) {}
 
-      this.ramlEditor.setValue(value.trim());
+      this.getMainModel().setValue(value.trim());
       this.updateModels('raml');
     }
   }
@@ -39035,7 +39121,7 @@ class CommonViewModel {
 
 exports.CommonViewModel = CommonViewModel;
 
-},{"../view_models/load_modal":160,"knockout":65,"webapi-parser":152}],160:[function(require,module,exports){
+},{"../view_models/load_modal":161,"knockout":66,"webapi-parser":153}],161:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -39144,7 +39230,7 @@ class LoadModal {
 LoadModal.LOAD_FILE_EVENT = 'load-file';
 exports.LoadModal = LoadModal;
 
-},{"axios":1,"knockout":65}]},{},[157])(157)
+},{"axios":1,"knockout":66}]},{},[158])(158)
 });
 
 //# sourceMappingURL=raml_oas.js.map
