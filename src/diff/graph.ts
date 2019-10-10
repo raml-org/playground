@@ -8,7 +8,6 @@ export class Graph {
   public maxScale: number = null;
   public containerId = 'graphContainer'
 
-
   constructor (public diff: DiffGenerator) {
     const container = document.getElementById(this.containerId)
     const data = {

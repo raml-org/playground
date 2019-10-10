@@ -34,7 +34,7 @@ export class NodeDiff {
   private assertions: {[assertion: string]: boolean} = {};
   private links: {[target: string]: boolean} = {};
 
-  constructor(public id: string, public hash: string) {}
+  constructor (public id: string, public hash: string) {}
 
   public assertionPairs (): TripleComponent[][] {
     return this.assertionsAdded.map(a => {

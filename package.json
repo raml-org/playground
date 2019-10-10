@@ -12,7 +12,6 @@
   "dependencies": {
     "@babel/core": "^7.4.5",
     "@types/es6-promise": "^3.3.0",
-    "amf-client-js": "^3.5.3",
     "axios": "^0.19.0",
     "jointjs": "^2.2.1",
     "js-sha1": "^0.6.0",
@@ -21,7 +20,7 @@
     "monaco-editor": "^0.17.1",
     "node-gyp": "^5.0.1",
     "vis": "^4.21.0-EOL",
-    "webapi-parser": "^0.1.0"
+    "webapi-parser": "^0.3.1"
   },
   "devDependencies": {
     "babelify": "^10.0.0",

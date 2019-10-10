@@ -27,7 +27,7 @@
 </div>
 
 <!-- Load RAML File modal -->
-<!-- <link rel="import" href="html_fragments/load_modal.html"> -->
+<link rel="import" href="html_fragments/load_modal.html">
 <!-- Nav -->
 <link rel="import" href="html_fragments/diff/nav.html">
 
@@ -181,7 +181,7 @@
 
           window.appModel = new diff.ViewModel(editorLeft, editorRight);
           window.appModel.apply();
-          // window.appModel.loadRamlFromQueryParam();
+          window.appModel.loadRamlFromQueryParam();
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

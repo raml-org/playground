@@ -25,7 +25,7 @@ export abstract class CommonViewModel {
 
   public apply () {
     window['viewModel'] = this
-    wap.init().then(() => {
+    return wap.init().then(() => {
       ko.applyBindings(this)
     })
   }
