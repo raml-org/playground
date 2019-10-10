@@ -28,29 +28,29 @@ export class ViewModel extends CommonViewModel {
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
-        .then((parsedModel) => {
-          this.model = new ModelProxy(parsedModel, 'raml')
-          this.getMainModel().setValue(parsedModel.raw)
-        })
-        .catch(err => console.error(`Failed to parse file: ${err}`))
+	.then((parsedModel) => {
+	  this.model = new ModelProxy(parsedModel, 'raml')
+	  this.getMainModel().setValue(parsedModel.raw)
+	})
+	.catch(err => console.error(`Failed to parse file: ${err}`))
     })
   }
 
   public apply () {
     super.apply().then(() => {
       this.editorSection.subscribe(value => {
-        if (value === 'graph') {
-          if (this.graph != null) {
-            this.graph.clear()
-          }
-          this.graph = new Graph(this.diff())
-        }
+	if (value === 'graph') {
+	  if (this.graph != null) {
+	    this.graph.clear()
+	  }
+	  this.graph = new Graph(this.diff())
+	}
       })
     })
   }
 
   public unselectModal () {
-    this.selectedNode(new NodeDiff('', ''))
+    this.selectedNode(new NodeDiff('',''))
   }
 
   public nodesSortBy (property: string) {
@@ -68,11 +68,11 @@ export class ViewModel extends CommonViewModel {
     this.started(true)
     this.hashEditor(this.leftEditor, l => {
       this.hashEditor(this.rightEditor, r => {
-        this.leftHash(l)
-        this.rightHash(r)
-        this.diff(new DiffGenerator(this.leftHash(), this.rightHash()))
-        this.allNodes(this.sortedNodes())
-        this.isLoading(false)
+	this.leftHash(l)
+	this.rightHash(r)
+	this.diff(new DiffGenerator(this.leftHash(), this.rightHash()))
+	this.allNodes(this.sortedNodes())
+	this.isLoading(false)
       })
     })
   }
@@ -85,18 +85,18 @@ export class ViewModel extends CommonViewModel {
       let valB: number | string = 0
 
       if (typeof (objA) === 'string') {
-        valA = objA || ''
-        valB = objB || ''
+	valA = objA || ''
+	valB = objB || ''
       } else if (objA instanceof Array) {
-        valA = objA.length
-        valB = objB.length
+	valA = objA.length
+	valB = objB.length
       }
       if (valA < valB) {
-        return this.sortDirection
+	return this.sortDirection
       } else if (valA > valB) {
-        return -1 * this.sortDirection
+	return -1 * this.sortDirection
       } else {
-        return 0
+	return 0
       }
     })
   }
@@ -106,16 +106,16 @@ export class ViewModel extends CommonViewModel {
     wap.raml10.parse(editor.getValue())
       .then(model => wap.amfGraph.generateString(model))
       .then(text => {
-        jsonld.flatten(JSON.parse(text), (e, flattened) => {
-          if (e !== null) {
-            console.log(`Error processing JSON-LD: ${e.toString()}`)
-            return
-          }
-          cb(new HashGenerator(flattened as any[]))
-        })
+	jsonld.flatten(JSON.parse(text), (e, flattened) => {
+	  if (e !== null) {
+	    console.log(`Error processing JSON-LD: ${e.toString()}`)
+	    return
+	  }
+	  cb(new HashGenerator(flattened as any[]))
+	})
       })
       .catch(e => {
-        console.log(`Error generating hash: ${e.toString()}`)
+	console.log(`Error generating hash: ${e.toString()}`)
       })
   }
 

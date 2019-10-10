@@ -12,16 +12,23 @@ export class HashGenerator {
   public count: number = 0;
 
   constructor (flatten: any[]) {
-    (flatten || []).forEach(node => {
-      const id = node['@id']
-      const types = node['@type'] || []
-      types.forEach(t => this.assert(id, '@type', { '@id': t }))
-      for (let p in node) {
-        if (node.hasOwnProperty(p) && p !== '@type' && p !== '@id') {
-          let o = node[p]
-          this.assert(id, p, o)
-        }
-      }
+      (flatten || []).filter(node => {
+	  const types = node['@type'] || []
+	  let isSourceMap = types[0] === "http://a.ml/vocabularies/document-source-maps#SourceMap"
+	  return !isSourceMap;
+      }).forEach(node => {
+	  const id = node['@id']
+	  const types = node['@type'] || []
+	  delete node['http://a.ml/vocabularies/document-source-maps#sources'];
+	  delete node['http://a.ml/vocabularies/document-source-maps#value'];
+	  delete node['http://a.ml/vocabularies/document-source-maps#element'];
+	  types.forEach(t => this.assert(id, '@type', { '@id': t }))
+	  for (let p in node) {
+	      if (node.hasOwnProperty(p) && p !== '@type' && p !== '@id') {
+		  let o = node[p]
+		  this.assert(id, p, o)
+	      }
+	  }
     })
     this.sign()
   }
@@ -31,41 +38,41 @@ export class HashGenerator {
       this.newAssertion(s, `<${s}>${TRIPLE_SEPARATOR}<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>${TRIPLE_SEPARATOR}<${o['@id']}>`)
     } else {
       if (o instanceof Array) {
-        o.sort((a, b) => {
-          const va = a['@id'] || a['@value']
-          const vb = b['@id'] || b['@value']
-          if (va < vb) {
-            return 1
-          } else if (va > vb) {
-            return -1
-          } else {
-            return 0
-          }
-        }).forEach(v => {
-          this.assert(s, p, v)
-        })
+	o.sort((a, b) => {
+	  const va = a['@id'] || a['@value']
+	  const vb = b['@id'] || b['@value']
+	  if (va < vb) {
+	    return 1
+	  } else if (va > vb) {
+	    return -1
+	  } else {
+	    return 0
+	  }
+	}).forEach(v => {
+	  this.assert(s, p, v)
+	})
       } else if (o['@id'] != null && o['@id'] !== s) {
-        this.link(s, o['@id'])
-        this.newAssertion(s, `<${s}>${TRIPLE_SEPARATOR}<${p}>${TRIPLE_SEPARATOR}<${o['@id']}>`)
+	this.link(s, o['@id'])
+	this.newAssertion(s, `<${s}>${TRIPLE_SEPARATOR}<${p}>${TRIPLE_SEPARATOR}<${o['@id']}>`)
       } else if (o['@list'] != null) {
-        (o['@list'] || []).forEach((e, i) => {
-          this.assert(s, `${p}:${i}`, e)
-        })
+	(o['@list'] || []).forEach((e, i) => {
+	  this.assert(s, `${p}:${i}`, e)
+	})
       } else if (o['@value'] != null) {
-        const value = o['@value']
-        const language = o['@language']
-        let type = o['@type']
-        if (type == null) {
-          const jsType = typeof (value)
-          if (jsType === 'boolean') {
-            type = 'boolean'
-          } else if (jsType === 'number' && `${value}`.indexOf('.') > -1) {
-            type = 'float'
-          } else if (jsType === 'number' && `${value}`.indexOf('.') === -1) {
-            type = 'integer'
-          }
-        }
-        this.newAssertion(s, `<${s}>${TRIPLE_SEPARATOR}<${p}>${TRIPLE_SEPARATOR}'${value}:${type}:${language}'`)
+	const value = o['@value']
+	const language = o['@language']
+	let type = o['@type']
+	if (type == null) {
+	  const jsType = typeof (value)
+	  if (jsType === 'boolean') {
+	    type = 'boolean'
+	  } else if (jsType === 'number' && `${value}`.indexOf('.') > -1) {
+	    type = 'float'
+	  } else if (jsType === 'number' && `${value}`.indexOf('.') === -1) {
+	    type = 'integer'
+	  }
+	}
+	this.newAssertion(s, `<${s}>${TRIPLE_SEPARATOR}<${p}>${TRIPLE_SEPARATOR}'${value}:${type}:${language}'`)
       }
     }
   }
@@ -96,8 +103,8 @@ export class HashGenerator {
       const nodeHash = sha1.create()
       const assertions = this.idMap[id] || []
       assertions.sort().forEach(a => {
-        docHash.update(a)
-        nodeHash.update(a)
+	docHash.update(a)
+	nodeHash.update(a)
       })
       this.hashes[id] = nodeHash.hex()
     })
