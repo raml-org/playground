@@ -617,7 +617,6 @@ header{
     top:4px;
   }
   .editor-block{
-    box-shadow: 1px 0px 3px #808080;
     .monaco-editor{
       .monaco-editor-hover{
         margin-left: 10%;
@@ -1864,6 +1863,7 @@ header{
 }
 
 #api-console-container {
+  font-family: 'RobotoMono-Regular';
   width: 25%;
   padding: 10px 20px;
   margin: 30px;
