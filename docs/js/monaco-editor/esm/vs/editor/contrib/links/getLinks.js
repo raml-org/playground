@@ -68,7 +68,8 @@ var Link = /** @class */ (function () {
     Link.prototype.toJSON = function () {
         return {
             range: this.range,
-            url: this.url
+            url: this.url,
+            tooltip: this.tooltip
         };
     };
     Object.defineProperty(Link.prototype, "range", {
@@ -81,6 +82,13 @@ var Link = /** @class */ (function () {
     Object.defineProperty(Link.prototype, "url", {
         get: function () {
             return this._link.url;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Link.prototype, "tooltip", {
+        get: function () {
+            return this._link.tooltip;
         },
         enumerable: true,
         configurable: true
@@ -185,7 +193,14 @@ export function getLinks(model, token) {
             }
         }, onUnexpectedExternalError);
     });
-    return Promise.all(promises).then(function () { return new LinksList(coalesce(lists)); });
+    return Promise.all(promises).then(function () {
+        var result = new LinksList(coalesce(lists));
+        if (!token.isCancellationRequested) {
+            return result;
+        }
+        result.dispose();
+        return new LinksList([]);
+    });
 }
 CommandsRegistry.registerCommand('_executeLinkProvider', function (accessor) {
     var args = [];

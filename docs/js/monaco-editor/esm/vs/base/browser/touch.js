@@ -37,6 +37,7 @@ var Gesture = /** @class */ (function (_super) {
     __extends(Gesture, _super);
     function Gesture() {
         var _this = _super.call(this) || this;
+        _this.dispatched = false;
         _this.activeTouches = {};
         _this.handle = null;
         _this.targets = [];

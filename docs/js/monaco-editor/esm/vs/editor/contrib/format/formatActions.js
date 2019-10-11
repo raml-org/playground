@@ -63,7 +63,7 @@ var _this = this;
 import { isNonEmptyArray } from '../../../base/common/arrays.js';
 import { CancellationToken } from '../../../base/common/cancellation.js';
 import { KeyChord } from '../../../base/common/keyCodes.js';
-import { dispose } from '../../../base/common/lifecycle.js';
+import { DisposableStore } from '../../../base/common/lifecycle.js';
 import { EditorAction, registerEditorAction, registerEditorContribution } from '../../browser/editorExtensions.js';
 import { ICodeEditorService } from '../../browser/services/codeEditorService.js';
 import { CharacterSet } from '../../common/core/characterClassifier.js';
@@ -82,25 +82,25 @@ var FormatOnType = /** @class */ (function () {
     function FormatOnType(editor, _workerService) {
         var _this = this;
         this._workerService = _workerService;
-        this._callOnDispose = [];
-        this._callOnModel = [];
+        this._callOnDispose = new DisposableStore();
+        this._callOnModel = new DisposableStore();
         this._editor = editor;
-        this._callOnDispose.push(editor.onDidChangeConfiguration(function () { return _this._update(); }));
-        this._callOnDispose.push(editor.onDidChangeModel(function () { return _this._update(); }));
-        this._callOnDispose.push(editor.onDidChangeModelLanguage(function () { return _this._update(); }));
-        this._callOnDispose.push(OnTypeFormattingEditProviderRegistry.onDidChange(this._update, this));
+        this._callOnDispose.add(editor.onDidChangeConfiguration(function () { return _this._update(); }));
+        this._callOnDispose.add(editor.onDidChangeModel(function () { return _this._update(); }));
+        this._callOnDispose.add(editor.onDidChangeModelLanguage(function () { return _this._update(); }));
+        this._callOnDispose.add(OnTypeFormattingEditProviderRegistry.onDidChange(this._update, this));
     }
     FormatOnType.prototype.getId = function () {
         return FormatOnType.ID;
     };
     FormatOnType.prototype.dispose = function () {
-        this._callOnDispose = dispose(this._callOnDispose);
-        this._callOnModel = dispose(this._callOnModel);
+        this._callOnDispose.dispose();
+        this._callOnModel.dispose();
     };
     FormatOnType.prototype._update = function () {
         var _this = this;
         // clean up
-        this._callOnModel = dispose(this._callOnModel);
+        this._callOnModel.clear();
         // we are disabled
         if (!this._editor.getConfiguration().contribInfo.formatOnType) {
             return;
@@ -121,7 +121,7 @@ var FormatOnType = /** @class */ (function () {
             var ch = _a[_i];
             triggerChars.add(ch.charCodeAt(0));
         }
-        this._callOnModel.push(this._editor.onDidType(function (text) {
+        this._callOnModel.add(this._editor.onDidType(function (text) {
             var lastCharCode = text.charCodeAt(text.length - 1);
             if (triggerChars.has(lastCharCode)) {
                 _this._trigger(String.fromCharCode(lastCharCode));
@@ -185,24 +185,24 @@ var FormatOnPaste = /** @class */ (function () {
         var _this = this;
         this.editor = editor;
         this._instantiationService = _instantiationService;
-        this._callOnDispose = [];
-        this._callOnModel = [];
-        this._callOnDispose.push(editor.onDidChangeConfiguration(function () { return _this._update(); }));
-        this._callOnDispose.push(editor.onDidChangeModel(function () { return _this._update(); }));
-        this._callOnDispose.push(editor.onDidChangeModelLanguage(function () { return _this._update(); }));
-        this._callOnDispose.push(DocumentRangeFormattingEditProviderRegistry.onDidChange(this._update, this));
+        this._callOnDispose = new DisposableStore();
+        this._callOnModel = new DisposableStore();
+        this._callOnDispose.add(editor.onDidChangeConfiguration(function () { return _this._update(); }));
+        this._callOnDispose.add(editor.onDidChangeModel(function () { return _this._update(); }));
+        this._callOnDispose.add(editor.onDidChangeModelLanguage(function () { return _this._update(); }));
+        this._callOnDispose.add(DocumentRangeFormattingEditProviderRegistry.onDidChange(this._update, this));
     }
     FormatOnPaste.prototype.getId = function () {
         return FormatOnPaste.ID;
     };
     FormatOnPaste.prototype.dispose = function () {
-        this._callOnDispose = dispose(this._callOnDispose);
-        this._callOnModel = dispose(this._callOnModel);
+        this._callOnDispose.dispose();
+        this._callOnModel.dispose();
     };
     FormatOnPaste.prototype._update = function () {
         var _this = this;
         // clean up
-        this._callOnModel = dispose(this._callOnModel);
+        this._callOnModel.clear();
         // we are disabled
         if (!this.editor.getConfiguration().contribInfo.formatOnPaste) {
             return;
@@ -215,7 +215,7 @@ var FormatOnPaste = /** @class */ (function () {
         if (!DocumentRangeFormattingEditProviderRegistry.has(this.editor.getModel())) {
             return;
         }
-        this._callOnModel.push(this.editor.onDidPaste(function (range) { return _this._trigger(range); }));
+        this._callOnModel.add(this.editor.onDidPaste(function (range) { return _this._trigger(range); }));
     };
     FormatOnPaste.prototype._trigger = function (range) {
         if (!this.editor.hasModel()) {
@@ -278,7 +278,7 @@ var FormatSelectionAction = /** @class */ (function (_super) {
         return _super.call(this, {
             id: 'editor.action.formatSelection',
             label: nls.localize('formatSelection.label', "Format Selection"),
-            alias: 'Format Code',
+            alias: 'Format Selection',
             precondition: ContextKeyExpr.and(EditorContextKeys.writable, EditorContextKeys.hasDocumentSelectionFormattingProvider),
             kbOpts: {
                 kbExpr: ContextKeyExpr.and(EditorContextKeys.editorTextFocus, EditorContextKeys.hasDocumentSelectionFormattingProvider),

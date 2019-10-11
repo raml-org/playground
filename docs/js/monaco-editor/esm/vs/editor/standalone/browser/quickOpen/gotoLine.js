@@ -128,7 +128,7 @@ var GotoLineAction = /** @class */ (function (_super) {
             id: 'editor.action.gotoLine',
             label: GoToLineNLS.gotoLineActionLabel,
             alias: 'Go to Line...',
-            precondition: null,
+            precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
                 primary: 2048 /* CtrlCmd */ | 37 /* KEY_G */,

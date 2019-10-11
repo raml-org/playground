@@ -316,14 +316,15 @@ var URI = /** @class */ (function () {
         }
         else {
             var result = new _URI(data);
-            result._fsPath = data.fsPath;
             result._formatted = data.external;
+            result._fsPath = data._sep === _pathSepMarker ? data.fsPath : null;
             return result;
         }
     };
     return URI;
 }());
 export { URI };
+var _pathSepMarker = isWindows ? 1 : undefined;
 // tslint:disable-next-line:class-name
 var _URI = /** @class */ (function (_super) {
     __extends(_URI, _super);
@@ -363,6 +364,7 @@ var _URI = /** @class */ (function (_super) {
         // cached state
         if (this._fsPath) {
             res.fsPath = this._fsPath;
+            res._sep = _pathSepMarker;
         }
         if (this._formatted) {
             res.external = this._formatted;

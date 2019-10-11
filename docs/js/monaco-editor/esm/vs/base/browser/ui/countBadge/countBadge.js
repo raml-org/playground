@@ -13,6 +13,7 @@ var defaultOpts = {
 };
 var CountBadge = /** @class */ (function () {
     function CountBadge(container, options) {
+        this.count = 0;
         this.options = options || Object.create(null);
         mixin(this.options, defaultOpts, false);
         this.badgeBackground = this.options.badgeBackground;

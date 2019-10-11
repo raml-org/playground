@@ -548,7 +548,7 @@ var DeleteAllLeftAction = /** @class */ (function (_super) {
                 }
             }
             else {
-                return selection;
+                return new Range(selection.startLineNumber, 1, selection.endLineNumber, selection.endColumn);
             }
         });
         return rangesToDelete;

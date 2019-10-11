@@ -25,7 +25,7 @@ import { ModeServiceImpl } from '../../common/services/modeServiceImpl.js';
 import { IModelService } from '../../common/services/modelService.js';
 import { ModelServiceImpl } from '../../common/services/modelServiceImpl.js';
 import { ITextResourceConfigurationService, ITextResourcePropertiesService } from '../../common/services/resourceConfiguration.js';
-import { SimpleBulkEditService, SimpleConfigurationService, SimpleDialogService, SimpleNotificationService, SimpleProgressService, SimpleResourceConfigurationService, SimpleResourcePropertiesService, SimpleUriLabelService, SimpleWorkspaceContextService, StandaloneCommandService, StandaloneKeybindingService, StandaloneTelemetryService, SimpleLayoutService } from './simpleServices.js';
+import { SimpleBulkEditService, SimpleConfigurationService, SimpleDialogService, SimpleNotificationService, SimpleEditorProgressService, SimpleResourceConfigurationService, SimpleResourcePropertiesService, SimpleUriLabelService, SimpleWorkspaceContextService, StandaloneCommandService, StandaloneKeybindingService, StandaloneTelemetryService, SimpleLayoutService } from './simpleServices.js';
 import { StandaloneCodeEditorServiceImpl } from './standaloneCodeServiceImpl.js';
 import { StandaloneThemeServiceImpl } from './standaloneThemeServiceImpl.js';
 import { IStandaloneThemeService } from '../common/standaloneThemeService.js';
@@ -48,7 +48,7 @@ import { ILogService, NullLogService } from '../../../platform/log/common/log.js
 import { MarkerService } from '../../../platform/markers/common/markerService.js';
 import { IMarkerService } from '../../../platform/markers/common/markers.js';
 import { INotificationService } from '../../../platform/notification/common/notification.js';
-import { IProgressService } from '../../../platform/progress/common/progress.js';
+import { IEditorProgressService } from '../../../platform/progress/common/progress.js';
 import { IStorageService, InMemoryStorageService } from '../../../platform/storage/common/storage.js';
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry.js';
 import { IThemeService } from '../../../platform/theme/common/themeService.js';
@@ -56,11 +56,10 @@ import { IWorkspaceContextService } from '../../../platform/workspace/common/wor
 import { MenuService } from '../../../platform/actions/common/menuService.js';
 import { IMarkerDecorationsService } from '../../common/services/markersDecorationService.js';
 import { MarkerDecorationsService } from '../../common/services/markerDecorationsServiceImpl.js';
-import { ISuggestMemoryService, SuggestMemoryService } from '../../contrib/suggest/suggestMemory.js';
 import { IAccessibilityService } from '../../../platform/accessibility/common/accessibility.js';
 import { BrowserAccessibilityService } from '../../../platform/accessibility/common/accessibilityService.js';
 import { ILayoutService } from '../../../platform/layout/browser/layoutService.js';
-import { ICodeLensCache, CodeLensCache } from '../../contrib/codelens/codeLensCache.js';
+import { getSingletonServiceDescriptors } from '../../../platform/instantiation/common/extensions.js';
 export var StaticServices;
 (function (StaticServices) {
     var _serviceCollection = new ServiceCollection();
@@ -102,6 +101,11 @@ export var StaticServices;
     function init(overrides) {
         // Create a fresh service collection
         var result = new ServiceCollection();
+        // make sure to add all services that use `registerSingleton`
+        for (var _i = 0, _a = getSingletonServiceDescriptors(); _i < _a.length; _i++) {
+            var _b = _a[_i], id = _b[0], descriptor = _b[1];
+            result.set(id, descriptor);
+        }
         // Initialize the service collection with the overrides
         for (var serviceId in overrides) {
             if (overrides.hasOwnProperty(serviceId)) {
@@ -126,19 +130,16 @@ export var StaticServices;
     StaticServices.telemetryService = define(ITelemetryService, function () { return new StandaloneTelemetryService(); });
     StaticServices.dialogService = define(IDialogService, function () { return new SimpleDialogService(); });
     StaticServices.notificationService = define(INotificationService, function () { return new SimpleNotificationService(); });
-    StaticServices.accessibilityService = define(IAccessibilityService, function () { return new BrowserAccessibilityService(); });
     StaticServices.markerService = define(IMarkerService, function () { return new MarkerService(); });
     StaticServices.modeService = define(IModeService, function (o) { return new ModeServiceImpl(); });
     StaticServices.modelService = define(IModelService, function (o) { return new ModelServiceImpl(StaticServices.configurationService.get(o), StaticServices.resourcePropertiesService.get(o)); });
     StaticServices.markerDecorationsService = define(IMarkerDecorationsService, function (o) { return new MarkerDecorationsService(StaticServices.modelService.get(o), StaticServices.markerService.get(o)); });
     StaticServices.standaloneThemeService = define(IStandaloneThemeService, function () { return new StandaloneThemeServiceImpl(); });
     StaticServices.codeEditorService = define(ICodeEditorService, function (o) { return new StandaloneCodeEditorServiceImpl(StaticServices.standaloneThemeService.get(o)); });
-    StaticServices.progressService = define(IProgressService, function () { return new SimpleProgressService(); });
+    StaticServices.editorProgressService = define(IEditorProgressService, function () { return new SimpleEditorProgressService(); });
     StaticServices.storageService = define(IStorageService, function () { return new InMemoryStorageService(); });
     StaticServices.logService = define(ILogService, function () { return new NullLogService(); });
     StaticServices.editorWorkerService = define(IEditorWorkerService, function (o) { return new EditorWorkerServiceImpl(StaticServices.modelService.get(o), StaticServices.resourceConfigurationService.get(o), StaticServices.logService.get(o)); });
-    StaticServices.suggestMemoryService = define(ISuggestMemoryService, function (o) { return new SuggestMemoryService(StaticServices.storageService.get(o), StaticServices.configurationService.get(o)); });
-    StaticServices.codeLensCacheService = define(ICodeLensCache, function (o) { return new CodeLensCache(StaticServices.storageService.get(o)); });
 })(StaticServices || (StaticServices = {}));
 var DynamicStandaloneServices = /** @class */ (function (_super) {
     __extends(DynamicStandaloneServices, _super);
@@ -163,6 +164,7 @@ var DynamicStandaloneServices = /** @class */ (function (_super) {
             return value;
         };
         var contextKeyService = ensure(IContextKeyService, function () { return _this._register(new ContextKeyService(configurationService)); });
+        ensure(IAccessibilityService, function () { return new BrowserAccessibilityService(contextKeyService, configurationService); });
         ensure(IListService, function () { return new ListService(contextKeyService); });
         var commandService = ensure(ICommandService, function () { return new StandaloneCommandService(_this._instantiationService); });
         var keybindingService = ensure(IKeybindingService, function () { return _this._register(new StandaloneKeybindingService(contextKeyService, commandService, telemetryService, notificationService, domElement)); });

@@ -29,7 +29,7 @@ var __assign = (this && this.__assign) || function () {
 import { createCancelablePromise, Delayer } from '../../../base/common/async.js';
 import { onUnexpectedError } from '../../../base/common/errors.js';
 import { Emitter } from '../../../base/common/event.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
+import { Disposable, MutableDisposable } from '../../../base/common/lifecycle.js';
 import { CharacterSet } from '../../common/core/characterClassifier.js';
 import * as modes from '../../common/modes.js';
 import { provideSignatureHelp } from './provideSignatureHelp.js';
@@ -65,12 +65,13 @@ var ParameterHintsModel = /** @class */ (function (_super) {
         var _this = _super.call(this) || this;
         _this._onChangedHints = _this._register(new Emitter());
         _this.onChangedHints = _this._onChangedHints.event;
+        _this.triggerOnType = false;
         _this._state = ParameterHintState.Default;
+        _this._lastSignatureHelpResult = _this._register(new MutableDisposable());
         _this.triggerChars = new CharacterSet();
         _this.retriggerChars = new CharacterSet();
         _this.triggerId = 0;
         _this.editor = editor;
-        _this.enabled = false;
         _this.throttledDelayer = new Delayer(delay);
         _this._register(_this.editor.onDidChangeConfiguration(function () { return _this.onEditorConfigurationChange(); }));
         _this._register(_this.editor.onDidChangeModel(function (e) { return _this.onModelChanged(); }));
@@ -167,14 +168,22 @@ var ParameterHintsModel = /** @class */ (function (_super) {
         return this.state.request.then(function (result) {
             // Check that we are still resolving the correct signature help
             if (triggerId !== _this.triggerId) {
+                if (result) {
+                    result.dispose();
+                }
                 return false;
             }
-            if (!result || !result.signatures || result.signatures.length === 0) {
+            if (!result || !result.value.signatures || result.value.signatures.length === 0) {
+                if (result) {
+                    result.dispose();
+                }
+                _this._lastSignatureHelpResult.clear();
                 _this.cancel();
                 return false;
             }
             else {
-                _this.state = new ParameterHintState.Active(result);
+                _this.state = new ParameterHintState.Active(result.value);
+                _this._lastSignatureHelpResult.value = result;
                 _this._onChangedHints.fire(_this.state.hints);
                 return true;
             }
@@ -219,7 +228,7 @@ var ParameterHintsModel = /** @class */ (function (_super) {
         }
     };
     ParameterHintsModel.prototype.onDidType = function (text) {
-        if (!this.enabled) {
+        if (!this.triggerOnType) {
             return;
         }
         var lastCharIndex = text.length - 1;
@@ -245,8 +254,8 @@ var ParameterHintsModel = /** @class */ (function (_super) {
         }
     };
     ParameterHintsModel.prototype.onEditorConfigurationChange = function () {
-        this.enabled = this.editor.getConfiguration().contribInfo.parameterHints.enabled;
-        if (!this.enabled) {
+        this.triggerOnType = this.editor.getConfiguration().contribInfo.parameterHints.enabled;
+        if (!this.triggerOnType) {
             this.cancel();
         }
     };

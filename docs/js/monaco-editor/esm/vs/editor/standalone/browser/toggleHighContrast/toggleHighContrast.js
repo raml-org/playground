@@ -25,7 +25,7 @@ var ToggleHighContrast = /** @class */ (function (_super) {
             id: 'editor.action.toggleHighContrast',
             label: ToggleHighContrastNLS.toggleHighContrast,
             alias: 'Toggle High Contrast Theme',
-            precondition: null
+            precondition: undefined
         }) || this;
         _this._originalThemeName = null;
         return _this;

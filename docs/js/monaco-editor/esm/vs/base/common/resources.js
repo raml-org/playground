@@ -136,7 +136,8 @@ export function originalFSPath(uri) {
  * Returns a relative path between two URIs. If the URIs don't have the same schema or authority, `undefined` is returned.
  * The returned relative path always uses forward slashes.
  */
-export function relativePath(from, to) {
+export function relativePath(from, to, ignoreCase) {
+    if (ignoreCase === void 0) { ignoreCase = hasToIgnoreCase(from); }
     if (from.scheme !== to.scheme || !isEqualAuthority(from.authority, to.authority)) {
         return undefined;
     }
@@ -144,7 +145,20 @@ export function relativePath(from, to) {
         var relativePath_1 = paths.relative(from.path, to.path);
         return isWindows ? extpath.toSlashes(relativePath_1) : relativePath_1;
     }
-    return paths.posix.relative(from.path || '/', to.path || '/');
+    var fromPath = from.path || '/', toPath = to.path || '/';
+    if (ignoreCase) {
+        // make casing of fromPath match toPath
+        var i = 0;
+        for (var len = Math.min(fromPath.length, toPath.length); i < len; i++) {
+            if (fromPath.charCodeAt(i) !== toPath.charCodeAt(i)) {
+                if (fromPath.charAt(i).toLowerCase() !== toPath.charAt(i).toLowerCase()) {
+                    break;
+                }
+            }
+        }
+        fromPath = toPath.substr(0, i) + fromPath.substr(i);
+    }
+    return paths.posix.relative(fromPath, toPath);
 }
 /**
  * Data URI related helpers.

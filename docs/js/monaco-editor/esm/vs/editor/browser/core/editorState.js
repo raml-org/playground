@@ -17,7 +17,8 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import * as strings from '../../../base/common/strings.js';
 import { CancellationTokenSource } from '../../../base/common/cancellation.js';
-import { dispose } from '../../../base/common/lifecycle.js';
+import { DisposableStore } from '../../../base/common/lifecycle.js';
+import { EditorKeybindingCancellationTokenSource } from './keybindingCancellation.js';
 var EditorState = /** @class */ (function () {
     function EditorState(editor, flags) {
         this.flags = flags;
@@ -25,15 +26,28 @@ var EditorState = /** @class */ (function () {
             var model = editor.getModel();
             this.modelVersionId = model ? strings.format('{0}#{1}', model.uri.toString(), model.getVersionId()) : null;
         }
+        else {
+            this.modelVersionId = null;
+        }
         if ((this.flags & 4 /* Position */) !== 0) {
             this.position = editor.getPosition();
+        }
+        else {
+            this.position = null;
         }
         if ((this.flags & 2 /* Selection */) !== 0) {
             this.selection = editor.getSelection();
         }
+        else {
+            this.selection = null;
+        }
         if ((this.flags & 8 /* Scroll */) !== 0) {
             this.scrollLeft = editor.getScrollLeft();
             this.scrollTop = editor.getScrollTop();
+        }
+        else {
+            this.scrollLeft = -1;
+            this.scrollTop = -1;
         }
     }
     EditorState.prototype._equals = function (other) {
@@ -68,30 +82,30 @@ export { EditorState };
 var EditorStateCancellationTokenSource = /** @class */ (function (_super) {
     __extends(EditorStateCancellationTokenSource, _super);
     function EditorStateCancellationTokenSource(editor, flags, parent) {
-        var _this = _super.call(this, parent) || this;
+        var _this = _super.call(this, editor, parent) || this;
         _this.editor = editor;
-        _this._listener = [];
+        _this._listener = new DisposableStore();
         if (flags & 4 /* Position */) {
-            _this._listener.push(editor.onDidChangeCursorPosition(function (_) { return _this.cancel(); }));
+            _this._listener.add(editor.onDidChangeCursorPosition(function (_) { return _this.cancel(); }));
         }
         if (flags & 2 /* Selection */) {
-            _this._listener.push(editor.onDidChangeCursorSelection(function (_) { return _this.cancel(); }));
+            _this._listener.add(editor.onDidChangeCursorSelection(function (_) { return _this.cancel(); }));
         }
         if (flags & 8 /* Scroll */) {
-            _this._listener.push(editor.onDidScrollChange(function (_) { return _this.cancel(); }));
+            _this._listener.add(editor.onDidScrollChange(function (_) { return _this.cancel(); }));
         }
         if (flags & 1 /* Value */) {
-            _this._listener.push(editor.onDidChangeModel(function (_) { return _this.cancel(); }));
-            _this._listener.push(editor.onDidChangeModelContent(function (_) { return _this.cancel(); }));
+            _this._listener.add(editor.onDidChangeModel(function (_) { return _this.cancel(); }));
+            _this._listener.add(editor.onDidChangeModelContent(function (_) { return _this.cancel(); }));
         }
         return _this;
     }
     EditorStateCancellationTokenSource.prototype.dispose = function () {
-        dispose(this._listener);
+        this._listener.dispose();
         _super.prototype.dispose.call(this);
     };
     return EditorStateCancellationTokenSource;
-}(CancellationTokenSource));
+}(EditorKeybindingCancellationTokenSource));
 export { EditorStateCancellationTokenSource };
 /**
  * A cancellation token source that cancels when the provided model changes

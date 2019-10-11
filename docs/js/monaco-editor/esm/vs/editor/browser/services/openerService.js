@@ -2,6 +2,19 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -47,46 +60,65 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import * as dom from '../../../base/browser/dom.js';
+import { Disposable } from '../../../base/common/lifecycle.js';
+import { LinkedList } from '../../../base/common/linkedList.js';
 import { parse } from '../../../base/common/marshalling.js';
 import { Schemas } from '../../../base/common/network.js';
 import * as resources from '../../../base/common/resources.js';
+import { equalsIgnoreCase } from '../../../base/common/strings.js';
 import { ICodeEditorService } from './codeEditorService.js';
 import { CommandsRegistry, ICommandService } from '../../../platform/commands/common/commands.js';
-import { equalsIgnoreCase } from '../../../base/common/strings.js';
-import { LinkedList } from '../../../base/common/linkedList.js';
-var OpenerService = /** @class */ (function () {
+var OpenerService = /** @class */ (function (_super) {
+    __extends(OpenerService, _super);
     function OpenerService(_editorService, _commandService) {
-        this._editorService = _editorService;
-        this._commandService = _commandService;
-        this._opener = new LinkedList();
-        //
+        var _this = _super.call(this) || this;
+        _this._editorService = _editorService;
+        _this._commandService = _commandService;
+        _this._openers = new LinkedList();
+        _this._validators = new LinkedList();
+        return _this;
     }
     OpenerService.prototype.open = function (resource, options) {
         return __awaiter(this, void 0, void 0, function () {
-            var _i, _a, opener_1, handled;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
+            var _i, _a, validator, _b, _c, opener_1, handled;
+            return __generator(this, function (_d) {
+                switch (_d.label) {
                     case 0:
                         // no scheme ?!?
                         if (!resource.scheme) {
                             return [2 /*return*/, Promise.resolve(false)];
                         }
-                        _i = 0, _a = this._opener.toArray();
-                        _b.label = 1;
+                        _i = 0, _a = this._validators.toArray();
+                        _d.label = 1;
                     case 1:
                         if (!(_i < _a.length)) return [3 /*break*/, 4];
-                        opener_1 = _a[_i];
-                        return [4 /*yield*/, opener_1.open(resource, options)];
+                        validator = _a[_i];
+                        return [4 /*yield*/, validator.shouldOpen(resource)];
                     case 2:
-                        handled = _b.sent();
-                        if (handled) {
-                            return [2 /*return*/, true];
+                        if (!(_d.sent())) {
+                            return [2 /*return*/, false];
                         }
-                        _b.label = 3;
+                        _d.label = 3;
                     case 3:
                         _i++;
                         return [3 /*break*/, 1];
-                    case 4: 
+                    case 4:
+                        _b = 0, _c = this._openers.toArray();
+                        _d.label = 5;
+                    case 5:
+                        if (!(_b < _c.length)) return [3 /*break*/, 8];
+                        opener_1 = _c[_b];
+                        return [4 /*yield*/, opener_1.open(resource, options)];
+                    case 6:
+                        handled = _d.sent();
+                        if (handled) {
+                            return [2 /*return*/, true];
+                        }
+                        _d.label = 7;
+                    case 7:
+                        _b++;
+                        return [3 /*break*/, 5];
+                    case 8: 
                     // use default openers
                     return [2 /*return*/, this._doOpen(resource, options)];
                 }
@@ -96,10 +128,13 @@ var OpenerService = /** @class */ (function () {
     OpenerService.prototype._doOpen = function (resource, options) {
         var _a;
         var scheme = resource.scheme, path = resource.path, query = resource.query, fragment = resource.fragment;
-        if (equalsIgnoreCase(scheme, Schemas.http) || equalsIgnoreCase(scheme, Schemas.https) || equalsIgnoreCase(scheme, Schemas.mailto)) {
-            // open http or default mail application
-            dom.windowOpenNoOpener(encodeURI(resource.toString(true)));
-            return Promise.resolve(true);
+        if (equalsIgnoreCase(scheme, Schemas.mailto) || (options && options.openExternal)) {
+            // open default mail application
+            return this._doOpenExternal(resource);
+        }
+        if (equalsIgnoreCase(scheme, Schemas.http) || equalsIgnoreCase(scheme, Schemas.https)) {
+            // open link in default browser
+            return this._doOpenExternal(resource);
         }
         else if (equalsIgnoreCase(scheme, Schemas.command)) {
             // run command or bail out if command isn't known
@@ -138,10 +173,17 @@ var OpenerService = /** @class */ (function () {
             return this._editorService.openCodeEditor({ resource: resource, options: { selection: selection, } }, this._editorService.getFocusedCodeEditor(), options && options.openToSide).then(function () { return true; });
         }
     };
+    OpenerService.prototype._doOpenExternal = function (resource) {
+        dom.windowOpenNoOpener(encodeURI(resource.toString(true)));
+        return Promise.resolve(true);
+    };
+    OpenerService.prototype.dispose = function () {
+        this._validators.clear();
+    };
     OpenerService = __decorate([
         __param(0, ICodeEditorService),
         __param(1, ICommandService)
     ], OpenerService);
     return OpenerService;
-}());
+}(Disposable));
 export { OpenerService };

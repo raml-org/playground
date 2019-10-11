@@ -66,7 +66,7 @@ export class UnitModel {
   constructor (public model: ModelProxy) { }
 
   public process (modelLevel: ModelLevel, cb) {
-    const acc = { 'documents': [], 'fragments': [], 'modules': [] }
+    const acc = { documents: [], fragments: [], modules: [] }
 
     const promises = this.model.references().map(ref => {
       if (modelLevel == 'document' || ref == this.model.location()) {

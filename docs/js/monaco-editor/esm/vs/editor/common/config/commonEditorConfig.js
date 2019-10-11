@@ -222,6 +222,11 @@ var editorConfiguration = {
             'default': 'on',
             'description': nls.localize('lineNumbers', "Controls the display of line numbers.")
         },
+        'editor.cursorSurroundingLines': {
+            'type': 'number',
+            'default': EDITOR_DEFAULTS.viewInfo.cursorSurroundingLines,
+            'description': nls.localize('cursorSurroundingLines', "Controls the minimal number of visible leading and trailing lines surrounding the cursor. Known as 'scrollOff' or `scrollOffset` in some other editors.")
+        },
         'editor.renderFinalNewline': {
             'type': 'boolean',
             'default': EDITOR_DEFAULTS.viewInfo.renderFinalNewline,
@@ -414,7 +419,7 @@ var editorConfiguration = {
         'editor.fastScrollSensitivity': {
             'type': 'number',
             'default': EDITOR_DEFAULTS.viewInfo.scrollbar.fastScrollSensitivity,
-            'markdownDescription': nls.localize('fastScrollSensitivity', "Scrolling speed mulitiplier when pressing `Alt`.")
+            'markdownDescription': nls.localize('fastScrollSensitivity', "Scrolling speed multiplier when pressing `Alt`.")
         },
         'editor.multiCursorModifier': {
             'type': 'string',
@@ -505,6 +510,17 @@ var editorConfiguration = {
             ],
             'default': EDITOR_DEFAULTS.autoClosingQuotes,
             'description': nls.localize('autoClosingQuotes', "Controls whether the editor should automatically close quotes after the user adds an opening quote.")
+        },
+        'editor.autoClosingOvertype': {
+            type: 'string',
+            enum: ['always', 'auto', 'never'],
+            enumDescriptions: [
+                nls.localize('editor.autoClosingOvertype.always', "Always type over closing quotes or brackets."),
+                nls.localize('editor.autoClosingOvertype.auto', "Type over closing quotes or brackets only if they were automatically inserted."),
+                nls.localize('editor.autoClosingOvertype.never', "Never type over closing quotes or brackets."),
+            ],
+            'default': EDITOR_DEFAULTS.autoClosingOvertype,
+            'description': nls.localize('autoClosingOvertype', "Controls whether the editor should type over closing quotes or brackets.")
         },
         'editor.autoSurround': {
             type: 'string',
@@ -649,7 +665,7 @@ var editorConfiguration = {
         },
         'editor.suggest.filteredTypes': {
             type: 'object',
-            default: { keyword: true },
+            default: { keyword: true, snippet: true },
             markdownDescription: nls.localize('suggest.filtered', "Controls whether some suggestion types should be filtered from IntelliSense. A list of suggestion types can be found here: https://code.visualstudio.com/docs/editor/intellisense#_types-of-completions."),
             properties: {
                 method: {
@@ -792,7 +808,7 @@ var editorConfiguration = {
             enumDescriptions: [
                 nls.localize('editor.gotoLocation.multiple.peek', 'Show peek view of the results (default)'),
                 nls.localize('editor.gotoLocation.multiple.gotoAndPeek', 'Go to the primary result and show a peek view'),
-                nls.localize('editor.gotoLocation.multiple.goto', 'Go to the primary result and ignore others')
+                nls.localize('editor.gotoLocation.multiple.goto', 'Go to the primary result and enable peek-less navigation to others')
             ]
         },
         'editor.selectionHighlight': {
@@ -854,10 +870,11 @@ var editorConfiguration = {
         },
         'editor.renderWhitespace': {
             'type': 'string',
-            'enum': ['none', 'boundary', 'all'],
+            'enum': ['none', 'boundary', 'selection', 'all'],
             'enumDescriptions': [
                 '',
-                nls.localize('renderWhiteSpace.boundary', "Render whitespace characters except for single spaces between words."),
+                nls.localize('renderWhitespace.boundary', "Render whitespace characters except for single spaces between words."),
+                nls.localize('renderWhitespace.selection', "Render whitespace characters only on selected text."),
                 ''
             ],
             default: EDITOR_DEFAULTS.viewInfo.renderWhitespace,
