@@ -14,7 +14,7 @@ const cleanCSS = require('gulp-clean-css')
 const log = require('fancy-log')
 
 function bundleHandler (name) {
-  return function () {
+  return function bundle () {
     return browserify({ standalone: name })
       .add([
         `./src/${name}/view_model.ts`
@@ -32,7 +32,7 @@ function bundleHandler (name) {
 }
 
 function serveHandler (name) {
-  return function () {
+  return function serve () {
     return browserSync.init({
       server: 'docs',
       startPath: `/${name}.html`
@@ -41,7 +41,7 @@ function serveHandler (name) {
 }
 
 function watchHandler (name, bundlerName) {
-  return function () {
+  return function watch () {
     gulp.watch(
       [
         `./src/${name}/*.ts`,
