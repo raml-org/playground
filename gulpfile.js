@@ -10,12 +10,7 @@ const buffer = require('vinyl-buffer')
 const gutil = require('gulp-util')
 const sourcemaps = require('gulp-sourcemaps')
 const browserSync = require('browser-sync').create()
-const bower = require('gulp-bower')
 const sass = require('gulp-sass')
-
-gulp.task('bower', function () {
-  return bower({cwd: 'docs'})
-})
 
 gulp.task('sass', function () {
   return gulp.src('./docs/scss/**/*.scss')
@@ -69,7 +64,6 @@ gulp.task('bundleVisualization', function () {
 
 gulp.task('serveRamlOas', gulp.series(
   'sass',
-  'bower',
   'bundleRamlOas',
   function () {
     return browserSync.init({
@@ -81,7 +75,6 @@ gulp.task('serveRamlOas', gulp.series(
 
 gulp.task('serveVisualization', gulp.series(
   'sass',
-  'bower',
   'bundleVisualization',
   function () {
     return browserSync.init({
@@ -94,7 +87,6 @@ gulp.task('serveVisualization', gulp.series(
 // Bundle all the demos
 gulp.task('bundle', gulp.series(
   'sass',
-  'bower',
   'bundleRamlOas',
   'bundleVisualization'
 ))

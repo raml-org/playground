@@ -28,7 +28,6 @@
     "browserify": "^16.2.3",
     "eslint-plugin-typescript": "^0.14.0",
     "gulp": "^4.0.2",
-    "gulp-bower": "0.0.15",
     "gulp-sass": "4.0.2",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-util": "3.0.8",
