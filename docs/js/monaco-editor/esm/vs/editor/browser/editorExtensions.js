@@ -15,17 +15,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 import { illegalArgument } from '../../base/common/errors.js';
 import { URI } from '../../base/common/uri.js';
 import { ICodeEditorService } from './services/codeEditorService.js';
@@ -168,16 +157,7 @@ var EditorAction = /** @class */ (function (_super) {
         return this.run(accessor, editor, args || {});
     };
     EditorAction.prototype.reportTelemetry = function (accessor, editor) {
-        /* __GDPR__
-            "editorActionInvoked" : {
-                "name" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-                "id": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-                "${include}": [
-                    "${EditorTelemetryData}"
-                ]
-            }
-        */
-        accessor.get(ITelemetryService).publicLog('editorActionInvoked', __assign({ name: this.label, id: this.id }, editor.getTelemetryData()));
+        accessor.get(ITelemetryService).publicLog2('editorActionInvoked', { name: this.label, id: this.id });
     };
     return EditorAction;
 }(EditorCommand));

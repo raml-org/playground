@@ -14,6 +14,7 @@ export var Extensions = {
 export var allSettings = { properties: {}, patternProperties: {} };
 export var applicationSettings = { properties: {}, patternProperties: {} };
 export var machineSettings = { properties: {}, patternProperties: {} };
+export var machineOverridableSettings = { properties: {}, patternProperties: {} };
 export var windowSettings = { properties: {}, patternProperties: {} };
 export var resourceSettings = { properties: {}, patternProperties: {} };
 export var editorConfigurationSchemaId = 'vscode://schemas/settings/editor';
@@ -29,7 +30,7 @@ var ConfigurationRegistry = /** @class */ (function () {
             properties: {}
         };
         this.configurationContributors = [this.defaultOverridesConfigurationNode];
-        this.editorConfigurationSchema = { properties: {}, patternProperties: {}, additionalProperties: false, errorMessage: 'Unknown editor configuration setting' };
+        this.editorConfigurationSchema = { properties: {}, patternProperties: {}, additionalProperties: false, errorMessage: 'Unknown editor configuration setting', allowsTrailingCommas: true, allowComments: true };
         this.configurationProperties = {};
         this.excludedConfigurationProperties = {};
         this.computeOverridePropertyPattern();
@@ -127,6 +128,9 @@ var ConfigurationRegistry = /** @class */ (function () {
                         case 2 /* MACHINE */:
                             machineSettings.properties[key] = properties[key];
                             break;
+                        case 5 /* MACHINE_OVERRIDABLE */:
+                            machineOverridableSettings.properties[key] = properties[key];
+                            break;
                         case 3 /* WINDOW */:
                             windowSettings.properties[key] = properties[key];
                             break;
@@ -162,12 +166,14 @@ var ConfigurationRegistry = /** @class */ (function () {
         delete allSettings.patternProperties[this.overridePropertyPattern];
         delete applicationSettings.patternProperties[this.overridePropertyPattern];
         delete machineSettings.patternProperties[this.overridePropertyPattern];
+        delete machineOverridableSettings.patternProperties[this.overridePropertyPattern];
         delete windowSettings.patternProperties[this.overridePropertyPattern];
         delete resourceSettings.patternProperties[this.overridePropertyPattern];
         this.computeOverridePropertyPattern();
         allSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
         applicationSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
         machineSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
+        machineOverridableSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
         windowSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
         resourceSettings.patternProperties[this.overridePropertyPattern] = patternProperties;
         this._onDidSchemaChange.fire();

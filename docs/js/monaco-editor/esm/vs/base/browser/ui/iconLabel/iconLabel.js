@@ -91,13 +91,13 @@ var IconLabel = /** @class */ (function (_super) {
         _this.domNode = _this._register(new FastLabelNode(dom.append(container, dom.$('.monaco-icon-label'))));
         _this.labelDescriptionContainer = _this._register(new FastLabelNode(dom.append(_this.domNode.element, dom.$('.monaco-icon-label-description-container'))));
         if (options && options.supportHighlights) {
-            _this.labelNode = new HighlightedLabel(dom.append(_this.labelDescriptionContainer.element, dom.$('a.label-name')), !options.donotSupportOcticons);
+            _this.labelNode = new HighlightedLabel(dom.append(_this.labelDescriptionContainer.element, dom.$('a.label-name')), !!options.supportOcticons);
         }
         else {
             _this.labelNode = _this._register(new FastLabelNode(dom.append(_this.labelDescriptionContainer.element, dom.$('a.label-name'))));
         }
         if (options && options.supportDescriptionHighlights) {
-            _this.descriptionNodeFactory = function () { return new HighlightedLabel(dom.append(_this.labelDescriptionContainer.element, dom.$('span.label-description')), !options.donotSupportOcticons); };
+            _this.descriptionNodeFactory = function () { return new HighlightedLabel(dom.append(_this.labelDescriptionContainer.element, dom.$('span.label-description')), !!options.supportOcticons); };
         }
         else {
             _this.descriptionNodeFactory = function () { return _this._register(new FastLabelNode(dom.append(_this.labelDescriptionContainer.element, dom.$('span.label-description')))); };

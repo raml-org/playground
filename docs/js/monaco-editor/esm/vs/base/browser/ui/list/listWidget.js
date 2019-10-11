@@ -34,7 +34,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 import './list.css';
 import { localize } from '../../../../nls.js';
-import { dispose } from '../../../common/lifecycle.js';
+import { dispose, DisposableStore } from '../../../common/lifecycle.js';
 import { isNumber } from '../../../common/types.js';
 import { range, firstIndex, binarySearch } from '../../../common/arrays.js';
 import { memoize } from '../../../common/decorators.js';
@@ -118,12 +118,8 @@ var Trait = /** @class */ (function () {
         this.indexes = [];
         this.sortedIndexes = [];
         this._onChange = new Emitter();
+        this.onChange = this._onChange.event;
     }
-    Object.defineProperty(Trait.prototype, "onChange", {
-        get: function () { return this._onChange.event; },
-        enumerable: true,
-        configurable: true
-    });
     Object.defineProperty(Trait.prototype, "trait", {
         get: function () { return this._trait; },
         enumerable: true,
@@ -227,8 +223,8 @@ var KeyboardController = /** @class */ (function () {
     function KeyboardController(list, view, options) {
         this.list = list;
         this.view = view;
-        var multipleSelectionSupport = !(options.multipleSelectionSupport === false);
-        this.disposables = [];
+        this.disposables = new DisposableStore();
+        var multipleSelectionSupport = options.multipleSelectionSupport !== false;
         this.openController = options.openController || DefaultOpenController;
         var onKeyDown = Event.chain(domEvent(view.domNode, 'keydown'))
             .filter(function (e) { return !isInputElement(e.target); })
@@ -292,7 +288,7 @@ var KeyboardController = /** @class */ (function () {
         this.view.domNode.focus();
     };
     KeyboardController.prototype.dispose = function () {
-        this.disposables = dispose(this.disposables);
+        this.disposables.dispose();
     };
     return KeyboardController;
 }());
@@ -307,6 +303,7 @@ export function mightProducePrintableCharacter(event) {
     }
     return (event.keyCode >= 31 /* KEY_A */ && event.keyCode <= 56 /* KEY_Z */)
         || (event.keyCode >= 21 /* KEY_0 */ && event.keyCode <= 30 /* KEY_9 */)
+        || (event.keyCode >= 93 /* NUMPAD_0 */ && event.keyCode <= 102 /* NUMPAD_9 */)
         || (event.keyCode >= 80 /* US_SEMICOLON */ && event.keyCode <= 90 /* US_QUOTE */);
 }
 var TypeLabelController = /** @class */ (function () {
@@ -318,8 +315,8 @@ var TypeLabelController = /** @class */ (function () {
         this.state = TypeLabelControllerState.Idle;
         this.automaticKeyboardNavigation = true;
         this.triggered = false;
-        this.enabledDisposables = [];
-        this.disposables = [];
+        this.enabledDisposables = new DisposableStore();
+        this.disposables = new DisposableStore();
         this.updateOptions(list.options);
     }
     TypeLabelController.prototype.updateOptions = function (options) {
@@ -357,7 +354,7 @@ var TypeLabelController = /** @class */ (function () {
         if (!this.enabled) {
             return;
         }
-        this.enabledDisposables = dispose(this.enabledDisposables);
+        this.enabledDisposables.clear();
         this.enabled = false;
         this.triggered = false;
     };
@@ -384,7 +381,8 @@ var TypeLabelController = /** @class */ (function () {
     };
     TypeLabelController.prototype.dispose = function () {
         this.disable();
-        this.disposables = dispose(this.disposables);
+        this.enabledDisposables.dispose();
+        this.disposables.dispose();
     };
     return TypeLabelController;
 }());
@@ -392,8 +390,7 @@ var DOMFocusController = /** @class */ (function () {
     function DOMFocusController(list, view) {
         this.list = list;
         this.view = view;
-        this.disposables = [];
-        this.disposables = [];
+        this.disposables = new DisposableStore();
         var onKeyDown = Event.chain(domEvent(view.domNode, 'keydown'))
             .filter(function (e) { return !isInputElement(e.target); })
             .map(function (e) { return new StandardKeyboardEvent(e); });
@@ -425,7 +422,7 @@ var DOMFocusController = /** @class */ (function () {
         tabIndexElement.focus();
     };
     DOMFocusController.prototype.dispose = function () {
-        this.disposables = dispose(this.disposables);
+        this.disposables.dispose();
     };
     return DOMFocusController;
 }());
@@ -453,7 +450,7 @@ var DefaultOpenController = {
 var MouseController = /** @class */ (function () {
     function MouseController(list) {
         this.list = list;
-        this.disposables = [];
+        this.disposables = new DisposableStore();
         this.multipleSelectionSupport = !(list.options.multipleSelectionSupport === false);
         if (this.multipleSelectionSupport) {
             this.multipleSelectionController = list.options.multipleSelectionController || DefaultMultipleSelectionController;
@@ -553,6 +550,7 @@ var MouseController = /** @class */ (function () {
         else if (this.isSelectionSingleChangeEvent(e)) {
             var selection = this.list.getSelection();
             var newSelection = selection.filter(function (i) { return i !== focus; });
+            this.list.setFocus([focus]);
             if (selection.length === newSelection.length) {
                 this.list.setSelection(newSelection.concat([focus]), e.browserEvent);
             }
@@ -562,7 +560,7 @@ var MouseController = /** @class */ (function () {
         }
     };
     MouseController.prototype.dispose = function () {
-        this.disposables = dispose(this.disposables);
+        this.disposables.dispose();
     };
     return MouseController;
 }());
@@ -655,7 +653,8 @@ var defaultStyles = {
     listFocusAndSelectionForeground: Color.fromHex('#FFFFFF'),
     listInactiveSelectionBackground: Color.fromHex('#3F3F46'),
     listHoverBackground: Color.fromHex('#2A2D2E'),
-    listDropBackground: Color.fromHex('#383B3D')
+    listDropBackground: Color.fromHex('#383B3D'),
+    treeIndentGuidesStroke: Color.fromHex('#a9a9a9')
 };
 var DefaultOptions = {
     keyboardSupport: true,
@@ -760,19 +759,19 @@ var PipelineRenderer = /** @class */ (function () {
     PipelineRenderer.prototype.renderTemplate = function (container) {
         return this.renderers.map(function (r) { return r.renderTemplate(container); });
     };
-    PipelineRenderer.prototype.renderElement = function (element, index, templateData, dynamicHeightProbing) {
+    PipelineRenderer.prototype.renderElement = function (element, index, templateData, height) {
         var i = 0;
         for (var _i = 0, _a = this.renderers; _i < _a.length; _i++) {
             var renderer = _a[_i];
-            renderer.renderElement(element, index, templateData[i++], dynamicHeightProbing);
+            renderer.renderElement(element, index, templateData[i++], height);
         }
     };
-    PipelineRenderer.prototype.disposeElement = function (element, index, templateData, dynamicHeightProbing) {
+    PipelineRenderer.prototype.disposeElement = function (element, index, templateData, height) {
         var i = 0;
         for (var _i = 0, _a = this.renderers; _i < _a.length; _i++) {
             var renderer = _a[_i];
             if (renderer.disposeElement) {
-                renderer.disposeElement(element, index, templateData[i], dynamicHeightProbing);
+                renderer.disposeElement(element, index, templateData[i], height);
             }
             i += 1;
         }
@@ -852,11 +851,13 @@ var List = /** @class */ (function () {
         if (_options === void 0) { _options = DefaultOptions; }
         this._options = _options;
         this.eventBufferer = new EventBufferer();
+        this.disposables = new DisposableStore();
         this._onDidOpen = new Emitter();
         this.onDidOpen = this._onDidOpen.event;
         this._onPin = new Emitter();
         this.didJustPressContextMenuKey = false;
         this._onDidDispose = new Emitter();
+        this.onDidDispose = this._onDidDispose.event;
         this.focus = new FocusTrait();
         this.selection = new Trait('selected');
         mixin(_options, defaultStyles, false);
@@ -880,19 +881,22 @@ var List = /** @class */ (function () {
             new TraitSpliceable(this.selection, this.view, _options.identityProvider),
             this.view
         ]);
-        this.disposables = [this.focus, this.selection, this.view, this._onDidDispose];
+        this.disposables.add(this.focus);
+        this.disposables.add(this.selection);
+        this.disposables.add(this.view);
+        this.disposables.add(this._onDidDispose);
         this.onDidFocus = Event.map(domEvent(this.view.domNode, 'focus', true), function () { return null; });
         this.onDidBlur = Event.map(domEvent(this.view.domNode, 'blur', true), function () { return null; });
-        this.disposables.push(new DOMFocusController(this, this.view));
+        this.disposables.add(new DOMFocusController(this, this.view));
         if (typeof _options.keyboardSupport !== 'boolean' || _options.keyboardSupport) {
             var controller = new KeyboardController(this, this.view, _options);
-            this.disposables.push(controller);
+            this.disposables.add(controller);
         }
         if (_options.keyboardNavigationLabelProvider) {
             this.typeLabelController = new TypeLabelController(this, this.view, _options.keyboardNavigationLabelProvider);
-            this.disposables.push(this.typeLabelController);
+            this.disposables.add(this.typeLabelController);
         }
-        this.disposables.push(this.createMouseController(_options));
+        this.disposables.add(this.createMouseController(_options));
         this.onFocusChange(this._onFocusChange, this, this.disposables);
         this.onSelectionChange(this._onSelectionChange, this, this.disposables);
         if (_options.ariaLabel) {
@@ -913,6 +917,11 @@ var List = /** @class */ (function () {
             var _this = this;
             return Event.map(this.eventBufferer.wrapEvent(this.selection.onChange), function (e) { return _this.toListEvent(e); });
         },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(List.prototype, "domId", {
+        get: function () { return this.view.domId; },
         enumerable: true,
         configurable: true
     });
@@ -982,11 +991,6 @@ var List = /** @class */ (function () {
     });
     Object.defineProperty(List.prototype, "onKeyDown", {
         get: function () { return domEvent(this.view.domNode, 'keydown'); },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(List.prototype, "onDidDispose", {
-        get: function () { return this._onDidDispose.event; },
         enumerable: true,
         configurable: true
     });
@@ -1303,7 +1307,7 @@ var List = /** @class */ (function () {
     };
     List.prototype.dispose = function () {
         this._onDidDispose.fire();
-        this.disposables = dispose(this.disposables);
+        this.disposables.dispose();
         this._onDidOpen.dispose();
         this._onPin.dispose();
         this._onDidDispose.dispose();

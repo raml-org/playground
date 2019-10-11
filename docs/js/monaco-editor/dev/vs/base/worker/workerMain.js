@@ -1,6 +1,6 @@
 /*!-----------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
- * Version: 0.17.0(63d87164d0bc8c6206d9339c195289c93665028e)
+ * Version: 0.18.1(d7a26172c5955d29d2a8cca4377b53b28925c766)
  * Released under the MIT license
  * https://github.com/Microsoft/vscode/blob/master/LICENSE.txt
  *-----------------------------------------------------------*/
@@ -39,7 +39,7 @@ var _commonjsGlobal = typeof global === 'object' ? global : {};
 var AMDLoader;
 (function (AMDLoader) {
     AMDLoader.global = _amdLoaderGlobal;
-    var Environment = (function () {
+    var Environment = /** @class */ (function () {
         function Environment() {
             this._detected = false;
             this._isWindows = false;
@@ -110,7 +110,7 @@ var AMDLoader;
  *--------------------------------------------------------------------------------------------*/
 var AMDLoader;
 (function (AMDLoader) {
-    var LoaderEvent = (function () {
+    var LoaderEvent = /** @class */ (function () {
         function LoaderEvent(type, detail, timestamp) {
             this.type = type;
             this.detail = detail;
@@ -119,7 +119,7 @@ var AMDLoader;
         return LoaderEvent;
     }());
     AMDLoader.LoaderEvent = LoaderEvent;
-    var LoaderEventRecorder = (function () {
+    var LoaderEventRecorder = /** @class */ (function () {
         function LoaderEventRecorder(loaderAvailableTimestamp) {
             this._events = [new LoaderEvent(1 /* LoaderAvailable */, '', loaderAvailableTimestamp)];
         }
@@ -132,7 +132,7 @@ var AMDLoader;
         return LoaderEventRecorder;
     }());
     AMDLoader.LoaderEventRecorder = LoaderEventRecorder;
-    var NullLoaderEventRecorder = (function () {
+    var NullLoaderEventRecorder = /** @class */ (function () {
         function NullLoaderEventRecorder() {
         }
         NullLoaderEventRecorder.prototype.record = function (type, detail) {
@@ -141,9 +141,9 @@ var AMDLoader;
         NullLoaderEventRecorder.prototype.getEvents = function () {
             return [];
         };
+        NullLoaderEventRecorder.INSTANCE = new NullLoaderEventRecorder();
         return NullLoaderEventRecorder;
     }());
-    NullLoaderEventRecorder.INSTANCE = new NullLoaderEventRecorder();
     AMDLoader.NullLoaderEventRecorder = NullLoaderEventRecorder;
 })(AMDLoader || (AMDLoader = {}));
 /*---------------------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ var AMDLoader;
  *--------------------------------------------------------------------------------------------*/
 var AMDLoader;
 (function (AMDLoader) {
-    var Utilities = (function () {
+    var Utilities = /** @class */ (function () {
         function Utilities() {
         }
         /**
@@ -238,11 +238,11 @@ var AMDLoader;
             }
             return (this.HAS_PERFORMANCE_NOW ? AMDLoader.global.performance.now() : Date.now());
         };
+        Utilities.NEXT_ANONYMOUS_ID = 1;
+        Utilities.PERFORMANCE_NOW_PROBED = false;
+        Utilities.HAS_PERFORMANCE_NOW = false;
         return Utilities;
     }());
-    Utilities.NEXT_ANONYMOUS_ID = 1;
-    Utilities.PERFORMANCE_NOW_PROBED = false;
-    Utilities.HAS_PERFORMANCE_NOW = false;
     AMDLoader.Utilities = Utilities;
 })(AMDLoader || (AMDLoader = {}));
 /*---------------------------------------------------------------------------------------------
@@ -251,7 +251,19 @@ var AMDLoader;
  *--------------------------------------------------------------------------------------------*/
 var AMDLoader;
 (function (AMDLoader) {
-    var ConfigurationOptionsUtil = (function () {
+    function ensureError(err) {
+        if (err instanceof Error) {
+            return err;
+        }
+        var result = new Error(err.message || String(err) || 'Unknown Error');
+        if (err.stack) {
+            result.stack = err.stack;
+        }
+        return result;
+    }
+    AMDLoader.ensureError = ensureError;
+    ;
+    var ConfigurationOptionsUtil = /** @class */ (function () {
         function ConfigurationOptionsUtil() {
         }
         /**
@@ -259,22 +271,16 @@ var AMDLoader;
          */
         ConfigurationOptionsUtil.validateConfigurationOptions = function (options) {
             function defaultOnError(err) {
-                if (err.errorCode === 'load') {
+                if (err.phase === 'loading') {
                     console.error('Loading "' + err.moduleId + '" failed');
-                    console.error('Detail: ', err.detail);
-                    if (err.detail && err.detail.stack) {
-                        console.error(err.detail.stack);
-                    }
+                    console.error(err);
                     console.error('Here are the modules that depend on it:');
                     console.error(err.neededBy);
                     return;
                 }
-                if (err.errorCode === 'factory') {
+                if (err.phase === 'factory') {
                     console.error('The factory method of "' + err.moduleId + '" has thrown an exception');
-                    console.error(err.detail);
-                    if (err.detail && err.detail.stack) {
-                        console.error(err.detail.stack);
-                    }
+                    console.error(err);
                     return;
                 }
             }
@@ -294,13 +300,16 @@ var AMDLoader;
             if (typeof options.catchError === 'undefined') {
                 options.catchError = false;
             }
+            if (typeof options.recordStats === 'undefined') {
+                options.recordStats = false;
+            }
             if (typeof options.urlArgs !== 'string') {
                 options.urlArgs = '';
             }
             if (typeof options.onError !== 'function') {
                 options.onError = defaultOnError;
             }
-            if (typeof options.ignoreDuplicateModules !== 'object' || !Array.isArray(options.ignoreDuplicateModules)) {
+            if (!Array.isArray(options.ignoreDuplicateModules)) {
                 options.ignoreDuplicateModules = [];
             }
             if (options.baseUrl.length > 0) {
@@ -314,29 +323,17 @@ var AMDLoader;
             if (!Array.isArray(options.nodeModules)) {
                 options.nodeModules = [];
             }
-            if (typeof options.nodeCachedData === 'object') {
+            if (options.nodeCachedData && typeof options.nodeCachedData === 'object') {
                 if (typeof options.nodeCachedData.seed !== 'string') {
                     options.nodeCachedData.seed = 'seed';
                 }
                 if (typeof options.nodeCachedData.writeDelay !== 'number' || options.nodeCachedData.writeDelay < 0) {
                     options.nodeCachedData.writeDelay = 1000 * 7;
                 }
-                if (typeof options.nodeCachedData.onData !== 'function') {
-                    options.nodeCachedData.onData = function (err) {
-                        if (err && err.errorCode === 'cachedDataRejected') {
-                            console.warn('Rejected cached data from file: ' + err.path);
-                        }
-                        else if (err && err.errorCode) {
-                            console.error('Problems handling cached data file: ' + err.path);
-                            console.error(err.detail);
-                        }
-                        else if (err) {
-                            console.error(err);
-                        }
-                    };
-                }
                 if (!options.nodeCachedData.path || typeof options.nodeCachedData.path !== 'string') {
-                    options.nodeCachedData.onData('INVALID cached data configuration, \'path\' MUST be set');
+                    var err = ensureError(new Error('INVALID cached data configuration, \'path\' MUST be set'));
+                    err.phase = 'configuration';
+                    options.onError(err);
                     options.nodeCachedData = undefined;
                 }
             }
@@ -366,7 +363,7 @@ var AMDLoader;
         return ConfigurationOptionsUtil;
     }());
     AMDLoader.ConfigurationOptionsUtil = ConfigurationOptionsUtil;
-    var Configuration = (function () {
+    var Configuration = /** @class */ (function () {
         function Configuration(env, options) {
             this._env = env;
             this.options = ConfigurationOptionsUtil.mergeConfigurationOptions(options);
@@ -577,7 +574,7 @@ var AMDLoader;
     /**
      * Load `scriptSrc` only once (avoid multiple <script> tags)
      */
-    var OnlyOnceScriptLoader = (function () {
+    var OnlyOnceScriptLoader = /** @class */ (function () {
         function OnlyOnceScriptLoader(env) {
             this._env = env;
             this._scriptLoader = null;
@@ -619,7 +616,7 @@ var AMDLoader;
         };
         return OnlyOnceScriptLoader;
     }());
-    var BrowserScriptLoader = (function () {
+    var BrowserScriptLoader = /** @class */ (function () {
         function BrowserScriptLoader() {
         }
         /**
@@ -657,7 +654,7 @@ var AMDLoader;
         };
         return BrowserScriptLoader;
     }());
-    var WorkerScriptLoader = (function () {
+    var WorkerScriptLoader = /** @class */ (function () {
         function WorkerScriptLoader() {
         }
         WorkerScriptLoader.prototype.load = function (moduleManager, scriptSrc, callback, errorback) {
@@ -671,12 +668,11 @@ var AMDLoader;
         };
         return WorkerScriptLoader;
     }());
-    var NodeScriptLoader = (function () {
+    var NodeScriptLoader = /** @class */ (function () {
         function NodeScriptLoader(env) {
             this._env = env;
             this._didInitialize = false;
             this._didPatchNodeRequire = false;
-            this._hasCreateCachedData = false;
         }
         NodeScriptLoader.prototype._init = function (nodeRequire) {
             if (this._didInitialize) {
@@ -688,14 +684,17 @@ var AMDLoader;
             this._vm = nodeRequire('vm');
             this._path = nodeRequire('path');
             this._crypto = nodeRequire('crypto');
-            // check for `createCachedData`-api
-            this._hasCreateCachedData = typeof (new this._vm.Script('').createCachedData) === 'function';
         };
         // patch require-function of nodejs such that we can manually create a script
         // from cached data. this is done by overriding the `Module._compile` function
         NodeScriptLoader.prototype._initNodeRequire = function (nodeRequire, moduleManager) {
+            // It is important to check for `nodeCachedData` first and then set `_didPatchNodeRequire`.
+            // That's because `nodeCachedData` is set _after_ calling this for the first time...
             var nodeCachedData = moduleManager.getConfig().getOptionsLiteral().nodeCachedData;
-            if (!nodeCachedData || this._didPatchNodeRequire) {
+            if (!nodeCachedData) {
+                return;
+            }
+            if (this._didPatchNodeRequire) {
                 return;
             }
             this._didPatchNodeRequire = true;
@@ -720,25 +719,32 @@ var AMDLoader;
                 return require;
             }
             Module.prototype._compile = function (content, filename) {
-                // remove shebang
-                content = content.replace(/^#!.*/, '');
-                // create wrapper function
-                var wrapper = Module.wrap(content);
-                var cachedDataPath = that._getCachedDataPath(nodeCachedData.seed, nodeCachedData.path, filename);
+                // remove shebang and create wrapper function
+                var scriptSource = Module.wrap(content.replace(/^#!.*/, ''));
+                // create script
+                var recorder = moduleManager.getRecorder();
+                var cachedDataPath = that._getCachedDataPath(nodeCachedData, filename);
                 var options = { filename: filename };
+                var hashData;
                 try {
-                    options.cachedData = that._fs.readFileSync(cachedDataPath);
+                    var data = that._fs.readFileSync(cachedDataPath);
+                    hashData = data.slice(0, 16);
+                    options.cachedData = data.slice(16);
+                    recorder.record(60 /* CachedDataFound */, cachedDataPath);
                 }
-                catch (e) {
-                    options.produceCachedData = !that._hasCreateCachedData;
+                catch (_e) {
+                    recorder.record(61 /* CachedDataMissed */, cachedDataPath);
                 }
-                var script = new that._vm.Script(wrapper, options);
+                var script = new that._vm.Script(scriptSource, options);
                 var compileWrapper = script.runInThisContext(options);
+                // run script
                 var dirname = that._path.dirname(filename);
                 var require = makeRequireFunction(this);
                 var args = [this.exports, require, this, filename, dirname, process, _commonjsGlobal, Buffer];
                 var result = compileWrapper.apply(this.exports, args);
-                that._processCachedData(moduleManager, script, wrapper, cachedDataPath, !options.cachedData);
+                // cached data aftermath
+                that._handleCachedData(script, scriptSource, cachedDataPath, !options.cachedData, moduleManager);
+                that._verifyCachedData(script, scriptSource, cachedDataPath, hashData);
                 return result;
             };
         };
@@ -765,57 +771,35 @@ var AMDLoader;
             }
             else {
                 scriptSrc = AMDLoader.Utilities.fileUriToFilePath(this._env.isWindows, scriptSrc);
-                this._fs.readFile(scriptSrc, { encoding: 'utf8' }, function (err, data) {
+                var normalizedScriptSrc_1 = this._path.normalize(scriptSrc);
+                var vmScriptPathOrUri_1 = this._getElectronRendererScriptPathOrUri(normalizedScriptSrc_1);
+                var wantsCachedData_1 = Boolean(opts.nodeCachedData);
+                var cachedDataPath_1 = wantsCachedData_1 ? this._getCachedDataPath(opts.nodeCachedData, scriptSrc) : undefined;
+                this._readSourceAndCachedData(normalizedScriptSrc_1, cachedDataPath_1, recorder, function (err, data, cachedData, hashData) {
                     if (err) {
                         errorback(err);
                         return;
                     }
-                    var normalizedScriptSrc = _this._path.normalize(scriptSrc);
-                    var vmScriptSrc = normalizedScriptSrc;
-                    // Make the script src friendly towards electron
-                    if (_this._env.isElectronRenderer) {
-                        var driveLetterMatch = vmScriptSrc.match(/^([a-z])\:(.*)/i);
-                        if (driveLetterMatch) {
-                            // windows
-                            vmScriptSrc = "file:///" + (driveLetterMatch[1].toUpperCase() + ':' + driveLetterMatch[2]).replace(/\\/g, '/');
-                        }
-                        else {
-                            // nix
-                            vmScriptSrc = "file://" + vmScriptSrc;
-                        }
-                    }
-                    var contents, prefix = '(function (require, define, __filename, __dirname) { ', suffix = '\n});';
+                    var scriptSource;
                     if (data.charCodeAt(0) === NodeScriptLoader._BOM) {
-                        contents = prefix + data.substring(1) + suffix;
+                        scriptSource = NodeScriptLoader._PREFIX + data.substring(1) + NodeScriptLoader._SUFFIX;
                     }
                     else {
-                        contents = prefix + data + suffix;
+                        scriptSource = NodeScriptLoader._PREFIX + data + NodeScriptLoader._SUFFIX;
                     }
-                    contents = nodeInstrumenter(contents, normalizedScriptSrc);
-                    if (!opts.nodeCachedData) {
-                        _this._loadAndEvalScript(moduleManager, scriptSrc, vmScriptSrc, contents, { filename: vmScriptSrc }, recorder, callback, errorback);
-                    }
-                    else {
-                        var cachedDataPath_1 = _this._getCachedDataPath(opts.nodeCachedData.seed, opts.nodeCachedData.path, scriptSrc);
-                        _this._fs.readFile(cachedDataPath_1, function (_err, cachedData) {
-                            // create script options
-                            var options = {
-                                filename: vmScriptSrc,
-                                produceCachedData: !_this._hasCreateCachedData && typeof cachedData === 'undefined',
-                                cachedData: cachedData
-                            };
-                            var script = _this._loadAndEvalScript(moduleManager, scriptSrc, vmScriptSrc, contents, options, recorder, callback, errorback);
-                            _this._processCachedData(moduleManager, script, contents, cachedDataPath_1, !options.cachedData);
-                        });
-                    }
+                    scriptSource = nodeInstrumenter(scriptSource, normalizedScriptSrc_1);
+                    var scriptOpts = { filename: vmScriptPathOrUri_1, cachedData: cachedData };
+                    var script = _this._createAndEvalScript(moduleManager, scriptSource, scriptOpts, callback, errorback);
+                    _this._handleCachedData(script, scriptSource, cachedDataPath_1, wantsCachedData_1 && !cachedData, moduleManager);
+                    _this._verifyCachedData(script, scriptSource, cachedDataPath_1, hashData);
                 });
             }
         };
-        NodeScriptLoader.prototype._loadAndEvalScript = function (moduleManager, scriptSrc, vmScriptSrc, contents, options, recorder, callback, errorback) {
-            // create script, run script
-            recorder.record(31 /* NodeBeginEvaluatingScript */, scriptSrc);
+        NodeScriptLoader.prototype._createAndEvalScript = function (moduleManager, contents, options, callback, errorback) {
+            var recorder = moduleManager.getRecorder();
+            recorder.record(31 /* NodeBeginEvaluatingScript */, options.filename);
             var script = new this._vm.Script(contents, options);
-            var r = script.runInThisContext(options);
+            var ret = script.runInThisContext(options);
             var globalDefineFunc = moduleManager.getGlobalAMDDefineFunc();
             var receivedDefineCall = false;
             var localDefineFunc = function () {
@@ -823,89 +807,147 @@ var AMDLoader;
                 return globalDefineFunc.apply(null, arguments);
             };
             localDefineFunc.amd = globalDefineFunc.amd;
-            r.call(AMDLoader.global, moduleManager.getGlobalAMDRequireFunc(), localDefineFunc, vmScriptSrc, this._path.dirname(scriptSrc));
-            // signal done
-            recorder.record(32 /* NodeEndEvaluatingScript */, scriptSrc);
+            ret.call(AMDLoader.global, moduleManager.getGlobalAMDRequireFunc(), localDefineFunc, options.filename, this._path.dirname(options.filename));
+            recorder.record(32 /* NodeEndEvaluatingScript */, options.filename);
             if (receivedDefineCall) {
                 callback();
             }
             else {
-                errorback(new Error("Didn't receive define call in " + scriptSrc + "!"));
+                errorback(new Error("Didn't receive define call in " + options.filename + "!"));
             }
             return script;
         };
-        NodeScriptLoader.prototype._getCachedDataPath = function (seed, basedir, filename) {
-            var hash = this._crypto.createHash('md5').update(filename, 'utf8').update(seed, 'utf8').digest('hex');
-            var basename = this._path.basename(filename).replace(/\.js$/, '');
-            return this._path.join(basedir, basename + "-" + hash + ".code");
+        NodeScriptLoader.prototype._getElectronRendererScriptPathOrUri = function (path) {
+            if (!this._env.isElectronRenderer) {
+                return path;
+            }
+            var driveLetterMatch = path.match(/^([a-z])\:(.*)/i);
+            if (driveLetterMatch) {
+                // windows
+                return "file:///" + (driveLetterMatch[1].toUpperCase() + ':' + driveLetterMatch[2]).replace(/\\/g, '/');
+            }
+            else {
+                // nix
+                return "file://" + path;
+            }
         };
-        NodeScriptLoader.prototype._processCachedData = function (moduleManager, script, contents, cachedDataPath, createCachedData) {
+        NodeScriptLoader.prototype._getCachedDataPath = function (config, filename) {
+            var hash = this._crypto.createHash('md5').update(filename, 'utf8').update(config.seed, 'utf8').digest('hex');
+            var basename = this._path.basename(filename).replace(/\.js$/, '');
+            return this._path.join(config.path, basename + "-" + hash + ".code");
+        };
+        NodeScriptLoader.prototype._handleCachedData = function (script, scriptSource, cachedDataPath, createCachedData, moduleManager) {
             var _this = this;
             if (script.cachedDataRejected) {
-                // data rejected => delete cache file
-                moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData({
-                    errorCode: 'cachedDataRejected',
-                    path: cachedDataPath
+                // cached data got rejected -> delete and re-create
+                this._fs.unlink(cachedDataPath, function (err) {
+                    moduleManager.getRecorder().record(62 /* CachedDataRejected */, cachedDataPath);
+                    _this._createAndWriteCachedData(script, scriptSource, cachedDataPath, moduleManager);
+                    if (err) {
+                        moduleManager.getConfig().onError(err);
+                    }
                 });
-                NodeScriptLoader._runSoon(function () {
-                    return _this._fs.unlink(cachedDataPath, function (err) {
-                        if (err) {
-                            moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData({
-                                errorCode: 'unlink',
-                                path: cachedDataPath,
-                                detail: err
-                            });
-                        }
-                    });
-                }, moduleManager.getConfig().getOptionsLiteral().nodeCachedData.writeDelay / 2);
             }
-            else if (script.cachedDataProduced) {
-                // data produced => tell outside world
-                moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData(undefined, {
-                    path: cachedDataPath
-                });
-                // data produced => write cache file
-                NodeScriptLoader._runSoon(function () {
-                    return _this._fs.writeFile(cachedDataPath, script.cachedData, function (err) {
-                        if (err) {
-                            moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData({
-                                errorCode: 'writeFile',
-                                path: cachedDataPath,
-                                detail: err
-                            });
-                        }
-                    });
-                }, moduleManager.getConfig().getOptionsLiteral().nodeCachedData.writeDelay);
-            }
-            else if (this._hasCreateCachedData && createCachedData) {
-                // NEW world
-                // data produced => tell outside world
-                moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData(undefined, {
-                    path: cachedDataPath
-                });
-                // soon'ish create and save cached data
-                NodeScriptLoader._runSoon(function () {
-                    var data = script.createCachedData(contents);
-                    _this._fs.writeFile(cachedDataPath, data, function (err) {
-                        if (!err) {
-                            return;
-                        }
-                        moduleManager.getConfig().getOptionsLiteral().nodeCachedData.onData({
-                            errorCode: 'writeFile',
-                            path: cachedDataPath,
-                            detail: err
-                        });
-                    });
-                }, moduleManager.getConfig().getOptionsLiteral().nodeCachedData.writeDelay);
+            else if (createCachedData) {
+                // no cached data, but wanted
+                this._createAndWriteCachedData(script, scriptSource, cachedDataPath, moduleManager);
             }
         };
-        NodeScriptLoader._runSoon = function (callback, minTimeout) {
-            var timeout = minTimeout + Math.ceil(Math.random() * minTimeout);
-            setTimeout(callback, timeout);
+        // Cached data format: | SOURCE_HASH | V8_CACHED_DATA |
+        // -SOURCE_HASH is the md5 hash of the JS source (always 16 bytes)
+        // -V8_CACHED_DATA is what v8 produces
+        NodeScriptLoader.prototype._createAndWriteCachedData = function (script, scriptSource, cachedDataPath, moduleManager) {
+            var _this = this;
+            var timeout = Math.ceil(moduleManager.getConfig().getOptionsLiteral().nodeCachedData.writeDelay * (1 + Math.random()));
+            var lastSize = -1;
+            var iteration = 0;
+            var hashData = undefined;
+            var createLoop = function () {
+                setTimeout(function () {
+                    if (!hashData) {
+                        hashData = _this._crypto.createHash('md5').update(scriptSource, 'utf8').digest();
+                    }
+                    var cachedData = script.createCachedData();
+                    if (cachedData.length === 0 || cachedData.length === lastSize || iteration >= 5) {
+                        return;
+                    }
+                    lastSize = cachedData.length;
+                    _this._fs.writeFile(cachedDataPath, Buffer.concat([hashData, cachedData]), function (err) {
+                        if (err) {
+                            moduleManager.getConfig().onError(err);
+                        }
+                        moduleManager.getRecorder().record(63 /* CachedDataCreated */, cachedDataPath);
+                        createLoop();
+                    });
+                }, timeout * (Math.pow(4, iteration++)));
+            };
+            // with some delay (`timeout`) create cached data
+            // and repeat that (with backoff delay) until the
+            // data seems to be not changing anymore
+            createLoop();
         };
+        NodeScriptLoader.prototype._readSourceAndCachedData = function (sourcePath, cachedDataPath, recorder, callback) {
+            if (!cachedDataPath) {
+                // no cached data case
+                this._fs.readFile(sourcePath, { encoding: 'utf8' }, callback);
+            }
+            else {
+                // cached data case: read both files in parallel
+                var source_1 = undefined;
+                var cachedData_1 = undefined;
+                var hashData_1 = undefined;
+                var steps_1 = 2;
+                var step_1 = function (err) {
+                    if (err) {
+                        callback(err);
+                    }
+                    else if (--steps_1 === 0) {
+                        callback(undefined, source_1, cachedData_1, hashData_1);
+                    }
+                };
+                this._fs.readFile(sourcePath, { encoding: 'utf8' }, function (err, data) {
+                    source_1 = data;
+                    step_1(err);
+                });
+                this._fs.readFile(cachedDataPath, function (err, data) {
+                    if (!err && data && data.length > 0) {
+                        hashData_1 = data.slice(0, 16);
+                        cachedData_1 = data.slice(16);
+                        recorder.record(60 /* CachedDataFound */, cachedDataPath);
+                    }
+                    else {
+                        recorder.record(61 /* CachedDataMissed */, cachedDataPath);
+                    }
+                    step_1(); // ignored: cached data is optional
+                });
+            }
+        };
+        NodeScriptLoader.prototype._verifyCachedData = function (script, scriptSource, cachedDataPath, hashData) {
+            var _this = this;
+            if (!hashData) {
+                // nothing to do
+                return;
+            }
+            if (script.cachedDataRejected) {
+                // invalid anyways
+                return;
+            }
+            setTimeout(function () {
+                // check source hash - the contract is that file paths change when file content
+                // change (e.g use the commit or version id as cache path). this check is
+                // for violations of this contract.
+                var hashDataNow = _this._crypto.createHash('md5').update(scriptSource, 'utf8').digest();
+                if (!hashData.equals(hashDataNow)) {
+                    console.warn("FAILED TO VERIFY CACHED DATA. Deleting '" + cachedDataPath + "' now, but a RESTART IS REQUIRED");
+                    _this._fs.unlink(cachedDataPath, function (err) { return console.error("FAILED to unlink: '" + cachedDataPath + "'", err); });
+                }
+            }, Math.ceil(5000 * (1 + Math.random())));
+        };
+        NodeScriptLoader._BOM = 0xFEFF;
+        NodeScriptLoader._PREFIX = '(function (require, define, __filename, __dirname) { ';
+        NodeScriptLoader._SUFFIX = '\n});';
         return NodeScriptLoader;
     }());
-    NodeScriptLoader._BOM = 0xFEFF;
     function createScriptLoader(env) {
         return new OnlyOnceScriptLoader(env);
     }
@@ -919,7 +961,7 @@ var AMDLoader;
 (function (AMDLoader) {
     // ------------------------------------------------------------------------
     // ModuleIdResolver
-    var ModuleIdResolver = (function () {
+    var ModuleIdResolver = /** @class */ (function () {
         function ModuleIdResolver(fromModuleId) {
             var lastSlash = fromModuleId.lastIndexOf('/');
             if (lastSlash !== -1) {
@@ -962,13 +1004,13 @@ var AMDLoader;
             }
             return result;
         };
+        ModuleIdResolver.ROOT = new ModuleIdResolver('');
         return ModuleIdResolver;
     }());
-    ModuleIdResolver.ROOT = new ModuleIdResolver('');
     AMDLoader.ModuleIdResolver = ModuleIdResolver;
     // ------------------------------------------------------------------------
     // Module
-    var Module = (function () {
+    var Module = /** @class */ (function () {
         function Module(id, strId, dependencies, callback, errorback, moduleIdResolver) {
             this.id = id;
             this.strId = strId;
@@ -977,6 +1019,7 @@ var AMDLoader;
             this._errorback = errorback;
             this.moduleIdResolver = moduleIdResolver;
             this.exports = {};
+            this.error = null;
             this.exportsPassedIn = false;
             this.unresolvedDependenciesCount = this.dependencies.length;
             this._isComplete = false;
@@ -1028,11 +1071,11 @@ var AMDLoader;
                 }
             }
             if (producedError) {
-                config.onError({
-                    errorCode: 'factory',
-                    moduleId: this.strId,
-                    detail: producedError
-                });
+                var err = AMDLoader.ensureError(producedError);
+                err.phase = 'factory';
+                err.moduleId = this.strId;
+                this.error = err;
+                config.onError(err);
             }
             this.dependencies = null;
             this._callback = null;
@@ -1043,6 +1086,8 @@ var AMDLoader;
          * One of the direct dependencies or a transitive dependency has failed to load.
          */
         Module.prototype.onDependencyError = function (err) {
+            this._isComplete = true;
+            this.error = err;
             if (this._errorback) {
                 this._errorback(err);
                 return true;
@@ -1058,7 +1103,7 @@ var AMDLoader;
         return Module;
     }());
     AMDLoader.Module = Module;
-    var ModuleIdProvider = (function () {
+    var ModuleIdProvider = /** @class */ (function () {
         function ModuleIdProvider() {
             this._nextId = 0;
             this._strModuleIdToIntModuleId = new Map();
@@ -1085,17 +1130,17 @@ var AMDLoader;
         };
         return ModuleIdProvider;
     }());
-    var RegularDependency = (function () {
+    var RegularDependency = /** @class */ (function () {
         function RegularDependency(id) {
             this.id = id;
         }
+        RegularDependency.EXPORTS = new RegularDependency(0 /* EXPORTS */);
+        RegularDependency.MODULE = new RegularDependency(1 /* MODULE */);
+        RegularDependency.REQUIRE = new RegularDependency(2 /* REQUIRE */);
         return RegularDependency;
     }());
-    RegularDependency.EXPORTS = new RegularDependency(0 /* EXPORTS */);
-    RegularDependency.MODULE = new RegularDependency(1 /* MODULE */);
-    RegularDependency.REQUIRE = new RegularDependency(2 /* REQUIRE */);
     AMDLoader.RegularDependency = RegularDependency;
-    var PluginDependency = (function () {
+    var PluginDependency = /** @class */ (function () {
         function PluginDependency(id, pluginId, pluginParam) {
             this.id = id;
             this.pluginId = pluginId;
@@ -1104,7 +1149,7 @@ var AMDLoader;
         return PluginDependency;
     }());
     AMDLoader.PluginDependency = PluginDependency;
-    var ModuleManager = (function () {
+    var ModuleManager = /** @class */ (function () {
         function ModuleManager(env, scriptLoader, defineFunc, requireFunc, loaderAvailableTimestamp) {
             if (loaderAvailableTimestamp === void 0) { loaderAvailableTimestamp = 0; }
             this._env = env;
@@ -1209,7 +1254,7 @@ var AMDLoader;
             }
             var stack = null;
             if (this._config.isBuild()) {
-                stack = new Error('StackLocation').stack;
+                stack = new Error('StackLocation').stack || null;
             }
             this._currentAnnonymousDefineCall = {
                 stack: stack,
@@ -1238,7 +1283,7 @@ var AMDLoader;
             this._modules2[moduleId] = m;
             if (this._config.isBuild()) {
                 this._buildInfoDefineStack[moduleId] = stack;
-                this._buildInfoDependencies[moduleId] = m.dependencies.map(function (dep) { return _this._moduleIdProvider.getStrModuleId(dep.id); });
+                this._buildInfoDependencies[moduleId] = (m.dependencies || []).map(function (dep) { return _this._moduleIdProvider.getStrModuleId(dep.id); });
             }
             // Resolving of dependencies is immediate (not in a timeout). If there's a need to support a packer that concatenates in an
             // unordered manner, in order to finish processing the file, execute the following method in a timeout
@@ -1293,6 +1338,9 @@ var AMDLoader;
             if (!m.isComplete()) {
                 throw new Error('Check dependency list! Synchronous require cannot resolve module \'' + _strModuleId + '\'. This module has not been resolved completely yet.');
             }
+            if (m.error) {
+                throw m.error;
+            }
             return m.exports;
         };
         ModuleManager.prototype.configure = function (params, shouldOverwrite) {
@@ -1322,16 +1370,15 @@ var AMDLoader;
                 this.defineModule(this._moduleIdProvider.getStrModuleId(moduleId), defineCall.dependencies, defineCall.callback, null, defineCall.stack);
             }
         };
-        ModuleManager.prototype._createLoadError = function (moduleId, err) {
+        ModuleManager.prototype._createLoadError = function (moduleId, _err) {
             var _this = this;
             var strModuleId = this._moduleIdProvider.getStrModuleId(moduleId);
             var neededBy = (this._inverseDependencies2[moduleId] || []).map(function (intModuleId) { return _this._moduleIdProvider.getStrModuleId(intModuleId); });
-            return {
-                errorCode: 'load',
-                moduleId: strModuleId,
-                neededBy: neededBy,
-                detail: err
-            };
+            var err = AMDLoader.ensureError(_err);
+            err.phase = 'loading';
+            err.moduleId = strModuleId;
+            err.neededBy = neededBy;
+            return err;
         };
         /**
          * Callback from the scriptLoader when a module hasn't been loaded.
@@ -1339,6 +1386,9 @@ var AMDLoader;
          */
         ModuleManager.prototype._onLoadError = function (moduleId, err) {
             var error = this._createLoadError(moduleId, err);
+            if (!this._modules2[moduleId]) {
+                this._modules2[moduleId] = new Module(moduleId, this._moduleIdProvider.getStrModuleId(moduleId), [], function () { }, function () { }, null);
+            }
             // Find any 'local' error handlers, walk the entire chain of inverse dependencies if necessary.
             var seenModuleId = [];
             for (var i = 0, len = this._moduleIdProvider.getMaxModuleId(); i < len; i++) {
@@ -1428,11 +1478,13 @@ var AMDLoader;
             }
             // Walk the element's dependencies
             var dependencies = from.dependencies;
-            for (var i = 0, len = dependencies.length; i < len; i++) {
-                var path = this._findCyclePath(dependencies[i].id, toId, depth + 1);
-                if (path !== null) {
-                    path.push(fromId);
-                    return path;
+            if (dependencies) {
+                for (var i = 0, len = dependencies.length; i < len; i++) {
+                    var path = this._findCyclePath(dependencies[i].id, toId, depth + 1);
+                    if (path !== null) {
+                        path.push(fromId);
+                        return path;
+                    }
                 }
             }
             return null;
@@ -1526,56 +1578,62 @@ var AMDLoader;
         ModuleManager.prototype._resolve = function (module) {
             var _this = this;
             var dependencies = module.dependencies;
-            for (var i = 0, len = dependencies.length; i < len; i++) {
-                var dependency = dependencies[i];
-                if (dependency === RegularDependency.EXPORTS) {
-                    module.exportsPassedIn = true;
-                    module.unresolvedDependenciesCount--;
-                    continue;
-                }
-                if (dependency === RegularDependency.MODULE) {
-                    module.unresolvedDependenciesCount--;
-                    continue;
-                }
-                if (dependency === RegularDependency.REQUIRE) {
-                    module.unresolvedDependenciesCount--;
-                    continue;
-                }
-                var dependencyModule = this._modules2[dependency.id];
-                if (dependencyModule && dependencyModule.isComplete()) {
-                    module.unresolvedDependenciesCount--;
-                    continue;
-                }
-                if (this._hasDependencyPath(dependency.id, module.id)) {
-                    console.warn('There is a dependency cycle between \'' + this._moduleIdProvider.getStrModuleId(dependency.id) + '\' and \'' + this._moduleIdProvider.getStrModuleId(module.id) + '\'. The cyclic path follows:');
-                    var cyclePath = this._findCyclePath(dependency.id, module.id, 0);
-                    cyclePath.reverse();
-                    cyclePath.push(dependency.id);
-                    console.warn(cyclePath.map(function (id) { return _this._moduleIdProvider.getStrModuleId(id); }).join(' => \n'));
-                    // Break the cycle
-                    module.unresolvedDependenciesCount--;
-                    continue;
-                }
-                // record inverse dependency
-                this._inverseDependencies2[dependency.id] = this._inverseDependencies2[dependency.id] || [];
-                this._inverseDependencies2[dependency.id].push(module.id);
-                if (dependency instanceof PluginDependency) {
-                    var plugin = this._modules2[dependency.pluginId];
-                    if (plugin && plugin.isComplete()) {
-                        this._loadPluginDependency(plugin.exports, dependency);
+            if (dependencies) {
+                for (var i = 0, len = dependencies.length; i < len; i++) {
+                    var dependency = dependencies[i];
+                    if (dependency === RegularDependency.EXPORTS) {
+                        module.exportsPassedIn = true;
+                        module.unresolvedDependenciesCount--;
                         continue;
                     }
-                    // Record dependency for when the plugin gets loaded
-                    var inversePluginDeps = this._inversePluginDependencies2.get(dependency.pluginId);
-                    if (!inversePluginDeps) {
-                        inversePluginDeps = [];
-                        this._inversePluginDependencies2.set(dependency.pluginId, inversePluginDeps);
+                    if (dependency === RegularDependency.MODULE) {
+                        module.unresolvedDependenciesCount--;
+                        continue;
                     }
-                    inversePluginDeps.push(dependency);
-                    this._loadModule(dependency.pluginId);
-                    continue;
+                    if (dependency === RegularDependency.REQUIRE) {
+                        module.unresolvedDependenciesCount--;
+                        continue;
+                    }
+                    var dependencyModule = this._modules2[dependency.id];
+                    if (dependencyModule && dependencyModule.isComplete()) {
+                        if (dependencyModule.error) {
+                            module.onDependencyError(dependencyModule.error);
+                            return;
+                        }
+                        module.unresolvedDependenciesCount--;
+                        continue;
+                    }
+                    if (this._hasDependencyPath(dependency.id, module.id)) {
+                        console.warn('There is a dependency cycle between \'' + this._moduleIdProvider.getStrModuleId(dependency.id) + '\' and \'' + this._moduleIdProvider.getStrModuleId(module.id) + '\'. The cyclic path follows:');
+                        var cyclePath = this._findCyclePath(dependency.id, module.id, 0) || [];
+                        cyclePath.reverse();
+                        cyclePath.push(dependency.id);
+                        console.warn(cyclePath.map(function (id) { return _this._moduleIdProvider.getStrModuleId(id); }).join(' => \n'));
+                        // Break the cycle
+                        module.unresolvedDependenciesCount--;
+                        continue;
+                    }
+                    // record inverse dependency
+                    this._inverseDependencies2[dependency.id] = this._inverseDependencies2[dependency.id] || [];
+                    this._inverseDependencies2[dependency.id].push(module.id);
+                    if (dependency instanceof PluginDependency) {
+                        var plugin = this._modules2[dependency.pluginId];
+                        if (plugin && plugin.isComplete()) {
+                            this._loadPluginDependency(plugin.exports, dependency);
+                            continue;
+                        }
+                        // Record dependency for when the plugin gets loaded
+                        var inversePluginDeps = this._inversePluginDependencies2.get(dependency.pluginId);
+                        if (!inversePluginDeps) {
+                            inversePluginDeps = [];
+                            this._inversePluginDependencies2.set(dependency.pluginId, inversePluginDeps);
+                        }
+                        inversePluginDeps.push(dependency);
+                        this._loadModule(dependency.pluginId);
+                        continue;
+                    }
+                    this._loadModule(dependency.id);
                 }
-                this._loadModule(dependency.id);
             }
             if (module.unresolvedDependenciesCount === 0) {
                 this._onModuleComplete(module);
@@ -1590,31 +1648,33 @@ var AMDLoader;
             }
             var dependencies = module.dependencies;
             var dependenciesValues = [];
-            for (var i = 0, len = dependencies.length; i < len; i++) {
-                var dependency = dependencies[i];
-                if (dependency === RegularDependency.EXPORTS) {
-                    dependenciesValues[i] = module.exports;
-                    continue;
+            if (dependencies) {
+                for (var i = 0, len = dependencies.length; i < len; i++) {
+                    var dependency = dependencies[i];
+                    if (dependency === RegularDependency.EXPORTS) {
+                        dependenciesValues[i] = module.exports;
+                        continue;
+                    }
+                    if (dependency === RegularDependency.MODULE) {
+                        dependenciesValues[i] = {
+                            id: module.strId,
+                            config: function () {
+                                return _this._config.getConfigForModule(module.strId);
+                            }
+                        };
+                        continue;
+                    }
+                    if (dependency === RegularDependency.REQUIRE) {
+                        dependenciesValues[i] = this._createRequire(module.moduleIdResolver);
+                        continue;
+                    }
+                    var dependencyModule = this._modules2[dependency.id];
+                    if (dependencyModule) {
+                        dependenciesValues[i] = dependencyModule.exports;
+                        continue;
+                    }
+                    dependenciesValues[i] = null;
                 }
-                if (dependency === RegularDependency.MODULE) {
-                    dependenciesValues[i] = {
-                        id: module.strId,
-                        config: function () {
-                            return _this._config.getConfigForModule(module.strId);
-                        }
-                    };
-                    continue;
-                }
-                if (dependency === RegularDependency.REQUIRE) {
-                    dependenciesValues[i] = this._createRequire(module.moduleIdResolver);
-                    continue;
-                }
-                var dependencyModule = this._modules2[dependency.id];
-                if (dependencyModule) {
-                    dependenciesValues[i] = dependencyModule.exports;
-                    continue;
-                }
-                dependenciesValues[i] = null;
             }
             module.complete(recorder, this._config, dependenciesValues);
             // Fetch and clear inverse dependencies
@@ -1905,12 +1965,9 @@ define(__m[21/*vs/base/common/arrays*/], __M([0/*require*/,1/*exports*/]), funct
     }
     exports.groupBy = groupBy;
     /**
-     * @returns a new array with all falsy values removed. The original array IS NOT modified.
+     * @returns New array with all falsy values removed. The original array IS NOT modified.
      */
     function coalesce(array) {
-        if (!array) {
-            return array;
-        }
         return array.filter(function (e) { return !!e; });
     }
     exports.coalesce = coalesce;
@@ -1921,9 +1978,6 @@ define(__m[21/*vs/base/common/arrays*/], __M([0/*require*/,1/*exports*/]), funct
         return !Array.isArray(obj) || obj.length === 0;
     }
     exports.isFalsyOrEmpty = isFalsyOrEmpty;
-    /**
-     * @returns True if the provided object is an array and has at least one element.
-     */
     function isNonEmptyArray(obj) {
         return Array.isArray(obj) && obj.length > 0;
     }
@@ -3034,6 +3088,19 @@ define(__m[11/*vs/base/common/iterator*/], __M([0/*require*/,1/*exports*/]), fun
             return _empty;
         }
         Iterator.empty = empty;
+        function single(value) {
+            var done = false;
+            return {
+                next: function () {
+                    if (done) {
+                        return exports.FIN;
+                    }
+                    done = true;
+                    return { done: false, value: value };
+                }
+            };
+        }
+        Iterator.single = single;
         function fromArray(array, index, length) {
             if (index === void 0) { index = 0; }
             if (length === void 0) { length = array.length; }
@@ -3095,12 +3162,44 @@ define(__m[11/*vs/base/common/iterator*/], __M([0/*require*/,1/*exports*/]), fun
             }
         }
         Iterator.forEach = forEach;
-        function collect(iterator) {
+        function collect(iterator, atMost) {
+            if (atMost === void 0) { atMost = Number.POSITIVE_INFINITY; }
             var result = [];
-            forEach(iterator, function (value) { return result.push(value); });
+            if (atMost === 0) {
+                return result;
+            }
+            var i = 0;
+            for (var next = iterator.next(); !next.done; next = iterator.next()) {
+                result.push(next.value);
+                if (++i >= atMost) {
+                    break;
+                }
+            }
             return result;
         }
         Iterator.collect = collect;
+        function concat() {
+            var iterators = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                iterators[_i] = arguments[_i];
+            }
+            var i = 0;
+            return {
+                next: function () {
+                    if (i >= iterators.length) {
+                        return exports.FIN;
+                    }
+                    var iterator = iterators[i];
+                    var result = iterator.next();
+                    if (result.done) {
+                        i++;
+                        return this.next();
+                    }
+                    return result;
+                }
+            };
+        }
+        Iterator.concat = concat;
     })(Iterator = exports.Iterator || (exports.Iterator = {}));
     function getSequenceIterator(arg) {
         if (Array.isArray(arg)) {
@@ -3121,6 +3220,10 @@ define(__m[11/*vs/base/common/iterator*/], __M([0/*require*/,1/*exports*/]), fun
             this.end = end;
             this.index = index;
         }
+        ArrayIterator.prototype.first = function () {
+            this.index = this.start;
+            return this.current();
+        };
         ArrayIterator.prototype.next = function () {
             this.index = Math.min(this.index + 1, this.end);
             return this.current();
@@ -3463,65 +3566,191 @@ define(__m[14/*vs/base/common/keyCodes*/], __M([0/*require*/,1/*exports*/,5/*vs/
 define(__m[10/*vs/base/common/lifecycle*/], __M([0/*require*/,1/*exports*/]), function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Enables logging of potentially leaked disposables.
+     *
+     * A disposable is considered leaked if it is not disposed or not registered as the child of
+     * another disposable. This tracking is very simple an only works for classes that either
+     * extend Disposable or use a DisposableStore. This means there are a lot of false positives.
+     */
+    var TRACK_DISPOSABLES = false;
+    var __is_disposable_tracked__ = '__is_disposable_tracked__';
+    function markTracked(x) {
+        if (!TRACK_DISPOSABLES) {
+            return;
+        }
+        if (x && x !== Disposable.None) {
+            try {
+                x[__is_disposable_tracked__] = true;
+            }
+            catch (_a) {
+                // noop
+            }
+        }
+    }
+    function trackDisposable(x) {
+        if (!TRACK_DISPOSABLES) {
+            return x;
+        }
+        var stack = new Error('Potentially leaked disposable').stack;
+        setTimeout(function () {
+            if (!x[__is_disposable_tracked__]) {
+                console.log(stack);
+            }
+        }, 3000);
+        return x;
+    }
     function isDisposable(thing) {
         return typeof thing.dispose === 'function'
             && thing.dispose.length === 0;
     }
     exports.isDisposable = isDisposable;
-    function dispose(first) {
-        var rest = [];
-        for (var _i = 1; _i < arguments.length; _i++) {
-            rest[_i - 1] = arguments[_i];
-        }
-        if (Array.isArray(first)) {
-            first.forEach(function (d) { return d && d.dispose(); });
+    function dispose(disposables) {
+        if (Array.isArray(disposables)) {
+            disposables.forEach(function (d) {
+                if (d) {
+                    markTracked(d);
+                    d.dispose();
+                }
+            });
             return [];
         }
-        else if (rest.length === 0) {
-            if (first) {
-                first.dispose();
-                return first;
-            }
-            return undefined;
+        else if (disposables) {
+            markTracked(disposables);
+            disposables.dispose();
+            return disposables;
         }
         else {
-            dispose(first);
-            dispose(rest);
-            return [];
+            return undefined;
         }
     }
     exports.dispose = dispose;
-    function combinedDisposable(disposables) {
-        return { dispose: function () { return dispose(disposables); } };
+    function combinedDisposable() {
+        var disposables = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            disposables[_i] = arguments[_i];
+        }
+        disposables.forEach(markTracked);
+        return trackDisposable({ dispose: function () { return dispose(disposables); } });
     }
     exports.combinedDisposable = combinedDisposable;
     function toDisposable(fn) {
-        return { dispose: function () { fn(); } };
+        var self = trackDisposable({
+            dispose: function () {
+                markTracked(self);
+                fn();
+            }
+        });
+        return self;
     }
     exports.toDisposable = toDisposable;
-    var Disposable = /** @class */ (function () {
-        function Disposable() {
-            this._toDispose = [];
-            this._lifecycle_disposable_isDisposed = false;
+    var DisposableStore = /** @class */ (function () {
+        function DisposableStore() {
+            this._toDispose = new Set();
+            this._isDisposed = false;
         }
-        Disposable.prototype.dispose = function () {
-            this._lifecycle_disposable_isDisposed = true;
-            this._toDispose = dispose(this._toDispose);
+        /**
+         * Dispose of all registered disposables and mark this object as disposed.
+         *
+         * Any future disposables added to this object will be disposed of on `add`.
+         */
+        DisposableStore.prototype.dispose = function () {
+            if (this._isDisposed) {
+                return;
+            }
+            markTracked(this);
+            this._isDisposed = true;
+            this.clear();
         };
-        Disposable.prototype._register = function (t) {
-            if (this._lifecycle_disposable_isDisposed) {
-                console.warn('Registering disposable on object that has already been disposed.');
-                t.dispose();
+        /**
+         * Dispose of all registered disposables but do not mark this object as disposed.
+         */
+        DisposableStore.prototype.clear = function () {
+            this._toDispose.forEach(function (item) { return item.dispose(); });
+            this._toDispose.clear();
+        };
+        DisposableStore.prototype.add = function (t) {
+            if (!t) {
+                return t;
+            }
+            if (t === this) {
+                throw new Error('Cannot register a disposable on itself!');
+            }
+            markTracked(t);
+            if (this._isDisposed) {
+                console.warn(new Error('Trying to add a disposable to a DisposableStore that has already been disposed of. The added object will be leaked!').stack);
             }
             else {
-                this._toDispose.push(t);
+                this._toDispose.add(t);
             }
             return t;
+        };
+        return DisposableStore;
+    }());
+    exports.DisposableStore = DisposableStore;
+    var Disposable = /** @class */ (function () {
+        function Disposable() {
+            this._store = new DisposableStore();
+            trackDisposable(this);
+        }
+        Disposable.prototype.dispose = function () {
+            markTracked(this);
+            this._store.dispose();
+        };
+        Disposable.prototype._register = function (t) {
+            if (t === this) {
+                throw new Error('Cannot register a disposable on itself!');
+            }
+            return this._store.add(t);
         };
         Disposable.None = Object.freeze({ dispose: function () { } });
         return Disposable;
     }());
     exports.Disposable = Disposable;
+    /**
+     * Manages the lifecycle of a disposable value that may be changed.
+     *
+     * This ensures that when the the disposable value is changed, the previously held disposable is disposed of. You can
+     * also register a `MutableDisposable` on a `Disposable` to ensure it is automatically cleaned up.
+     */
+    var MutableDisposable = /** @class */ (function () {
+        function MutableDisposable() {
+            this._isDisposed = false;
+            trackDisposable(this);
+        }
+        Object.defineProperty(MutableDisposable.prototype, "value", {
+            get: function () {
+                return this._isDisposed ? undefined : this._value;
+            },
+            set: function (value) {
+                if (this._isDisposed || value === this._value) {
+                    return;
+                }
+                if (this._value) {
+                    this._value.dispose();
+                }
+                if (value) {
+                    markTracked(value);
+                }
+                this._value = value;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        MutableDisposable.prototype.clear = function () {
+            this.value = undefined;
+        };
+        MutableDisposable.prototype.dispose = function () {
+            this._isDisposed = true;
+            markTracked(this);
+            if (this._value) {
+                this._value.dispose();
+            }
+            this._value = undefined;
+        };
+        return MutableDisposable;
+    }());
+    exports.MutableDisposable = MutableDisposable;
     var ImmortalReference = /** @class */ (function () {
         function ImmortalReference(object) {
             this.object = object;
@@ -3615,6 +3844,16 @@ define(__m[16/*vs/base/common/linkedList*/], __M([0/*require*/,1/*exports*/,11/*
                 return res;
             }
         };
+        LinkedList.prototype.pop = function () {
+            if (this._last === Node.Undefined) {
+                return undefined;
+            }
+            else {
+                var res = this._last.element;
+                this._remove(this._last);
+                return res;
+            }
+        };
         LinkedList.prototype._remove = function (node) {
             if (node.prev !== Node.Undefined && node.next !== Node.Undefined) {
                 // middle
@@ -3693,8 +3932,7 @@ define(__m[9/*vs/base/common/event*/], __M([0/*require*/,1/*exports*/,5/*vs/base
     Object.defineProperty(exports, "__esModule", { value: true });
     var Event;
     (function (Event) {
-        var _disposable = { dispose: function () { } };
-        Event.None = function () { return _disposable; };
+        Event.None = function () { return lifecycle_1.Disposable.None; };
         /**
          * Given an event, returns another event which only fires once.
          */
@@ -3725,7 +3963,7 @@ define(__m[9/*vs/base/common/event*/], __M([0/*require*/,1/*exports*/,5/*vs/base
         Event.once = once;
         /**
          * Given an event and a `map` function, returns another event which maps each element
-         * throught the mapping function.
+         * through the mapping function.
          */
         function map(event, map) {
             return snapshot(function (listener, thisArgs, disposables) {
@@ -3770,13 +4008,13 @@ define(__m[9/*vs/base/common/event*/], __M([0/*require*/,1/*exports*/,5/*vs/base
             }
             return function (listener, thisArgs, disposables) {
                 if (thisArgs === void 0) { thisArgs = null; }
-                return lifecycle_1.combinedDisposable(events.map(function (event) { return event(function (e) { return listener.call(thisArgs, e); }, null, disposables); }));
+                return lifecycle_1.combinedDisposable.apply(void 0, events.map(function (event) { return event(function (e) { return listener.call(thisArgs, e); }, null, disposables); }));
             };
         }
         Event.any = any;
         /**
          * Given an event and a `merge` function, returns another event which maps each element
-         * and the cummulative result throught the `merge` function. Similar to `map`, but with memory.
+         * and the cumulative result through the `merge` function. Similar to `map`, but with memory.
          */
         function reduce(event, merge, initial) {
             var output = initial;
@@ -3976,6 +4214,21 @@ define(__m[9/*vs/base/common/event*/], __M([0/*require*/,1/*exports*/,5/*vs/base
             return result.event;
         }
         Event.fromNodeEventEmitter = fromNodeEventEmitter;
+        function fromDOMEventEmitter(emitter, eventName, map) {
+            if (map === void 0) { map = function (id) { return id; }; }
+            var fn = function () {
+                var args = [];
+                for (var _i = 0; _i < arguments.length; _i++) {
+                    args[_i] = arguments[_i];
+                }
+                return result.fire(map.apply(void 0, args));
+            };
+            var onFirstListenerAdd = function () { return emitter.addEventListener(eventName, fn); };
+            var onLastListenerRemove = function () { return emitter.removeEventListener(eventName, fn); };
+            var result = new Emitter({ onFirstListenerAdd: onFirstListenerAdd, onLastListenerRemove: onLastListenerRemove });
+            return result.event;
+        }
+        Event.fromDOMEventEmitter = fromDOMEventEmitter;
         function fromPromise(promise) {
             var emitter = new Emitter();
             var shouldEmit = false;
@@ -4125,7 +4378,10 @@ define(__m[9/*vs/base/common/event*/], __M([0/*require*/,1/*exports*/,5/*vs/base
                                 }
                             }
                         };
-                        if (Array.isArray(disposables)) {
+                        if (disposables instanceof lifecycle_1.DisposableStore) {
+                            disposables.add(result);
+                        }
+                        else if (Array.isArray(disposables)) {
                             disposables.push(result);
                         }
                         return result;
@@ -4520,13 +4776,14 @@ define(__m[3/*vs/base/common/platform*/], __M([0/*require*/,1/*exports*/]), func
     var _locale = undefined;
     var _language = LANGUAGE_DEFAULT;
     var _translationsConfigFile = undefined;
+    var _userAgent = undefined;
     var isElectronRenderer = (typeof process !== 'undefined' && typeof process.versions !== 'undefined' && typeof process.versions.electron !== 'undefined' && process.type === 'renderer');
     // OS detection
     if (typeof navigator === 'object' && !isElectronRenderer) {
-        var userAgent = navigator.userAgent;
-        _isWindows = userAgent.indexOf('Windows') >= 0;
-        _isMacintosh = userAgent.indexOf('Macintosh') >= 0;
-        _isLinux = userAgent.indexOf('Linux') >= 0;
+        _userAgent = navigator.userAgent;
+        _isWindows = _userAgent.indexOf('Windows') >= 0;
+        _isMacintosh = _userAgent.indexOf('Macintosh') >= 0;
+        _isLinux = _userAgent.indexOf('Linux') >= 0;
         _isWeb = true;
         _locale = navigator.language;
         _language = _locale;
@@ -4553,16 +4810,14 @@ define(__m[3/*vs/base/common/platform*/], __M([0/*require*/,1/*exports*/]), func
         _isNative = true;
     }
     var _platform = 0 /* Web */;
-    if (_isNative) {
-        if (_isMacintosh) {
-            _platform = 1 /* Mac */;
-        }
-        else if (_isWindows) {
-            _platform = 3 /* Windows */;
-        }
-        else if (_isLinux) {
-            _platform = 2 /* Linux */;
-        }
+    if (_isMacintosh) {
+        _platform = 1 /* Mac */;
+    }
+    else if (_isWindows) {
+        _platform = 3 /* Windows */;
+    }
+    else if (_isLinux) {
+        _platform = 2 /* Linux */;
     }
     exports.isWindows = _isWindows;
     exports.isMacintosh = _isMacintosh;
@@ -4870,6 +5125,45 @@ define(__m[13/*vs/base/common/strings*/], __M([0/*require*/,1/*exports*/]), func
         }
     }
     exports.compare = compare;
+    function compareIgnoreCase(a, b) {
+        var len = Math.min(a.length, b.length);
+        for (var i = 0; i < len; i++) {
+            var codeA = a.charCodeAt(i);
+            var codeB = b.charCodeAt(i);
+            if (codeA === codeB) {
+                // equal
+                continue;
+            }
+            if (isUpperAsciiLetter(codeA)) {
+                codeA += 32;
+            }
+            if (isUpperAsciiLetter(codeB)) {
+                codeB += 32;
+            }
+            var diff = codeA - codeB;
+            if (diff === 0) {
+                // equal -> ignoreCase
+                continue;
+            }
+            else if (isLowerAsciiLetter(codeA) && isLowerAsciiLetter(codeB)) {
+                //
+                return diff;
+            }
+            else {
+                return compare(a.toLowerCase(), b.toLowerCase());
+            }
+        }
+        if (a.length < b.length) {
+            return -1;
+        }
+        else if (a.length > b.length) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+    exports.compareIgnoreCase = compareIgnoreCase;
     function isLowerAsciiLetter(code) {
         return code >= 97 /* a */ && code <= 122 /* z */;
     }
@@ -5075,6 +5369,29 @@ define(__m[13/*vs/base/common/strings*/], __M([0/*require*/,1/*exports*/]), func
         return result;
     }
     exports.repeat = repeat;
+    function containsUppercaseCharacter(target, ignoreEscapedChars) {
+        if (ignoreEscapedChars === void 0) { ignoreEscapedChars = false; }
+        if (!target) {
+            return false;
+        }
+        if (ignoreEscapedChars) {
+            target = target.replace(/\\./g, '');
+        }
+        return target.toLowerCase() !== target;
+    }
+    exports.containsUppercaseCharacter = containsUppercaseCharacter;
+    /**
+     * Produces 'a'-'z', followed by 'A'-'Z'... followed by 'a'-'z', etc.
+     */
+    function singleLetterHash(n) {
+        var LETTERS_CNT = (90 /* Z */ - 65 /* A */ + 1);
+        n = n % (2 * LETTERS_CNT);
+        if (n < LETTERS_CNT) {
+            return String.fromCharCode(97 /* a */ + n);
+        }
+        return String.fromCharCode(65 /* A */ + n - LETTERS_CNT);
+    }
+    exports.singleLetterHash = singleLetterHash;
 });
 
 /*---------------------------------------------------------------------------------------------
@@ -5227,6 +5544,32 @@ define(__m[7/*vs/base/common/types*/], __M([0/*require*/,1/*exports*/]), functio
         return res;
     }
     exports.getAllPropertyNames = getAllPropertyNames;
+    function getAllMethodNames(obj) {
+        var methods = [];
+        for (var _i = 0, _a = getAllPropertyNames(obj); _i < _a.length; _i++) {
+            var prop = _a[_i];
+            if (typeof obj[prop] === 'function') {
+                methods.push(prop);
+            }
+        }
+        return methods;
+    }
+    exports.getAllMethodNames = getAllMethodNames;
+    function createProxyObject(methodNames, invoke) {
+        var createProxyMethod = function (method) {
+            return function () {
+                var args = Array.prototype.slice.call(arguments, 0);
+                return invoke(method, args);
+            };
+        };
+        var result = {};
+        for (var _i = 0, methodNames_1 = methodNames; _i < methodNames_1.length; _i++) {
+            var methodName = methodNames_1[_i];
+            result[methodName] = createProxyMethod(methodName);
+        }
+        return result;
+    }
+    exports.createProxyObject = createProxyObject;
     /**
      * Converts null to undefined, passes all other values through.
      */
@@ -5262,8 +5605,8 @@ define(__m[7/*vs/base/common/types*/], __M([0/*require*/,1/*exports*/]), functio
 
 define(__m[12/*vs/base/common/uri*/], __M([0/*require*/,1/*exports*/,3/*vs/base/common/platform*/]), function (require, exports, platform_1) {
     "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
     var _a;
+    Object.defineProperty(exports, "__esModule", { value: true });
     var _schemePattern = /^\w[\w\d+.-]*$/;
     var _singleSlashStart = /^\//;
     var _doubleSlashStart = /^\/\//;
@@ -5563,14 +5906,15 @@ define(__m[12/*vs/base/common/uri*/], __M([0/*require*/,1/*exports*/,3/*vs/base/
             }
             else {
                 var result = new _URI(data);
-                result._fsPath = data.fsPath;
                 result._formatted = data.external;
+                result._fsPath = data._sep === _pathSepMarker ? data.fsPath : null;
                 return result;
             }
         };
         return URI;
     }());
     exports.URI = URI;
+    var _pathSepMarker = platform_1.isWindows ? 1 : undefined;
     // tslint:disable-next-line:class-name
     var _URI = /** @class */ (function (_super) {
         __extends(_URI, _super);
@@ -5610,6 +5954,7 @@ define(__m[12/*vs/base/common/uri*/], __M([0/*require*/,1/*exports*/,3/*vs/base/
             // cached state
             if (this._fsPath) {
                 res.fsPath = this._fsPath;
+                res._sep = _pathSepMarker;
             }
             if (this._formatted) {
                 res.external = this._formatted;
@@ -5841,7 +6186,7 @@ define(__m[12/*vs/base/common/uri*/], __M([0/*require*/,1/*exports*/,3/*vs/base/
 
 
 
-define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*exports*/,5/*vs/base/common/errors*/,10/*vs/base/common/lifecycle*/,3/*vs/base/common/platform*/,7/*vs/base/common/types*/]), function (require, exports, errors_1, lifecycle_1, platform_1, types_1) {
+define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*exports*/,5/*vs/base/common/errors*/,10/*vs/base/common/lifecycle*/,3/*vs/base/common/platform*/,7/*vs/base/common/types*/]), function (require, exports, errors_1, lifecycle_1, platform_1, types) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var INITIALIZE = '$initialize';
@@ -5884,15 +6229,7 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
                 });
             });
         };
-        SimpleWorkerProtocol.prototype.handleMessage = function (serializedMessage) {
-            var message;
-            try {
-                message = JSON.parse(serializedMessage);
-            }
-            catch (e) {
-                // nothing
-                return;
-            }
+        SimpleWorkerProtocol.prototype.handleMessage = function (message) {
             if (!message || !message.vsWorker) {
                 return;
             }
@@ -5949,9 +6286,22 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
             });
         };
         SimpleWorkerProtocol.prototype._send = function (msg) {
-            var strMsg = JSON.stringify(msg);
-            // console.log('SENDING: ' + strMsg);
-            this._handler.sendMessage(strMsg);
+            var transfer = [];
+            if (msg.req) {
+                var m = msg;
+                for (var i = 0; i < m.args.length; i++) {
+                    if (m.args[i] instanceof ArrayBuffer) {
+                        transfer.push(m.args[i]);
+                    }
+                }
+            }
+            else {
+                var m = msg;
+                if (m.res instanceof ArrayBuffer) {
+                    transfer.push(m.res);
+                }
+            }
+            this._handler.sendMessage(msg, transfer);
         };
         return SimpleWorkerProtocol;
     }());
@@ -5960,7 +6310,7 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
      */
     var SimpleWorkerClient = /** @class */ (function (_super) {
         __extends(SimpleWorkerClient, _super);
-        function SimpleWorkerClient(workerFactory, moduleId) {
+        function SimpleWorkerClient(workerFactory, moduleId, host) {
             var _this = _super.call(this) || this;
             var lazyProxyReject = null;
             _this._worker = _this._register(workerFactory.create('vs/base/common/worker/simpleWorker', function (msg) {
@@ -5973,12 +6323,19 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
                 }
             }));
             _this._protocol = new SimpleWorkerProtocol({
-                sendMessage: function (msg) {
-                    _this._worker.postMessage(msg);
+                sendMessage: function (msg, transfer) {
+                    _this._worker.postMessage(msg, transfer);
                 },
                 handleMessage: function (method, args) {
-                    // Intentionally not supporting worker -> main requests
-                    return Promise.resolve(null);
+                    if (typeof host[method] !== 'function') {
+                        return Promise.reject(new Error('Missing method ' + method + ' on main thread host.'));
+                    }
+                    try {
+                        return Promise.resolve(host[method].apply(host, args));
+                    }
+                    catch (e) {
+                        return Promise.reject(e);
+                    }
                 }
             });
             _this._protocol.setWorkerId(_this._worker.getId());
@@ -5992,36 +6349,27 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
                 // Get the configuration from requirejs
                 loaderConfiguration = self.requirejs.s.contexts._.config;
             }
+            var hostMethods = types.getAllMethodNames(host);
             // Send initialize message
             _this._onModuleLoaded = _this._protocol.sendMessage(INITIALIZE, [
                 _this._worker.getId(),
+                JSON.parse(JSON.stringify(loaderConfiguration)),
                 moduleId,
-                loaderConfiguration
+                hostMethods,
             ]);
+            // Create proxy to loaded code
+            var proxyMethodRequest = function (method, args) {
+                return _this._request(method, args);
+            };
             _this._lazyProxy = new Promise(function (resolve, reject) {
                 lazyProxyReject = reject;
                 _this._onModuleLoaded.then(function (availableMethods) {
-                    var proxy = {};
-                    for (var _i = 0, availableMethods_1 = availableMethods; _i < availableMethods_1.length; _i++) {
-                        var methodName = availableMethods_1[_i];
-                        proxy[methodName] = createProxyMethod(methodName, proxyMethodRequest);
-                    }
-                    resolve(proxy);
+                    resolve(types.createProxyObject(availableMethods, proxyMethodRequest));
                 }, function (e) {
                     reject(e);
                     _this._onError('Worker failed to load ' + moduleId, e);
                 });
             });
-            // Create proxy to loaded code
-            var proxyMethodRequest = function (method, args) {
-                return _this._request(method, args);
-            };
-            var createProxyMethod = function (method, proxyMethodRequest) {
-                return function () {
-                    var args = Array.prototype.slice.call(arguments, 0);
-                    return proxyMethodRequest(method, args);
-                };
-            };
             return _this;
         }
         SimpleWorkerClient.prototype.getProxyObject = function () {
@@ -6046,12 +6394,13 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
      * Worker side
      */
     var SimpleWorkerServer = /** @class */ (function () {
-        function SimpleWorkerServer(postSerializedMessage, requestHandler) {
+        function SimpleWorkerServer(postMessage, requestHandlerFactory) {
             var _this = this;
-            this._requestHandler = requestHandler;
+            this._requestHandlerFactory = requestHandlerFactory;
+            this._requestHandler = null;
             this._protocol = new SimpleWorkerProtocol({
-                sendMessage: function (msg) {
-                    postSerializedMessage(msg);
+                sendMessage: function (msg, transfer) {
+                    postMessage(msg, transfer);
                 },
                 handleMessage: function (method, args) { return _this._handleMessage(method, args); }
             });
@@ -6061,7 +6410,7 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
         };
         SimpleWorkerServer.prototype._handleMessage = function (method, args) {
             if (method === INITIALIZE) {
-                return this.initialize(args[0], args[1], args[2]);
+                return this.initialize(args[0], args[1], args[2], args[3]);
             }
             if (!this._requestHandler || typeof this._requestHandler[method] !== 'function') {
                 return Promise.reject(new Error('Missing requestHandler or method: ' + method));
@@ -6073,19 +6422,17 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
                 return Promise.reject(e);
             }
         };
-        SimpleWorkerServer.prototype.initialize = function (workerId, moduleId, loaderConfig) {
+        SimpleWorkerServer.prototype.initialize = function (workerId, loaderConfig, moduleId, hostMethods) {
             var _this = this;
             this._protocol.setWorkerId(workerId);
-            if (this._requestHandler) {
+            var proxyMethodRequest = function (method, args) {
+                return _this._protocol.sendMessage(method, args);
+            };
+            var hostProxy = types.createProxyObject(hostMethods, proxyMethodRequest);
+            if (this._requestHandlerFactory) {
                 // static request handler
-                var methods = [];
-                for (var _i = 0, _a = types_1.getAllPropertyNames(this._requestHandler); _i < _a.length; _i++) {
-                    var prop = _a[_i];
-                    if (typeof this._requestHandler[prop] === 'function') {
-                        methods.push(prop);
-                    }
-                }
-                return Promise.resolve(methods);
+                this._requestHandler = this._requestHandlerFactory(hostProxy);
+                return Promise.resolve(types.getAllMethodNames(this._requestHandler));
             }
             if (loaderConfig) {
                 // Remove 'baseUrl', handling it is beyond scope for now
@@ -6103,25 +6450,13 @@ define(__m[33/*vs/base/common/worker/simpleWorker*/], __M([0/*require*/,1/*expor
             }
             return new Promise(function (resolve, reject) {
                 // Use the global require to be sure to get the global config
-                self.require([moduleId], function () {
-                    var result = [];
-                    for (var _i = 0; _i < arguments.length; _i++) {
-                        result[_i] = arguments[_i];
-                    }
-                    var handlerModule = result[0];
-                    _this._requestHandler = handlerModule.create();
+                self.require([moduleId], function (module) {
+                    _this._requestHandler = module.create(hostProxy);
                     if (!_this._requestHandler) {
                         reject(new Error("No RequestHandler!"));
                         return;
                     }
-                    var methods = [];
-                    for (var _a = 0, _b = types_1.getAllPropertyNames(_this._requestHandler); _a < _b.length; _a++) {
-                        var prop = _b[_a];
-                        if (typeof _this._requestHandler[prop] === 'function') {
-                            methods.push(prop);
-                        }
-                    }
-                    resolve(methods);
+                    resolve(types.getAllMethodNames(_this._requestHandler));
                 }, reject);
             });
         };
@@ -6153,7 +6488,7 @@ define(__m[2/*vs/editor/common/core/position*/], __M([0/*require*/,1/*exports*/]
             this.column = column;
         }
         /**
-         * Create a new postion from this position.
+         * Create a new position from this position.
          *
          * @param newLineNumber new line number
          * @param newColumn new column
@@ -6360,6 +6695,30 @@ define(__m[6/*vs/editor/common/core/range*/], __M([0/*require*/,1/*exports*/,2/*
                 return false;
             }
             if (otherRange.endLineNumber === range.endLineNumber && otherRange.endColumn > range.endColumn) {
+                return false;
+            }
+            return true;
+        };
+        /**
+         * Test if `range` is strictly in this range. `range` must start after and end before this range for the result to be true.
+         */
+        Range.prototype.strictContainsRange = function (range) {
+            return Range.strictContainsRange(this, range);
+        };
+        /**
+         * Test if `otherRange` is strinctly in `range` (must start after, and end before). If the ranges are equal, will return false.
+         */
+        Range.strictContainsRange = function (range, otherRange) {
+            if (otherRange.startLineNumber < range.startLineNumber || otherRange.endLineNumber < range.startLineNumber) {
+                return false;
+            }
+            if (otherRange.startLineNumber > range.endLineNumber || otherRange.endLineNumber > range.endLineNumber) {
+                return false;
+            }
+            if (otherRange.startLineNumber === range.startLineNumber && otherRange.startColumn <= range.startColumn) {
+                return false;
+            }
+            if (otherRange.endLineNumber === range.endLineNumber && otherRange.endColumn >= range.endColumn) {
                 return false;
             }
             return true;
@@ -7145,6 +7504,7 @@ define(__m[23/*vs/editor/common/diff/diffComputer*/], __M([0/*require*/,1/*expor
             this.modifiedLines = modifiedLines;
             this.original = new LineMarkerSequence(originalLines);
             this.modified = new LineMarkerSequence(modifiedLines);
+            this.computationStartTime = (new Date()).getTime();
         }
         DiffComputer.prototype.computeDiff = function () {
             if (this.original.getLength() === 1 && this.original.getElementAtIndex(0).length === 0) {
@@ -8060,6 +8420,7 @@ define(__m[27/*vs/editor/common/standalone/standaloneEnums*/], __M([0/*require*/
     var MarkerTag;
     (function (MarkerTag) {
         MarkerTag[MarkerTag["Unnecessary"] = 1] = "Unnecessary";
+        MarkerTag[MarkerTag["Deprecated"] = 2] = "Deprecated";
     })(MarkerTag = exports.MarkerTag || (exports.MarkerTag = {}));
     var MarkerSeverity;
     (function (MarkerSeverity) {
@@ -8279,6 +8640,13 @@ define(__m[27/*vs/editor/common/standalone/standaloneEnums*/], __M([0/*require*/
         OverviewRulerLane[OverviewRulerLane["Right"] = 4] = "Right";
         OverviewRulerLane[OverviewRulerLane["Full"] = 7] = "Full";
     })(OverviewRulerLane = exports.OverviewRulerLane || (exports.OverviewRulerLane = {}));
+    /**
+     * Position in the minimap to render the decoration.
+     */
+    var MinimapPosition;
+    (function (MinimapPosition) {
+        MinimapPosition[MinimapPosition["Inline"] = 1] = "Inline";
+    })(MinimapPosition = exports.MinimapPosition || (exports.MinimapPosition = {}));
     /**
      * End of line character preference.
      */
@@ -8624,6 +8992,10 @@ define(__m[27/*vs/editor/common/standalone/standaloneEnums*/], __M([0/*require*/
         CompletionItemKind[CompletionItemKind["TypeParameter"] = 24] = "TypeParameter";
         CompletionItemKind[CompletionItemKind["Snippet"] = 25] = "Snippet";
     })(CompletionItemKind = exports.CompletionItemKind || (exports.CompletionItemKind = {}));
+    var CompletionItemTag;
+    (function (CompletionItemTag) {
+        CompletionItemTag[CompletionItemTag["Deprecated"] = 1] = "Deprecated";
+    })(CompletionItemTag = exports.CompletionItemTag || (exports.CompletionItemTag = {}));
     var CompletionItemInsertTextRule;
     (function (CompletionItemInsertTextRule) {
         /**
@@ -8701,6 +9073,10 @@ define(__m[27/*vs/editor/common/standalone/standaloneEnums*/], __M([0/*require*/
         SymbolKind[SymbolKind["Operator"] = 24] = "Operator";
         SymbolKind[SymbolKind["TypeParameter"] = 25] = "TypeParameter";
     })(SymbolKind = exports.SymbolKind || (exports.SymbolKind = {}));
+    var SymbolTag;
+    (function (SymbolTag) {
+        SymbolTag[SymbolTag["Deprecated"] = 1] = "Deprecated";
+    })(SymbolTag = exports.SymbolTag || (exports.SymbolTag = {}));
 });
 
 /*---------------------------------------------------------------------------------------------
@@ -9076,7 +9452,7 @@ define(__m[30/*vs/editor/common/model/mirrorTextModel*/], __M([0/*require*/,1/*e
 
 
 
-define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*/,1/*exports*/,21/*vs/base/common/arrays*/,8/*vs/base/common/diff/diff*/,11/*vs/base/common/iterator*/,3/*vs/base/common/platform*/,12/*vs/base/common/uri*/,2/*vs/editor/common/core/position*/,6/*vs/editor/common/core/range*/,23/*vs/editor/common/diff/diffComputer*/,30/*vs/editor/common/model/mirrorTextModel*/,24/*vs/editor/common/model/wordHelper*/,25/*vs/editor/common/modes/linkComputer*/,26/*vs/editor/common/modes/supports/inplaceReplaceSupport*/,28/*vs/editor/common/standalone/standaloneBase*/,7/*vs/base/common/types*/]), function (require, exports, arrays_1, diff_1, iterator_1, platform_1, uri_1, position_1, range_1, diffComputer_1, mirrorTextModel_1, wordHelper_1, linkComputer_1, inplaceReplaceSupport_1, standaloneBase_1, types_1) {
+define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*/,1/*exports*/,21/*vs/base/common/arrays*/,8/*vs/base/common/diff/diff*/,11/*vs/base/common/iterator*/,3/*vs/base/common/platform*/,12/*vs/base/common/uri*/,2/*vs/editor/common/core/position*/,6/*vs/editor/common/core/range*/,23/*vs/editor/common/diff/diffComputer*/,30/*vs/editor/common/model/mirrorTextModel*/,24/*vs/editor/common/model/wordHelper*/,25/*vs/editor/common/modes/linkComputer*/,26/*vs/editor/common/modes/supports/inplaceReplaceSupport*/,28/*vs/editor/common/standalone/standaloneBase*/,7/*vs/base/common/types*/]), function (require, exports, arrays_1, diff_1, iterator_1, platform_1, uri_1, position_1, range_1, diffComputer_1, mirrorTextModel_1, wordHelper_1, linkComputer_1, inplaceReplaceSupport_1, standaloneBase_1, types) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -9289,13 +9665,43 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
     /**
      * @internal
      */
-    var BaseEditorSimpleWorker = /** @class */ (function () {
-        function BaseEditorSimpleWorker(foreignModuleFactory) {
+    var EditorSimpleWorker = /** @class */ (function () {
+        function EditorSimpleWorker(host, foreignModuleFactory) {
+            this._host = host;
+            this._models = Object.create(null);
             this._foreignModuleFactory = foreignModuleFactory;
             this._foreignModule = null;
         }
+        EditorSimpleWorker.prototype.dispose = function () {
+            this._models = Object.create(null);
+        };
+        EditorSimpleWorker.prototype._getModel = function (uri) {
+            return this._models[uri];
+        };
+        EditorSimpleWorker.prototype._getModels = function () {
+            var _this = this;
+            var all = [];
+            Object.keys(this._models).forEach(function (key) { return all.push(_this._models[key]); });
+            return all;
+        };
+        EditorSimpleWorker.prototype.acceptNewModel = function (data) {
+            this._models[data.url] = new MirrorModel(uri_1.URI.parse(data.url), data.lines, data.EOL, data.versionId);
+        };
+        EditorSimpleWorker.prototype.acceptModelChanged = function (strURL, e) {
+            if (!this._models[strURL]) {
+                return;
+            }
+            var model = this._models[strURL];
+            model.onEvents(e);
+        };
+        EditorSimpleWorker.prototype.acceptRemovedModel = function (strURL) {
+            if (!this._models[strURL]) {
+                return;
+            }
+            delete this._models[strURL];
+        };
         // ---- BEGIN diff --------------------------------------------------------------------------
-        BaseEditorSimpleWorker.prototype.computeDiff = function (originalUrl, modifiedUrl, ignoreTrimWhitespace) {
+        EditorSimpleWorker.prototype.computeDiff = function (originalUrl, modifiedUrl, ignoreTrimWhitespace) {
             var original = this._getModel(originalUrl);
             var modified = this._getModel(modifiedUrl);
             if (!original || !modified) {
@@ -9316,7 +9722,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
                 changes: changes
             });
         };
-        BaseEditorSimpleWorker.prototype._modelsAreIdentical = function (original, modified) {
+        EditorSimpleWorker.prototype._modelsAreIdentical = function (original, modified) {
             var originalLineCount = original.getLineCount();
             var modifiedLineCount = modified.getLineCount();
             if (originalLineCount !== modifiedLineCount) {
@@ -9331,7 +9737,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             }
             return true;
         };
-        BaseEditorSimpleWorker.prototype.computeMoreMinimalEdits = function (modelUrl, edits) {
+        EditorSimpleWorker.prototype.computeMoreMinimalEdits = function (modelUrl, edits) {
             var model = this._getModel(modelUrl);
             if (!model) {
                 return Promise.resolve(edits);
@@ -9363,7 +9769,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
                     continue;
                 }
                 // make sure diff won't take too long
-                if (Math.max(text.length, original.length) > BaseEditorSimpleWorker._diffLimit) {
+                if (Math.max(text.length, original.length) > EditorSimpleWorker._diffLimit) {
                     result.push({ range: range, text: text });
                     continue;
                 }
@@ -9389,14 +9795,14 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             return Promise.resolve(result);
         };
         // ---- END minimal edits ---------------------------------------------------------------
-        BaseEditorSimpleWorker.prototype.computeLinks = function (modelUrl) {
+        EditorSimpleWorker.prototype.computeLinks = function (modelUrl) {
             var model = this._getModel(modelUrl);
             if (!model) {
                 return Promise.resolve(null);
             }
             return Promise.resolve(linkComputer_1.computeLinks(model));
         };
-        BaseEditorSimpleWorker.prototype.textualSuggest = function (modelUrl, position, wordDef, wordDefFlags) {
+        EditorSimpleWorker.prototype.textualSuggest = function (modelUrl, position, wordDef, wordDefFlags) {
             var model = this._getModel(modelUrl);
             if (!model) {
                 return Promise.resolve(null);
@@ -9409,7 +9815,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             if (wordAt) {
                 seen[model.getValueInRange(wordAt)] = true;
             }
-            for (var iter = model.createWordIterator(wordDefRegExp), e = iter.next(); !e.done && suggestions.length <= BaseEditorSimpleWorker._suggestionsLimit; e = iter.next()) {
+            for (var iter = model.createWordIterator(wordDefRegExp), e = iter.next(); !e.done && suggestions.length <= EditorSimpleWorker._suggestionsLimit; e = iter.next()) {
                 var word = e.value;
                 if (seen[word]) {
                     continue;
@@ -9429,7 +9835,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
         };
         // ---- END suggest --------------------------------------------------------------------------
         //#region -- word ranges --
-        BaseEditorSimpleWorker.prototype.computeWordRanges = function (modelUrl, range, wordDef, wordDefFlags) {
+        EditorSimpleWorker.prototype.computeWordRanges = function (modelUrl, range, wordDef, wordDefFlags) {
             var model = this._getModel(modelUrl);
             if (!model) {
                 return Promise.resolve(Object.create(null));
@@ -9459,7 +9865,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             return Promise.resolve(result);
         };
         //#endregion
-        BaseEditorSimpleWorker.prototype.navigateValueSet = function (modelUrl, range, up, wordDef, wordDefFlags) {
+        EditorSimpleWorker.prototype.navigateValueSet = function (modelUrl, range, up, wordDef, wordDefFlags) {
             var model = this._getModel(modelUrl);
             if (!model) {
                 return Promise.resolve(null);
@@ -9483,9 +9889,14 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             return Promise.resolve(result);
         };
         // ---- BEGIN foreign module support --------------------------------------------------------------------------
-        BaseEditorSimpleWorker.prototype.loadForeignModule = function (moduleId, createData) {
+        EditorSimpleWorker.prototype.loadForeignModule = function (moduleId, createData, foreignHostMethods) {
             var _this = this;
+            var proxyMethodRequest = function (method, args) {
+                return _this._host.fhr(method, args);
+            };
+            var foreignHost = types.createProxyObject(foreignHostMethods, proxyMethodRequest);
             var ctx = {
+                host: foreignHost,
                 getMirrorModels: function () {
                     return _this._getModels();
                 }
@@ -9493,27 +9904,13 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             if (this._foreignModuleFactory) {
                 this._foreignModule = this._foreignModuleFactory(ctx, createData);
                 // static foreing module
-                var methods = [];
-                for (var _i = 0, _a = types_1.getAllPropertyNames(this._foreignModule); _i < _a.length; _i++) {
-                    var prop = _a[_i];
-                    if (typeof this._foreignModule[prop] === 'function') {
-                        methods.push(prop);
-                    }
-                }
-                return Promise.resolve(methods);
+                return Promise.resolve(types.getAllMethodNames(this._foreignModule));
             }
             // ESM-comment-begin
             return new Promise(function (resolve, reject) {
                 require([moduleId], function (foreignModule) {
                     _this._foreignModule = foreignModule.create(ctx, createData);
-                    var methods = [];
-                    for (var _i = 0, _a = types_1.getAllPropertyNames(_this._foreignModule); _i < _a.length; _i++) {
-                        var prop = _a[_i];
-                        if (typeof _this._foreignModule[prop] === 'function') {
-                            methods.push(prop);
-                        }
-                    }
-                    resolve(methods);
+                    resolve(types.getAllMethodNames(_this._foreignModule));
                 }, reject);
             });
             // ESM-comment-end
@@ -9522,7 +9919,7 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
             // ESM-uncomment-end
         };
         // foreign method request
-        BaseEditorSimpleWorker.prototype.fmr = function (method, args) {
+        EditorSimpleWorker.prototype.fmr = function (method, args) {
             if (!this._foreignModule || typeof this._foreignModule[method] !== 'function') {
                 return Promise.reject(new Error('Missing requestHandler or method: ' + method));
             }
@@ -9535,59 +9932,18 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
         };
         // ---- END diff --------------------------------------------------------------------------
         // ---- BEGIN minimal edits ---------------------------------------------------------------
-        BaseEditorSimpleWorker._diffLimit = 100000;
+        EditorSimpleWorker._diffLimit = 100000;
         // ---- BEGIN suggest --------------------------------------------------------------------------
-        BaseEditorSimpleWorker._suggestionsLimit = 10000;
-        return BaseEditorSimpleWorker;
+        EditorSimpleWorker._suggestionsLimit = 10000;
+        return EditorSimpleWorker;
     }());
-    exports.BaseEditorSimpleWorker = BaseEditorSimpleWorker;
-    /**
-     * @internal
-     */
-    var EditorSimpleWorkerImpl = /** @class */ (function (_super) {
-        __extends(EditorSimpleWorkerImpl, _super);
-        function EditorSimpleWorkerImpl(foreignModuleFactory) {
-            var _this = _super.call(this, foreignModuleFactory) || this;
-            _this._models = Object.create(null);
-            return _this;
-        }
-        EditorSimpleWorkerImpl.prototype.dispose = function () {
-            this._models = Object.create(null);
-        };
-        EditorSimpleWorkerImpl.prototype._getModel = function (uri) {
-            return this._models[uri];
-        };
-        EditorSimpleWorkerImpl.prototype._getModels = function () {
-            var _this = this;
-            var all = [];
-            Object.keys(this._models).forEach(function (key) { return all.push(_this._models[key]); });
-            return all;
-        };
-        EditorSimpleWorkerImpl.prototype.acceptNewModel = function (data) {
-            this._models[data.url] = new MirrorModel(uri_1.URI.parse(data.url), data.lines, data.EOL, data.versionId);
-        };
-        EditorSimpleWorkerImpl.prototype.acceptModelChanged = function (strURL, e) {
-            if (!this._models[strURL]) {
-                return;
-            }
-            var model = this._models[strURL];
-            model.onEvents(e);
-        };
-        EditorSimpleWorkerImpl.prototype.acceptRemovedModel = function (strURL) {
-            if (!this._models[strURL]) {
-                return;
-            }
-            delete this._models[strURL];
-        };
-        return EditorSimpleWorkerImpl;
-    }(BaseEditorSimpleWorker));
-    exports.EditorSimpleWorkerImpl = EditorSimpleWorkerImpl;
+    exports.EditorSimpleWorker = EditorSimpleWorker;
     /**
      * Called on the worker side
      * @internal
      */
-    function create() {
-        return new EditorSimpleWorkerImpl(null);
+    function create(host) {
+        return new EditorSimpleWorker(host, null);
     }
     exports.create = create;
     if (typeof importScripts === 'function') {
@@ -9614,8 +9970,8 @@ define(__m[31/*vs/editor/common/services/editorSimpleWorker*/], __M([0/*require*
     var loadCode = function (moduleId) {
         require([moduleId], function (ws) {
             setTimeout(function () {
-                var messageHandler = ws.create(function (msg) {
-                    self.postMessage(msg);
+                var messageHandler = ws.create(function (msg, transfer) {
+                    self.postMessage(msg, transfer);
                 }, null);
                 self.onmessage = function (e) { return messageHandler.onmessage(e.data); };
                 while (beforeReadyMessages.length > 0) {

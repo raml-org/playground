@@ -159,7 +159,7 @@ var QuickOutlineAction = /** @class */ (function (_super) {
             var highlights = matchesFuzzy(normalizedSearchValue, label);
             if (highlights) {
                 // Show parent scope as description
-                var description = null;
+                var description = undefined;
                 if (element.containerName) {
                     description = element.containerName;
                 }

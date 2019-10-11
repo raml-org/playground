@@ -79,6 +79,16 @@ var LinkedList = /** @class */ (function () {
             return res;
         }
     };
+    LinkedList.prototype.pop = function () {
+        if (this._last === Node.Undefined) {
+            return undefined;
+        }
+        else {
+            var res = this._last.element;
+            this._remove(this._last);
+            return res;
+        }
+    };
     LinkedList.prototype._remove = function (node) {
         if (node.prev !== Node.Undefined && node.next !== Node.Undefined) {
             // middle

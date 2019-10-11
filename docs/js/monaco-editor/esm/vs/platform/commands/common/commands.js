@@ -7,6 +7,7 @@ import { validateConstraints } from '../../../base/common/types.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { Emitter } from '../../../base/common/event.js';
 import { LinkedList } from '../../../base/common/linkedList.js';
+import { keys } from '../../../base/common/map.js';
 export var ICommandService = createDecorator('commandService');
 export var CommandsRegistry = new /** @class */ (function () {
     function class_1() {
@@ -79,11 +80,14 @@ export var CommandsRegistry = new /** @class */ (function () {
         return list.iterator().next().value;
     };
     class_1.prototype.getCommands = function () {
-        var _this = this;
-        var result = Object.create(null);
-        this._commands.forEach(function (value, key) {
-            result[key] = _this.getCommand(key);
-        });
+        var result = new Map();
+        for (var _i = 0, _a = keys(this._commands); _i < _a.length; _i++) {
+            var key = _a[_i];
+            var command = this.getCommand(key);
+            if (command) {
+                result.set(key, command);
+            }
+        }
         return result;
     };
     return class_1;

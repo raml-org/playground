@@ -40,12 +40,14 @@ var FindInput = /** @class */ (function (_super) {
         _this._onCaseSensitiveKeyDown = _this._register(new Emitter());
         _this.onCaseSensitiveKeyDown = _this._onCaseSensitiveKeyDown.event;
         _this._onRegexKeyDown = _this._register(new Emitter());
+        _this.onRegexKeyDown = _this._onRegexKeyDown.event;
         _this._lastHighlightFindOptions = 0;
         _this.contextViewProvider = contextViewProvider;
         _this.placeholder = options.placeholder || '';
         _this.validation = options.validation;
         _this.label = options.label || NLS_DEFAULT_LABEL;
         _this.inputActiveOptionBorder = options.inputActiveOptionBorder;
+        _this.inputActiveOptionBackground = options.inputActiveOptionBackground;
         _this.inputBackground = options.inputBackground;
         _this.inputForeground = options.inputForeground;
         _this.inputBorder = options.inputBorder;
@@ -58,7 +60,121 @@ var FindInput = /** @class */ (function (_super) {
         _this.inputValidationErrorBorder = options.inputValidationErrorBorder;
         _this.inputValidationErrorBackground = options.inputValidationErrorBackground;
         _this.inputValidationErrorForeground = options.inputValidationErrorForeground;
-        _this.buildDomNode(options.appendCaseSensitiveLabel || '', options.appendWholeWordsLabel || '', options.appendRegexLabel || '', options.history || [], !!options.flexibleHeight);
+        var appendCaseSensitiveLabel = options.appendCaseSensitiveLabel || '';
+        var appendWholeWordsLabel = options.appendWholeWordsLabel || '';
+        var appendRegexLabel = options.appendRegexLabel || '';
+        var history = options.history || [];
+        var flexibleHeight = !!options.flexibleHeight;
+        var flexibleWidth = !!options.flexibleWidth;
+        var flexibleMaxHeight = options.flexibleMaxHeight;
+        _this.domNode = document.createElement('div');
+        dom.addClass(_this.domNode, 'monaco-findInput');
+        _this.inputBox = _this._register(new HistoryInputBox(_this.domNode, _this.contextViewProvider, {
+            placeholder: _this.placeholder || '',
+            ariaLabel: _this.label || '',
+            validationOptions: {
+                validation: _this.validation
+            },
+            inputBackground: _this.inputBackground,
+            inputForeground: _this.inputForeground,
+            inputBorder: _this.inputBorder,
+            inputValidationInfoBackground: _this.inputValidationInfoBackground,
+            inputValidationInfoForeground: _this.inputValidationInfoForeground,
+            inputValidationInfoBorder: _this.inputValidationInfoBorder,
+            inputValidationWarningBackground: _this.inputValidationWarningBackground,
+            inputValidationWarningForeground: _this.inputValidationWarningForeground,
+            inputValidationWarningBorder: _this.inputValidationWarningBorder,
+            inputValidationErrorBackground: _this.inputValidationErrorBackground,
+            inputValidationErrorForeground: _this.inputValidationErrorForeground,
+            inputValidationErrorBorder: _this.inputValidationErrorBorder,
+            history: history,
+            flexibleHeight: flexibleHeight,
+            flexibleWidth: flexibleWidth,
+            flexibleMaxHeight: flexibleMaxHeight
+        }));
+        _this.regex = _this._register(new RegexCheckbox({
+            appendTitle: appendRegexLabel,
+            isChecked: false,
+            inputActiveOptionBorder: _this.inputActiveOptionBorder,
+            inputActiveOptionBackground: _this.inputActiveOptionBackground
+        }));
+        _this._register(_this.regex.onChange(function (viaKeyboard) {
+            _this._onDidOptionChange.fire(viaKeyboard);
+            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
+                _this.inputBox.focus();
+            }
+            _this.validate();
+        }));
+        _this._register(_this.regex.onKeyDown(function (e) {
+            _this._onRegexKeyDown.fire(e);
+        }));
+        _this.wholeWords = _this._register(new WholeWordsCheckbox({
+            appendTitle: appendWholeWordsLabel,
+            isChecked: false,
+            inputActiveOptionBorder: _this.inputActiveOptionBorder,
+            inputActiveOptionBackground: _this.inputActiveOptionBackground
+        }));
+        _this._register(_this.wholeWords.onChange(function (viaKeyboard) {
+            _this._onDidOptionChange.fire(viaKeyboard);
+            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
+                _this.inputBox.focus();
+            }
+            _this.validate();
+        }));
+        _this.caseSensitive = _this._register(new CaseSensitiveCheckbox({
+            appendTitle: appendCaseSensitiveLabel,
+            isChecked: false,
+            inputActiveOptionBorder: _this.inputActiveOptionBorder,
+            inputActiveOptionBackground: _this.inputActiveOptionBackground
+        }));
+        _this._register(_this.caseSensitive.onChange(function (viaKeyboard) {
+            _this._onDidOptionChange.fire(viaKeyboard);
+            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
+                _this.inputBox.focus();
+            }
+            _this.validate();
+        }));
+        _this._register(_this.caseSensitive.onKeyDown(function (e) {
+            _this._onCaseSensitiveKeyDown.fire(e);
+        }));
+        if (_this._showOptionButtons) {
+            _this.inputBox.paddingRight = _this.caseSensitive.width() + _this.wholeWords.width() + _this.regex.width();
+        }
+        // Arrow-Key support to navigate between options
+        var indexes = [_this.caseSensitive.domNode, _this.wholeWords.domNode, _this.regex.domNode];
+        _this.onkeydown(_this.domNode, function (event) {
+            if (event.equals(15 /* LeftArrow */) || event.equals(17 /* RightArrow */) || event.equals(9 /* Escape */)) {
+                var index = indexes.indexOf(document.activeElement);
+                if (index >= 0) {
+                    var newIndex = -1;
+                    if (event.equals(17 /* RightArrow */)) {
+                        newIndex = (index + 1) % indexes.length;
+                    }
+                    else if (event.equals(15 /* LeftArrow */)) {
+                        if (index === 0) {
+                            newIndex = indexes.length - 1;
+                        }
+                        else {
+                            newIndex = index - 1;
+                        }
+                    }
+                    if (event.equals(9 /* Escape */)) {
+                        indexes[index].blur();
+                    }
+                    else if (newIndex >= 0) {
+                        indexes[newIndex].focus();
+                    }
+                    dom.EventHelper.stop(event, true);
+                }
+            }
+        });
+        var controls = document.createElement('div');
+        controls.className = 'controls';
+        controls.style.display = _this._showOptionButtons ? 'block' : 'none';
+        controls.appendChild(_this.caseSensitive.domNode);
+        controls.appendChild(_this.wholeWords.domNode);
+        controls.appendChild(_this.regex.domNode);
+        _this.domNode.appendChild(controls);
         if (parent) {
             parent.appendChild(_this.domNode);
         }
@@ -103,6 +219,7 @@ var FindInput = /** @class */ (function (_super) {
     };
     FindInput.prototype.style = function (styles) {
         this.inputActiveOptionBorder = styles.inputActiveOptionBorder;
+        this.inputActiveOptionBackground = styles.inputActiveOptionBackground;
         this.inputBackground = styles.inputBackground;
         this.inputForeground = styles.inputForeground;
         this.inputBorder = styles.inputBorder;
@@ -121,6 +238,7 @@ var FindInput = /** @class */ (function (_super) {
         if (this.domNode) {
             var checkBoxStyles = {
                 inputActiveOptionBorder: this.inputActiveOptionBorder,
+                inputActiveOptionBackground: this.inputActiveOptionBackground,
             };
             this.regex.style(checkBoxStyles);
             this.wholeWords.style(checkBoxStyles);
@@ -174,116 +292,6 @@ var FindInput = /** @class */ (function (_super) {
         dom.removeClass(this.domNode, 'highlight-' + (this._lastHighlightFindOptions));
         this._lastHighlightFindOptions = 1 - this._lastHighlightFindOptions;
         dom.addClass(this.domNode, 'highlight-' + (this._lastHighlightFindOptions));
-    };
-    FindInput.prototype.buildDomNode = function (appendCaseSensitiveLabel, appendWholeWordsLabel, appendRegexLabel, history, flexibleHeight) {
-        var _this = this;
-        this.domNode = document.createElement('div');
-        dom.addClass(this.domNode, 'monaco-findInput');
-        this.inputBox = this._register(new HistoryInputBox(this.domNode, this.contextViewProvider, {
-            placeholder: this.placeholder || '',
-            ariaLabel: this.label || '',
-            validationOptions: {
-                validation: this.validation
-            },
-            inputBackground: this.inputBackground,
-            inputForeground: this.inputForeground,
-            inputBorder: this.inputBorder,
-            inputValidationInfoBackground: this.inputValidationInfoBackground,
-            inputValidationInfoForeground: this.inputValidationInfoForeground,
-            inputValidationInfoBorder: this.inputValidationInfoBorder,
-            inputValidationWarningBackground: this.inputValidationWarningBackground,
-            inputValidationWarningForeground: this.inputValidationWarningForeground,
-            inputValidationWarningBorder: this.inputValidationWarningBorder,
-            inputValidationErrorBackground: this.inputValidationErrorBackground,
-            inputValidationErrorForeground: this.inputValidationErrorForeground,
-            inputValidationErrorBorder: this.inputValidationErrorBorder,
-            history: history,
-            flexibleHeight: flexibleHeight
-        }));
-        this.regex = this._register(new RegexCheckbox({
-            appendTitle: appendRegexLabel,
-            isChecked: false,
-            inputActiveOptionBorder: this.inputActiveOptionBorder
-        }));
-        this._register(this.regex.onChange(function (viaKeyboard) {
-            _this._onDidOptionChange.fire(viaKeyboard);
-            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
-                _this.inputBox.focus();
-            }
-            _this.validate();
-        }));
-        this._register(this.regex.onKeyDown(function (e) {
-            _this._onRegexKeyDown.fire(e);
-        }));
-        this.wholeWords = this._register(new WholeWordsCheckbox({
-            appendTitle: appendWholeWordsLabel,
-            isChecked: false,
-            inputActiveOptionBorder: this.inputActiveOptionBorder
-        }));
-        this._register(this.wholeWords.onChange(function (viaKeyboard) {
-            _this._onDidOptionChange.fire(viaKeyboard);
-            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
-                _this.inputBox.focus();
-            }
-            _this.validate();
-        }));
-        this.caseSensitive = this._register(new CaseSensitiveCheckbox({
-            appendTitle: appendCaseSensitiveLabel,
-            isChecked: false,
-            inputActiveOptionBorder: this.inputActiveOptionBorder
-        }));
-        this._register(this.caseSensitive.onChange(function (viaKeyboard) {
-            _this._onDidOptionChange.fire(viaKeyboard);
-            if (!viaKeyboard && _this.fixFocusOnOptionClickEnabled) {
-                _this.inputBox.focus();
-            }
-            _this.validate();
-        }));
-        this._register(this.caseSensitive.onKeyDown(function (e) {
-            _this._onCaseSensitiveKeyDown.fire(e);
-        }));
-        if (this._showOptionButtons) {
-            var paddingRight = (this.caseSensitive.width() + this.wholeWords.width() + this.regex.width()) + 'px';
-            this.inputBox.inputElement.style.paddingRight = paddingRight;
-            if (this.inputBox.mirrorElement) {
-                this.inputBox.mirrorElement.style.paddingRight = paddingRight;
-            }
-        }
-        // Arrow-Key support to navigate between options
-        var indexes = [this.caseSensitive.domNode, this.wholeWords.domNode, this.regex.domNode];
-        this.onkeydown(this.domNode, function (event) {
-            if (event.equals(15 /* LeftArrow */) || event.equals(17 /* RightArrow */) || event.equals(9 /* Escape */)) {
-                var index = indexes.indexOf(document.activeElement);
-                if (index >= 0) {
-                    var newIndex = -1;
-                    if (event.equals(17 /* RightArrow */)) {
-                        newIndex = (index + 1) % indexes.length;
-                    }
-                    else if (event.equals(15 /* LeftArrow */)) {
-                        if (index === 0) {
-                            newIndex = indexes.length - 1;
-                        }
-                        else {
-                            newIndex = index - 1;
-                        }
-                    }
-                    if (event.equals(9 /* Escape */)) {
-                        indexes[index].blur();
-                    }
-                    else if (newIndex >= 0) {
-                        indexes[newIndex].focus();
-                    }
-                    dom.EventHelper.stop(event, true);
-                }
-            }
-        });
-        var controls = document.createElement('div');
-        controls.className = 'controls';
-        controls.style.display = this._showOptionButtons ? 'block' : 'none';
-        controls.appendChild(this.caseSensitive.domNode);
-        controls.appendChild(this.wholeWords.domNode);
-        controls.appendChild(this.regex.domNode);
-        this.domNode.appendChild(controls);
     };
     FindInput.prototype.validate = function () {
         if (this.inputBox) {

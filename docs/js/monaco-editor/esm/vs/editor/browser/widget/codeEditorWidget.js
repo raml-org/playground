@@ -46,7 +46,8 @@ import { InternalEditorAction } from '../../common/editorAction.js';
 import * as editorCommon from '../../common/editorCommon.js';
 import { EditorContextKeys } from '../../common/editorContextKeys.js';
 import * as modes from '../../common/modes.js';
-import { editorErrorBorder, editorErrorForeground, editorHintBorder, editorHintForeground, editorInfoBorder, editorInfoForeground, editorUnnecessaryCodeBorder, editorUnnecessaryCodeOpacity, editorWarningBorder, editorWarningForeground } from '../../common/view/editorColorRegistry.js';
+import { editorUnnecessaryCodeBorder, editorUnnecessaryCodeOpacity } from '../../common/view/editorColorRegistry.js';
+import { editorErrorBorder, editorErrorForeground, editorHintBorder, editorHintForeground, editorInfoBorder, editorInfoForeground, editorWarningBorder, editorWarningForeground, editorForeground } from '../../../platform/theme/common/colorRegistry.js';
 import { ViewModel } from '../../common/viewModel/viewModelImpl.js';
 import { ICommandService } from '../../../platform/commands/common/commands.js';
 import { IContextKeyService } from '../../../platform/contextkey/common/contextkey.js';
@@ -175,7 +176,7 @@ var CodeEditorWidget = /** @class */ (function (_super) {
         _this._register(new EditorContextKeysManager(_this, _this._contextKeyService));
         _this._register(new EditorModeContext(_this, _this._contextKeyService));
         _this._instantiationService = instantiationService.createChild(new ServiceCollection([IContextKeyService, _this._contextKeyService]));
-        _this._attachModel(null);
+        _this._modelData = null;
         _this._contributions = {};
         _this._actions = {};
         _this._focusTracker = new CodeEditorWidgetFocusTracker(domElement);
@@ -722,12 +723,17 @@ var CodeEditorWidget = /** @class */ (function (_super) {
             // read only editor => sorry!
             return false;
         }
-        this._modelData.model.pushEditOperations(this._modelData.cursor.getSelections(), edits, function () {
-            return endCursorState ? endCursorState : null;
-        });
-        if (endCursorState) {
-            this._modelData.cursor.setSelections(source, endCursorState);
+        var cursorStateComputer;
+        if (!endCursorState) {
+            cursorStateComputer = function () { return null; };
         }
+        else if (Array.isArray(endCursorState)) {
+            cursorStateComputer = function () { return endCursorState; };
+        }
+        else {
+            cursorStateComputer = endCursorState;
+        }
+        this._modelData.cursor.executeEdits(source, edits, cursorStateComputer);
         return true;
     };
     CodeEditorWidget.prototype.executeCommand = function (source, command) {
@@ -1100,12 +1106,6 @@ var CodeEditorWidget = /** @class */ (function (_super) {
     CodeEditorWidget.prototype._removeDecorationType = function (key) {
         this._codeEditorService.removeDecorationType(key);
     };
-    /* __GDPR__FRAGMENT__
-        "EditorTelemetryData" : {}
-    */
-    CodeEditorWidget.prototype.getTelemetryData = function () {
-        return this._telemetryData;
-    };
     CodeEditorWidget.prototype.hasModel = function () {
         return (this._modelData !== null);
     };
@@ -1384,4 +1384,6 @@ registerThemingParticipant(function (theme, collector) {
     if (unnecessaryBorder) {
         collector.addRule("." + SHOW_UNUSED_ENABLED_CLASS + " .monaco-editor ." + "squiggly-unnecessary" /* EditorUnnecessaryDecoration */ + " { border-bottom: 2px dashed " + unnecessaryBorder + "; }");
     }
+    var deprecatedForeground = theme.getColor(editorForeground) || 'inherit';
+    collector.addRule(".monaco-editor ." + "squiggly-inline-deprecated" /* EditorDeprecatedInlineDecoration */ + " { text-decoration: line-through; text-decoration-color: " + deprecatedForeground + "}");
 });

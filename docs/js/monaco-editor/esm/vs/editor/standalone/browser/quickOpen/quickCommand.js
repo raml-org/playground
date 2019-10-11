@@ -77,7 +77,7 @@ var QuickCommandAction = /** @class */ (function (_super) {
             id: 'editor.action.quickCommand',
             label: QuickCommandNLS.quickCommandActionLabel,
             alias: 'Command Palette',
-            precondition: null,
+            precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
                 primary: (browser.isIE ? 512 /* Alt */ | 59 /* F1 */ : 59 /* F1 */),

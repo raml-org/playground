@@ -17,12 +17,11 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { onUnexpectedError } from './errors.js';
 import { once as onceFn } from './functional.js';
-import { combinedDisposable, Disposable, toDisposable } from './lifecycle.js';
+import { Disposable, toDisposable, combinedDisposable, DisposableStore } from './lifecycle.js';
 import { LinkedList } from './linkedList.js';
 export var Event;
 (function (Event) {
-    var _disposable = { dispose: function () { } };
-    Event.None = function () { return _disposable; };
+    Event.None = function () { return Disposable.None; };
     /**
      * Given an event, returns another event which only fires once.
      */
@@ -53,7 +52,7 @@ export var Event;
     Event.once = once;
     /**
      * Given an event and a `map` function, returns another event which maps each element
-     * throught the mapping function.
+     * through the mapping function.
      */
     function map(event, map) {
         return snapshot(function (listener, thisArgs, disposables) {
@@ -98,13 +97,13 @@ export var Event;
         }
         return function (listener, thisArgs, disposables) {
             if (thisArgs === void 0) { thisArgs = null; }
-            return combinedDisposable(events.map(function (event) { return event(function (e) { return listener.call(thisArgs, e); }, null, disposables); }));
+            return combinedDisposable.apply(void 0, events.map(function (event) { return event(function (e) { return listener.call(thisArgs, e); }, null, disposables); }));
         };
     }
     Event.any = any;
     /**
      * Given an event and a `merge` function, returns another event which maps each element
-     * and the cummulative result throught the `merge` function. Similar to `map`, but with memory.
+     * and the cumulative result through the `merge` function. Similar to `map`, but with memory.
      */
     function reduce(event, merge, initial) {
         var output = initial;
@@ -304,6 +303,21 @@ export var Event;
         return result.event;
     }
     Event.fromNodeEventEmitter = fromNodeEventEmitter;
+    function fromDOMEventEmitter(emitter, eventName, map) {
+        if (map === void 0) { map = function (id) { return id; }; }
+        var fn = function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i] = arguments[_i];
+            }
+            return result.fire(map.apply(void 0, args));
+        };
+        var onFirstListenerAdd = function () { return emitter.addEventListener(eventName, fn); };
+        var onLastListenerRemove = function () { return emitter.removeEventListener(eventName, fn); };
+        var result = new Emitter({ onFirstListenerAdd: onFirstListenerAdd, onLastListenerRemove: onLastListenerRemove });
+        return result.event;
+    }
+    Event.fromDOMEventEmitter = fromDOMEventEmitter;
     function fromPromise(promise) {
         var emitter = new Emitter();
         var shouldEmit = false;
@@ -453,7 +467,10 @@ var Emitter = /** @class */ (function () {
                             }
                         }
                     };
-                    if (Array.isArray(disposables)) {
+                    if (disposables instanceof DisposableStore) {
+                        disposables.add(result);
+                    }
+                    else if (Array.isArray(disposables)) {
                         disposables.push(result);
                     }
                     return result;
