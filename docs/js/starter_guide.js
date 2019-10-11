@@ -37849,6 +37849,123 @@ function extend() {
 
 Object.defineProperty(exports, "__esModule", {
   value: true
+});
+
+const webapi_parser_1 = require("webapi-parser");
+
+class ApiConsole {
+  constructor() {
+    this.defaultSelected = 'summary';
+    this.defaultSelectedType = 'summary';
+    this.reloadContainers();
+  }
+
+  reloadContainers() {
+    this.container = document.querySelector('api-documentation');
+    this.navContainer = document.querySelector('api-navigation');
+  }
+  /* Resets container amf, selected and selectedType. */
+
+
+  reset(wapModel) {
+    return webapi_parser_1.WebApiParser.amfGraph.generateString(wapModel).then(graph => {
+      const parsedGraph = JSON.parse(graph);
+      this.container.amf = parsedGraph;
+      this.navContainer.amf = parsedGraph;
+      this.container.selected = this.defaultSelected;
+      this.container.selectedType = this.defaultSelectedType;
+      this.collectElementsRanges(wapModel);
+    });
+  }
+  /* Collects elements ranges info. */
+
+
+  collectElementsRanges(wapModel) {
+    const creds = [{
+      type: 'http://www.w3.org/ns/shacl#NodeShape',
+      selectedType: 'type'
+    }, {
+      type: 'http://a.ml/vocabularies/http#EndPoint',
+      selectedType: 'endpoint'
+    }, {
+      type: 'http://www.w3.org/ns/hydra/core#Operation',
+      selectedType: 'method'
+    }, {
+      type: 'http://a.ml/vocabularies/security#SecurityScheme',
+      selectedType: 'security'
+    }, {
+      type: 'http://schema.org/CreativeWork',
+      selectedType: 'documentation'
+    }];
+    this.elsRanges = [];
+    creds.forEach(cred => {
+      wapModel.findByType(cred.type).filter(el => {
+        let hasPosition = !!el.position;
+        let notLink = !el.isLink;
+        let notInherited = !el.inherits || el.inherits && el.inherits.length === 0;
+        return hasPosition && notLink && notInherited;
+      }).forEach(el => {
+        this.elsRanges.push({
+          rng: el.position,
+          blockSize: el.position.end.line - el.position.start.line,
+          id: el.id,
+          selectedType: cred.selectedType
+        });
+      });
+    });
+  }
+  /** Finds element nearest to the position.
+  *
+  * Element is considered to be the nearest if:
+  *  1. It wraps the position;
+  *  2. Has the smallest block size.
+  */
+
+
+  findNearestElement(pos) {
+    let withinRange = this.elsRanges.filter(el => {
+      return pos.lineNumber >= el.rng.start.line && pos.lineNumber < el.rng.end.line;
+    });
+
+    if (withinRange.length < 1) {
+      return;
+    }
+
+    withinRange.sort((x, y) => {
+      if (x.blockSize > y.blockSize) {
+        return 1;
+      }
+
+      if (x.blockSize < y.blockSize) {
+        return -1;
+      }
+
+      return 0;
+    });
+    return withinRange[0];
+  }
+
+  switchSelected(pos) {
+    const nearest = this.findNearestElement(pos);
+
+    if (nearest === undefined) {
+      this.container.selected = this.defaultSelected;
+      this.container.selectedType = this.defaultSelectedType;
+    } else if (this.container.selected !== nearest.id) {
+      this.container.selected = nearest.id;
+      this.container.selectedType = nearest.selectedType;
+    }
+  }
+
+}
+
+exports.ApiConsole = ApiConsole;
+
+},{"webapi-parser":152}],155:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
 }); // Namespaces
 
 exports.HYDRA_NS = 'http://www.w3.org/ns/hydra/core#';
@@ -38276,7 +38393,7 @@ class DomainModel {
 
 exports.DomainModel = DomainModel;
 
-},{}],155:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38495,7 +38612,7 @@ class ModelProxy {
 
 exports.ModelProxy = ModelProxy;
 
-},{"./units_model":156,"jsonld":59,"webapi-parser":152}],156:[function(require,module,exports){
+},{"./units_model":157,"jsonld":59,"webapi-parser":152}],157:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38764,7 +38881,7 @@ class UnitModel {
 
 exports.UnitModel = UnitModel;
 
-},{"../utils":158,"./domain_model":154}],157:[function(require,module,exports){
+},{"../utils":159,"./domain_model":155}],158:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38772,6 +38889,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 const model_proxy_1 = require("../main/model_proxy");
+
+const api_console_1 = require("../main/api_console");
 
 const load_modal_1 = require("../view_models/load_modal");
 
@@ -38784,18 +38903,27 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     super();
     this.ramlEditor = ramlEditor;
     this.base = window.location.href.toString().split('/starter_guide.html')[0];
+    this.wapModel = undefined;
+    this.apiConsole = new api_console_1.ApiConsole();
+    ramlEditor.onDidChangeModelContent(this.changeModelContent('ramlChangesFromLastUpdate', 'raml'));
     this.loadModal.on(load_modal_1.LoadModal.LOAD_FILE_EVENT, evt => {
-      return webapi_parser_1.WebApiParser.raml10.parse(evt.location).then(parsedModel => {
-        this.model = new model_proxy_1.ModelProxy(parsedModel, 'raml');
-        this.ramlEditor.setValue(parsedModel.raw);
-      }).catch(err => {
-        console.error(`Failed to parse file: ${err}`);
+      return this.parseRamlInput(evt.location).then(this.updateEditorsModels.bind(this)).then(() => {
+        return this.apiConsole.reset(this.wapModel);
       });
     });
   }
 
   getMainModel() {
     return this.ramlEditor.getModel();
+  }
+
+  parseRamlInput(inp) {
+    return webapi_parser_1.WebApiParser.raml10.parse(inp).then(parsedModel => {
+      this.wapModel = parsedModel;
+      this.model = new model_proxy_1.ModelProxy(this.wapModel, 'raml');
+    }).catch(err => {
+      console.error(`Failed to parse: ${err}`);
+    });
   }
 
   loadInitialDocument() {
@@ -38809,15 +38937,35 @@ class ViewModel extends common_view_model_1.CommonViewModel {
     this.loadModal.save();
   }
 
-  parseEditorSection(section) {}
+  parseEditorSection(section) {
+    console.log(`Parsing text from editor section '${section}'`);
+    let value = this.ramlEditor.getModel().getValue();
 
-  updateEditorsModels() {}
+    if (!value) {
+      return;
+    } // Don't parse editor content if it's empty
+
+
+    return this.parseRamlInput(value).then(() => {
+      return this.apiConsole.reset(this.wapModel);
+    });
+  }
+
+  updateEditorsModels() {
+    console.log(`Updating editors models`);
+
+    if (this.model === null || this.model.raw === null) {
+      return;
+    }
+
+    this.ramlEditor.setValue(this.model.raw);
+  }
 
 }
 
 exports.ViewModel = ViewModel;
 
-},{"../main/model_proxy":155,"../view_models/common_view_model":159,"../view_models/load_modal":160,"webapi-parser":152}],158:[function(require,module,exports){
+},{"../main/api_console":154,"../main/model_proxy":156,"../view_models/common_view_model":160,"../view_models/load_modal":161,"webapi-parser":152}],159:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38864,7 +39012,7 @@ function nestedLabel(parent, child) {
 
 exports.nestedLabel = nestedLabel;
 
-},{"./main/domain_model":154}],159:[function(require,module,exports){
+},{"./main/domain_model":155}],160:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -38968,7 +39116,7 @@ class CommonViewModel {
 
 exports.CommonViewModel = CommonViewModel;
 
-},{"../view_models/load_modal":160,"knockout":65,"webapi-parser":152}],160:[function(require,module,exports){
+},{"../view_models/load_modal":161,"knockout":65,"webapi-parser":152}],161:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -39077,7 +39225,7 @@ class LoadModal {
 LoadModal.LOAD_FILE_EVENT = 'load-file';
 exports.LoadModal = LoadModal;
 
-},{"axios":1,"knockout":65}]},{},[157])(157)
+},{"axios":1,"knockout":65}]},{},[158])(158)
 });
 
 //# sourceMappingURL=starter_guide.js.map

@@ -13,6 +13,23 @@
     <script src="js/monaco-customize.js"></script>
     <script src="js/monaco-hover-utils.js" type="text/javascript"></script>
 
+    <!-- API Documentation -->
+    <script src="bower_components/jsonlint/lib/jsonlint.js"></script>
+    <script src="bower_components/codemirror/lib/codemirror.js"></script>
+    <script src="bower_components/codemirror/addon/mode/loadmode.js"></script>
+    <script src="bower_components/codemirror/mode/meta.js"></script>
+    <!-- Some basic syntax highlighting -->
+    <script src="bower_components/codemirror/mode/javascript/javascript.js"></script>
+    <script src="bower_components/codemirror/mode/xml/xml.js"></script>
+    <script src="bower_components/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+    <script src="bower_components/codemirror/addon/lint/lint.js"></script>
+    <script src="bower_components/codemirror/addon/lint/json-lint.js"></script>
+    <script src="bower_components/marked/lib/marked.js"></script>
+    <script type="module">
+      import './web_modules/@api-components/api-documentation.js';
+    </script>
+    <!-- /API Documentation -->
+
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="bower_components/font-awesome/css/all.min.css">
@@ -34,11 +51,16 @@
 <link rel="import" href="html_fragments/starter_guide/nav.html">
 
 <!-- Main container class -->
-<div class="section" style="padding: 0px">
+<div class="section starter_guide">
     <div id="the-app" class="container is-marginless is-fluid">
         <div class="columns">
             <div class="column">
                 <link rel="import" href="html_fragments/starter_guide/editor.html">
+                <div id="api-console-container">
+                  <api-navigation></api-navigation>
+                  <api-documentation noTryIt="true" noBottomNavigation="true" handleNavigationEvents>
+                  </api-documentation>
+                </div>
             </div>
         </div>
     </div>
@@ -94,7 +116,9 @@
               importedMap[link.href] = true;
               var content = link.import;
               var el = content.querySelector('.imported');
-              link.parentNode.insertBefore(el.cloneNode(true), link);
+              if (el) {
+                link.parentNode.insertBefore(el.cloneNode(true), link);
+              }
             }
           }
         }
@@ -107,11 +131,16 @@
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
             var height = document.documentElement.clientHeight;
-            var ramlContainerDiv = document.getElementById("editor-container-raml");
-            if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              var offset = ramlContainerDiv.getBoundingClientRect().top + 20
-              ramlContainerDiv.setAttribute("style", "height: " + (height - offset) + "px");
-            }
+            var containersIds = ["editor-container-raml"];
+            containersIds.forEach(id => {
+              var container = document.getElementById(id);
+              var offset = container.getBoundingClientRect().top + 20;
+              container.setAttribute("style", "height: " + (height - offset) + "px");
+            })
+            var container = document.getElementById("api-console-container");
+            var offset = container.getBoundingClientRect().top + 40;
+            container.setAttribute("style", "height: " + (height - offset) + "px");
+
           }
           window.onresize = resize;
           window.resizeFn = resize;
@@ -131,25 +160,30 @@
                 {token : 'syntaxTag', foreground: '#9dd288'},
                 {token : 'tag', foreground: '#9dd288'},
                 {token : 'rootComment', foreground: '#9dd288'},
-                {token : 'httpMethod', foreground: '#ffb647'}
+
+                {token : 'methodGET', foreground: '#33B333'},
+                {token : 'methodPOST', foreground: '#2196F3'},
+                {token : 'methodPATCH', foreground: '#CF5AE3'},
+                {token : 'methodDELETE', foreground: '#FF7669'},
+                {token : 'methodOther', foreground: '#9A9A9A'}
               ],
             colors: {
               'editor.foreground': '#000000',
-              'editor.background': '#526881',
-              'editor.lineHighlightBackground': '#4e4e4e',
-              'editor.lineHighlightForeground': '#4e4e4e',
-              'editor.selectionBackground': '#4e4e4e',
-              'editor.selectionForeground': '#4e4e4e',
-              'editor.selectionHighlightBackground': '#4e4e4e',
-              'editor.selectionHighlightForeground': '#4e4e4e',
-              'editor.inactiveSelectionBackground': '#4e4e4e',
-              'editor.hoverHighlightBackground': '#4e4e4e',
-              'editor.hoverHighlightForeground': '#4e4e4e',
+              'editor.background': '#3c4c5f',
+              'editor.lineHighlightBackground': '#222b35',
+              'editor.lineHighlightForeground': '#222b35',
+              'editor.selectionBackground': '#222b35',
+              'editor.selectionForeground': '#222b35',
+              'editor.selectionHighlightBackground': '#222b35',
+              'editor.selectionHighlightForeground': '#222b35',
+              'editor.inactiveSelectionBackground': '#222b35',
+              'editor.hoverHighlightBackground': '#222b35',
+              'editor.hoverHighlightForeground': '#222b35',
               'editorCursor.foreground': '#8B0000',
               'editorLineNumber.foreground': '#008800',
               'input.background': '#FFFFFF',
               'editorHoverWidget.background': '#F7FAFF',
-              'editorHoverWidget.border': '#4e4e4e',
+              'editorHoverWidget.border': '#222b35',
               'editorIndentGuide.background': '#9EAAB7'
             }
           });
@@ -171,7 +205,9 @@
 
           hoverUtils.loadLanguages('json', 'xml', 'yaml')
           monaco.languages.registerHoverProvider('raml', {
-            provideHover: (m, p) => hoverUtils.provideHover(m, p)
+            provideHover: (m, p) => {
+              return hoverUtils.provideHover(m, p)
+            }
           });
           monaco.languages.registerLinkProvider('raml', {
             provideLinks: (m, t) => hoverUtils.provideLinks(m, t)
@@ -181,6 +217,12 @@
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
           window.appModel.loadInitialDocument();
+
+          ramlEditor.onDidChangeCursorPosition(evt => {
+            if (evt.reason !== monaco.editor.CursorChangeReason.ContentFlush) {
+              window.appModel.apiConsole.switchSelected(evt.position)
+            }
+          })
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";
