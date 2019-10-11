@@ -38,7 +38,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 var _a;
 import { createStyleSheet } from '../../../base/browser/dom.js';
 import { DefaultStyleController, isSelectionRangeChangeEvent, isSelectionSingleChangeEvent } from '../../../base/browser/ui/list/listWidget.js';
-import { combinedDisposable, Disposable, dispose, toDisposable } from '../../../base/common/lifecycle.js';
+import { Disposable, dispose, toDisposable, DisposableStore, combinedDisposable } from '../../../base/common/lifecycle.js';
 import { localize } from '../../../nls.js';
 import { IConfigurationService, getMigratedSettingValue } from '../../configuration/common/configuration.js';
 import { Extensions as ConfigurationExtensions } from '../../configuration/common/configurationRegistry.js';
@@ -77,17 +77,12 @@ var ListService = /** @class */ (function () {
         if (widget.getHTMLElement() === document.activeElement) {
             this._lastFocusedWidget = widget;
         }
-        var result = combinedDisposable([
-            widget.onDidFocus(function () { return _this._lastFocusedWidget = widget; }),
-            toDisposable(function () { return _this.lists.splice(_this.lists.indexOf(registeredList), 1); }),
-            widget.onDidDispose(function () {
-                _this.lists = _this.lists.filter(function (l) { return l !== registeredList; });
-                if (_this._lastFocusedWidget === widget) {
-                    _this._lastFocusedWidget = undefined;
-                }
-            })
-        ]);
-        return result;
+        return combinedDisposable(widget.onDidFocus(function () { return _this._lastFocusedWidget = widget; }), toDisposable(function () { return _this.lists.splice(_this.lists.indexOf(registeredList), 1); }), widget.onDidDispose(function () {
+            _this.lists = _this.lists.filter(function (l) { return l !== registeredList; });
+            if (_this._lastFocusedWidget === widget) {
+                _this._lastFocusedWidget = undefined;
+            }
+        }));
     };
     ListService = __decorate([
         __param(0, IContextKeyService)
@@ -115,6 +110,7 @@ export var horizontalScrollingKey = 'workbench.list.horizontalScrolling';
 export var keyboardNavigationSettingKey = 'workbench.list.keyboardNavigation';
 export var automaticKeyboardNavigationSettingKey = 'workbench.list.automaticKeyboardNavigation';
 var treeIndentKey = 'workbench.tree.indent';
+var treeRenderIndentGuidesKey = 'workbench.tree.renderIndentGuides';
 function getHorizontalScrollingSetting(configurationService) {
     return getMigratedSettingValue(configurationService, horizontalScrollingKey, 'workbench.tree.horizontalScrolling');
 }
@@ -187,16 +183,16 @@ var WorkbenchOpenController = /** @class */ (function (_super) {
     return WorkbenchOpenController;
 }(Disposable));
 function toWorkbenchListOptions(options, configurationService, keybindingService) {
-    var disposables = [];
+    var disposables = new DisposableStore();
     var result = __assign({}, options);
     if (options.multipleSelectionSupport !== false && !options.multipleSelectionController) {
         var multipleSelectionController = new MultipleSelectionController(configurationService);
         result.multipleSelectionController = multipleSelectionController;
-        disposables.push(multipleSelectionController);
+        disposables.add(multipleSelectionController);
     }
     var openController = new WorkbenchOpenController(configurationService, options.openController);
     result.openController = openController;
-    disposables.push(openController);
+    disposables.add(openController);
     if (options.keyboardNavigationLabelProvider) {
         var tlp_1 = options.keyboardNavigationLabelProvider;
         result.keyboardNavigationLabelProvider = {
@@ -204,7 +200,7 @@ function toWorkbenchListOptions(options, configurationService, keybindingService
             mightProducePrintableCharacter: function (e) { return keybindingService.mightProducePrintableCharacter(e); }
         };
     }
-    return [result, combinedDisposable(disposables)];
+    return [result, disposables];
 }
 var sharedListStyleSheet;
 function getSharedListStyleSheet() {
@@ -319,11 +315,12 @@ function workbenchTreeDataPreamble(container, options, contextKeyService, themeS
     var horizontalScrolling = typeof options.horizontalScrolling !== 'undefined' ? options.horizontalScrolling : getHorizontalScrollingSetting(configurationService);
     var openOnSingleClick = useSingleClickToOpen(configurationService);
     var _a = toWorkbenchListOptions(options, configurationService, keybindingService), workbenchListOptions = _a[0], disposable = _a[1];
+    var additionalScrollHeight = options.additionalScrollHeight;
     return {
         getAutomaticKeyboardNavigation: getAutomaticKeyboardNavigation,
         disposable: disposable,
-        options: __assign({ keyboardSupport: false, styleController: new DefaultStyleController(getSharedListStyleSheet()) }, computeStyles(themeService.getTheme(), defaultListStyles), workbenchListOptions, { indent: configurationService.getValue(treeIndentKey), automaticKeyboardNavigation: getAutomaticKeyboardNavigation(), simpleKeyboardNavigation: keyboardNavigation === 'simple', filterOnType: keyboardNavigation === 'filter', horizontalScrolling: horizontalScrolling,
-            openOnSingleClick: openOnSingleClick, keyboardNavigationEventFilter: createKeyboardNavigationEventFilter(container, keybindingService) })
+        options: __assign({ keyboardSupport: false, styleController: new DefaultStyleController(getSharedListStyleSheet()) }, computeStyles(themeService.getTheme(), defaultListStyles), workbenchListOptions, { indent: configurationService.getValue(treeIndentKey), renderIndentGuides: configurationService.getValue(treeRenderIndentGuidesKey), automaticKeyboardNavigation: getAutomaticKeyboardNavigation(), simpleKeyboardNavigation: keyboardNavigation === 'simple', filterOnType: keyboardNavigation === 'filter', horizontalScrolling: horizontalScrolling,
+            openOnSingleClick: openOnSingleClick, keyboardNavigationEventFilter: createKeyboardNavigationEventFilter(container, keybindingService), additionalScrollHeight: additionalScrollHeight })
     };
 }
 var WorkbenchTreeInternals = /** @class */ (function () {
@@ -367,6 +364,10 @@ var WorkbenchTreeInternals = /** @class */ (function () {
             if (e.affectsConfiguration(treeIndentKey)) {
                 var indent = configurationService.getValue(treeIndentKey);
                 tree.updateOptions({ indent: indent });
+            }
+            if (e.affectsConfiguration(treeRenderIndentGuidesKey)) {
+                var renderIndentGuides = configurationService.getValue(treeRenderIndentGuidesKey);
+                tree.updateOptions({ renderIndentGuides: renderIndentGuides });
             }
             if (e.affectsConfiguration(keyboardNavigationSettingKey)) {
                 updateKeyboardNavigation();
@@ -441,6 +442,12 @@ configurationRegistry.registerConfiguration({
             minimum: 0,
             maximum: 40,
             'description': localize('tree indent setting', "Controls tree indentation in pixels.")
+        },
+        _a[treeRenderIndentGuidesKey] = {
+            type: 'string',
+            enum: ['none', 'onHover', 'always'],
+            default: 'onHover',
+            description: localize('render tree indent guides', "Controls whether the tree should render indent guides.")
         },
         _a[keyboardNavigationSettingKey] = {
             'type': 'string',

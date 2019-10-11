@@ -27,9 +27,9 @@ var __assign = (this && this.__assign) || function () {
     return __assign.apply(this, arguments);
 };
 import './media/tree.css';
-import { dispose, Disposable, toDisposable } from '../../../common/lifecycle.js';
+import { dispose, Disposable, toDisposable, DisposableStore } from '../../../common/lifecycle.js';
 import { List, mightProducePrintableCharacter, MouseController } from '../list/listWidget.js';
-import { append, $, toggleClass, getDomNodePagePosition, removeClass, addClass, hasClass } from '../../dom.js';
+import { append, $, toggleClass, getDomNodePagePosition, removeClass, addClass, hasClass, createStyleSheet, clearNode } from '../../dom.js';
 import { Event, Relay, Emitter, EventBufferer } from '../../../common/event.js';
 import { StandardKeyboardEvent } from '../../keyboardEvent.js';
 import { StaticDND, DragAndDropData } from '../../dnd.js';
@@ -43,6 +43,7 @@ import { disposableTimeout } from '../../../common/async.js';
 import { isMacintosh } from '../../../common/platform.js';
 import { values } from '../../../common/map.js';
 import { clamp } from '../../../common/numbers.js';
+import { SetMap } from '../../../common/collections.js';
 function asTreeDragAndDropData(data) {
     if (data instanceof ElementsDragAndDropData) {
         var nodes = data.elements;
@@ -140,7 +141,7 @@ function asListOptions(modelProvider, options) {
             }
         }, keyboardNavigationLabelProvider: options.keyboardNavigationLabelProvider && __assign({}, options.keyboardNavigationLabelProvider, { getKeyboardNavigationLabel: function (node) {
                 return options.keyboardNavigationLabelProvider.getKeyboardNavigationLabel(node.element);
-            } }), enableKeyboardNavigation: options.simpleKeyboardNavigation, ariaSetProvider: {
+            } }), enableKeyboardNavigation: options.simpleKeyboardNavigation, ariaProvider: {
             getSetSize: function (node) {
                 return node.parent.visibleChildrenCount;
             },
@@ -170,13 +171,45 @@ var ComposedTreeDelegate = /** @class */ (function () {
     return ComposedTreeDelegate;
 }());
 export { ComposedTreeDelegate };
+export var RenderIndentGuides;
+(function (RenderIndentGuides) {
+    RenderIndentGuides["None"] = "none";
+    RenderIndentGuides["OnHover"] = "onHover";
+    RenderIndentGuides["Always"] = "always";
+})(RenderIndentGuides || (RenderIndentGuides = {}));
+var EventCollection = /** @class */ (function () {
+    function EventCollection(onDidChange, _elements) {
+        var _this = this;
+        if (_elements === void 0) { _elements = []; }
+        this.onDidChange = onDidChange;
+        this._elements = _elements;
+        this.disposables = new DisposableStore();
+        onDidChange(function (e) { return _this._elements = e; }, null, this.disposables);
+    }
+    Object.defineProperty(EventCollection.prototype, "elements", {
+        get: function () {
+            return this._elements;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    EventCollection.prototype.dispose = function () {
+        this.disposables.dispose();
+    };
+    return EventCollection;
+}());
 var TreeRenderer = /** @class */ (function () {
-    function TreeRenderer(renderer, onDidChangeCollapseState, options) {
+    function TreeRenderer(renderer, onDidChangeCollapseState, activeNodes, options) {
         if (options === void 0) { options = {}; }
         this.renderer = renderer;
+        this.activeNodes = activeNodes;
         this.renderedElements = new Map();
         this.renderedNodes = new Map();
         this.indent = TreeRenderer.DefaultIndent;
+        this._renderIndentGuides = RenderIndentGuides.None;
+        this.renderedIndentGuides = new SetMap();
+        this.activeIndentNodes = new Set();
+        this.indentGuidesDisposable = Disposable.None;
         this.disposables = [];
         this.templateId = renderer.templateId;
         this.updateOptions(options);
@@ -186,37 +219,54 @@ var TreeRenderer = /** @class */ (function () {
         }
     }
     TreeRenderer.prototype.updateOptions = function (options) {
-        var _this = this;
         if (options === void 0) { options = {}; }
         if (typeof options.indent !== 'undefined') {
             this.indent = clamp(options.indent, 0, 40);
         }
-        this.renderedNodes.forEach(function (templateData, node) {
-            templateData.twistie.style.marginLeft = node.depth * _this.indent + "px";
-        });
+        if (typeof options.renderIndentGuides !== 'undefined') {
+            var renderIndentGuides = options.renderIndentGuides;
+            if (renderIndentGuides !== this._renderIndentGuides) {
+                this._renderIndentGuides = renderIndentGuides;
+                if (renderIndentGuides) {
+                    var disposables = new DisposableStore();
+                    this.activeNodes.onDidChange(this._onDidChangeActiveNodes, this, disposables);
+                    this.indentGuidesDisposable = disposables;
+                    this._onDidChangeActiveNodes(this.activeNodes.elements);
+                }
+                else {
+                    this.indentGuidesDisposable.dispose();
+                }
+            }
+        }
     };
     TreeRenderer.prototype.renderTemplate = function (container) {
         var el = append(container, $('.monaco-tl-row'));
+        var indent = append(el, $('.monaco-tl-indent'));
         var twistie = append(el, $('.monaco-tl-twistie'));
         var contents = append(el, $('.monaco-tl-contents'));
         var templateData = this.renderer.renderTemplate(contents);
-        return { container: container, twistie: twistie, templateData: templateData };
+        return { container: container, indent: indent, twistie: twistie, indentGuidesDisposable: Disposable.None, templateData: templateData };
     };
-    TreeRenderer.prototype.renderElement = function (node, index, templateData, dynamicHeightProbing) {
-        if (!dynamicHeightProbing) {
-            this.renderedNodes.set(node, templateData);
+    TreeRenderer.prototype.renderElement = function (node, index, templateData, height) {
+        if (typeof height === 'number') {
+            this.renderedNodes.set(node, { templateData: templateData, height: height });
             this.renderedElements.set(node.element, node);
         }
         var indent = TreeRenderer.DefaultIndent + (node.depth - 1) * this.indent;
         templateData.twistie.style.marginLeft = indent + "px";
-        this.update(node, templateData);
-        this.renderer.renderElement(node, index, templateData.templateData, dynamicHeightProbing);
-    };
-    TreeRenderer.prototype.disposeElement = function (node, index, templateData, dynamicHeightProbing) {
-        if (this.renderer.disposeElement) {
-            this.renderer.disposeElement(node, index, templateData.templateData, dynamicHeightProbing);
+        templateData.indent.style.width = indent + this.indent - 16 + "px";
+        this.renderTwistie(node, templateData);
+        if (typeof height === 'number') {
+            this.renderIndentGuides(node, templateData);
         }
-        if (!dynamicHeightProbing) {
+        this.renderer.renderElement(node, index, templateData.templateData, height);
+    };
+    TreeRenderer.prototype.disposeElement = function (node, index, templateData, height) {
+        templateData.indentGuidesDisposable.dispose();
+        if (this.renderer.disposeElement) {
+            this.renderer.disposeElement(node, index, templateData.templateData, height);
+        }
+        if (typeof height === 'number') {
             this.renderedNodes.delete(node);
             this.renderedElements.delete(node.element);
         }
@@ -232,13 +282,15 @@ var TreeRenderer = /** @class */ (function () {
         this.onDidChangeNodeTwistieState(node);
     };
     TreeRenderer.prototype.onDidChangeNodeTwistieState = function (node) {
-        var templateData = this.renderedNodes.get(node);
-        if (!templateData) {
+        var data = this.renderedNodes.get(node);
+        if (!data) {
             return;
         }
-        this.update(node, templateData);
+        this.renderTwistie(node, data.templateData);
+        this._onDidChangeActiveNodes(this.activeNodes.elements);
+        this.renderIndentGuides(node, data.templateData);
     };
-    TreeRenderer.prototype.update = function (node, templateData) {
+    TreeRenderer.prototype.renderTwistie = function (node, templateData) {
         if (this.renderer.renderTwistie) {
             this.renderer.renderTwistie(node.element, templateData.twistie);
         }
@@ -251,9 +303,67 @@ var TreeRenderer = /** @class */ (function () {
             templateData.container.removeAttribute('aria-expanded');
         }
     };
+    TreeRenderer.prototype.renderIndentGuides = function (target, templateData) {
+        var _this = this;
+        clearNode(templateData.indent);
+        templateData.indentGuidesDisposable.dispose();
+        if (this._renderIndentGuides === RenderIndentGuides.None) {
+            return;
+        }
+        var disposableStore = new DisposableStore();
+        var node = target;
+        var _loop_1 = function () {
+            var parent_1 = node.parent;
+            var guide = $('.indent-guide', { style: "width: " + this_1.indent + "px" });
+            if (this_1.activeIndentNodes.has(parent_1)) {
+                addClass(guide, 'active');
+            }
+            if (templateData.indent.childElementCount === 0) {
+                templateData.indent.appendChild(guide);
+            }
+            else {
+                templateData.indent.insertBefore(guide, templateData.indent.firstElementChild);
+            }
+            this_1.renderedIndentGuides.add(parent_1, guide);
+            disposableStore.add(toDisposable(function () { return _this.renderedIndentGuides.delete(parent_1, guide); }));
+            node = parent_1;
+        };
+        var this_1 = this;
+        while (node.parent && node.parent.parent) {
+            _loop_1();
+        }
+        templateData.indentGuidesDisposable = disposableStore;
+    };
+    TreeRenderer.prototype._onDidChangeActiveNodes = function (nodes) {
+        var _this = this;
+        if (this._renderIndentGuides === RenderIndentGuides.None) {
+            return;
+        }
+        var set = new Set();
+        nodes.forEach(function (node) {
+            if (node.collapsible && node.children.length > 0 && !node.collapsed) {
+                set.add(node);
+            }
+            else if (node.parent) {
+                set.add(node.parent);
+            }
+        });
+        this.activeIndentNodes.forEach(function (node) {
+            if (!set.has(node)) {
+                _this.renderedIndentGuides.forEach(node, function (line) { return removeClass(line, 'active'); });
+            }
+        });
+        set.forEach(function (node) {
+            if (!_this.activeIndentNodes.has(node)) {
+                _this.renderedIndentGuides.forEach(node, function (line) { return addClass(line, 'active'); });
+            }
+        });
+        this.activeIndentNodes = set;
+    };
     TreeRenderer.prototype.dispose = function () {
         this.renderedNodes.clear();
         this.renderedElements.clear();
+        this.indentGuidesDisposable.dispose();
         this.disposables = dispose(this.disposables);
     };
     TreeRenderer.DefaultIndent = 8;
@@ -266,6 +376,8 @@ var TypeFilter = /** @class */ (function () {
         this._filter = _filter;
         this._totalCount = 0;
         this._matchCount = 0;
+        this._pattern = '';
+        this._lowercasePattern = '';
         this.disposables = [];
         tree.onWillRefilter(this.reset, this, this.disposables);
     }
@@ -348,6 +460,7 @@ var TypeFilterController = /** @class */ (function () {
         this.keyboardNavigationLabelProvider = keyboardNavigationLabelProvider;
         this._enabled = false;
         this._pattern = '';
+        this._empty = false;
         this._onDidChangeEmptyState = new Emitter();
         this.positionClassName = 'ne';
         this.automaticKeyboardNavigation = true;
@@ -628,17 +741,25 @@ var Trait = /** @class */ (function () {
         if (equals(this.nodes, nodes)) {
             return;
         }
+        this._set(nodes, false, browserEvent);
+    };
+    Trait.prototype._set = function (nodes, silent, browserEvent) {
         this.nodes = nodes.slice();
         this.elements = undefined;
         this._nodeSet = undefined;
-        var that = this;
-        this._onDidChange.fire({ get elements() { return that.get(); }, browserEvent: browserEvent });
+        if (!silent) {
+            var that_1 = this;
+            this._onDidChange.fire({ get elements() { return that_1.get(); }, browserEvent: browserEvent });
+        }
     };
     Trait.prototype.get = function () {
         if (!this.elements) {
             this.elements = this.nodes.map(function (node) { return node.element; });
         }
         return this.elements.slice();
+    };
+    Trait.prototype.getNodes = function () {
+        return this.nodes;
     };
     Trait.prototype.has = function (node) {
         return this.nodeSet.has(node);
@@ -660,6 +781,7 @@ var Trait = /** @class */ (function () {
         var insertedNodesVisitor = function (node) { return insertedNodesMap.set(_this.identityProvider.getId(node.element).toString(), node); };
         insertedNodes.forEach(function (node) { return dfs(node, insertedNodesVisitor); });
         var nodes = [];
+        var silent = true;
         for (var _i = 0, _b = this.nodes; _i < _b.length; _i++) {
             var node = _b[_i];
             var id = this.identityProvider.getId(node.element).toString();
@@ -672,9 +794,12 @@ var Trait = /** @class */ (function () {
                 if (insertedNode) {
                     nodes.push(insertedNode);
                 }
+                else {
+                    silent = false;
+                }
             }
         }
-        this.set(nodes);
+        this._set(nodes, silent);
     };
     Trait.prototype.createNodeSet = function () {
         var set = new Set();
@@ -726,6 +851,13 @@ var TreeNodeListMouseController = /** @class */ (function (_super) {
             return;
         }
         _super.prototype.onPointer.call(this, e);
+    };
+    TreeNodeListMouseController.prototype.onDoubleClick = function (e) {
+        var onTwistie = hasClass(e.browserEvent.target, 'monaco-tl-twistie');
+        if (onTwistie) {
+            return;
+        }
+        _super.prototype.onDoubleClick.call(this, e);
     };
     return TreeNodeListMouseController;
 }(MouseController));
@@ -788,8 +920,8 @@ var TreeNodeList = /** @class */ (function (_super) {
 }(List));
 var AbstractTree = /** @class */ (function () {
     function AbstractTree(container, delegate, renderers, _options) {
-        var _this = this;
         var _a;
+        var _this = this;
         if (_options === void 0) { _options = {}; }
         this._options = _options;
         this.eventBufferer = new EventBufferer();
@@ -799,7 +931,10 @@ var AbstractTree = /** @class */ (function () {
         this._onDidUpdateOptions = new Emitter();
         var treeDelegate = new ComposedTreeDelegate(delegate);
         var onDidChangeCollapseStateRelay = new Relay();
-        this.renderers = renderers.map(function (r) { return new TreeRenderer(r, onDidChangeCollapseStateRelay.event, _options); });
+        var onDidChangeActiveNodes = new Relay();
+        var activeNodes = new EventCollection(onDidChangeActiveNodes.event);
+        this.disposables.push(activeNodes);
+        this.renderers = renderers.map(function (r) { return new TreeRenderer(r, onDidChangeCollapseStateRelay.event, activeNodes, _options); });
         (_a = this.disposables).push.apply(_a, this.renderers);
         var filter;
         if (_options.keyboardNavigationLabelProvider) {
@@ -816,6 +951,7 @@ var AbstractTree = /** @class */ (function () {
             _this.focus.onDidModelSplice(e);
             _this.selection.onDidModelSplice(e);
         }, null, this.disposables);
+        onDidChangeActiveNodes.input = Event.map(Event.any(this.focus.onDidChange, this.selection.onDidChange, this.model.onDidSplice), function () { return _this.focus.getNodes().concat(_this.selection.getNodes()); });
         if (_options.keyboardSupport !== false) {
             var onKeyDown = Event.chain(this.view.onKeyDown)
                 .filter(function (e) { return !isInputElement(e.target); })
@@ -829,6 +965,8 @@ var AbstractTree = /** @class */ (function () {
             this.focusNavigationFilter = function (node) { return _this.typeFilterController.shouldAllowFocus(node); };
             this.disposables.push(this.typeFilterController);
         }
+        this.styleElement = createStyleSheet(this.view.getHTMLElement());
+        toggleClass(this.getHTMLElement(), 'always', this._options.renderIndentGuides === RenderIndentGuides.Always);
     }
     Object.defineProperty(AbstractTree.prototype, "onDidChangeFocus", {
         get: function () { return this.eventBufferer.wrapEvent(this.focus.onDidChange); },
@@ -856,7 +994,6 @@ var AbstractTree = /** @class */ (function () {
         configurable: true
     });
     Object.defineProperty(AbstractTree.prototype, "openOnSingleClick", {
-        // Options TODO@joao expose options only, not Optional<>
         get: function () { return typeof this._options.openOnSingleClick === 'undefined' ? true : this._options.openOnSingleClick; },
         enumerable: true,
         configurable: true
@@ -886,6 +1023,7 @@ var AbstractTree = /** @class */ (function () {
             this.typeFilterController.updateOptions(this._options);
         }
         this._onDidUpdateOptions.fire(this._options);
+        toggleClass(this.getHTMLElement(), 'always', this._options.renderIndentGuides === RenderIndentGuides.Always);
     };
     Object.defineProperty(AbstractTree.prototype, "options", {
         get: function () {
@@ -915,6 +1053,16 @@ var AbstractTree = /** @class */ (function () {
         this.view.layout(height, width);
     };
     AbstractTree.prototype.style = function (styles) {
+        var suffix = "." + this.view.domId;
+        var content = [];
+        if (styles.treeIndentGuidesStroke) {
+            content.push(".monaco-list" + suffix + ":hover .monaco-tl-indent > .indent-guide, .monaco-list" + suffix + ".always .monaco-tl-indent > .indent-guide  { border-color: " + styles.treeIndentGuidesStroke.transparent(0.4) + "; }");
+            content.push(".monaco-list" + suffix + " .monaco-tl-indent > .indent-guide.active { border-color: " + styles.treeIndentGuidesStroke + "; }");
+        }
+        var newStyles = content.join('\n');
+        if (newStyles !== this.styleElement.innerHTML) {
+            this.styleElement.innerHTML = newStyles;
+        }
         this.view.style(styles);
     };
     // Tree

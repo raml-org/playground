@@ -28,7 +28,8 @@ var CaseSensitiveCheckbox = /** @class */ (function (_super) {
             actionClassName: 'monaco-case-sensitive',
             title: NLS_CASE_SENSITIVE_CHECKBOX_LABEL + opts.appendTitle,
             isChecked: opts.isChecked,
-            inputActiveOptionBorder: opts.inputActiveOptionBorder
+            inputActiveOptionBorder: opts.inputActiveOptionBorder,
+            inputActiveOptionBackground: opts.inputActiveOptionBackground
         }) || this;
     }
     return CaseSensitiveCheckbox;
@@ -41,7 +42,8 @@ var WholeWordsCheckbox = /** @class */ (function (_super) {
             actionClassName: 'monaco-whole-word',
             title: NLS_WHOLE_WORD_CHECKBOX_LABEL + opts.appendTitle,
             isChecked: opts.isChecked,
-            inputActiveOptionBorder: opts.inputActiveOptionBorder
+            inputActiveOptionBorder: opts.inputActiveOptionBorder,
+            inputActiveOptionBackground: opts.inputActiveOptionBackground
         }) || this;
     }
     return WholeWordsCheckbox;
@@ -54,7 +56,8 @@ var RegexCheckbox = /** @class */ (function (_super) {
             actionClassName: 'monaco-regex',
             title: NLS_REGEX_CHECKBOX_LABEL + opts.appendTitle,
             isChecked: opts.isChecked,
-            inputActiveOptionBorder: opts.inputActiveOptionBorder
+            inputActiveOptionBorder: opts.inputActiveOptionBorder,
+            inputActiveOptionBackground: opts.inputActiveOptionBackground
         }) || this;
     }
     return RegexCheckbox;

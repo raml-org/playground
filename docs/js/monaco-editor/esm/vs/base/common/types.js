@@ -133,6 +133,30 @@ export function getAllPropertyNames(obj) {
     }
     return res;
 }
+export function getAllMethodNames(obj) {
+    var methods = [];
+    for (var _i = 0, _a = getAllPropertyNames(obj); _i < _a.length; _i++) {
+        var prop = _a[_i];
+        if (typeof obj[prop] === 'function') {
+            methods.push(prop);
+        }
+    }
+    return methods;
+}
+export function createProxyObject(methodNames, invoke) {
+    var createProxyMethod = function (method) {
+        return function () {
+            var args = Array.prototype.slice.call(arguments, 0);
+            return invoke(method, args);
+        };
+    };
+    var result = {};
+    for (var _i = 0, methodNames_1 = methodNames; _i < methodNames_1.length; _i++) {
+        var methodName = methodNames_1[_i];
+        result[methodName] = createProxyMethod(methodName);
+    }
+    return result;
+}
 /**
  * Converts null to undefined, passes all other values through.
  */

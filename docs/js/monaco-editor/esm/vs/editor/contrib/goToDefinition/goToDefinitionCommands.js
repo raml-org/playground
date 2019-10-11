@@ -51,7 +51,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import { alert } from '../../../base/browser/ui/aria/aria.js';
-import { createCancelablePromise } from '../../../base/common/async.js';
+import { createCancelablePromise, raceCancellation } from '../../../base/common/async.js';
 import { KeyChord } from '../../../base/common/keyCodes.js';
 import * as platform from '../../../base/common/platform.js';
 import { EditorAction, registerEditorAction } from '../../browser/editorExtensions.js';
@@ -67,10 +67,11 @@ import * as nls from '../../../nls.js';
 import { MenuRegistry } from '../../../platform/actions/common/actions.js';
 import { ContextKeyExpr } from '../../../platform/contextkey/common/contextkey.js';
 import { INotificationService } from '../../../platform/notification/common/notification.js';
-import { IProgressService } from '../../../platform/progress/common/progress.js';
+import { IEditorProgressService } from '../../../platform/progress/common/progress.js';
 import { getDefinitionsAtPosition, getImplementationsAtPosition, getTypeDefinitionsAtPosition, getDeclarationsAtPosition } from './goToDefinition.js';
 import { CommandsRegistry } from '../../../platform/commands/common/commands.js';
 import { EditorStateCancellationTokenSource } from '../../browser/core/editorState.js';
+import { ISymbolNavigationService } from './goToDefinitionResultsNavigation.js';
 var DefinitionActionConfig = /** @class */ (function () {
     function DefinitionActionConfig(openToSide, openInPeek, filterCurrent, showMessage) {
         if (openToSide === void 0) { openToSide = false; }
@@ -100,14 +101,15 @@ var DefinitionAction = /** @class */ (function (_super) {
         }
         var notificationService = accessor.get(INotificationService);
         var editorService = accessor.get(ICodeEditorService);
-        var progressService = accessor.get(IProgressService);
+        var progressService = accessor.get(IEditorProgressService);
+        var symbolNavService = accessor.get(ISymbolNavigationService);
         var model = editor.getModel();
         var pos = editor.getPosition();
         var cts = new EditorStateCancellationTokenSource(editor, 1 /* Value */ | 4 /* Position */);
-        var definitionPromise = this._getTargetLocationForPosition(model, pos, cts.token).then(function (references) { return __awaiter(_this, void 0, void 0, function () {
+        var definitionPromise = raceCancellation(this._getTargetLocationForPosition(model, pos, cts.token), cts.token).then(function (references) { return __awaiter(_this, void 0, void 0, function () {
             var idxOfCurrent, result, _i, references_1, reference, newLen, info, current;
             return __generator(this, function (_a) {
-                if (cts.token.isCancellationRequested || model.isDisposed() || editor.getModel() !== model) {
+                if (!references || model.isDisposed()) {
                     // new model, no more model
                     return [2 /*return*/];
                 }
@@ -139,7 +141,7 @@ var DefinitionAction = /** @class */ (function (_super) {
                 }
                 else {
                     // handle multile results
-                    return [2 /*return*/, this._onResult(editorService, editor, new ReferencesModel(result))];
+                    return [2 /*return*/, this._onResult(editorService, symbolNavService, editor, new ReferencesModel(result))];
                 }
                 return [2 /*return*/];
             });
@@ -163,7 +165,7 @@ var DefinitionAction = /** @class */ (function (_super) {
     DefinitionAction.prototype._getMetaTitle = function (model) {
         return model.references.length > 1 ? nls.localize('meta.title', " – {0} definitions", model.references.length) : '';
     };
-    DefinitionAction.prototype._onResult = function (editorService, editor, model) {
+    DefinitionAction.prototype._onResult = function (editorService, symbolNavService, editor, model) {
         return __awaiter(this, void 0, void 0, function () {
             var msg, gotoLocation, next, targetEditor;
             return __generator(this, function (_a) {
@@ -190,6 +192,11 @@ var DefinitionAction = /** @class */ (function (_super) {
                         else {
                             model.dispose();
                         }
+                        // keep remaining locations around when using
+                        // 'goto'-mode
+                        if (gotoLocation.multiple === 'goto') {
+                            symbolNavService.put(next);
+                        }
                         _a.label = 3;
                     case 3: return [2 /*return*/];
                 }
@@ -210,7 +217,6 @@ var DefinitionAction = /** @class */ (function (_super) {
             resource: reference.uri,
             options: {
                 selection: Range.collapseToStart(range),
-                revealIfOpened: true,
                 revealInCenterIfOutsideViewport: true
             }
         }, editor, sideBySide);

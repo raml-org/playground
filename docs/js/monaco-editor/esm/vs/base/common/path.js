@@ -66,6 +66,7 @@ var ErrorInvalidArgType = /** @class */ (function (_super) {
         var msg = "The \"" + name + "\" " + type + " " + determiner + " of type " + expected;
         msg += ". Received type " + typeof actual;
         _this = _super.call(this, msg) || this;
+        _this.code = 'ERR_INVALID_ARG_TYPE';
         return _this;
     }
     return ErrorInvalidArgType;

@@ -22,14 +22,17 @@ import { Color } from '../../../common/color.js';
 import { Emitter } from '../../../common/event.js';
 import * as objects from '../../../common/objects.js';
 var defaultOpts = {
-    inputActiveOptionBorder: Color.fromHex('#007ACC')
+    inputActiveOptionBorder: Color.fromHex('#007ACC00'),
+    inputActiveOptionBackground: Color.fromHex('#0E639C50')
 };
 var Checkbox = /** @class */ (function (_super) {
     __extends(Checkbox, _super);
     function Checkbox(opts) {
         var _this = _super.call(this) || this;
         _this._onChange = _this._register(new Emitter());
+        _this.onChange = _this._onChange.event;
         _this._onKeyDown = _this._register(new Emitter());
+        _this.onKeyDown = _this._onKeyDown.event;
         _this._opts = objects.deepClone(opts);
         objects.mixin(_this._opts, defaultOpts, false);
         _this._checked = _this._opts.isChecked;
@@ -57,16 +60,6 @@ var Checkbox = /** @class */ (function (_super) {
         });
         return _this;
     }
-    Object.defineProperty(Checkbox.prototype, "onChange", {
-        get: function () { return this._onChange.event; },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Checkbox.prototype, "onKeyDown", {
-        get: function () { return this._onKeyDown.event; },
-        enumerable: true,
-        configurable: true
-    });
     Checkbox.prototype.focus = function () {
         this.domNode.focus();
     };
@@ -95,11 +88,15 @@ var Checkbox = /** @class */ (function (_super) {
         if (styles.inputActiveOptionBorder) {
             this._opts.inputActiveOptionBorder = styles.inputActiveOptionBorder;
         }
+        if (styles.inputActiveOptionBackground) {
+            this._opts.inputActiveOptionBackground = styles.inputActiveOptionBackground;
+        }
         this.applyStyles();
     };
     Checkbox.prototype.applyStyles = function () {
         if (this.domNode) {
             this.domNode.style.borderColor = this._checked && this._opts.inputActiveOptionBorder ? this._opts.inputActiveOptionBorder.toString() : 'transparent';
+            this.domNode.style.backgroundColor = this._checked && this._opts.inputActiveOptionBackground ? this._opts.inputActiveOptionBackground.toString() : 'transparent';
         }
     };
     Checkbox.prototype.enable = function () {

@@ -66,7 +66,7 @@ var MarkerDecorationsService = /** @class */ (function (_super) {
     function MarkerDecorationsService(modelService, _markerService) {
         var _this = _super.call(this) || this;
         _this._markerService = _markerService;
-        _this._onDidChangeMarker = new Emitter();
+        _this._onDidChangeMarker = _this._register(new Emitter());
         _this._markerDecorations = new Map();
         modelService.getModels().forEach(function (model) { return _this._onModelAdded(model); });
         _this._register(modelService.onModelAdded(_this._onModelAdded, _this));
@@ -74,6 +74,11 @@ var MarkerDecorationsService = /** @class */ (function (_super) {
         _this._register(_this._markerService.onMarkerChanged(_this._handleMarkerChange, _this));
         return _this;
     }
+    MarkerDecorationsService.prototype.dispose = function () {
+        _super.prototype.dispose.call(this);
+        this._markerDecorations.forEach(function (value) { return value.dispose(); });
+        this._markerDecorations.clear();
+    };
     MarkerDecorationsService.prototype.getMarker = function (model, decoration) {
         var markerDecorations = this._markerDecorations.get(MODEL_ID(model.uri));
         return markerDecorations ? withUndefinedAsNull(markerDecorations.getMarker(decoration)) : null;
@@ -197,6 +202,9 @@ var MarkerDecorationsService = /** @class */ (function (_super) {
         if (marker.tags) {
             if (marker.tags.indexOf(1 /* Unnecessary */) !== -1) {
                 inlineClassName = "squiggly-inline-unnecessary" /* EditorUnnecessaryInlineDecoration */;
+            }
+            if (marker.tags.indexOf(2 /* Deprecated */) !== -1) {
+                inlineClassName = "squiggly-inline-deprecated" /* EditorDeprecatedInlineDecoration */;
             }
         }
         return {

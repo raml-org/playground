@@ -23,8 +23,13 @@ var ObjectTree = /** @class */ (function (_super) {
         if (options === void 0) { options = {}; }
         return _super.call(this, container, delegate, renderers, options) || this;
     }
-    ObjectTree.prototype.setChildren = function (element, children, onDidCreateNode, onDidDeleteNode) {
-        return this.model.setChildren(element, children, onDidCreateNode, onDidDeleteNode);
+    Object.defineProperty(ObjectTree.prototype, "onDidChangeCollapseState", {
+        get: function () { return this.model.onDidChangeCollapseState; },
+        enumerable: true,
+        configurable: true
+    });
+    ObjectTree.prototype.setChildren = function (element, children) {
+        return this.model.setChildren(element, children);
     };
     ObjectTree.prototype.rerender = function (element) {
         if (element === undefined) {

@@ -39,7 +39,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel(): monaco.editor.ITextModel {
+  public getMainModel (): monaco.editor.ITextModel {
     return this.ramlEditor.getModel()
   }
 
@@ -50,8 +50,8 @@ export class ViewModel extends CommonViewModel {
 
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
-    let editor = section === 'raml' ? this.ramlEditor : this.oasEditor
-    let value = editor.getValue()
+    const editor = section === 'raml' ? this.ramlEditor : this.oasEditor
+    const value = editor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     this.parseString(section as 'raml' | 'oas', value, (err, model) => {
       if (err) {
@@ -65,7 +65,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
-    let parsingProm = type === 'raml'
+    const parsingProm = type === 'raml'
       ? wap.raml10.parse(value)
       : wap.oas20.parseYaml(value)
     parsingProm.then((model) => {

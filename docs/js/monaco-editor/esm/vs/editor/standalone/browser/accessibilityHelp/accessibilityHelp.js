@@ -28,7 +28,7 @@ import './accessibilityHelp.css';
 import * as browser from '../../../../base/browser/browser.js';
 import * as dom from '../../../../base/browser/dom.js';
 import { createFastDomNode } from '../../../../base/browser/fastDomNode.js';
-import { renderFormattedText } from '../../../../base/browser/htmlContentRenderer.js';
+import { renderFormattedText } from '../../../../base/browser/formattedTextRenderer.js';
 import { alert } from '../../../../base/browser/ui/aria/aria.js';
 import { Widget } from '../../../../base/browser/ui/widget.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
@@ -42,7 +42,7 @@ import { IContextKeyService, RawContextKey } from '../../../../platform/contextk
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
-import { contrastBorder, editorWidgetBackground, widgetShadow } from '../../../../platform/theme/common/colorRegistry.js';
+import { contrastBorder, editorWidgetBackground, widgetShadow, editorWidgetForeground } from '../../../../platform/theme/common/colorRegistry.js';
 import { registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
 import { AccessibilityHelpNLS } from '../../../common/standaloneStrings.js';
 var CONTEXT_ACCESSIBILITY_WIDGET_VISIBLE = new RawContextKey('accessibilityHelpWidgetVisible', false);
@@ -280,7 +280,7 @@ var ShowAccessibilityHelpAction = /** @class */ (function (_super) {
             id: 'editor.action.showAccessibilityHelp',
             label: AccessibilityHelpNLS.showAccessibilityHelpAction,
             alias: 'Show Accessibility Help',
-            precondition: null,
+            precondition: undefined,
             kbOpts: {
                 kbExpr: EditorContextKeys.focus,
                 primary: (browser.isIE ? 2048 /* CtrlCmd */ | 59 /* F1 */ : 512 /* Alt */ | 59 /* F1 */),
@@ -314,6 +314,10 @@ registerThemingParticipant(function (theme, collector) {
     var widgetBackground = theme.getColor(editorWidgetBackground);
     if (widgetBackground) {
         collector.addRule(".monaco-editor .accessibilityHelpWidget { background-color: " + widgetBackground + "; }");
+    }
+    var widgetForeground = theme.getColor(editorWidgetForeground);
+    if (widgetForeground) {
+        collector.addRule(".monaco-editor .accessibilityHelpWidget { color: " + widgetForeground + "; }");
     }
     var widgetShadowColor = theme.getColor(widgetShadow);
     if (widgetShadowColor) {

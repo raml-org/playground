@@ -13,9 +13,12 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 import { createDecorator } from '../../../platform/instantiation/common/instantiation.js';
 import { registerSingleton } from '../../../platform/instantiation/common/extensions.js';
+import { CodeLensModel } from './codelens.js';
 import { LRUCache, values } from '../../../base/common/map.js';
-import { IStorageService } from '../../../platform/storage/common/storage.js';
+import { IStorageService, WillSaveStateReason } from '../../../platform/storage/common/storage.js';
 import { Range } from '../../common/core/range.js';
+import { runWhenIdle } from '../../../base/common/async.js';
+import { once } from '../../../base/common/functional.js';
 export var ICodeLensCache = createDecorator('ICodeLensCache');
 var CacheItem = /** @class */ (function () {
     function CacheItem(lineCount, data) {
@@ -36,24 +39,24 @@ var CodeLensCache = /** @class */ (function () {
             return class_1;
         }());
         this._cache = new LRUCache(20, 0.75);
-        var key = 'codelens/cache';
+        // remove old data
+        var oldkey = 'codelens/cache';
+        runWhenIdle(function () { return storageService.remove(oldkey, 1 /* WORKSPACE */); });
         // restore lens data on start
+        var key = 'codelens/cache2';
         var raw = storageService.get(key, 1 /* WORKSPACE */, '{}');
         this._deserialize(raw);
         // store lens data on shutdown
-        var listener = storageService.onWillSaveState(function () {
-            storageService.store(key, _this._serialize(), 1 /* WORKSPACE */);
-            listener.dispose();
+        once(storageService.onWillSaveState)(function (e) {
+            if (e.reason === WillSaveStateReason.SHUTDOWN) {
+                storageService.store(key, _this._serialize(), 1 /* WORKSPACE */);
+            }
         });
     }
     CodeLensCache.prototype.put = function (model, data) {
-        var _this = this;
-        var item = new CacheItem(model.getLineCount(), data.map(function (item) {
-            return {
-                symbol: item.symbol,
-                provider: _this._fakeProvider
-            };
-        }));
+        var lensModel = new CodeLensModel();
+        lensModel.add({ lenses: data.lenses.map(function (v) { return v.symbol; }), dispose: function () { } }, this._fakeProvider);
+        var item = new CacheItem(model.getLineCount(), lensModel);
         this._cache.set(model.uri.toString(), item);
     };
     CodeLensCache.prototype.get = function (model) {
@@ -68,7 +71,7 @@ var CodeLensCache = /** @class */ (function () {
         var data = Object.create(null);
         this._cache.forEach(function (value, key) {
             var lines = new Set();
-            for (var _i = 0, _a = value.data; _i < _a.length; _i++) {
+            for (var _i = 0, _a = value.data.lenses; _i < _a.length; _i++) {
                 var d = _a[_i];
                 lines.add(d.symbol.range.startLineNumber);
             }
@@ -84,15 +87,14 @@ var CodeLensCache = /** @class */ (function () {
             var data = JSON.parse(raw);
             for (var key in data) {
                 var element = data[key];
-                var symbols = [];
+                var lenses = [];
                 for (var _i = 0, _a = element.lines; _i < _a.length; _i++) {
                     var line = _a[_i];
-                    symbols.push({
-                        provider: this._fakeProvider,
-                        symbol: { range: new Range(line, 1, line, 11) }
-                    });
+                    lenses.push({ range: new Range(line, 1, line, 11) });
                 }
-                this._cache.set(key, new CacheItem(element.lineCount, symbols));
+                var model = new CodeLensModel();
+                model.add({ lenses: lenses, dispose: function () { } }, this._fakeProvider);
+                this._cache.set(key, new CacheItem(element.lineCount, model));
             }
         }
         catch (_b) {

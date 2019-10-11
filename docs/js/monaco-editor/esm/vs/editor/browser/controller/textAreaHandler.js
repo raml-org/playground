@@ -339,15 +339,8 @@ var TextAreaHandler = /** @class */ (function (_super) {
         this._textAreaInput.focusTextArea();
     };
     TextAreaHandler.prototype.prepareRender = function (ctx) {
-        if (this._accessibilitySupport === 2 /* Enabled */) {
-            // Do not move the textarea with the cursor, as this generates accessibility events that might confuse screen readers
-            // See https://github.com/Microsoft/vscode/issues/26730
-            this._primaryCursorVisibleRange = null;
-        }
-        else {
-            var primaryCursorPosition = new Position(this._selections[0].positionLineNumber, this._selections[0].positionColumn);
-            this._primaryCursorVisibleRange = ctx.visibleRangeForPosition(primaryCursorPosition);
-        }
+        var primaryCursorPosition = new Position(this._selections[0].positionLineNumber, this._selections[0].positionColumn);
+        this._primaryCursorVisibleRange = ctx.visibleRangeForPosition(primaryCursorPosition);
     };
     TextAreaHandler.prototype.render = function (ctx) {
         this._textAreaInput.writeScreenReaderContent('render');

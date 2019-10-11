@@ -59,7 +59,7 @@ import { isPromiseCanceledError, onUnexpectedError } from '../../../common/error
 import { toggleClass } from '../../dom.js';
 import { values } from '../../../common/map.js';
 function createAsyncDataTreeNode(props) {
-    return __assign({}, props, { children: [], loading: false, stale: true, slow: false });
+    return __assign({}, props, { children: [], loading: false, stale: true, slow: false, collapsedByDefault: undefined });
 }
 function isAncestor(ancestor, descendant) {
     if (!descendant.parent) {
@@ -143,16 +143,16 @@ var DataTreeRenderer = /** @class */ (function () {
         var templateData = this.renderer.renderTemplate(container);
         return { templateData: templateData };
     };
-    DataTreeRenderer.prototype.renderElement = function (node, index, templateData, dynamicHeightProbing) {
-        this.renderer.renderElement(new AsyncDataTreeNodeWrapper(node), index, templateData.templateData, dynamicHeightProbing);
+    DataTreeRenderer.prototype.renderElement = function (node, index, templateData, height) {
+        this.renderer.renderElement(new AsyncDataTreeNodeWrapper(node), index, templateData.templateData, height);
     };
     DataTreeRenderer.prototype.renderTwistie = function (element, twistieElement) {
         toggleClass(twistieElement, 'loading', element.slow);
         return false;
     };
-    DataTreeRenderer.prototype.disposeElement = function (node, index, templateData, dynamicHeightProbing) {
+    DataTreeRenderer.prototype.disposeElement = function (node, index, templateData, height) {
         if (this.renderer.disposeElement) {
-            this.renderer.disposeElement(new AsyncDataTreeNodeWrapper(node), index, templateData.templateData, dynamicHeightProbing);
+            this.renderer.disposeElement(new AsyncDataTreeNodeWrapper(node), index, templateData.templateData, height);
         }
     };
     DataTreeRenderer.prototype.disposeTemplate = function (templateData) {
@@ -229,17 +229,19 @@ function asObjectTreeOptions(options) {
             filter: function (e, parentVisibility) {
                 return options.filter.filter(e.element, parentVisibility);
             }
-        }, keyboardNavigationLabelProvider: options.keyboardNavigationLabelProvider && {
-            getKeyboardNavigationLabel: function (e) {
+        }, keyboardNavigationLabelProvider: options.keyboardNavigationLabelProvider && __assign({}, options.keyboardNavigationLabelProvider, { getKeyboardNavigationLabel: function (e) {
                 return options.keyboardNavigationLabelProvider.getKeyboardNavigationLabel(e.element);
-            }
-        }, sorter: undefined, expandOnlyOnTwistieClick: typeof options.expandOnlyOnTwistieClick === 'undefined' ? undefined : (typeof options.expandOnlyOnTwistieClick !== 'function' ? options.expandOnlyOnTwistieClick : (function (e) { return options.expandOnlyOnTwistieClick(e.element); })), ariaSetProvider: undefined });
+            } }), sorter: undefined, expandOnlyOnTwistieClick: typeof options.expandOnlyOnTwistieClick === 'undefined' ? undefined : (typeof options.expandOnlyOnTwistieClick !== 'function' ? options.expandOnlyOnTwistieClick : (function (e) { return options.expandOnlyOnTwistieClick(e.element); })), ariaProvider: undefined, additionalScrollHeight: options.additionalScrollHeight });
 }
 function asTreeElement(node, viewStateContext) {
     var collapsed;
-    if (viewStateContext && viewStateContext.viewState.expanded && node.id) {
-        collapsed = viewStateContext.viewState.expanded.indexOf(node.id) === -1;
+    if (viewStateContext && viewStateContext.viewState.expanded && node.id && viewStateContext.viewState.expanded.indexOf(node.id) > -1) {
+        collapsed = false;
     }
+    else {
+        collapsed = node.collapsedByDefault;
+    }
+    node.collapsedByDefault = undefined;
     return {
         element: node,
         children: node.hasChildren ? Iterator.map(Iterator.fromArray(node.children), function (child) { return asTreeElement(child, viewStateContext); }) : [],
@@ -265,6 +267,7 @@ var AsyncDataTree = /** @class */ (function () {
         this.identityProvider = options.identityProvider;
         this.autoExpandSingleChildren = typeof options.autoExpandSingleChildren === 'undefined' ? false : options.autoExpandSingleChildren;
         this.sorter = options.sorter;
+        this.collapseByDefault = options.collapseByDefault;
         var objectTreeDelegate = new ComposedTreeDelegate(delegate);
         var objectTreeRenderers = renderers.map(function (r) { return new DataTreeRenderer(r, _this._onDidChangeNodeSlowState.event); });
         var objectTreeOptions = asObjectTreeOptions(options) || {};
@@ -389,7 +392,7 @@ var AsyncDataTree = /** @class */ (function () {
     };
     // View
     AsyncDataTree.prototype.rerender = function (element) {
-        if (element === undefined) {
+        if (element === undefined || element === this.root.element) {
             this.tree.rerender();
             return;
         }
@@ -631,8 +634,8 @@ var AsyncDataTree = /** @class */ (function () {
         }
     };
     AsyncDataTree.prototype.setChildren = function (node, childrenElements, recursive, viewStateContext) {
-        var _this = this;
         var _a;
+        var _this = this;
         // perf: if the node was and still is a leaf, avoid all this hassle
         if (node.children.length === 0 && childrenElements.length === 0) {
             return [];
@@ -648,12 +651,14 @@ var AsyncDataTree = /** @class */ (function () {
         }
         var childrenToRefresh = [];
         var children = childrenElements.map(function (element) {
+            var hasChildren = !!_this.dataSource.hasChildren(element);
             if (!_this.identityProvider) {
-                return createAsyncDataTreeNode({
-                    element: element,
-                    parent: node,
-                    hasChildren: !!_this.dataSource.hasChildren(element)
-                });
+                var asyncDataTreeNode = createAsyncDataTreeNode({ element: element, parent: node, hasChildren: hasChildren });
+                if (hasChildren && _this.collapseByDefault && !_this.collapseByDefault(element)) {
+                    asyncDataTreeNode.collapsedByDefault = false;
+                    childrenToRefresh.push(asyncDataTreeNode);
+                }
+                return asyncDataTreeNode;
             }
             var id = _this.identityProvider.getId(element).toString();
             var childNode = childrenTreeNodesById.get(id);
@@ -663,7 +668,7 @@ var AsyncDataTree = /** @class */ (function () {
                 _this.nodes.delete(asyncDataTreeNode.element);
                 _this.nodes.set(element, asyncDataTreeNode);
                 asyncDataTreeNode.element = element;
-                asyncDataTreeNode.hasChildren = !!_this.dataSource.hasChildren(element);
+                asyncDataTreeNode.hasChildren = hasChildren;
                 if (recursive) {
                     if (childNode.collapsed) {
                         dfs(asyncDataTreeNode, function (node) { return node.stale = true; });
@@ -672,14 +677,13 @@ var AsyncDataTree = /** @class */ (function () {
                         childrenToRefresh.push(asyncDataTreeNode);
                     }
                 }
+                else if (hasChildren && _this.collapseByDefault && !_this.collapseByDefault(element)) {
+                    asyncDataTreeNode.collapsedByDefault = false;
+                    childrenToRefresh.push(asyncDataTreeNode);
+                }
                 return asyncDataTreeNode;
             }
-            var childAsyncDataTreeNode = createAsyncDataTreeNode({
-                element: element,
-                parent: node,
-                id: id,
-                hasChildren: !!_this.dataSource.hasChildren(element)
-            });
+            var childAsyncDataTreeNode = createAsyncDataTreeNode({ element: element, parent: node, id: id, hasChildren: hasChildren });
             if (viewStateContext && viewStateContext.viewState.focus && viewStateContext.viewState.focus.indexOf(id) > -1) {
                 viewStateContext.focus.push(childAsyncDataTreeNode);
             }
@@ -687,6 +691,10 @@ var AsyncDataTree = /** @class */ (function () {
                 viewStateContext.selection.push(childAsyncDataTreeNode);
             }
             if (viewStateContext && viewStateContext.viewState.expanded && viewStateContext.viewState.expanded.indexOf(id) > -1) {
+                childrenToRefresh.push(childAsyncDataTreeNode);
+            }
+            else if (hasChildren && _this.collapseByDefault && !_this.collapseByDefault(element)) {
+                childAsyncDataTreeNode.collapsedByDefault = false;
                 childrenToRefresh.push(childAsyncDataTreeNode);
             }
             return childAsyncDataTreeNode;

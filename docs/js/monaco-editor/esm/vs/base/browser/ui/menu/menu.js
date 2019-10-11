@@ -19,32 +19,16 @@ import './menu.css';
 import * as nls from '../../../../nls.js';
 import * as strings from '../../../common/strings.js';
 import { Action } from '../../../common/actions.js';
-import { ActionBar, Separator, ActionItem, BaseActionItem } from '../actionbar/actionbar.js';
+import { ActionBar, Separator, ActionViewItem, BaseActionViewItem } from '../actionbar/actionbar.js';
 import { addClass, EventType, EventHelper, removeTabIndexAndUpdateFocus, isAncestor, hasClass, addDisposableListener, removeClass, append, $, addClasses, removeClasses } from '../../dom.js';
 import { StandardKeyboardEvent } from '../../keyboardEvent.js';
 import { RunOnceScheduler } from '../../../common/async.js';
-import { dispose } from '../../../common/lifecycle.js';
+import { DisposableStore } from '../../../common/lifecycle.js';
 import { DomScrollableElement } from '../scrollbar/scrollableElement.js';
 import { Emitter } from '../../../common/event.js';
-import { isLinux } from '../../../common/platform.js';
-function createMenuMnemonicRegExp() {
-    try {
-        return new RegExp('\\(&([^\\s&])\\)|(?<!&)&([^\\s&])');
-    }
-    catch (err) {
-        return new RegExp('\uFFFF'); // never match please
-    }
-}
-export var MENU_MNEMONIC_REGEX = createMenuMnemonicRegExp();
-function createMenuEscapedMnemonicRegExp() {
-    try {
-        return new RegExp('(?<!&amp;)(?:&amp;)([^\\s&])');
-    }
-    catch (err) {
-        return new RegExp('\uFFFF'); // never match please
-    }
-}
-export var MENU_ESCAPED_MNEMONIC_REGEX = createMenuEscapedMnemonicRegExp();
+import { isLinux, isMacintosh } from '../../../common/platform.js';
+export var MENU_MNEMONIC_REGEX = /\(&([^\s&])\)|(^|[^&])&([^\s&])/;
+export var MENU_ESCAPED_MNEMONIC_REGEX = /(&amp;)?(&amp;)([^\s&])/g;
 var SubmenuAction = /** @class */ (function (_super) {
     __extends(SubmenuAction, _super);
     function SubmenuAction(label, entries, cssClass) {
@@ -67,25 +51,32 @@ var Menu = /** @class */ (function (_super) {
         menuElement.setAttribute('role', 'presentation');
         _this = _super.call(this, menuElement, {
             orientation: 2 /* VERTICAL */,
-            actionItemProvider: function (action) { return _this.doGetActionItem(action, options, parentData); },
+            actionViewItemProvider: function (action) { return _this.doGetActionViewItem(action, options, parentData); },
             context: options.context,
             actionRunner: options.actionRunner,
             ariaLabel: options.ariaLabel,
-            triggerKeys: { keys: [3 /* Enter */], keyDown: true }
+            triggerKeys: { keys: [3 /* Enter */].concat((isMacintosh ? [10 /* Space */] : [])), keyDown: true }
         }) || this;
         _this.menuElement = menuElement;
         _this._onScroll = _this._register(new Emitter());
         _this.actionsList.setAttribute('role', 'menu');
         _this.actionsList.tabIndex = 0;
-        _this.menuDisposables = [];
+        _this.menuDisposables = _this._register(new DisposableStore());
+        addDisposableListener(menuElement, EventType.KEY_DOWN, function (e) {
+            var event = new StandardKeyboardEvent(e);
+            // Stop tab navigation of menus
+            if (event.equals(2 /* Tab */)) {
+                e.preventDefault();
+            }
+        });
         if (options.enableMnemonics) {
-            _this.menuDisposables.push(addDisposableListener(menuElement, EventType.KEY_DOWN, function (e) {
+            _this.menuDisposables.add(addDisposableListener(menuElement, EventType.KEY_DOWN, function (e) {
                 var key = e.key.toLocaleLowerCase();
                 if (_this.mnemonics.has(key)) {
                     EventHelper.stop(e, true);
                     var actions_1 = _this.mnemonics.get(key);
                     if (actions_1.length === 1) {
-                        if (actions_1[0] instanceof SubmenuActionItem) {
+                        if (actions_1[0] instanceof SubmenuMenuActionViewItem) {
                             _this.focusItemByElement(actions_1[0].container);
                         }
                         actions_1[0].onClick(e);
@@ -105,7 +96,7 @@ var Menu = /** @class */ (function (_super) {
             _this._register(addDisposableListener(menuElement, EventType.KEY_DOWN, function (e) {
                 var event = new StandardKeyboardEvent(e);
                 if (event.equals(14 /* Home */) || event.equals(11 /* PageUp */)) {
-                    _this.focusedItem = _this.items.length - 1;
+                    _this.focusedItem = _this.viewItems.length - 1;
                     _this.focusNext();
                     EventHelper.stop(e, true);
                 }
@@ -163,9 +154,9 @@ var Menu = /** @class */ (function (_super) {
         var scrollElement = _this.scrollableElement.getDomNode();
         scrollElement.style.position = null;
         menuElement.style.maxHeight = Math.max(10, window.innerHeight - container.getBoundingClientRect().top - 30) + "px";
-        _this.scrollableElement.onScroll(function () {
+        _this.menuDisposables.add(_this.scrollableElement.onScroll(function () {
             _this._onScroll.fire();
-        }, _this, _this.menuDisposables);
+        }, _this));
         _this._register(addDisposableListener(_this.menuElement, EventType.SCROLL, function (e) {
             if (_this.scrollTopHold !== undefined) {
                 _this.menuElement.scrollTop = _this.scrollTopHold;
@@ -175,7 +166,7 @@ var Menu = /** @class */ (function (_super) {
         }));
         container.appendChild(_this.scrollableElement.getDomNode());
         _this.scrollableElement.scanDomNode();
-        _this.items.filter(function (item) { return !(item instanceof MenuSeparatorActionItem); }).forEach(function (item, index, array) {
+        _this.viewItems.filter(function (item) { return !(item instanceof MenuSeparatorActionViewItem); }).forEach(function (item, index, array) {
             item.updatePositionInSet(index + 1, array.length);
         });
         return _this;
@@ -190,9 +181,9 @@ var Menu = /** @class */ (function (_super) {
         this.domNode.style.color = fgColor;
         this.domNode.style.backgroundColor = bgColor;
         container.style.boxShadow = shadow;
-        if (this.items) {
-            this.items.forEach(function (item) {
-                if (item instanceof MenuActionItem || item instanceof MenuSeparatorActionItem) {
+        if (this.viewItems) {
+            this.viewItems.forEach(function (item) {
+                if (item instanceof BaseMenuActionViewItem || item instanceof MenuSeparatorActionViewItem) {
                     item.style(style);
                 }
             });
@@ -231,24 +222,24 @@ var Menu = /** @class */ (function (_super) {
             }
         }
     };
-    Menu.prototype.doGetActionItem = function (action, options, parentData) {
+    Menu.prototype.doGetActionViewItem = function (action, options, parentData) {
         if (action instanceof Separator) {
-            return new MenuSeparatorActionItem(options.context, action, { icon: true });
+            return new MenuSeparatorActionViewItem(options.context, action, { icon: true });
         }
         else if (action instanceof SubmenuAction) {
-            var menuActionItem = new SubmenuActionItem(action, action.entries, parentData, options);
+            var menuActionViewItem = new SubmenuMenuActionViewItem(action, action.entries, parentData, options);
             if (options.enableMnemonics) {
-                var mnemonic = menuActionItem.getMnemonic();
-                if (mnemonic && menuActionItem.isEnabled()) {
-                    var actionItems = [];
+                var mnemonic = menuActionViewItem.getMnemonic();
+                if (mnemonic && menuActionViewItem.isEnabled()) {
+                    var actionViewItems = [];
                     if (this.mnemonics.has(mnemonic)) {
-                        actionItems = this.mnemonics.get(mnemonic);
+                        actionViewItems = this.mnemonics.get(mnemonic);
                     }
-                    actionItems.push(menuActionItem);
-                    this.mnemonics.set(mnemonic, actionItems);
+                    actionViewItems.push(menuActionViewItem);
+                    this.mnemonics.set(mnemonic, actionViewItems);
                 }
             }
-            return menuActionItem;
+            return menuActionViewItem;
         }
         else {
             var menuItemOptions = { enableMnemonics: options.enableMnemonics };
@@ -261,27 +252,27 @@ var Menu = /** @class */ (function (_super) {
                     }
                 }
             }
-            var menuActionItem = new MenuActionItem(options.context, action, menuItemOptions);
+            var menuActionViewItem = new BaseMenuActionViewItem(options.context, action, menuItemOptions);
             if (options.enableMnemonics) {
-                var mnemonic = menuActionItem.getMnemonic();
-                if (mnemonic && menuActionItem.isEnabled()) {
-                    var actionItems = [];
+                var mnemonic = menuActionViewItem.getMnemonic();
+                if (mnemonic && menuActionViewItem.isEnabled()) {
+                    var actionViewItems = [];
                     if (this.mnemonics.has(mnemonic)) {
-                        actionItems = this.mnemonics.get(mnemonic);
+                        actionViewItems = this.mnemonics.get(mnemonic);
                     }
-                    actionItems.push(menuActionItem);
-                    this.mnemonics.set(mnemonic, actionItems);
+                    actionViewItems.push(menuActionViewItem);
+                    this.mnemonics.set(mnemonic, actionViewItems);
                 }
             }
-            return menuActionItem;
+            return menuActionViewItem;
         }
     };
     return Menu;
 }(ActionBar));
 export { Menu };
-var MenuActionItem = /** @class */ (function (_super) {
-    __extends(MenuActionItem, _super);
-    function MenuActionItem(ctx, action, options) {
+var BaseMenuActionViewItem = /** @class */ (function (_super) {
+    __extends(BaseMenuActionViewItem, _super);
+    function BaseMenuActionViewItem(ctx, action, options) {
         if (options === void 0) { options = {}; }
         var _this = this;
         options.isMenu = true;
@@ -296,14 +287,24 @@ var MenuActionItem = /** @class */ (function (_super) {
             if (label) {
                 var matches = MENU_MNEMONIC_REGEX.exec(label);
                 if (matches) {
-                    _this.mnemonic = (!!matches[1] ? matches[1] : matches[2]).toLocaleLowerCase();
+                    _this.mnemonic = (!!matches[1] ? matches[1] : matches[3]).toLocaleLowerCase();
                 }
             }
         }
+        // Add mouse up listener later to avoid accidental clicks
+        _this.runOnceToEnableMouseUp = new RunOnceScheduler(function () {
+            if (!_this.element) {
+                return;
+            }
+            _this._register(addDisposableListener(_this.element, EventType.MOUSE_UP, function (e) {
+                EventHelper.stop(e, true);
+                _this.onClick(e);
+            }));
+        }, 50);
+        _this._register(_this.runOnceToEnableMouseUp);
         return _this;
     }
-    MenuActionItem.prototype.render = function (container) {
-        var _this = this;
+    BaseMenuActionViewItem.prototype.render = function (container) {
         _super.prototype.render.call(this, container);
         if (!this.element) {
             return;
@@ -326,30 +327,28 @@ var MenuActionItem = /** @class */ (function (_super) {
         if (this.options.label && this.options.keybinding) {
             append(this.item, $('span.keybinding')).textContent = this.options.keybinding;
         }
-        this._register(addDisposableListener(this.element, EventType.MOUSE_UP, function (e) {
-            EventHelper.stop(e, true);
-            _this.onClick(e);
-        }));
+        // Adds mouse up listener to actually run the action
+        this.runOnceToEnableMouseUp.schedule();
         this.updateClass();
         this.updateLabel();
         this.updateTooltip();
         this.updateEnabled();
         this.updateChecked();
     };
-    MenuActionItem.prototype.blur = function () {
+    BaseMenuActionViewItem.prototype.blur = function () {
         _super.prototype.blur.call(this);
         this.applyStyle();
     };
-    MenuActionItem.prototype.focus = function () {
+    BaseMenuActionViewItem.prototype.focus = function () {
         _super.prototype.focus.call(this);
         this.item.focus();
         this.applyStyle();
     };
-    MenuActionItem.prototype.updatePositionInSet = function (pos, setSize) {
+    BaseMenuActionViewItem.prototype.updatePositionInSet = function (pos, setSize) {
         this.item.setAttribute('aria-posinset', "" + pos);
         this.item.setAttribute('aria-setsize', "" + setSize);
     };
-    MenuActionItem.prototype.updateLabel = function () {
+    BaseMenuActionViewItem.prototype.updateLabel = function () {
         if (this.options.label) {
             var label = this.getAction().label;
             if (label) {
@@ -360,9 +359,19 @@ var MenuActionItem = /** @class */ (function (_super) {
                 this.label.setAttribute('aria-label', cleanLabel.replace(/&&/g, '&'));
                 var matches = MENU_MNEMONIC_REGEX.exec(label);
                 if (matches) {
-                    label = strings.escape(label).replace(MENU_ESCAPED_MNEMONIC_REGEX, '<u aria-hidden="true">$1</u>');
+                    label = strings.escape(label);
+                    // This is global, reset it
+                    MENU_ESCAPED_MNEMONIC_REGEX.lastIndex = 0;
+                    var escMatch = MENU_ESCAPED_MNEMONIC_REGEX.exec(label);
+                    // We can't use negative lookbehind so if we match our negative and skip
+                    while (escMatch && escMatch[1]) {
+                        escMatch = MENU_ESCAPED_MNEMONIC_REGEX.exec(label);
+                    }
+                    if (escMatch) {
+                        label = label.substr(0, escMatch.index) + "<u aria-hidden=\"true\">" + escMatch[3] + "</u>" + label.substr(escMatch.index + escMatch[0].length);
+                    }
                     label = label.replace(/&amp;&amp;/g, '&amp;');
-                    this.item.setAttribute('aria-keyshortcuts', (!!matches[1] ? matches[1] : matches[2]).toLocaleLowerCase());
+                    this.item.setAttribute('aria-keyshortcuts', (!!matches[1] ? matches[1] : matches[3]).toLocaleLowerCase());
                 }
                 else {
                     label = label.replace(/&&/g, '&');
@@ -371,7 +380,7 @@ var MenuActionItem = /** @class */ (function (_super) {
             this.label.innerHTML = label.trim();
         }
     };
-    MenuActionItem.prototype.updateTooltip = function () {
+    BaseMenuActionViewItem.prototype.updateTooltip = function () {
         var title = null;
         if (this.getAction().tooltip) {
             title = this.getAction().tooltip;
@@ -386,7 +395,7 @@ var MenuActionItem = /** @class */ (function (_super) {
             this.item.title = title;
         }
     };
-    MenuActionItem.prototype.updateClass = function () {
+    BaseMenuActionViewItem.prototype.updateClass = function () {
         if (this.cssClass) {
             removeClasses(this.item, this.cssClass);
         }
@@ -402,7 +411,7 @@ var MenuActionItem = /** @class */ (function (_super) {
             removeClass(this.label, 'icon');
         }
     };
-    MenuActionItem.prototype.updateEnabled = function () {
+    BaseMenuActionViewItem.prototype.updateEnabled = function () {
         if (this.getAction().enabled) {
             if (this.element) {
                 removeClass(this.element, 'disabled');
@@ -418,7 +427,7 @@ var MenuActionItem = /** @class */ (function (_super) {
             removeTabIndexAndUpdateFocus(this.item);
         }
     };
-    MenuActionItem.prototype.updateChecked = function () {
+    BaseMenuActionViewItem.prototype.updateChecked = function () {
         if (this.getAction().checked) {
             addClass(this.item, 'checked');
             this.item.setAttribute('role', 'menuitemcheckbox');
@@ -430,36 +439,36 @@ var MenuActionItem = /** @class */ (function (_super) {
             this.item.setAttribute('aria-checked', 'false');
         }
     };
-    MenuActionItem.prototype.getMnemonic = function () {
+    BaseMenuActionViewItem.prototype.getMnemonic = function () {
         return this.mnemonic;
     };
-    MenuActionItem.prototype.applyStyle = function () {
+    BaseMenuActionViewItem.prototype.applyStyle = function () {
         if (!this.menuStyle) {
             return;
         }
         var isSelected = this.element && hasClass(this.element, 'focused');
         var fgColor = isSelected && this.menuStyle.selectionForegroundColor ? this.menuStyle.selectionForegroundColor : this.menuStyle.foregroundColor;
         var bgColor = isSelected && this.menuStyle.selectionBackgroundColor ? this.menuStyle.selectionBackgroundColor : this.menuStyle.backgroundColor;
-        var border = isSelected && this.menuStyle.selectionBorderColor ? "1px solid " + this.menuStyle.selectionBorderColor : null;
+        var border = isSelected && this.menuStyle.selectionBorderColor ? "thin solid " + this.menuStyle.selectionBorderColor : null;
         this.item.style.color = fgColor ? "" + fgColor : null;
         this.check.style.backgroundColor = fgColor ? "" + fgColor : null;
         this.item.style.backgroundColor = bgColor ? "" + bgColor : null;
         this.container.style.border = border;
     };
-    MenuActionItem.prototype.style = function (style) {
+    BaseMenuActionViewItem.prototype.style = function (style) {
         this.menuStyle = style;
         this.applyStyle();
     };
-    return MenuActionItem;
-}(BaseActionItem));
-var SubmenuActionItem = /** @class */ (function (_super) {
-    __extends(SubmenuActionItem, _super);
-    function SubmenuActionItem(action, submenuActions, parentData, submenuOptions) {
+    return BaseMenuActionViewItem;
+}(BaseActionViewItem));
+var SubmenuMenuActionViewItem = /** @class */ (function (_super) {
+    __extends(SubmenuMenuActionViewItem, _super);
+    function SubmenuMenuActionViewItem(action, submenuActions, parentData, submenuOptions) {
         var _this = _super.call(this, action, action, submenuOptions) || this;
         _this.submenuActions = submenuActions;
         _this.parentData = parentData;
         _this.submenuOptions = submenuOptions;
-        _this.submenuDisposables = [];
+        _this.submenuDisposables = _this._register(new DisposableStore());
         _this.showScheduler = new RunOnceScheduler(function () {
             if (_this.mouseOver) {
                 _this.cleanupExistingSubmenu(false);
@@ -474,7 +483,7 @@ var SubmenuActionItem = /** @class */ (function (_super) {
         }, 750);
         return _this;
     }
-    SubmenuActionItem.prototype.render = function (container) {
+    SubmenuMenuActionViewItem.prototype.render = function (container) {
         var _this = this;
         _super.prototype.render.call(this, container);
         if (!this.element) {
@@ -493,8 +502,10 @@ var SubmenuActionItem = /** @class */ (function (_super) {
         }));
         this._register(addDisposableListener(this.element, EventType.KEY_DOWN, function (e) {
             var event = new StandardKeyboardEvent(e);
-            if (event.equals(17 /* RightArrow */) || event.equals(3 /* Enter */)) {
-                EventHelper.stop(e, true);
+            if (document.activeElement === _this.item) {
+                if (event.equals(17 /* RightArrow */) || event.equals(3 /* Enter */)) {
+                    EventHelper.stop(e, true);
+                }
             }
         }));
         this._register(addDisposableListener(this.element, EventType.MOUSE_OVER, function (e) {
@@ -516,23 +527,23 @@ var SubmenuActionItem = /** @class */ (function (_super) {
             _this.cleanupExistingSubmenu(false);
         }));
     };
-    SubmenuActionItem.prototype.onClick = function (e) {
+    SubmenuMenuActionViewItem.prototype.onClick = function (e) {
         // stop clicking from trying to run an action
         EventHelper.stop(e, true);
         this.cleanupExistingSubmenu(false);
         this.createSubmenu(false);
     };
-    SubmenuActionItem.prototype.cleanupExistingSubmenu = function (force) {
+    SubmenuMenuActionViewItem.prototype.cleanupExistingSubmenu = function (force) {
         if (this.parentData.submenu && (force || (this.parentData.submenu !== this.mysubmenu))) {
             this.parentData.submenu.dispose();
             this.parentData.submenu = undefined;
             if (this.submenuContainer) {
-                this.submenuDisposables = dispose(this.submenuDisposables);
+                this.submenuDisposables.clear();
                 this.submenuContainer = undefined;
             }
         }
     };
-    SubmenuActionItem.prototype.createSubmenu = function (selectFirstItem) {
+    SubmenuMenuActionViewItem.prototype.createSubmenu = function (selectFirstItem) {
         var _this = this;
         if (selectFirstItem === void 0) { selectFirstItem = true; }
         if (!this.element) {
@@ -557,7 +568,7 @@ var SubmenuActionItem = /** @class */ (function (_super) {
                 this.submenuContainer.style.left = this.element.offsetWidth + "px";
                 this.submenuContainer.style.top = this.element.offsetTop - this.parentData.parent.scrollOffset - paddingTop + "px";
             }
-            this.submenuDisposables.push(addDisposableListener(this.submenuContainer, EventType.KEY_UP, function (e) {
+            this.submenuDisposables.add(addDisposableListener(this.submenuContainer, EventType.KEY_UP, function (e) {
                 var event = new StandardKeyboardEvent(e);
                 if (event.equals(15 /* LeftArrow */)) {
                     EventHelper.stop(e, true);
@@ -566,23 +577,23 @@ var SubmenuActionItem = /** @class */ (function (_super) {
                         _this.parentData.submenu.dispose();
                         _this.parentData.submenu = undefined;
                     }
-                    _this.submenuDisposables = dispose(_this.submenuDisposables);
+                    _this.submenuDisposables.clear();
                     _this.submenuContainer = undefined;
                 }
             }));
-            this.submenuDisposables.push(addDisposableListener(this.submenuContainer, EventType.KEY_DOWN, function (e) {
+            this.submenuDisposables.add(addDisposableListener(this.submenuContainer, EventType.KEY_DOWN, function (e) {
                 var event = new StandardKeyboardEvent(e);
                 if (event.equals(15 /* LeftArrow */)) {
                     EventHelper.stop(e, true);
                 }
             }));
-            this.submenuDisposables.push(this.parentData.submenu.onDidCancel(function () {
+            this.submenuDisposables.add(this.parentData.submenu.onDidCancel(function () {
                 _this.parentData.parent.focus();
                 if (_this.parentData.submenu) {
                     _this.parentData.submenu.dispose();
                     _this.parentData.submenu = undefined;
                 }
-                _this.submenuDisposables = dispose(_this.submenuDisposables);
+                _this.submenuDisposables.clear();
                 _this.submenuContainer = undefined;
             }));
             this.parentData.submenu.focus(selectFirstItem);
@@ -592,7 +603,7 @@ var SubmenuActionItem = /** @class */ (function (_super) {
             this.parentData.submenu.focus(false);
         }
     };
-    SubmenuActionItem.prototype.applyStyle = function () {
+    SubmenuMenuActionViewItem.prototype.applyStyle = function () {
         _super.prototype.applyStyle.call(this);
         if (!this.menuStyle) {
             return;
@@ -604,7 +615,7 @@ var SubmenuActionItem = /** @class */ (function (_super) {
             this.parentData.submenu.style(this.menuStyle);
         }
     };
-    SubmenuActionItem.prototype.dispose = function () {
+    SubmenuMenuActionViewItem.prototype.dispose = function () {
         _super.prototype.dispose.call(this);
         this.hideScheduler.dispose();
         if (this.mysubmenu) {
@@ -612,28 +623,27 @@ var SubmenuActionItem = /** @class */ (function (_super) {
             this.mysubmenu = null;
         }
         if (this.submenuContainer) {
-            this.submenuDisposables = dispose(this.submenuDisposables);
             this.submenuContainer = undefined;
         }
     };
-    return SubmenuActionItem;
-}(MenuActionItem));
-var MenuSeparatorActionItem = /** @class */ (function (_super) {
-    __extends(MenuSeparatorActionItem, _super);
-    function MenuSeparatorActionItem() {
+    return SubmenuMenuActionViewItem;
+}(BaseMenuActionViewItem));
+var MenuSeparatorActionViewItem = /** @class */ (function (_super) {
+    __extends(MenuSeparatorActionViewItem, _super);
+    function MenuSeparatorActionViewItem() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
-    MenuSeparatorActionItem.prototype.style = function (style) {
+    MenuSeparatorActionViewItem.prototype.style = function (style) {
         this.label.style.borderBottomColor = style.separatorColor ? "" + style.separatorColor : null;
     };
-    return MenuSeparatorActionItem;
-}(ActionItem));
+    return MenuSeparatorActionViewItem;
+}(ActionViewItem));
 export function cleanMnemonic(label) {
     var regex = MENU_MNEMONIC_REGEX;
     var matches = regex.exec(label);
     if (!matches) {
         return label;
     }
-    var mnemonicInText = matches[0].charAt(0) === '&';
-    return label.replace(regex, mnemonicInText ? '$2' : '').trim();
+    var mnemonicInText = !matches[1];
+    return label.replace(regex, mnemonicInText ? '$2$3' : '').trim();
 }

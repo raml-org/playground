@@ -132,12 +132,9 @@ export function groupBy(data, compare) {
     return result;
 }
 /**
- * @returns a new array with all falsy values removed. The original array IS NOT modified.
+ * @returns New array with all falsy values removed. The original array IS NOT modified.
  */
 export function coalesce(array) {
-    if (!array) {
-        return array;
-    }
     return array.filter(function (e) { return !!e; });
 }
 /**
@@ -146,9 +143,6 @@ export function coalesce(array) {
 export function isFalsyOrEmpty(obj) {
     return !Array.isArray(obj) || obj.length === 0;
 }
-/**
- * @returns True if the provided object is an array and has at least one element.
- */
 export function isNonEmptyArray(obj) {
     return Array.isArray(obj) && obj.length > 0;
 }
