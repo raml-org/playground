@@ -1,4 +1,6 @@
 import * as joint from 'jointjs'
+import * as dagre from 'dagre'
+import * as graphlib from 'graphlib'
 import {
   DocumentId, Fragment, Module, Document, Unit,
   DomainElement } from '../main/units_model'
@@ -85,7 +87,9 @@ export class PlaygroundGraph {
             nodeSep: 100,
             edgeSep: 100,
             rankSep: 100,
-            rankDir: 'TB'
+            rankDir: 'TB',
+            dagre: dagre,
+            graphlib: graphlib
           })
         }
 
