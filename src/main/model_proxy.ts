@@ -106,10 +106,10 @@ export class ModelProxy {
               'raml-doc': 'http://a.ml/vocabularies/document#',
               'raml-http': 'http://a.ml/vocabularies/http#',
               'raml-shapes': 'http://a.ml/vocabularies/shapes#',
-              'hydra': 'http://www.w3.org/ns/hydra/core#',
-              'shacl': 'http://www.w3.org/ns/shacl#',
+              hydra: 'http://www.w3.org/ns/hydra/core#',
+              shacl: 'http://www.w3.org/ns/shacl#',
               'schema-org': 'http://schema.org/',
-              'xsd': 'http://www.w3.org/2001/XMLSchema#'
+              xsd: 'http://www.w3.org/2001/XMLSchema#'
             }
             jsonld.compact(parsed, context, (err, compacted) => {
               if (err != null) {

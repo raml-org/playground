@@ -42,13 +42,13 @@ var QuickOpenEntry = /** @class */ (function () {
      * The label of the entry to identify it from others in the list
      */
     QuickOpenEntry.prototype.getLabel = function () {
-        return null;
+        return undefined;
     };
     /**
      * The options for the label to use for this entry
      */
     QuickOpenEntry.prototype.getLabelOptions = function () {
-        return null;
+        return undefined;
     };
     /**
      * The label of the entry to use when a screen reader wants to read about the entry
@@ -61,43 +61,43 @@ var QuickOpenEntry = /** @class */ (function () {
      * Detail information about the entry that is optional and can be shown below the label
      */
     QuickOpenEntry.prototype.getDetail = function () {
-        return null;
+        return undefined;
     };
     /**
      * The icon of the entry to identify it from others in the list
      */
     QuickOpenEntry.prototype.getIcon = function () {
-        return null;
+        return undefined;
     };
     /**
      * A secondary description that is optional and can be shown right to the label
      */
     QuickOpenEntry.prototype.getDescription = function () {
-        return null;
+        return undefined;
     };
     /**
      * A tooltip to show when hovering over the entry.
      */
     QuickOpenEntry.prototype.getTooltip = function () {
-        return null;
+        return undefined;
     };
     /**
      * A tooltip to show when hovering over the description portion of the entry.
      */
     QuickOpenEntry.prototype.getDescriptionTooltip = function () {
-        return null;
+        return undefined;
     };
     /**
      * An optional keybinding to show for an entry.
      */
     QuickOpenEntry.prototype.getKeybinding = function () {
-        return null;
+        return undefined;
     };
     /**
      * Allows to reuse the same model while filtering. Hidden entries will not show up in the viewer.
      */
     QuickOpenEntry.prototype.isHidden = function () {
-        return this.hidden;
+        return !!this.hidden;
     };
     /**
      * Allows to set highlight ranges that should show up for the entry label and optionally description if set.
@@ -229,7 +229,7 @@ var Renderer = /** @class */ (function () {
         var icon = document.createElement('span');
         row1.appendChild(icon);
         // Label
-        var label = new IconLabel(row1, { supportHighlights: true, supportDescriptionHighlights: true });
+        var label = new IconLabel(row1, { supportHighlights: true, supportDescriptionHighlights: true, supportOcticons: true });
         // Keybinding
         var keybindingContainer = document.createElement('span');
         row1.appendChild(keybindingContainer);
@@ -322,12 +322,12 @@ var Renderer = /** @class */ (function () {
             // Label
             var options = entry.getLabelOptions() || Object.create(null);
             options.matches = labelHighlights || [];
-            options.title = types.withNullAsUndefined(entry.getTooltip());
-            options.descriptionTitle = entry.getDescriptionTooltip() || types.withNullAsUndefined(entry.getDescription()); // tooltip over description because it could overflow
+            options.title = entry.getTooltip();
+            options.descriptionTitle = entry.getDescriptionTooltip() || entry.getDescription(); // tooltip over description because it could overflow
             options.descriptionMatches = descriptionHighlights || [];
-            data.label.setLabel(types.withNullAsUndefined(entry.getLabel()), types.withNullAsUndefined(entry.getDescription()), options);
+            data.label.setLabel(types.withNullAsUndefined(entry.getLabel()), entry.getDescription(), options);
             // Meta
-            data.detail.set(types.withNullAsUndefined(entry.getDetail()), detailHighlights);
+            data.detail.set(entry.getDetail(), detailHighlights);
             // Keybinding
             data.keybinding.set(entry.getKeybinding());
         }
@@ -394,7 +394,7 @@ var QuickOpenModel = /** @class */ (function () {
         return entry.getId();
     };
     QuickOpenModel.prototype.getLabel = function (entry) {
-        return entry.getLabel();
+        return types.withUndefinedAsNull(entry.getLabel());
     };
     QuickOpenModel.prototype.getAriaLabel = function (entry) {
         var ariaLabel = entry.getAriaLabel();

@@ -7,16 +7,11 @@ const tsify = require('tsify')
 const babelify = require('babelify')
 const source = require('vinyl-source-stream')
 const buffer = require('vinyl-buffer')
-const gutil = require('gulp-util')
 const sourcemaps = require('gulp-sourcemaps')
 const browserSync = require('browser-sync').create()
-const bower = require('gulp-bower')
 const sass = require('gulp-sass')
 const cleanCSS = require('gulp-clean-css');
-
-gulp.task('bower', function () {
-  return bower({cwd: 'docs'})
-})
+const log = require('fancy-log')
 
 gulp.task('sass', function () {
   return gulp.src('./docs/scss/**/*.scss')
@@ -33,7 +28,7 @@ gulp.task('css', gulp.series(
   })
 )
 
-const optionsRamlOas = {'standalone': 'raml_oas'}
+const optionsRamlOas = { standalone: 'raml_oas' }
 const bRamlOas = browserify(optionsRamlOas)
 gulp.task('bundleRamlOas', function () {
   return bRamlOas
@@ -41,23 +36,23 @@ gulp.task('bundleRamlOas', function () {
       'src/raml_oas/view_model.ts'
     ])
     .plugin(tsify, { target: 'es6' })
-    .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
+    .transform(babelify, { extensions: ['.tsx', '.ts'] })
     .bundle()
   // log errors if they happen
-    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .on('error', log)
     .pipe(source('raml_oas.js'))
   // optional, remove if you don't need to buffer file contents
     .pipe(buffer())
   // optional, remove if you dont want sourcemaps
   // loads map from browserify file
-    .pipe(sourcemaps.init({loadMaps: true}))
+    .pipe(sourcemaps.init({ loadMaps: true }))
   // Add transformation tasks to the pipeline here.
     .pipe(sourcemaps.write('./')) // writes .map file
     .pipe(gulp.dest('./docs/js'))
-    .pipe(browserSync.stream({once: true}))
+    .pipe(browserSync.stream({ once: true }))
 })
 
-const optionsVisualization = {'standalone': 'visualization'}
+const optionsVisualization = { standalone: 'visualization' }
 const bVisualization = browserify(optionsVisualization)
 gulp.task('bundleVisualization', function () {
   return bVisualization
@@ -65,15 +60,15 @@ gulp.task('bundleVisualization', function () {
       'src/visualization/view_model.ts'
     ])
     .plugin(tsify, { target: 'es6' })
-    .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
+    .transform(babelify, { extensions: ['.tsx', '.ts'] })
     .bundle()
-    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .on('error', log)
     .pipe(source('visualization.js'))
     .pipe(buffer())
-    .pipe(sourcemaps.init({loadMaps: true}))
+    .pipe(sourcemaps.init({ loadMaps: true }))
     .pipe(sourcemaps.write('./'))
     .pipe(gulp.dest('./docs/js'))
-    .pipe(browserSync.stream({once: true}))
+    .pipe(browserSync.stream({ once: true }))
 })
 
 const optionsStarterGuide = {'standalone': 'starter_guide'}
@@ -86,7 +81,7 @@ gulp.task('bundleStarterGuide', function () {
     .plugin(tsify, { target: 'es6' })
     .transform(babelify, { extensions: [ '.tsx', '.ts' ] })
     .bundle()
-    .on('error', gutil.log.bind(gutil, 'Browserify Error'))
+    .on('error', log)
     .pipe(source('starter_guide.js'))
     .pipe(buffer())
     .pipe(sourcemaps.init({loadMaps: true}))
@@ -98,7 +93,7 @@ gulp.task('bundleStarterGuide', function () {
 
 gulp.task('serveRamlOas', gulp.series(
   'css',
-  'bower',
+  'sass',
   'bundleRamlOas',
   function () {
     return browserSync.init({
@@ -110,7 +105,7 @@ gulp.task('serveRamlOas', gulp.series(
 
 gulp.task('serveVisualization', gulp.series(
   'css',
-  'bower',
+  'sass',
   'bundleVisualization',
   function () {
     return browserSync.init({
@@ -122,7 +117,7 @@ gulp.task('serveVisualization', gulp.series(
 
 gulp.task('serveStarterGuide', gulp.series(
   'css',
-  'bower',
+  'sass',
   'bundleStarterGuide',
   function () {
     return browserSync.init({
@@ -135,7 +130,7 @@ gulp.task('serveStarterGuide', gulp.series(
 // Bundle all the demos
 gulp.task('bundle', gulp.series(
   'css',
-  'bower',
+  'sass',
   'bundleRamlOas',
   'bundleVisualization',
   'bundleStarterGuide'

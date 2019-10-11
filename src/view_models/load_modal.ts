@@ -21,10 +21,10 @@ export class LoadModal {
   public ghExamples: KnockoutObservableArray<any> = ko.observableArray([]);
   public selectedGhExample: KnockoutObservable<any> = ko.observable<any>();
 
-  public constructor() {
+  public constructor () {
     this.selectedGhExample.subscribe((newValue) => {
       if (newValue != null) {
-        this.fileUrl(newValue.url);
+        this.fileUrl(newValue.url)
       }
     })
 

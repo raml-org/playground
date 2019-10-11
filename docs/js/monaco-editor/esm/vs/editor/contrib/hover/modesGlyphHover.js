@@ -17,7 +17,7 @@ var __extends = (this && this.__extends) || (function () {
 })();
 import { $ } from '../../../base/browser/dom.js';
 import { isEmptyMarkdownString } from '../../../base/common/htmlContent.js';
-import { dispose } from '../../../base/common/lifecycle.js';
+import { DisposableStore } from '../../../base/common/lifecycle.js';
 import { HoverOperation } from './hoverOperation.js';
 import { GlyphHoverWidget } from './hoverWidgets.js';
 import { MarkdownRenderer } from '../markdown/markdownRenderer.js';
@@ -27,6 +27,7 @@ var MarginComputer = /** @class */ (function () {
     function MarginComputer(editor) {
         this._editor = editor;
         this._lineNumber = -1;
+        this._result = [];
     }
     MarginComputer.prototype.setLineNumber = function (lineNumber) {
         this._lineNumber = lineNumber;
@@ -75,14 +76,15 @@ var ModesGlyphHoverWidget = /** @class */ (function (_super) {
     function ModesGlyphHoverWidget(editor, modeService, openerService) {
         if (openerService === void 0) { openerService = NullOpenerService; }
         var _this = _super.call(this, ModesGlyphHoverWidget.ID, editor) || this;
+        _this._renderDisposeables = _this._register(new DisposableStore());
+        _this._messages = [];
         _this._lastLineNumber = -1;
-        _this._markdownRenderer = new MarkdownRenderer(_this._editor, modeService, openerService);
+        _this._markdownRenderer = _this._register(new MarkdownRenderer(_this._editor, modeService, openerService));
         _this._computer = new MarginComputer(_this._editor);
         _this._hoverOperation = new HoverOperation(_this._computer, function (result) { return _this._withResult(result); }, undefined, function (result) { return _this._withResult(result); }, 300);
         return _this;
     }
     ModesGlyphHoverWidget.prototype.dispose = function () {
-        this._renderDisposeables = dispose(this._renderDisposeables);
         this._hoverOperation.cancel();
         _super.prototype.dispose.call(this);
     };
@@ -121,15 +123,14 @@ var ModesGlyphHoverWidget = /** @class */ (function (_super) {
         }
     };
     ModesGlyphHoverWidget.prototype._renderMessages = function (lineNumber, messages) {
-        var _this = this;
-        dispose(this._renderDisposeables);
-        this._renderDisposeables = [];
+        this._renderDisposeables.clear();
         var fragment = document.createDocumentFragment();
-        messages.forEach(function (msg) {
-            var renderedContents = _this._markdownRenderer.render(msg.value);
-            _this._renderDisposeables.push(renderedContents);
+        for (var _i = 0, messages_1 = messages; _i < messages_1.length; _i++) {
+            var msg = messages_1[_i];
+            var renderedContents = this._markdownRenderer.render(msg.value);
+            this._renderDisposeables.add(renderedContents);
             fragment.appendChild($('div.hover-row', undefined, renderedContents.element));
-        });
+        }
         this.updateContents(fragment);
         this.showAt(lineNumber);
     };

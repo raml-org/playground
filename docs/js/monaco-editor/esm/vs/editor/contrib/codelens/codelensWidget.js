@@ -106,7 +106,7 @@ var CodeLensContentWidget = /** @class */ (function () {
         };
     };
     CodeLensContentWidget.prototype.getPosition = function () {
-        return this._widgetPosition;
+        return this._widgetPosition || null;
     };
     CodeLensContentWidget.prototype.isVisible = function () {
         return this._domNode.hasAttribute('monaco-visible-content-widget');
@@ -136,8 +136,8 @@ var CodeLensHelper = /** @class */ (function () {
     return CodeLensHelper;
 }());
 export { CodeLensHelper };
-var CodeLens = /** @class */ (function () {
-    function CodeLens(data, editor, helper, viewZoneChangeAccessor, updateCallback) {
+var CodeLensWidget = /** @class */ (function () {
+    function CodeLensWidget(data, editor, helper, viewZoneChangeAccessor, updateCallback) {
         var _this = this;
         this._editor = editor;
         this._data = data;
@@ -163,7 +163,7 @@ var CodeLens = /** @class */ (function () {
             this._editor.addContentWidget(this._contentWidget);
         }
     }
-    CodeLens.prototype.dispose = function (helper, viewZoneChangeAccessor) {
+    CodeLensWidget.prototype.dispose = function (helper, viewZoneChangeAccessor) {
         while (this._decorationIds.length) {
             helper.removeDecoration(this._decorationIds.pop());
         }
@@ -172,7 +172,7 @@ var CodeLens = /** @class */ (function () {
         }
         this._editor.removeContentWidget(this._contentWidget);
     };
-    CodeLens.prototype.isValid = function () {
+    CodeLensWidget.prototype.isValid = function () {
         var _this = this;
         if (!this._editor.hasModel()) {
             return false;
@@ -184,7 +184,7 @@ var CodeLens = /** @class */ (function () {
             return !!(range && Range.isEmpty(symbol.range) === range.isEmpty());
         });
     };
-    CodeLens.prototype.updateCodeLensSymbols = function (data, helper) {
+    CodeLensWidget.prototype.updateCodeLensSymbols = function (data, helper) {
         var _this = this;
         while (this._decorationIds.length) {
             helper.removeDecoration(this._decorationIds.pop());
@@ -198,7 +198,7 @@ var CodeLens = /** @class */ (function () {
             }, function (id) { return _this._decorationIds[i] = id; });
         });
     };
-    CodeLens.prototype.computeIfNecessary = function (model) {
+    CodeLensWidget.prototype.computeIfNecessary = function (model) {
         if (!this._contentWidget.isVisible()) {
             return null;
         }
@@ -211,7 +211,7 @@ var CodeLens = /** @class */ (function () {
         }
         return this._data;
     };
-    CodeLens.prototype.updateCommands = function (symbols) {
+    CodeLensWidget.prototype.updateCommands = function (symbols) {
         this._contentWidget.withCommands(symbols, true);
         for (var i = 0; i < this._data.length; i++) {
             var resolved = symbols[i];
@@ -221,13 +221,13 @@ var CodeLens = /** @class */ (function () {
             }
         }
     };
-    CodeLens.prototype.updateHeight = function () {
+    CodeLensWidget.prototype.updateHeight = function () {
         this._contentWidget.updateHeight();
     };
-    CodeLens.prototype.getCommand = function (link) {
+    CodeLensWidget.prototype.getCommand = function (link) {
         return this._contentWidget.getCommand(link);
     };
-    CodeLens.prototype.getLineNumber = function () {
+    CodeLensWidget.prototype.getLineNumber = function () {
         if (this._editor.hasModel()) {
             var range = this._editor.getModel().getDecorationRange(this._decorationIds[0]);
             if (range) {
@@ -236,7 +236,7 @@ var CodeLens = /** @class */ (function () {
         }
         return -1;
     };
-    CodeLens.prototype.update = function (viewZoneChangeAccessor) {
+    CodeLensWidget.prototype.update = function (viewZoneChangeAccessor) {
         if (this.isValid() && this._editor.hasModel()) {
             var range = this._editor.getModel().getDecorationRange(this._decorationIds[0]);
             if (range) {
@@ -247,9 +247,9 @@ var CodeLens = /** @class */ (function () {
             }
         }
     };
-    return CodeLens;
+    return CodeLensWidget;
 }());
-export { CodeLens };
+export { CodeLensWidget };
 registerThemingParticipant(function (theme, collector) {
     var codeLensForeground = theme.getColor(editorCodeLensForeground);
     if (codeLensForeground) {

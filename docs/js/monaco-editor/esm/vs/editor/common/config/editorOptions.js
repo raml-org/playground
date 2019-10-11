@@ -141,6 +141,7 @@ var InternalEditorOptions = /** @class */ (function () {
         this.wordSeparators = source.wordSeparators;
         this.autoClosingBrackets = source.autoClosingBrackets;
         this.autoClosingQuotes = source.autoClosingQuotes;
+        this.autoClosingOvertype = source.autoClosingOvertype;
         this.autoSurround = source.autoSurround;
         this.autoIndent = source.autoIndent;
         this.useTabStops = source.useTabStops;
@@ -170,6 +171,7 @@ var InternalEditorOptions = /** @class */ (function () {
             && this.wordSeparators === other.wordSeparators
             && this.autoClosingBrackets === other.autoClosingBrackets
             && this.autoClosingQuotes === other.autoClosingQuotes
+            && this.autoClosingOvertype === other.autoClosingOvertype
             && this.autoSurround === other.autoSurround
             && this.autoIndent === other.autoIndent
             && this.useTabStops === other.useTabStops
@@ -200,6 +202,7 @@ var InternalEditorOptions = /** @class */ (function () {
             wordSeparators: (this.wordSeparators !== newOpts.wordSeparators),
             autoClosingBrackets: (this.autoClosingBrackets !== newOpts.autoClosingBrackets),
             autoClosingQuotes: (this.autoClosingQuotes !== newOpts.autoClosingQuotes),
+            autoClosingOvertype: (this.autoClosingOvertype !== newOpts.autoClosingOvertype),
             autoSurround: (this.autoSurround !== newOpts.autoSurround),
             autoIndent: (this.autoIndent !== newOpts.autoIndent),
             useTabStops: (this.useTabStops !== newOpts.useTabStops),
@@ -259,6 +262,7 @@ var InternalEditorOptions = /** @class */ (function () {
             && a.ariaLabel === b.ariaLabel
             && a.renderLineNumbers === b.renderLineNumbers
             && a.renderCustomLineNumbers === b.renderCustomLineNumbers
+            && a.cursorSurroundingLines === b.cursorSurroundingLines
             && a.renderFinalNewline === b.renderFinalNewline
             && a.selectOnLineNumbers === b.selectOnLineNumbers
             && a.glyphMargin === b.glyphMargin
@@ -613,6 +617,7 @@ var EditorOptionsValidator = /** @class */ (function () {
             wordWrapBreakObtrusiveCharacters: _string(opts.wordWrapBreakObtrusiveCharacters, defaults.wordWrapBreakObtrusiveCharacters),
             autoClosingBrackets: autoClosingBrackets,
             autoClosingQuotes: autoClosingQuotes,
+            autoClosingOvertype: _stringSet(opts.autoClosingOvertype, defaults.autoClosingOvertype, ['always', 'auto', 'never']),
             autoSurround: autoSurround,
             autoIndent: _boolean(opts.autoIndent, defaults.autoIndent),
             dragAndDrop: _boolean(opts.dragAndDrop, defaults.dragAndDrop),
@@ -777,7 +782,7 @@ var EditorOptionsValidator = /** @class */ (function () {
             else if (renderWhitespace === false) {
                 renderWhitespace = 'none';
             }
-            renderWhitespace = _stringSet(renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'all']);
+            renderWhitespace = _stringSet(renderWhitespace, defaults.renderWhitespace, ['none', 'boundary', 'selection', 'all']);
         }
         var renderLineHighlight = opts.renderLineHighlight;
         {
@@ -806,6 +811,7 @@ var EditorOptionsValidator = /** @class */ (function () {
             disableMonospaceOptimizations: disableMonospaceOptimizations,
             rulers: rulers,
             ariaLabel: _string(opts.ariaLabel, defaults.ariaLabel),
+            cursorSurroundingLines: _clampedInt(opts.cursorSurroundingLines, defaults.cursorWidth, 0, Number.MAX_VALUE),
             renderLineNumbers: renderLineNumbers,
             renderCustomLineNumbers: renderCustomLineNumbers,
             renderFinalNewline: _boolean(opts.renderFinalNewline, defaults.renderFinalNewline),
@@ -893,7 +899,6 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
     function InternalEditorOptionsFactory() {
     }
     InternalEditorOptionsFactory._tweakValidatedOptions = function (opts, accessibilitySupport) {
-        var accessibilityIsOn = (accessibilitySupport === 2 /* Enabled */);
         var accessibilityIsOff = (accessibilitySupport === 1 /* Disabled */);
         return {
             inDiffEditor: opts.inDiffEditor,
@@ -913,6 +918,7 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
             wordWrapBreakObtrusiveCharacters: opts.wordWrapBreakObtrusiveCharacters,
             autoClosingBrackets: opts.autoClosingBrackets,
             autoClosingQuotes: opts.autoClosingQuotes,
+            autoClosingOvertype: opts.autoClosingOvertype,
             autoSurround: opts.autoSurround,
             autoIndent: opts.autoIndent,
             dragAndDrop: opts.dragAndDrop,
@@ -930,11 +936,12 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 ariaLabel: (accessibilityIsOff ? nls.localize('accessibilityOffAriaLabel', "The editor is not accessible at this time. Press Alt+F1 for options.") : opts.viewInfo.ariaLabel),
                 renderLineNumbers: opts.viewInfo.renderLineNumbers,
                 renderCustomLineNumbers: opts.viewInfo.renderCustomLineNumbers,
+                cursorSurroundingLines: opts.viewInfo.cursorSurroundingLines,
                 renderFinalNewline: opts.viewInfo.renderFinalNewline,
                 selectOnLineNumbers: opts.viewInfo.selectOnLineNumbers,
                 glyphMargin: opts.viewInfo.glyphMargin,
                 revealHorizontalRightPadding: opts.viewInfo.revealHorizontalRightPadding,
-                roundedSelection: (accessibilityIsOn ? false : opts.viewInfo.roundedSelection),
+                roundedSelection: opts.viewInfo.roundedSelection,
                 overviewRulerLanes: opts.viewInfo.overviewRulerLanes,
                 overviewRulerBorder: opts.viewInfo.overviewRulerBorder,
                 cursorBlinking: opts.viewInfo.cursorBlinking,
@@ -947,15 +954,15 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 scrollBeyondLastColumn: opts.viewInfo.scrollBeyondLastColumn,
                 smoothScrolling: opts.viewInfo.smoothScrolling,
                 stopRenderingLineAfter: opts.viewInfo.stopRenderingLineAfter,
-                renderWhitespace: (accessibilityIsOn ? 'none' : opts.viewInfo.renderWhitespace),
-                renderControlCharacters: (accessibilityIsOn ? false : opts.viewInfo.renderControlCharacters),
-                fontLigatures: (accessibilityIsOn ? false : opts.viewInfo.fontLigatures),
-                renderIndentGuides: (accessibilityIsOn ? false : opts.viewInfo.renderIndentGuides),
+                renderWhitespace: opts.viewInfo.renderWhitespace,
+                renderControlCharacters: opts.viewInfo.renderControlCharacters,
+                fontLigatures: opts.viewInfo.fontLigatures,
+                renderIndentGuides: opts.viewInfo.renderIndentGuides,
                 highlightActiveIndentGuide: opts.viewInfo.highlightActiveIndentGuide,
                 renderLineHighlight: opts.viewInfo.renderLineHighlight,
                 scrollbar: opts.viewInfo.scrollbar,
                 minimap: {
-                    enabled: (accessibilityIsOn ? false : opts.viewInfo.minimap.enabled),
+                    enabled: opts.viewInfo.minimap.enabled,
                     side: opts.viewInfo.minimap.side,
                     renderCharacters: opts.viewInfo.minimap.renderCharacters,
                     showSlider: opts.viewInfo.minimap.showSlider,
@@ -966,7 +973,7 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
             contribInfo: {
                 selectionClipboard: opts.contribInfo.selectionClipboard,
                 hover: opts.contribInfo.hover,
-                links: (accessibilityIsOn ? false : opts.contribInfo.links),
+                links: opts.contribInfo.links,
                 contextmenu: opts.contribInfo.contextmenu,
                 quickSuggestions: opts.contribInfo.quickSuggestions,
                 quickSuggestionsDelay: opts.contribInfo.quickSuggestionsDelay,
@@ -983,13 +990,13 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
                 tabCompletion: opts.contribInfo.tabCompletion,
                 suggest: opts.contribInfo.suggest,
                 gotoLocation: opts.contribInfo.gotoLocation,
-                selectionHighlight: (accessibilityIsOn ? false : opts.contribInfo.selectionHighlight),
-                occurrencesHighlight: (accessibilityIsOn ? false : opts.contribInfo.occurrencesHighlight),
-                codeLens: (accessibilityIsOn ? false : opts.contribInfo.codeLens),
-                folding: (accessibilityIsOn ? false : opts.contribInfo.folding),
+                selectionHighlight: opts.contribInfo.selectionHighlight,
+                occurrencesHighlight: opts.contribInfo.occurrencesHighlight,
+                codeLens: opts.contribInfo.codeLens,
+                folding: opts.contribInfo.folding,
                 foldingStrategy: opts.contribInfo.foldingStrategy,
                 showFoldingControls: opts.contribInfo.showFoldingControls,
-                matchBrackets: (accessibilityIsOn ? false : opts.contribInfo.matchBrackets),
+                matchBrackets: opts.contribInfo.matchBrackets,
                 find: opts.contribInfo.find,
                 colorDecorators: opts.contribInfo.colorDecorators,
                 lightbulbEnabled: opts.contribInfo.lightbulbEnabled,
@@ -1137,6 +1144,7 @@ var InternalEditorOptionsFactory = /** @class */ (function () {
             wordSeparators: opts.wordSeparators,
             autoClosingBrackets: opts.autoClosingBrackets,
             autoClosingQuotes: opts.autoClosingQuotes,
+            autoClosingOvertype: opts.autoClosingOvertype,
             autoSurround: opts.autoSurround,
             autoIndent: opts.autoIndent,
             useTabStops: opts.useTabStops,
@@ -1323,6 +1331,7 @@ export var EDITOR_DEFAULTS = {
     wordWrapBreakObtrusiveCharacters: '.',
     autoClosingBrackets: 'languageDefined',
     autoClosingQuotes: 'languageDefined',
+    autoClosingOvertype: 'auto',
     autoSurround: 'languageDefined',
     autoIndent: true,
     dragAndDrop: true,
@@ -1340,6 +1349,7 @@ export var EDITOR_DEFAULTS = {
         ariaLabel: nls.localize('editorViewAccessibleLabel', "Editor content"),
         renderLineNumbers: 1 /* On */,
         renderCustomLineNumbers: null,
+        cursorSurroundingLines: 0,
         renderFinalNewline: true,
         selectOnLineNumbers: true,
         glyphMargin: true,

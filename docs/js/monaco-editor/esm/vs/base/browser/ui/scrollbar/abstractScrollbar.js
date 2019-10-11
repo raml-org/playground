@@ -78,6 +78,11 @@ var AbstractScrollbar = /** @class */ (function (_super) {
                 _this._sliderMouseDown(e, function () { });
             }
         });
+        this.onclick(this.slider.domNode, function (e) {
+            if (e.leftButton) {
+                e.stopPropagation();
+            }
+        });
     };
     // ----------------- Update state
     AbstractScrollbar.prototype._onElementSize = function (visibleSize) {

@@ -34,13 +34,13 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel(): monaco.editor.ITextModel {
+  public getMainModel (): monaco.editor.ITextModel {
     return this.ramlEditor.getModel()
   }
 
   public parseEditorSection (section?: EditorSection) {
     console.log(`Parsing text from editor section '${section}'`)
-    let value = this.ramlEditor.getModel().getValue()
+    const value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     this.parseString(section as 'raml', value, (err, model) => {
       if (err) {
@@ -62,7 +62,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected updateEditorsModels () {
-    console.log(`Updating editors models`)
+    console.log('Updating editors models')
     if (this.model === null || this.model.raw === null) {
       return
     }
@@ -109,7 +109,7 @@ export class ViewModel extends CommonViewModel {
   public resetGraph () {
     try {
       document.getElementById('graph-container-inner').innerHTML = ''
-      let oldGraph = this.graph
+      const oldGraph = this.graph
       this.graph = new PlaygroundGraph(
         this.model!.location(),
         'domain',
@@ -132,7 +132,7 @@ export class ViewModel extends CommonViewModel {
 
     this.model.units(this.documentLevel, (err, units) => {
       if (err === null) {
-        let unitsMap = {}
+        const unitsMap = {}
         this.documentUnits().forEach(unit => {
           unitsMap[unit.id] = unit
         })
@@ -140,7 +140,7 @@ export class ViewModel extends CommonViewModel {
         this.documentUnits.removeAll()
         units.documents.forEach(doc => {
           if (unitsMap[doc.id] != null) {
-            doc['expanded'] = unitsMap[doc.id]['expanded']
+            doc.expanded = unitsMap[doc.id].expanded
           }
           this.documentUnits.push(doc)
         })
