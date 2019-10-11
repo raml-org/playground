@@ -23,7 +23,13 @@ gulp.task('css', gulp.series(
   'sass',
   function () {
     return gulp.src('./docs/css/styles.css')
-      .pipe(cleanCSS({level: {2: {all: true}}}))
+      .pipe(cleanCSS({
+        level: {
+          2: {
+            all: true
+          }
+        }
+      }))
       .pipe(gulp.dest('./docs/css'))
   })
 )
@@ -93,7 +99,6 @@ gulp.task('bundleStarterGuide', function () {
 
 gulp.task('serveRamlOas', gulp.series(
   'css',
-  'sass',
   'bundleRamlOas',
   function () {
     return browserSync.init({
@@ -105,7 +110,6 @@ gulp.task('serveRamlOas', gulp.series(
 
 gulp.task('serveVisualization', gulp.series(
   'css',
-  'sass',
   'bundleVisualization',
   function () {
     return browserSync.init({
@@ -117,7 +121,6 @@ gulp.task('serveVisualization', gulp.series(
 
 gulp.task('serveStarterGuide', gulp.series(
   'css',
-  'sass',
   'bundleStarterGuide',
   function () {
     return browserSync.init({
@@ -130,7 +133,6 @@ gulp.task('serveStarterGuide', gulp.series(
 // Bundle all the demos
 gulp.task('bundle', gulp.series(
   'css',
-  'sass',
   'bundleRamlOas',
   'bundleVisualization',
   'bundleStarterGuide'
