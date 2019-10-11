@@ -1864,10 +1864,6 @@ header{
 }
 
 /* api-documentation */
-:root {
-  --code-background-color: #FFFFFF;
-}
-
 #api-console-container {
   width: 25%;
   padding: 10px 20px;
@@ -1878,6 +1874,8 @@ header{
   background-color: rgba(255, 255, 255, 0.8);
   border-radius: 7px;
   overflow-y: auto;
+
+  --code-background-color: #FFFFFF;
 }
 
 .section.starter_guide {
