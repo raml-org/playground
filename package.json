@@ -23,10 +23,10 @@
     "webapi-parser": "^0.3.2"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^2.3.3",
     "babelify": "^10.0.0",
     "browser-sync": "^2.26.7",
     "browserify": "^16.5.0",
-    "eslint-plugin-typescript": "^0.14.0",
     "gulp": "^4.0.2",
     "gulp-sass": "4.0.2",
     "gulp-sourcemaps": "^2.6.5",
@@ -34,14 +34,10 @@
     "standard": "^14.3.1",
     "tsify": "^4.0.1",
     "typescript": "^3.6.4",
-    "typescript-eslint-parser": "^22.0.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^2.0.0"
   },
   "standard": {
-    "parser": "typescript-eslint-parser",
-    "plugins": [
-      "typescript"
-    ]
+    "parser": "@typescript-eslint/parser"
   }
 }
