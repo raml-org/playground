@@ -42,7 +42,7 @@ import { isNonEmptyArray } from '../../../base/common/arrays.js';
 import { CancellationToken } from '../../../base/common/cancellation.js';
 import { illegalArgument, onUnexpectedExternalError } from '../../../base/common/errors.js';
 import { URI } from '../../../base/common/uri.js';
-import { EditorState, EditorStateCancellationTokenSource, TextModelCancellationTokenSource } from '../../browser/core/editorState.js';
+import { EditorStateCancellationTokenSource, TextModelCancellationTokenSource } from '../../browser/core/editorState.js';
 import { isCodeEditor } from '../../browser/editorBrowser.js';
 import { registerLanguageCommand } from '../../browser/editorExtensions.js';
 import { Position } from '../../common/core/position.js';
@@ -167,30 +167,36 @@ export function formatDocumentRangeWithSelectedProvider(accessor, editorOrModel,
 }
 export function formatDocumentRangeWithProvider(accessor, provider, editorOrModel, range, token) {
     return __awaiter(this, void 0, void 0, function () {
-        var workerService, model, validate, state_1, versionNow_1, rawEdits, edits, range_1, initialSelection_1;
+        var workerService, model, cts, edits, rawEdits, range_1, initialSelection_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     workerService = accessor.get(IEditorWorkerService);
                     if (isCodeEditor(editorOrModel)) {
                         model = editorOrModel.getModel();
-                        state_1 = new EditorState(editorOrModel, 1 /* Value */ | 4 /* Position */);
-                        validate = function () { return state_1.validate(editorOrModel); };
+                        cts = new EditorStateCancellationTokenSource(editorOrModel, 1 /* Value */ | 4 /* Position */, token);
                     }
                     else {
                         model = editorOrModel;
-                        versionNow_1 = editorOrModel.getVersionId();
-                        validate = function () { return versionNow_1 === editorOrModel.getVersionId(); };
+                        cts = new TextModelCancellationTokenSource(editorOrModel, token);
                     }
-                    return [4 /*yield*/, provider.provideDocumentRangeFormattingEdits(model, range, model.getFormattingOptions(), token)];
+                    _a.label = 1;
                 case 1:
+                    _a.trys.push([1, , 4, 5]);
+                    return [4 /*yield*/, provider.provideDocumentRangeFormattingEdits(model, range, model.getFormattingOptions(), cts.token)];
+                case 2:
                     rawEdits = _a.sent();
                     return [4 /*yield*/, workerService.computeMoreMinimalEdits(model.uri, rawEdits)];
-                case 2:
+                case 3:
                     edits = _a.sent();
-                    if (!validate()) {
+                    if (cts.token.isCancellationRequested) {
                         return [2 /*return*/, true];
                     }
+                    return [3 /*break*/, 5];
+                case 4:
+                    cts.dispose();
+                    return [7 /*endfinally*/];
+                case 5:
                     if (!edits || edits.length === 0) {
                         return [2 /*return*/, false];
                     }
@@ -250,7 +256,7 @@ export function formatDocumentWithSelectedProvider(accessor, editorOrModel, mode
 }
 export function formatDocumentWithProvider(accessor, provider, editorOrModel, mode, token) {
     return __awaiter(this, void 0, void 0, function () {
-        var workerService, model, cts, rawEdits, edits, range, initialSelection_2;
+        var workerService, model, cts, edits, rawEdits, range, initialSelection_2;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -263,15 +269,23 @@ export function formatDocumentWithProvider(accessor, provider, editorOrModel, mo
                         model = editorOrModel;
                         cts = new TextModelCancellationTokenSource(editorOrModel, token);
                     }
-                    return [4 /*yield*/, provider.provideDocumentFormattingEdits(model, model.getFormattingOptions(), cts.token)];
+                    _a.label = 1;
                 case 1:
+                    _a.trys.push([1, , 4, 5]);
+                    return [4 /*yield*/, provider.provideDocumentFormattingEdits(model, model.getFormattingOptions(), cts.token)];
+                case 2:
                     rawEdits = _a.sent();
                     return [4 /*yield*/, workerService.computeMoreMinimalEdits(model.uri, rawEdits)];
-                case 2:
+                case 3:
                     edits = _a.sent();
                     if (cts.token.isCancellationRequested) {
                         return [2 /*return*/, true];
                     }
+                    return [3 /*break*/, 5];
+                case 4:
+                    cts.dispose();
+                    return [7 /*endfinally*/];
+                case 5:
                     if (!edits || edits.length === 0) {
                         return [2 /*return*/, false];
                     }

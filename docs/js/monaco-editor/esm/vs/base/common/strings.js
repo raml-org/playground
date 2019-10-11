@@ -257,6 +257,44 @@ export function compare(a, b) {
         return 0;
     }
 }
+export function compareIgnoreCase(a, b) {
+    var len = Math.min(a.length, b.length);
+    for (var i = 0; i < len; i++) {
+        var codeA = a.charCodeAt(i);
+        var codeB = b.charCodeAt(i);
+        if (codeA === codeB) {
+            // equal
+            continue;
+        }
+        if (isUpperAsciiLetter(codeA)) {
+            codeA += 32;
+        }
+        if (isUpperAsciiLetter(codeB)) {
+            codeB += 32;
+        }
+        var diff = codeA - codeB;
+        if (diff === 0) {
+            // equal -> ignoreCase
+            continue;
+        }
+        else if (isLowerAsciiLetter(codeA) && isLowerAsciiLetter(codeB)) {
+            //
+            return diff;
+        }
+        else {
+            return compare(a.toLowerCase(), b.toLowerCase());
+        }
+    }
+    if (a.length < b.length) {
+        return -1;
+    }
+    else if (a.length > b.length) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
 export function isLowerAsciiLetter(code) {
     return code >= 97 /* a */ && code <= 122 /* z */;
 }
@@ -445,4 +483,25 @@ export function repeat(s, count) {
         result += s;
     }
     return result;
+}
+export function containsUppercaseCharacter(target, ignoreEscapedChars) {
+    if (ignoreEscapedChars === void 0) { ignoreEscapedChars = false; }
+    if (!target) {
+        return false;
+    }
+    if (ignoreEscapedChars) {
+        target = target.replace(/\\./g, '');
+    }
+    return target.toLowerCase() !== target;
+}
+/**
+ * Produces 'a'-'z', followed by 'A'-'Z'... followed by 'a'-'z', etc.
+ */
+export function singleLetterHash(n) {
+    var LETTERS_CNT = (90 /* Z */ - 65 /* A */ + 1);
+    n = n % (2 * LETTERS_CNT);
+    if (n < LETTERS_CNT) {
+        return String.fromCharCode(97 /* a */ + n);
+    }
+    return String.fromCharCode(65 /* A */ + n - LETTERS_CNT);
 }

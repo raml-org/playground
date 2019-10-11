@@ -25,10 +25,9 @@ import * as types from '../../../common/types.js';
 import { EventType, Gesture } from '../../touch.js';
 import { StandardKeyboardEvent } from '../../keyboardEvent.js';
 import { Emitter } from '../../../common/event.js';
-import { asArray } from '../../../common/arrays.js';
-var BaseActionItem = /** @class */ (function (_super) {
-    __extends(BaseActionItem, _super);
-    function BaseActionItem(context, action, options) {
+var BaseActionViewItem = /** @class */ (function (_super) {
+    __extends(BaseActionViewItem, _super);
+    function BaseActionViewItem(context, action, options) {
         var _this = _super.call(this) || this;
         _this.options = options;
         _this._context = context || _this;
@@ -45,7 +44,7 @@ var BaseActionItem = /** @class */ (function (_super) {
         }
         return _this;
     }
-    BaseActionItem.prototype.handleActionChangeEvent = function (event) {
+    BaseActionViewItem.prototype.handleActionChangeEvent = function (event) {
         if (event.enabled !== undefined) {
             this.updateEnabled();
         }
@@ -63,7 +62,7 @@ var BaseActionItem = /** @class */ (function (_super) {
             this.updateTooltip();
         }
     };
-    Object.defineProperty(BaseActionItem.prototype, "actionRunner", {
+    Object.defineProperty(BaseActionViewItem.prototype, "actionRunner", {
         get: function () {
             return this._actionRunner;
         },
@@ -73,16 +72,16 @@ var BaseActionItem = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    BaseActionItem.prototype.getAction = function () {
+    BaseActionViewItem.prototype.getAction = function () {
         return this._action;
     };
-    BaseActionItem.prototype.isEnabled = function () {
+    BaseActionViewItem.prototype.isEnabled = function () {
         return this._action.enabled;
     };
-    BaseActionItem.prototype.setActionContext = function (newContext) {
+    BaseActionViewItem.prototype.setActionContext = function (newContext) {
         this._context = newContext;
     };
-    BaseActionItem.prototype.render = function (container) {
+    BaseActionViewItem.prototype.render = function (container) {
         var _this = this;
         this.element = container;
         Gesture.addTarget(container);
@@ -125,7 +124,7 @@ var BaseActionItem = /** @class */ (function (_super) {
             }));
         });
     };
-    BaseActionItem.prototype.onClick = function (event) {
+    BaseActionViewItem.prototype.onClick = function (event) {
         DOM.EventHelper.stop(event, true);
         var context;
         if (types.isUndefinedOrNull(this._context)) {
@@ -139,43 +138,43 @@ var BaseActionItem = /** @class */ (function (_super) {
         }
         this._actionRunner.run(this._action, context);
     };
-    BaseActionItem.prototype.focus = function () {
+    BaseActionViewItem.prototype.focus = function () {
         if (this.element) {
             this.element.focus();
             DOM.addClass(this.element, 'focused');
         }
     };
-    BaseActionItem.prototype.blur = function () {
+    BaseActionViewItem.prototype.blur = function () {
         if (this.element) {
             this.element.blur();
             DOM.removeClass(this.element, 'focused');
         }
     };
-    BaseActionItem.prototype.updateEnabled = function () {
+    BaseActionViewItem.prototype.updateEnabled = function () {
         // implement in subclass
     };
-    BaseActionItem.prototype.updateLabel = function () {
+    BaseActionViewItem.prototype.updateLabel = function () {
         // implement in subclass
     };
-    BaseActionItem.prototype.updateTooltip = function () {
+    BaseActionViewItem.prototype.updateTooltip = function () {
         // implement in subclass
     };
-    BaseActionItem.prototype.updateClass = function () {
+    BaseActionViewItem.prototype.updateClass = function () {
         // implement in subclass
     };
-    BaseActionItem.prototype.updateChecked = function () {
+    BaseActionViewItem.prototype.updateChecked = function () {
         // implement in subclass
     };
-    BaseActionItem.prototype.dispose = function () {
+    BaseActionViewItem.prototype.dispose = function () {
         if (this.element) {
             DOM.removeNode(this.element);
             this.element = undefined;
         }
         _super.prototype.dispose.call(this);
     };
-    return BaseActionItem;
+    return BaseActionViewItem;
 }(Disposable));
-export { BaseActionItem };
+export { BaseActionViewItem };
 var Separator = /** @class */ (function (_super) {
     __extends(Separator, _super);
     function Separator(label) {
@@ -189,9 +188,9 @@ var Separator = /** @class */ (function (_super) {
     return Separator;
 }(Action));
 export { Separator };
-var ActionItem = /** @class */ (function (_super) {
-    __extends(ActionItem, _super);
-    function ActionItem(context, action, options) {
+var ActionViewItem = /** @class */ (function (_super) {
+    __extends(ActionViewItem, _super);
+    function ActionViewItem(context, action, options) {
         if (options === void 0) { options = {}; }
         var _this = _super.call(this, context, action, options) || this;
         _this.options = options;
@@ -200,7 +199,7 @@ var ActionItem = /** @class */ (function (_super) {
         _this.cssClass = '';
         return _this;
     }
-    ActionItem.prototype.render = function (container) {
+    ActionViewItem.prototype.render = function (container) {
         _super.prototype.render.call(this, container);
         if (this.element) {
             this.label = DOM.append(this.element, DOM.$('a.action-label'));
@@ -225,16 +224,16 @@ var ActionItem = /** @class */ (function (_super) {
         this.updateEnabled();
         this.updateChecked();
     };
-    ActionItem.prototype.focus = function () {
+    ActionViewItem.prototype.focus = function () {
         _super.prototype.focus.call(this);
         this.label.focus();
     };
-    ActionItem.prototype.updateLabel = function () {
+    ActionViewItem.prototype.updateLabel = function () {
         if (this.options.label) {
             this.label.textContent = this.getAction().label;
         }
     };
-    ActionItem.prototype.updateTooltip = function () {
+    ActionViewItem.prototype.updateTooltip = function () {
         var title = null;
         if (this.getAction().tooltip) {
             title = this.getAction().tooltip;
@@ -249,7 +248,7 @@ var ActionItem = /** @class */ (function (_super) {
             this.label.title = title;
         }
     };
-    ActionItem.prototype.updateClass = function () {
+    ActionViewItem.prototype.updateClass = function () {
         if (this.cssClass) {
             DOM.removeClasses(this.label, this.cssClass);
         }
@@ -265,7 +264,7 @@ var ActionItem = /** @class */ (function (_super) {
             DOM.removeClass(this.label, 'icon');
         }
     };
-    ActionItem.prototype.updateEnabled = function () {
+    ActionViewItem.prototype.updateEnabled = function () {
         if (this.getAction().enabled) {
             this.label.removeAttribute('aria-disabled');
             if (this.element) {
@@ -283,7 +282,7 @@ var ActionItem = /** @class */ (function (_super) {
             DOM.removeTabIndexAndUpdateFocus(this.label);
         }
     };
-    ActionItem.prototype.updateChecked = function () {
+    ActionViewItem.prototype.updateChecked = function () {
         if (this.getAction().checked) {
             DOM.addClass(this.label, 'checked');
         }
@@ -291,9 +290,9 @@ var ActionItem = /** @class */ (function (_super) {
             DOM.removeClass(this.label, 'checked');
         }
     };
-    return ActionItem;
-}(BaseActionItem));
-export { ActionItem };
+    return ActionViewItem;
+}(BaseActionViewItem));
+export { ActionViewItem };
 var defaultOptions = {
     orientation: 0 /* HORIZONTAL */,
     context: null,
@@ -308,9 +307,13 @@ var ActionBar = /** @class */ (function (_super) {
         if (options === void 0) { options = defaultOptions; }
         var _this = _super.call(this) || this;
         _this._onDidBlur = _this._register(new Emitter());
+        _this.onDidBlur = _this._onDidBlur.event;
         _this._onDidCancel = _this._register(new Emitter());
+        _this.onDidCancel = _this._onDidCancel.event;
         _this._onDidRun = _this._register(new Emitter());
+        _this.onDidRun = _this._onDidRun.event;
         _this._onDidBeforeRun = _this._register(new Emitter());
+        _this.onDidBeforeRun = _this._onDidBeforeRun.event;
         _this.options = options;
         _this._context = options.context;
         if (!_this.options.triggerKeys) {
@@ -325,7 +328,7 @@ var ActionBar = /** @class */ (function (_super) {
         }
         _this._register(_this._actionRunner.onDidRun(function (e) { return _this._onDidRun.fire(e); }));
         _this._register(_this._actionRunner.onDidBeforeRun(function (e) { return _this._onDidBeforeRun.fire(e); }));
-        _this.items = [];
+        _this.viewItems = [];
         _this.focusedItem = undefined;
         _this.domNode = document.createElement('div');
         _this.domNode.className = 'monaco-action-bar';
@@ -414,26 +417,6 @@ var ActionBar = /** @class */ (function (_super) {
         container.appendChild(_this.domNode);
         return _this;
     }
-    Object.defineProperty(ActionBar.prototype, "onDidBlur", {
-        get: function () { return this._onDidBlur.event; },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(ActionBar.prototype, "onDidCancel", {
-        get: function () { return this._onDidCancel.event; },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(ActionBar.prototype, "onDidRun", {
-        get: function () { return this._onDidRun.event; },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(ActionBar.prototype, "onDidBeforeRun", {
-        get: function () { return this._onDidBeforeRun.event; },
-        enumerable: true,
-        configurable: true
-    });
     ActionBar.prototype.isTriggerKeyEvent = function (event) {
         var ret = false;
         if (this.options.triggerKeys) {
@@ -458,7 +441,7 @@ var ActionBar = /** @class */ (function (_super) {
         },
         set: function (context) {
             this._context = context;
-            this.items.forEach(function (i) { return i.setActionContext(context); });
+            this.viewItems.forEach(function (i) { return i.setActionContext(context); });
         },
         enumerable: true,
         configurable: true
@@ -469,44 +452,44 @@ var ActionBar = /** @class */ (function (_super) {
     ActionBar.prototype.push = function (arg, options) {
         var _this = this;
         if (options === void 0) { options = {}; }
-        var actions = asArray(arg);
+        var actions = Array.isArray(arg) ? arg : [arg];
         var index = types.isNumber(options.index) ? options.index : null;
         actions.forEach(function (action) {
-            var actionItemElement = document.createElement('li');
-            actionItemElement.className = 'action-item';
-            actionItemElement.setAttribute('role', 'presentation');
+            var actionViewItemElement = document.createElement('li');
+            actionViewItemElement.className = 'action-item';
+            actionViewItemElement.setAttribute('role', 'presentation');
             // Prevent native context menu on actions
-            _this._register(DOM.addDisposableListener(actionItemElement, DOM.EventType.CONTEXT_MENU, function (e) {
+            _this._register(DOM.addDisposableListener(actionViewItemElement, DOM.EventType.CONTEXT_MENU, function (e) {
                 e.preventDefault();
                 e.stopPropagation();
             }));
             var item;
-            if (_this.options.actionItemProvider) {
-                item = _this.options.actionItemProvider(action);
+            if (_this.options.actionViewItemProvider) {
+                item = _this.options.actionViewItemProvider(action);
             }
             if (!item) {
-                item = new ActionItem(_this.context, action, options);
+                item = new ActionViewItem(_this.context, action, options);
             }
             item.actionRunner = _this._actionRunner;
             item.setActionContext(_this.context);
-            item.render(actionItemElement);
+            item.render(actionViewItemElement);
             if (index === null || index < 0 || index >= _this.actionsList.children.length) {
-                _this.actionsList.appendChild(actionItemElement);
-                _this.items.push(item);
+                _this.actionsList.appendChild(actionViewItemElement);
+                _this.viewItems.push(item);
             }
             else {
-                _this.actionsList.insertBefore(actionItemElement, _this.actionsList.children[index]);
-                _this.items.splice(index, 0, item);
+                _this.actionsList.insertBefore(actionViewItemElement, _this.actionsList.children[index]);
+                _this.viewItems.splice(index, 0, item);
                 index++;
             }
         });
     };
     ActionBar.prototype.clear = function () {
-        this.items = dispose(this.items);
+        this.viewItems = dispose(this.viewItems);
         DOM.clearNode(this.actionsList);
     };
     ActionBar.prototype.isEmpty = function () {
-        return this.items.length === 0;
+        return this.viewItems.length === 0;
     };
     ActionBar.prototype.focus = function (arg) {
         var selectFirst = false;
@@ -522,7 +505,7 @@ var ActionBar = /** @class */ (function (_super) {
         }
         if (selectFirst && typeof this.focusedItem === 'undefined') {
             // Focus the first enabled item
-            this.focusedItem = this.items.length - 1;
+            this.focusedItem = this.viewItems.length - 1;
             this.focusNext();
         }
         else {
@@ -534,13 +517,13 @@ var ActionBar = /** @class */ (function (_super) {
     };
     ActionBar.prototype.focusNext = function () {
         if (typeof this.focusedItem === 'undefined') {
-            this.focusedItem = this.items.length - 1;
+            this.focusedItem = this.viewItems.length - 1;
         }
         var startIndex = this.focusedItem;
         var item;
         do {
-            this.focusedItem = (this.focusedItem + 1) % this.items.length;
-            item = this.items[this.focusedItem];
+            this.focusedItem = (this.focusedItem + 1) % this.viewItems.length;
+            item = this.viewItems[this.focusedItem];
         } while (this.focusedItem !== startIndex && !item.isEnabled());
         if (this.focusedItem === startIndex && !item.isEnabled()) {
             this.focusedItem = undefined;
@@ -556,9 +539,9 @@ var ActionBar = /** @class */ (function (_super) {
         do {
             this.focusedItem = this.focusedItem - 1;
             if (this.focusedItem < 0) {
-                this.focusedItem = this.items.length - 1;
+                this.focusedItem = this.viewItems.length - 1;
             }
-            item = this.items[this.focusedItem];
+            item = this.viewItems[this.focusedItem];
         } while (this.focusedItem !== startIndex && !item.isEnabled());
         if (this.focusedItem === startIndex && !item.isEnabled()) {
             this.focusedItem = undefined;
@@ -569,13 +552,13 @@ var ActionBar = /** @class */ (function (_super) {
         if (typeof this.focusedItem === 'undefined') {
             this.actionsList.focus();
         }
-        for (var i = 0; i < this.items.length; i++) {
-            var item = this.items[i];
-            var actionItem = item;
+        for (var i = 0; i < this.viewItems.length; i++) {
+            var item = this.viewItems[i];
+            var actionViewItem = item;
             if (i === this.focusedItem) {
-                if (types.isFunction(actionItem.isEnabled)) {
-                    if (actionItem.isEnabled() && types.isFunction(actionItem.focus)) {
-                        actionItem.focus(fromRight);
+                if (types.isFunction(actionViewItem.isEnabled)) {
+                    if (actionViewItem.isEnabled() && types.isFunction(actionViewItem.focus)) {
+                        actionViewItem.focus(fromRight);
                     }
                     else {
                         this.actionsList.focus();
@@ -583,8 +566,8 @@ var ActionBar = /** @class */ (function (_super) {
                 }
             }
             else {
-                if (types.isFunction(actionItem.blur)) {
-                    actionItem.blur();
+                if (types.isFunction(actionViewItem.blur)) {
+                    actionViewItem.blur();
                 }
             }
         }
@@ -594,10 +577,10 @@ var ActionBar = /** @class */ (function (_super) {
             return; //nothing to focus
         }
         // trigger action
-        var actionItem = this.items[this.focusedItem];
-        if (actionItem instanceof BaseActionItem) {
-            var context = (actionItem._context === null || actionItem._context === undefined) ? event : actionItem._context;
-            this.run(actionItem._action, context);
+        var actionViewItem = this.viewItems[this.focusedItem];
+        if (actionViewItem instanceof BaseActionViewItem) {
+            var context = (actionViewItem._context === null || actionViewItem._context === undefined) ? event : actionViewItem._context;
+            this.run(actionViewItem._action, context);
         }
     };
     ActionBar.prototype.cancel = function () {
@@ -610,8 +593,8 @@ var ActionBar = /** @class */ (function (_super) {
         return this._actionRunner.run(action, context);
     };
     ActionBar.prototype.dispose = function () {
-        dispose(this.items);
-        this.items = [];
+        dispose(this.viewItems);
+        this.viewItems = [];
         DOM.removeNode(this.getContainer());
         _super.prototype.dispose.call(this);
     };

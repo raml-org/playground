@@ -7,8 +7,11 @@ var CodeActionKind = /** @class */ (function () {
     function CodeActionKind(value) {
         this.value = value;
     }
+    CodeActionKind.prototype.equals = function (other) {
+        return this.value === other.value;
+    };
     CodeActionKind.prototype.contains = function (other) {
-        return this.value === other.value || startsWith(other.value, this.value + CodeActionKind.sep);
+        return this.equals(other) || startsWith(other.value, this.value + CodeActionKind.sep);
     };
     CodeActionKind.prototype.intersects = function (other) {
         return this.contains(other) || other.contains(this);

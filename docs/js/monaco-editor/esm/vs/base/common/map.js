@@ -552,6 +552,9 @@ var LRUCache = /** @class */ (function (_super) {
     LRUCache.prototype.get = function (key) {
         return _super.prototype.get.call(this, key, 2 /* AsNew */);
     };
+    LRUCache.prototype.peek = function (key) {
+        return _super.prototype.get.call(this, key, 0 /* None */);
+    };
     LRUCache.prototype.set = function (key, value) {
         _super.prototype.set.call(this, key, value, 2 /* AsNew */);
         this.checkTrim();

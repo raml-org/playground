@@ -60,8 +60,8 @@ var ModeServiceImpl = /** @class */ (function () {
     ModeServiceImpl.prototype.getModeIdForLanguageName = function (alias) {
         return this._registry.getModeIdForLanguageNameLowercase(alias);
     };
-    ModeServiceImpl.prototype.getModeIdByFilepathOrFirstLine = function (filepath, firstLine) {
-        var modeIds = this._registry.getModeIdsFromFilepathOrFirstLine(filepath, firstLine);
+    ModeServiceImpl.prototype.getModeIdByFilepathOrFirstLine = function (resource, firstLine) {
+        var modeIds = this._registry.getModeIdsFromFilepathOrFirstLine(resource, firstLine);
         if (modeIds.length > 0) {
             return modeIds[0];
         }
@@ -85,10 +85,10 @@ var ModeServiceImpl = /** @class */ (function () {
             return _this._createModeAndGetLanguageIdentifier(modeId);
         });
     };
-    ModeServiceImpl.prototype.createByFilepathOrFirstLine = function (filepath, firstLine) {
+    ModeServiceImpl.prototype.createByFilepathOrFirstLine = function (resource, firstLine) {
         var _this = this;
         return new LanguageSelection(this.onLanguagesMaybeChanged, function () {
-            var modeId = _this.getModeIdByFilepathOrFirstLine(filepath, firstLine);
+            var modeId = _this.getModeIdByFilepathOrFirstLine(resource, firstLine);
             return _this._createModeAndGetLanguageIdentifier(modeId);
         });
     };

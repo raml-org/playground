@@ -19,14 +19,16 @@ import './inputBox.css';
 import * as nls from '../../../../nls.js';
 import * as Bal from '../../browser.js';
 import * as dom from '../../dom.js';
-import { renderFormattedText, renderText } from '../../htmlContentRenderer.js';
+import { renderFormattedText, renderText } from '../../formattedTextRenderer.js';
 import * as aria from '../aria/aria.js';
 import { ActionBar } from '../actionbar/actionbar.js';
-import { Emitter } from '../../../common/event.js';
+import { Event, Emitter } from '../../../common/event.js';
 import { Widget } from '../widget.js';
 import { Color } from '../../../common/color.js';
 import { mixin } from '../../../common/objects.js';
 import { HistoryNavigator } from '../../../common/history.js';
+import { ScrollableElement } from '../scrollbar/scrollableElement.js';
+import { domEvent } from '../../event.js';
 var $ = dom.$;
 var defaultOpts = {
     inputBackground: Color.fromHex('#3C3C3C'),
@@ -43,14 +45,15 @@ var InputBox = /** @class */ (function (_super) {
     function InputBox(container, contextViewProvider, options) {
         var _this = _super.call(this) || this;
         _this.state = 'idle';
+        _this.maxHeight = Number.POSITIVE_INFINITY;
         _this._onDidChange = _this._register(new Emitter());
         _this.onDidChange = _this._onDidChange.event;
         _this._onDidHeightChange = _this._register(new Emitter());
+        _this.onDidHeightChange = _this._onDidHeightChange.event;
         _this.contextViewProvider = contextViewProvider;
         _this.options = options || Object.create(null);
         mixin(_this.options, defaultOpts, false);
         _this.message = null;
-        _this.cachedHeight = null;
         _this.placeholder = _this.options.placeholder || '';
         _this.ariaLabel = _this.options.ariaLabel || '';
         _this.inputBackground = _this.options.inputBackground;
@@ -78,8 +81,26 @@ var InputBox = /** @class */ (function (_super) {
         _this.onfocus(_this.input, function () { return dom.addClass(_this.element, 'synthetic-focus'); });
         _this.onblur(_this.input, function () { return dom.removeClass(_this.element, 'synthetic-focus'); });
         if (_this.options.flexibleHeight) {
+            _this.maxHeight = typeof _this.options.flexibleMaxHeight === 'number' ? _this.options.flexibleMaxHeight : Number.POSITIVE_INFINITY;
             _this.mirror = dom.append(wrapper, $('div.mirror'));
             _this.mirror.innerHTML = '&nbsp;';
+            _this.scrollableElement = new ScrollableElement(_this.element, { vertical: 1 /* Auto */ });
+            if (_this.options.flexibleWidth) {
+                _this.input.setAttribute('wrap', 'off');
+                _this.mirror.style.whiteSpace = 'pre';
+                _this.mirror.style.wordWrap = 'initial';
+            }
+            dom.append(container, _this.scrollableElement.getDomNode());
+            _this._register(_this.scrollableElement);
+            // from ScrollableElement to DOM
+            _this._register(_this.scrollableElement.onScroll(function (e) { return _this.input.scrollTop = e.scrollTop; }));
+            var onSelectionChange = Event.filter(domEvent(document, 'selectionchange'), function () {
+                var selection = document.getSelection();
+                return !!selection && selection.anchorNode === wrapper;
+            });
+            // from DOM to ScrollableElement
+            _this._register(onSelectionChange(_this.updateScrollDimensions, _this));
+            _this._register(_this.onDidHeightChange(_this.updateScrollDimensions, _this));
         }
         else {
             _this.input.type = _this.options.type || 'text';
@@ -138,13 +159,6 @@ var InputBox = /** @class */ (function (_super) {
             }
         }
     };
-    Object.defineProperty(InputBox.prototype, "mirrorElement", {
-        get: function () {
-            return this.mirror;
-        },
-        enumerable: true,
-        configurable: true
-    });
     Object.defineProperty(InputBox.prototype, "inputElement", {
         get: function () {
             return this.input;
@@ -161,6 +175,13 @@ var InputBox = /** @class */ (function (_super) {
                 this.input.value = newValue;
                 this.onValueChange();
             }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(InputBox.prototype, "height", {
+        get: function () {
+            return typeof this.cachedHeight === 'number' ? this.cachedHeight : dom.getTotalHeight(this.element);
         },
         enumerable: true,
         configurable: true
@@ -188,20 +209,24 @@ var InputBox = /** @class */ (function (_super) {
         this.input.disabled = true;
         this._hideMessage();
     };
-    InputBox.prototype.setEnabled = function (enabled) {
-        if (enabled) {
-            this.enable();
-        }
-        else {
-            this.disable();
-        }
-    };
     Object.defineProperty(InputBox.prototype, "width", {
         get: function () {
             return dom.getTotalWidth(this.input);
         },
         set: function (width) {
-            this.input.style.width = width + 'px';
+            if (this.options.flexibleHeight && this.options.flexibleWidth) {
+                // textarea with horizontal scrolling
+                var horizontalPadding = 0;
+                if (this.mirror) {
+                    var paddingLeft = parseFloat(this.mirror.style.paddingLeft || '') || 0;
+                    var paddingRight = parseFloat(this.mirror.style.paddingRight || '') || 0;
+                    horizontalPadding = paddingLeft + paddingRight;
+                }
+                this.input.style.width = (width - horizontalPadding) + 'px';
+            }
+            else {
+                this.input.style.width = width + 'px';
+            }
             if (this.mirror) {
                 this.mirror.style.width = width + 'px';
             }
@@ -209,6 +234,31 @@ var InputBox = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(InputBox.prototype, "paddingRight", {
+        set: function (paddingRight) {
+            if (this.options.flexibleHeight && this.options.flexibleWidth) {
+                this.input.style.width = "calc(100% - " + paddingRight + "px)";
+            }
+            else {
+                this.input.style.paddingRight = paddingRight + 'px';
+            }
+            if (this.mirror) {
+                this.mirror.style.paddingRight = paddingRight + 'px';
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    InputBox.prototype.updateScrollDimensions = function () {
+        if (typeof this.cachedContentHeight !== 'number' || typeof this.cachedHeight !== 'number') {
+            return;
+        }
+        var scrollHeight = this.cachedContentHeight;
+        var height = this.cachedHeight;
+        var scrollTop = this.input.scrollTop;
+        this.scrollableElement.setScrollDimensions({ scrollHeight: scrollHeight, height: height });
+        this.scrollableElement.setScrollPosition({ scrollTop: scrollTop });
+    };
     InputBox.prototype.showMessage = function (message, force) {
         this.message = message;
         dom.removeClass(this.element, 'idle');
@@ -279,7 +329,6 @@ var InputBox = /** @class */ (function (_super) {
         }
         var div;
         var layout = function () { return div.style.width = dom.getTotalWidth(_this.element) + 'px'; };
-        this.state = 'open';
         this.contextViewProvider.showContextView({
             getAnchor: function () { return _this.element; },
             anchorAlignment: 1 /* RIGHT */,
@@ -304,15 +353,21 @@ var InputBox = /** @class */ (function (_super) {
                 dom.append(div, spanElement);
                 return null;
             },
+            onHide: function () {
+                _this.state = 'closed';
+            },
             layout: layout
         });
+        this.state = 'open';
     };
     InputBox.prototype._hideMessage = function () {
-        if (!this.contextViewProvider || this.state !== 'open') {
+        if (!this.contextViewProvider) {
             return;
         }
+        if (this.state === 'open') {
+            this.contextViewProvider.hideContextView();
+        }
         this.state = 'idle';
-        this.contextViewProvider.hideContextView();
     };
     InputBox.prototype.onValueChange = function () {
         this._onDidChange.fire(this.value);
@@ -371,11 +426,12 @@ var InputBox = /** @class */ (function (_super) {
         if (!this.mirror) {
             return;
         }
-        var previousHeight = this.cachedHeight;
-        this.cachedHeight = dom.getTotalHeight(this.mirror);
-        if (previousHeight !== this.cachedHeight) {
+        var previousHeight = this.cachedContentHeight;
+        this.cachedContentHeight = dom.getTotalHeight(this.mirror);
+        if (previousHeight !== this.cachedContentHeight) {
+            this.cachedHeight = Math.min(this.cachedContentHeight, this.maxHeight);
             this.input.style.height = this.cachedHeight + 'px';
-            this._onDidHeightChange.fire(this.cachedHeight);
+            this._onDidHeightChange.fire(this.cachedContentHeight);
         }
     };
     InputBox.prototype.dispose = function () {
@@ -385,7 +441,7 @@ var InputBox = /** @class */ (function (_super) {
         this.contextViewProvider = undefined;
         this.message = null;
         this.validation = undefined;
-        this.state = null;
+        this.state = null; // StrictNullOverride: nulling out ok in dispose
         this.actionbar = undefined;
         _super.prototype.dispose.call(this);
     };

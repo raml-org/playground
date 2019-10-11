@@ -103,10 +103,12 @@ var ListView = /** @class */ (function () {
         this.domId = "list_id_" + ++ListView.InstanceCount;
         this.renderers = new Map();
         this.renderWidth = 0;
+        this._scrollHeight = 0;
         this.scrollableElementUpdateDisposable = null;
         this.scrollableElementWidthDelayer = new Delayer(50);
         this.splicing = false;
         this.dragOverAnimationStopDisposable = Disposable.None;
+        this.dragOverMouseY = 0;
         this.canUseTranslate3d = undefined;
         this.canDrop = false;
         this.currentDragFeedbackDisposable = Disposable.None;
@@ -132,7 +134,8 @@ var ListView = /** @class */ (function () {
         DOM.toggleClass(this.domNode, 'mouse-support', typeof options.mouseSupport === 'boolean' ? options.mouseSupport : true);
         this.horizontalScrolling = getOrDefault(options, function (o) { return o.horizontalScrolling; }, DefaultOptions.horizontalScrolling);
         DOM.toggleClass(this.domNode, 'horizontal-scrolling', this.horizontalScrolling);
-        this.ariaSetProvider = options.ariaSetProvider || { getSetSize: function (e, i, length) { return length; }, getPosInSet: function (_, index) { return index + 1; } };
+        this.additionalScrollHeight = typeof options.additionalScrollHeight === 'undefined' ? 0 : options.additionalScrollHeight;
+        this.ariaProvider = options.ariaProvider || { getSetSize: function (e, i, length) { return length; }, getPosInSet: function (_, index) { return index + 1; } };
         this.rowsContainer = document.createElement('div');
         this.rowsContainer.className = 'monaco-list-rows';
         Gesture.addTarget(this.rowsContainer);
@@ -144,7 +147,7 @@ var ListView = /** @class */ (function () {
         });
         this.domNode.appendChild(this.scrollableElement.getDomNode());
         container.appendChild(this.domNode);
-        this.disposables = [this.rangeMap, this.gesture, this.scrollableElement, this.cache];
+        this.disposables = [this.rangeMap, this.scrollableElement, this.cache];
         this.scrollableElement.onScroll(this.onScroll, this, this.disposables);
         domEvent(this.rowsContainer, TouchEventType.Change)(this.onTouchChange, this, this.disposables);
         // Prevent the monaco-scrollable-element from scrolling
@@ -179,8 +182,8 @@ var ListView = /** @class */ (function () {
         }
     };
     ListView.prototype._splice = function (start, deleteCount, elements) {
-        var _this = this;
         var _a;
+        var _this = this;
         if (elements === void 0) { elements = []; }
         var previousRenderRange = this.getRenderRange(this.lastRenderTop, this.lastRenderHeight);
         var deleteRange = { start: start, end: start + deleteCount };
@@ -398,7 +401,12 @@ var ListView = /** @class */ (function () {
         var item = this.items[index];
         if (!item.row) {
             item.row = this.cache.alloc(item.templateId);
-            item.row.domNode.setAttribute('role', 'treeitem');
+            var role = this.ariaProvider.getRole ? this.ariaProvider.getRole(item.element) : 'treeitem';
+            item.row.domNode.setAttribute('role', role);
+            var checked = this.ariaProvider.isChecked ? this.ariaProvider.isChecked(item.element) : undefined;
+            if (typeof checked !== 'undefined') {
+                item.row.domNode.setAttribute('aria-checked', String(checked));
+            }
         }
         if (!item.row.domNode.parentElement) {
             if (beforeElement) {
@@ -414,7 +422,7 @@ var ListView = /** @class */ (function () {
             throw new Error("No renderer found for template id " + item.templateId);
         }
         if (renderer) {
-            renderer.renderElement(item.element, index, item.row.templateData);
+            renderer.renderElement(item.element, index, item.row.templateData, item.size);
         }
         var uri = this.dnd.getDragURI(item.element);
         item.dragStartDisposable.dispose();
@@ -451,8 +459,8 @@ var ListView = /** @class */ (function () {
         }
         item.row.domNode.setAttribute('data-index', "" + index);
         item.row.domNode.setAttribute('data-last-element', index === this.length - 1 ? 'true' : 'false');
-        item.row.domNode.setAttribute('aria-setsize', String(this.ariaSetProvider.getSetSize(item.element, index, this.length)));
-        item.row.domNode.setAttribute('aria-posinset', String(this.ariaSetProvider.getPosInSet(item.element, index)));
+        item.row.domNode.setAttribute('aria-setsize', String(this.ariaProvider.getSetSize(item.element, index, this.length)));
+        item.row.domNode.setAttribute('aria-posinset', String(this.ariaProvider.getPosInSet(item.element, index)));
         item.row.domNode.setAttribute('id', this.getElementDomId(index));
         DOM.toggleClass(item.row.domNode, 'drop-target', item.dropTarget);
     };
@@ -461,7 +469,7 @@ var ListView = /** @class */ (function () {
         item.dragStartDisposable.dispose();
         var renderer = this.renderers.get(item.templateId);
         if (renderer && renderer.disposeElement) {
-            renderer.disposeElement(item.element, index, item.row.templateData);
+            renderer.disposeElement(item.element, index, item.row.templateData, item.size);
         }
         this.cache.release(item.row);
         item.row = null;
@@ -493,7 +501,7 @@ var ListView = /** @class */ (function () {
     });
     Object.defineProperty(ListView.prototype, "scrollHeight", {
         get: function () {
-            return this._scrollHeight + (this.horizontalScrolling ? 10 : 0);
+            return this._scrollHeight + (this.horizontalScrolling ? 10 : 0) + this.additionalScrollHeight;
         },
         enumerable: true,
         configurable: true
@@ -873,9 +881,9 @@ var ListView = /** @class */ (function () {
         this.rowsContainer.appendChild(row.domNode);
         var renderer = this.renderers.get(item.templateId);
         if (renderer) {
-            renderer.renderElement(item.element, index, row.templateData, true);
+            renderer.renderElement(item.element, index, row.templateData, undefined);
             if (renderer.disposeElement) {
-                renderer.disposeElement(item.element, index, row.templateData, true);
+                renderer.disposeElement(item.element, index, row.templateData, undefined);
             }
         }
         item.size = row.domNode.offsetHeight;

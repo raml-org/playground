@@ -87,7 +87,7 @@ var InspectTokens = /** @class */ (function (_super) {
             id: 'editor.action.inspectTokens',
             label: InspectTokensNLS.inspectTokensAction,
             alias: 'Developer: Inspect Tokens',
-            precondition: null
+            precondition: undefined
         }) || this;
     }
     InspectTokens.prototype.run = function (accessor, editor) {

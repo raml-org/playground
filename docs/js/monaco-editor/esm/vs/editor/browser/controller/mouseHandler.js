@@ -74,7 +74,7 @@ var MouseHandler = /** @class */ (function (_super) {
                 e.stopPropagation();
             }
         };
-        _this._register(dom.addDisposableListener(_this.viewHelper.viewDomNode, 'mousewheel', onMouseWheel, true));
+        _this._register(dom.addDisposableListener(_this.viewHelper.viewDomNode, browser.isEdgeOrIE ? 'mousewheel' : 'wheel', onMouseWheel, true));
         _this._context.addEventHandler(_this);
         return _this;
     }

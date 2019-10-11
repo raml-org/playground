@@ -16,6 +16,7 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 import './media/scrollbars.css';
+import { isEdgeOrIE } from '../../browser.js';
 import * as dom from '../../dom.js';
 import { createFastDomNode } from '../../fastDomNode.js';
 import { StandardWheelEvent } from '../../mouseEvent.js';
@@ -157,6 +158,11 @@ var AbstractScrollableElement = /** @class */ (function (_super) {
             _this._topLeftShadowDomNode.setClassName('shadow top-left-corner');
             _this._domNode.appendChild(_this._topLeftShadowDomNode.domNode);
         }
+        else {
+            _this._leftShadowDomNode = null;
+            _this._topShadowDomNode = null;
+            _this._topLeftShadowDomNode = null;
+        }
         _this._listenOnDomNode = _this._options.listenOnDomNode || _this._domNode;
         _this._mouseWheelToDispose = [];
         _this._setListeningToMouseWheel(_this._options.handleMouseWheel);
@@ -239,7 +245,7 @@ var AbstractScrollableElement = /** @class */ (function (_super) {
             var onMouseWheel = function (browserEvent) {
                 _this._onMouseWheel(new StandardWheelEvent(browserEvent));
             };
-            this._mouseWheelToDispose.push(dom.addDisposableListener(this._listenOnDomNode, 'mousewheel', onMouseWheel));
+            this._mouseWheelToDispose.push(dom.addDisposableListener(this._listenOnDomNode, isEdgeOrIE ? 'mousewheel' : 'wheel', onMouseWheel));
         }
     };
     AbstractScrollableElement.prototype._onMouseWheel = function (e) {

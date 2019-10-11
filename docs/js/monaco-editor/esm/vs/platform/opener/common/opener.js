@@ -7,5 +7,6 @@ export var IOpenerService = createDecorator('openerService');
 export var NullOpenerService = Object.freeze({
     _serviceBrand: undefined,
     registerOpener: function () { return { dispose: function () { } }; },
-    open: function () { return Promise.resolve(false); }
+    registerValidator: function () { return { dispose: function () { } }; },
+    open: function () { return Promise.resolve(false); },
 });

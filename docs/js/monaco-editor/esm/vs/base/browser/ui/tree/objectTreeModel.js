@@ -19,6 +19,7 @@ var ObjectTreeModel = /** @class */ (function () {
     function ObjectTreeModel(list, options) {
         if (options === void 0) { options = {}; }
         this.nodes = new Map();
+        this.nodesByIdentity = new Map();
         this.model = new IndexTreeModel(list, null, options);
         this.onDidSplice = this.model.onDidSplice;
         this.onDidChangeCollapseState = this.model.onDidChangeCollapseState;
@@ -30,6 +31,7 @@ var ObjectTreeModel = /** @class */ (function () {
                 }
             };
         }
+        this.identityProvider = options.identityProvider;
     }
     ObjectTreeModel.prototype.setChildren = function (element, children, onDidCreateNode, onDidDeleteNode) {
         var location = this.getElementLocation(element);
@@ -38,9 +40,15 @@ var ObjectTreeModel = /** @class */ (function () {
     ObjectTreeModel.prototype._setChildren = function (location, children, onDidCreateNode, onDidDeleteNode) {
         var _this = this;
         var insertedElements = new Set();
+        var insertedElementIds = new Set();
         var _onDidCreateNode = function (node) {
             insertedElements.add(node.element);
             _this.nodes.set(node.element, node);
+            if (_this.identityProvider) {
+                var id = _this.identityProvider.getId(node.element).toString();
+                insertedElementIds.add(id);
+                _this.nodesByIdentity.set(id, node);
+            }
             if (onDidCreateNode) {
                 onDidCreateNode(node);
             }
@@ -49,11 +57,18 @@ var ObjectTreeModel = /** @class */ (function () {
             if (!insertedElements.has(node.element)) {
                 _this.nodes.delete(node.element);
             }
+            if (_this.identityProvider) {
+                var id = _this.identityProvider.getId(node.element).toString();
+                if (!insertedElementIds.has(id)) {
+                    _this.nodesByIdentity.delete(id);
+                }
+            }
             if (onDidDeleteNode) {
                 onDidDeleteNode(node);
             }
         };
-        return this.model.splice(location.concat([0]), Number.MAX_VALUE, children, _onDidCreateNode, _onDidDeleteNode);
+        var result = this.model.splice(location.concat([0]), Number.MAX_VALUE, children, _onDidCreateNode, _onDidDeleteNode);
+        return result;
     };
     ObjectTreeModel.prototype.preserveCollapseState = function (elements) {
         var _this = this;
@@ -63,6 +78,10 @@ var ObjectTreeModel = /** @class */ (function () {
         }
         return Iterator.map(iterator, function (treeElement) {
             var node = _this.nodes.get(treeElement.element);
+            if (!node && _this.identityProvider) {
+                var id = _this.identityProvider.getId(treeElement.element).toString();
+                node = _this.nodesByIdentity.get(id);
+            }
             if (!node) {
                 return __assign({}, treeElement, { children: _this.preserveCollapseState(treeElement.children) });
             }
@@ -114,6 +133,9 @@ var ObjectTreeModel = /** @class */ (function () {
         return node.element;
     };
     ObjectTreeModel.prototype.getParentNodeLocation = function (element) {
+        if (element === null) {
+            throw new Error("Invalid getParentNodeLocation call");
+        }
         var node = this.nodes.get(element);
         if (!node) {
             throw new Error("Tree element not found: " + element);

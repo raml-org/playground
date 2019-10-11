@@ -25,7 +25,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 import { Event, PauseableEmitter } from '../../../base/common/event.js';
-import { dispose } from '../../../base/common/lifecycle.js';
+import { DisposableStore } from '../../../base/common/lifecycle.js';
 import { keys } from '../../../base/common/map.js';
 import { CommandsRegistry } from '../../commands/common/commands.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
@@ -289,11 +289,11 @@ var ContextKeyService = /** @class */ (function (_super) {
     function ContextKeyService(configurationService) {
         var _this = _super.call(this, 0) || this;
         _this._contexts = new Map();
-        _this._toDispose = [];
+        _this._toDispose = new DisposableStore();
         _this._lastContextId = 0;
         var myContext = new ConfigAwareContextValuesContainer(_this._myContextId, configurationService, _this._onDidChangeContext);
         _this._contexts.set(_this._myContextId, myContext);
-        _this._toDispose.push(myContext);
+        _this._toDispose.add(myContext);
         return _this;
         // Uncomment this to see the contexts continuously logged
         // let lastLoggedValue: string | null = null;
@@ -308,7 +308,7 @@ var ContextKeyService = /** @class */ (function (_super) {
     }
     ContextKeyService.prototype.dispose = function () {
         this._isDisposed = true;
-        this._toDispose = dispose(this._toDispose);
+        this._toDispose.dispose();
     };
     ContextKeyService.prototype.getContextValuesContainer = function (contextId) {
         if (this._isDisposed) {
