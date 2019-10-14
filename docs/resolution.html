@@ -110,11 +110,11 @@
             var height = document.documentElement.clientHeight;
             var ramlContainerDiv = document.getElementById("editor-container-unres");
             if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+              ramlContainerDiv.setAttribute("style", "height: " + (height - 170) + "px");
             }
             var oasContainerDiv = document.getElementById("editor-container-res");
             if (window.getComputedStyle(oasContainerDiv).display !== "none") {
-              oasContainerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+              oasContainerDiv.setAttribute("style", "height: " + (height - 170) + "px");
             }
           }
           window.onresize = resize;
