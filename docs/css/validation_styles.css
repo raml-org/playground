@@ -1,6 +1,3 @@
-html {
-    background-color: #F4F5F6; }
-
 #preloader {
     position: absolute;
     top: 13px; }
@@ -19,15 +16,11 @@ html {
         width: 66%;
         background-color: #ffffff; } }
 
-.column {
-    background-color: #F4F5F6;
-    position: relative; }
 .column.is-three-quarters {
     padding-bottom: 0; }
 
 .label, .input {
     color: #6B6C6D;
-    font-family: Open Sans, sans-serif;
     font-weight: normal; }
 
 .input {
@@ -49,8 +42,6 @@ html {
 .menu-list a.is-active {
     background-color: #14A7DE; }
 
-.tabs {
-    font-family: Open Sans, sans-serif; }
 .tabs ul {
     border-bottom: 3px solid #999A9B;
     color: #999A9B;
@@ -90,8 +81,7 @@ navbar navbar-item a.button {
     position: absolute;
     right: 200px; }
 navbar .logo-wrapper {
-    color: #ffffff;
-    font-family: Open Sans, sans-serif; }
+    color: #ffffff; }
 navbar .logo-wrapper navbar-logo-text {
     font-size: 20px;
     margin: 0 8px 0 13px; }
@@ -102,38 +92,6 @@ navbar .logo-wrapper .super {
 
 .editor-container {
     border: none; }
-#editor-data-container .monaco-editor.vs .token.support.type.json {
-    color: #00A2DF; !important;
-}
-
-#editor-shape-container .monaco-editor.vs .token.support.type.json {
-    color: #00A2DF; !important;
-}
-
-.editor-container .monaco-editor.vs .token, .editor-container .monaco-editor.vs .token.comment, .editor-container .monaco-editor.vs .token.comment.block, .editor-container .monaco-editor.vs .token.comment.block.documentation, .editor-container .monaco-editor.vs .token.comment.line, .editor-container .monaco-editor.vs .token.type, .editor-container .monaco-editor.vs .token.punctuation {
-    color: #00A2DF; !important; }
-.editor-container .monaco-editor.vs .token.string.value, .editor-container .monaco-editor.vs .token.string.yaml, .editor-container .monaco-editor.vs .token.comment.string.value, .editor-container .monaco-editor.vs .token.comment.string.yaml, .editor-container .monaco-editor.vs .token.comment.block.string.value, .editor-container .monaco-editor.vs .token.comment.block.string.yaml, .editor-container .monaco-editor.vs .token.comment.block.documentation.string.value, .editor-container .monaco-editor.vs .token.comment.block.documentation.string.yaml, .editor-container .monaco-editor.vs .token.comment.line.string.value, .editor-container .monaco-editor.vs .token.comment.line.string.yaml, .editor-container .monaco-editor.vs .token.type.string.value, .editor-container .monaco-editor.vs .token.type.string.yaml {
-    color: #ECECEC !important; }
-.editor-container .monaco-editor.vs .token.number {
-    background-color: #00A2DF;
-    color: #ffffff;
-    font-size: 1em;
-    padding: 10px 8px;
-    height: 1em; }
-.editor-container .monaco-editor.vs .line-numbers {
-    color: #ffffff;
-    padding-right: 9px;
-    text-align: right;
-    background-color: #000; }
-.editor-container .monaco-editor.vs .current-line {
-    border: none; }
-.editor-container .selected-element-line-decoration {
-    background-color: #00A2DF; }
-
-.monaco-editor .cursor {
-    background: whitesmoke !important;
-    color: whitesmoke !important;
-}
 .base-url-form {
     display: flex; }
 .base-url-form > div {
@@ -143,12 +101,6 @@ navbar .logo-wrapper .super {
     padding-right: 20px; }
 .base-url-form > div:first-child {
     text-align: center; }
-
-.monaco-editor-background.margin-view-overlays {
-    background: #121314; }
-
-.monaco-editor-background.lines-content {
-    background: #262728; }
 
 #navigator .menu {
     max-height: calc(100% - 59px);
