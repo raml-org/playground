@@ -25,6 +25,9 @@
     "lodash": "^4.17.11",
     "dagre": "^0.8.4",
     "webcomponentsjs": "^2.2.10",
-    "rest": "^2.0.0"
+    "rest": "^2.0.0",
+    "jsonlint": "^1.6.0",
+    "codemirror": "^5.49.0",
+    "marked": "^0.7.0"
   }
 }

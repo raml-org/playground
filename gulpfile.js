@@ -74,6 +74,8 @@ gulp.task('css', function () {
 gulp.task('bundleRamlOas', bundleHandler('raml_oas'))
 gulp.task('bundleVisualization', bundleHandler('visualization'))
 gulp.task('bundleCustomValidation', bundleHandler('custom_validation'))
+gulp.task('bundleStarterGuide', bundleHandler('starter_guide'))
+gulp.task('bundleResolution', bundleHandler('resolution'))
 
 /* Servers  */
 gulp.task('serveRamlOas', gulp.series(
@@ -103,10 +105,31 @@ gulp.task('serveCustomValidation', gulp.series(
   )
 ))
 
+gulp.task('serveStarterGuide', gulp.series(
+  'css',
+  'bundleStarterGuide',
+  gulp.parallel(
+    serveHandler('starter_guide'),
+    watchHandler('starter_guide', 'bundleStarterGuide')
+  )
+))
+
+gulp.task('serveResolution', gulp.series(
+  'css',
+  'bundleResolution',
+  gulp.parallel(
+    serveHandler('resolution'),
+    watchHandler('resolution', 'bundleResolution')
+  )
+))
+
+
 /* Bundle all the demos */
 gulp.task('bundleAll', gulp.series(
   'css',
   'bundleRamlOas',
   'bundleVisualization',
-  'bundleCustomValidation'
+  'bundleCustomValidation',
+  'bundleStarterGuide',
+  'bundleResolution'
 ))

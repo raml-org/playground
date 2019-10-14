@@ -134,6 +134,14 @@ header{
   }
   .editor-block{
     .monaco-editor{
+      .monaco-editor-hover{
+        margin-left: 10%;
+      }
+      .selected-line-editor-decoration{
+        background-color: $selected-line;
+        width: 7px !important;
+        margin-left: 1px;
+      }
       .editor-scrollable{
         .view-lines{
           .mtk26,.mtk23,.mtk21{
@@ -200,6 +208,30 @@ header{
 
 .connection-wrap {
   display: none;
+}
+
+/* api-documentation */
+#api-console-container {
+  font-family: 'RobotoMono-Regular';
+  width: 25%;
+  padding: 10px 20px;
+  margin: 30px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 7px;
+  overflow-y: auto;
+
+  --code-background-color: #FFFFFF;
+}
+
+.section.starter_guide {
+  padding: 1.5em 0 0 0;
+  background-color: #3c4c5f;
+}
+.is-marginless {
+  margin: 0;
 }
 
 /* Visualizataion demo */
