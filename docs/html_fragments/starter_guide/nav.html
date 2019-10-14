@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<div class="box imported is-paddingless is-marginless">
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <div class="logo-wrapper navbar-item">
+                <span class="nav-logo-img">
+                    <img src='./images/ramlLogo.svg'>
+                </span>
+                <span style="margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Starter Guide</span>
+            </div>
+        </div>
+        <div class="navbar-start navbar-menu">
+
+        </div>
+        <div class="navbar-end navbar-menu">
+            <span class="navbar-item">
+                <a class="button" data-bind="click: loadModal.show.bind(loadModal)">
+                    <span class="icon">
+                        <i class="fas fa-folder-open"></i>
+                    </span>
+                    <span>Load RAML File</span>
+                </a>
+            </span>
+        </div>
+        <div class="navbar-item">
+            <div class="dropdown is-right">
+              <select name="raml-demo" class="raml-demo-select"
+                      data-bind="event: { change: switchDemo }">
+                  <option value="raml_oas.html">Demo: RAML + OAS</option>
+                  <option value="visualization.html">Demo: Visualization</option>
+                  <option value="starter_guide.html" selected>Demo: Starter Guide</option>
+                  <option value="resolution.html">Demo: Resolution</option>
+                  <option value="diff.html">Demo: Diff</option>
+              </select>
+            </div>
+        </div>
+    </nav>
+</div>
