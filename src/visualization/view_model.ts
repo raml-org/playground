@@ -24,6 +24,7 @@ export class ViewModel extends CommonViewModel {
 
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
+        .then(model => wap.raml10.resolve(model))
         .then((parsedModel) => {
           this.model = new ModelProxy(parsedModel, 'raml')
           this.updateEditorsModels()
@@ -53,12 +54,15 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
-    wap.raml10.parse(value).then((model) => {
-      cb(null, new ModelProxy(model, type))
-    }).catch((err) => {
-      console.error(`Failed to parse string: ${err}`)
-      cb(err, null)
-    })
+    wap.raml10.parse(value)
+      .then(model => wap.raml10.resolve(model))
+      .then((model) => {
+        cb(null, new ModelProxy(model, type))
+      })
+      .catch((err) => {
+        console.error(`Failed to parse string: ${err}`)
+        cb(err, null)
+      })
   }
 
   protected updateEditorsModels () {
