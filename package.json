@@ -21,6 +21,7 @@
     "knockout": "^3.4.2",
     "monaco-editor": "^0.18.1",
     "node-gyp": "^6.0.0",
+    "rdfstore": "^0.9.17",
     "webapi-parser": "^0.3.2"
   },
   "devDependencies": {

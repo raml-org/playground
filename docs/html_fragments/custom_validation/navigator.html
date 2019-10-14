@@ -42,10 +42,9 @@
             <li data-bind="click: $parent.selectError.bind($parent)">
                 <a style="color: red">
                     <i class="fa fa-exclamation-circle" style="float: left"></i>
-                    <span data-bind="text: (source.sourceConstraintComponent||'').split('#')[1]" style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;color: red"></span>
+                    <span data-bind="text: validationId.split('#').pop()" style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;color: red"></span>
                 </a>
                 <ul>
-                    <li><a data-bind="text: '/' + (targetProperty||'').split('#')[1]"></a></li>
                     <li><a data-bind="text: message"></a></li>
                 </ul>
             </li>

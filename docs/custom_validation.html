@@ -36,10 +36,10 @@
                 <link rel="import" href="html_fragments/custom_validation/navigator.html">
             </div>
             <div class="column">
-                <link rel="import" href="html_fragments/custom_validation/editor_shape.html">
+                <link rel="import" href="html_fragments/custom_validation/editor_raml.html">
             </div>
             <div class="column">
-                <link rel="import" href="html_fragments/custom_validation/editor_data.html">
+                <link rel="import" href="html_fragments/custom_validation/editor_profile.html">
             </div>
         </div>
     </div>
@@ -106,7 +106,7 @@
                     var resize = function () {
                         console.log("** Resizing **");
                         var height = document.documentElement.clientHeight;
-                        var editors = ["editor-data-container", "editor-shape-container"];
+                        var editors = ["editor-profile-container", "editor-raml-container"];
                         editors.forEach(function(editor) {
                             var containerDiv = document.getElementById(editor);
                             var style = window.getComputedStyle(containerDiv);
@@ -144,7 +144,7 @@
 
                     customizeMonaco();
 
-                    var editorData = monaco.editor.create(document.getElementById("editor-data-container"), {
+                    var profileEditor = monaco.editor.create(document.getElementById("editor-profile-container"), {
                         language: 'raml',
                         automaticLayout: true,
                         scrollBeyondLastLine: false,
@@ -161,9 +161,6 @@
                             "disabled:\n" +
                             "  - contradiction\n" +
                             "  - all-properties-optional\n" +
-                            "\n" +
-                            "info:\n" +
-                            "  - amf-parser.raml-schemes\n" +
                             "\n" +
                             "violation:\n" +
                             "  - mandatory-version\n" +
@@ -215,7 +212,7 @@
                         }
                     });
 
-                    var editorShape = monaco.editor.create(document.getElementById("editor-shape-container"), {
+                    var ramlEditor = monaco.editor.create(document.getElementById("editor-raml-container"), {
                         automaticLayout: true,
                         language: 'raml',
                         scrollBeyondLastLine: false,
@@ -393,7 +390,7 @@
                     });
 
 
-                    window.appModel = new custom_validation.ViewModel(editorData, editorShape);
+                    window.appModel = new custom_validation.ViewModel(profileEditor, ramlEditor);
                     window.appModel.apply();
                     window.appModel.loadRamlFromQueryParam();
 

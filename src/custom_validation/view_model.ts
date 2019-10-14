@@ -7,6 +7,7 @@ import * as amf from 'amf-client-js'
 import { CommonViewModel } from '../view_models/common_view_model'
 import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
 import { WebApiParser as wap } from 'webapi-parser'
+import { UI } from "../view_models/ui";
 
 import AnyShape = amf.model.domain.AnyShape
 
@@ -45,20 +46,24 @@ export class ViewModel extends CommonViewModel {
   public changesFromLastUpdate = 0;
   public documentModelChanged = false;
   public RELOAD_PERIOD = 1000;
+  public ui: UI = new UI();
 
   public ramlParser?
-  public profileName?: string;
+  public profileName: amf.ProfileName;
+  public profilePath: string = 'http://a.ml/amf/default_document';
+
 
   public init (): Promise<any> {
     return amf.AMF.init()
   }
 
-  public constructor (public dataEditor: any, public shapeEditor: any) {
+  public constructor (public profileEditor: any, public ramlEditor: any) {
     super()
+    this.ramlParser = amf.AMF.raml10Parser()
 
     const parsingApiFn = () => {
       if (this.editorSection() === 'raml') {
-        const toParse = shapeEditor.getValue()
+        const toParse = ramlEditor.getValue()
         this.ramlParser.parseStringAsync(toParse).then((parsed: amf.model.document.Document) => {
           this.selectedModel(parsed)
           const oldErrors = this.errors()
@@ -77,31 +82,31 @@ export class ViewModel extends CommonViewModel {
 
     const parsingProfileFn = (cb?: () => void) => {
       if (this.validationSection() === 'custom') {
-        this.customValidation = dataEditor.getValue()
-        amf.AMF.loadValidationProfileText(this.customValidation).then(() => {
-          this.profileName = this.customValidation.match(/profile:\s*(.+)\s*/)[1]
-          this.loadShapes()
-          if (cb) {
-            cb()
-          } else {
-            this.doValidate()
-          }
-        })
+        return amf.AMF.loadValidationProfile(this.profilePath, this.getEnv())
+         .then((profileName) => {
+            this.profileName = profileName
+            this.loadShapes()
+            if (cb) {
+              cb()
+            } else {
+              this.doValidate()
+            }
+          })
       }
     }
 
     this.editorSection.subscribe((section) => this.onEditorSectionChange(section))
     this.validationSection.subscribe((section) => this.onValidationSectionChange(section))
 
-    this.init().then(() => {
-      this.ramlParser = amf.AMF.raml10Parser()
-      parsingProfileFn(parsingApiFn)
-      this.loadShapes()
-    }).catch((e) => {
-      console.log('ERROR!!! ' + e)
-    })
+    this.init()
+      .then(() => parsingProfileFn(parsingApiFn))
+      .then(() => {
+        return this.loadShapes()
+      }).catch((e) => {
+        console.log('ERROR!!! ' + e.toString())
+      })
 
-    shapeEditor.onDidChangeModelContent(() => {
+    ramlEditor.onDidChangeModelContent(() => {
       this.changesFromLastUpdate++
       this.documentModelChanged = true;
       ((number) => {
@@ -113,7 +118,7 @@ export class ViewModel extends CommonViewModel {
         }, this.RELOAD_PERIOD)
       })(this.changesFromLastUpdate)
     })
-    dataEditor.onDidChangeModelContent(() => {
+    profileEditor.onDidChangeModelContent(() => {
       this.changesFromLastUpdate++
       this.documentModelChanged = true;
       ((number) => {
@@ -137,10 +142,28 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
+  public getEnv () {
+    const profilePath = this.profilePath
+    const editor = this.profileEditor
+    const EditorProfileLoader = {
+      fetch: function (resource) {
+        return new Promise(function (resolve, reject) {
+          resolve(new amf.client.remote.Content(
+            editor.getValue(), profilePath))
+        })
+      },
+      accepts: function (resource) {
+        return true
+      }
+    }
+    const env = new amf.client.environment.Environment()
+    return env.addClientLoader(EditorProfileLoader)
+  }
+
   public hasError (shape: AnyShape): boolean {
     console.log('ERROR? ' + shape.id)
     const errors = this.errorsMapShape || {}
-    return errors[(shape.id || '').split('document/type')[1]] || false
+    return errors[(shape.id || '').split('#').pop()] || false
   }
 
   public selectError (error: any) {
@@ -159,42 +182,38 @@ export class ViewModel extends CommonViewModel {
     if (model != null) {
       this.ramlParser.reportValidation((this.profileName || 'RAML 1.0'), 'RAML').then((report) => {
         var violations = report.results.filter((result) => {
-          return result.level == 'Violation'
+          return result.level === 'Violation'
         })
 
-        const editorModel = this.shapeEditor.getModel()
+        const editorModel = this.ramlEditor.getModel()
         const monacoErrors = report.results.map((result) => this.buildMonacoErro(result))
         monaco.editor.setModelMarkers(editorModel, editorModel.id, monacoErrors)
 
         this.errors(violations)
-        console.log('CONFORMS: ' + report.conforms)
-        console.log(report.results)
         this.errorsMapShape = this.errors()
           .map(e => {
-            console.log(e.validationId.split('document/type')[1])
-            return e.validationId.split('document/type')[1]
+            return e.validationId.split('#').pop()
           })
           .reduce((a, s) => { a[s] = true; return a }, {})
         window.resizeFn()
       }).catch((e) => {
-        console.log('Error validating API')
-        console.error(e)
+        console.log('Error validating API', e)
       })
     }
   }
 
   private onEditorSectionChange (section: string) {
-    if (this.selectedModel() != null) {
+    if (this.selectedModel() !== null) {
       if (section === 'raml') {
         amf.Core.generator('RAML 1.0', 'application/yaml').generateString(this.selectedModel())
           .then((generated) => {
-            this.shapeEditor.setModel(createModel(generated, 'yaml'))
+            this.ramlEditor.setModel(createModel(generated, 'yaml'))
           })
       } else if (section === 'api-model') {
         amf.AMF.amfGraphGenerator().generateString(this.selectedModel(), new amf.render.RenderOptions().withCompactUris)
           .then((generated) => {
             const json = JSON.parse(generated)
-            this.shapeEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
+            this.ramlEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
           })
       }
       window.resizeFn()
@@ -203,12 +222,12 @@ export class ViewModel extends CommonViewModel {
 
   private onValidationSectionChange (section: string) {
     if (section === 'custom') {
-      this.dataEditor.setModel(createModel(this.customValidation, 'yaml'))
+      this.profileEditor.setModel(createModel(this.customValidation, 'yaml'))
     } else {
-      this.customValidation = this.dataEditor.getValue()
-      const shapes = amf.plugins.features.AMFValidation.emitShaclShapes(this.profileName)
+      this.customValidation = this.profileEditor.getValue()
+      const shapes = amf.AMF.emitShapesGraph(this.profileName)
       const json = JSON.parse(shapes)
-      this.dataEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
+      this.profileEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
     }
   }
 
@@ -238,10 +257,9 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected loadShapes () {
-    const shapes = amf.plugins.features.AMFValidation.emitShaclShapes(this.profileName)
+    const shapes = amf.AMF.emitShapesGraph(this.profileName)
     const shapesModels = JSON.parse(shapes).map((n) => {
-      const id = n['@id'].replace('http://a.ml/vocabularies/amf/parser#', 'amf-parser')
-        .replace('http://a.ml/vocabularies/data#', '')
+      const id = n['@id'].split('#').pop()
       const isCustom = n['@id'].indexOf('amf/parser#') > -1
       const message = (n['http://www.w3.org/ns/shacl#message'] || {})['@value'] || ''
       const targetId = ((n['http://www.w3.org/ns/shacl#targetClass'] || [])[0] || {})['@id'] || ''
@@ -257,7 +275,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   public getMainModel (): monaco.editor.ITextModel {
-    return this.dataEditor.getModel()
+    return this.profileEditor.getModel()
   }
   public parseEditorSection () {}
   public updateEditorsModels () {}
