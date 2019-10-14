@@ -57,8 +57,9 @@ function watchHandler (name, bundlerName) {
   }
 }
 
-gulp.task('browserSyncReload', function () {
-  return browserSync.reload()
+gulp.task('browserSyncReload', function (done) {
+  browserSync.reload()
+  done()
 })
 
 gulp.task('css', function () {
