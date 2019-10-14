@@ -33,18 +33,14 @@
 <link rel="import" href="html_fragments/visualization/nav.html">
 
 <!-- Main container class -->
-<div class="section" style="padding: 0px">
-    <div id="the-app" class="container is-marginless is-fluid">
-        <div class="columns">
-            <div class="column half-width">
-                <link rel="import" href="html_fragments/visualization/editor_left.html">
-            </div>
-            <div class="column half-width">
-                <link rel="import" href="html_fragments/visualization/graph_right.html">
-            </div>
-        </div>
-    </div>
+<div class="section" style="padding: 0px;">
+  <div id="the-app" class="container is-marginless is-fluid" style="display: flow-root;">
+    <link rel="import" href="html_fragments/visualization/editor_left.html">
+    <link rel="import" href="html_fragments/visualization/graph_right.html">
+  </div>
 </div>
+
+
 
 <script>
   (function() {

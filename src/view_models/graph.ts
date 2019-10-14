@@ -400,4 +400,17 @@ export class PlaygroundGraph {
       }))
     }
   }
+
+  public toggleFullscreen (graphContainerId: string, editorContainerId: string) {
+    const editorContainer = document.getElementById(editorContainerId)
+    const editorWidth = editorContainer.style.width
+    editorContainer.style.width = editorWidth === '50%' ? '0%' : '50%'
+
+    const graphContainer = document.getElementById(graphContainerId)
+    const graphWidth = graphContainer.style.width
+    graphContainer.style.width = graphWidth === '50%' ? '100%' : '50%'
+
+    let scaleMulti = graphWidth === '50%' ? 2 : 0.5
+    this.paperScale(this.scaleX * scaleMulti, this.scaleY * scaleMulti)
+  }
 }
