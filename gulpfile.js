@@ -57,8 +57,9 @@ function watchHandler (name, bundlerName) {
   }
 }
 
-gulp.task('browserSyncReload', function () {
-  return browserSync.reload()
+gulp.task('browserSyncReload', function (done) {
+  browserSync.reload()
+  done()
 })
 
 gulp.task('css', function () {
@@ -72,6 +73,7 @@ gulp.task('css', function () {
 /* Bundlers */
 gulp.task('bundleRamlOas', bundleHandler('raml_oas'))
 gulp.task('bundleVisualization', bundleHandler('visualization'))
+gulp.task('bundleCustomValidation', bundleHandler('custom_validation'))
 
 /* Servers  */
 gulp.task('serveRamlOas', gulp.series(
@@ -92,9 +94,19 @@ gulp.task('serveVisualization', gulp.series(
   )
 ))
 
+gulp.task('serveCustomValidation', gulp.series(
+  'css',
+  'bundleCustomValidation',
+  gulp.parallel(
+    serveHandler('custom_validation'),
+    watchHandler('custom_validation', 'bundleCustomValidation')
+  )
+))
+
 /* Bundle all the demos */
 gulp.task('bundleAll', gulp.series(
   'css',
   'bundleRamlOas',
-  'bundleVisualization'
+  'bundleVisualization',
+  'bundleCustomValidation'
 ))
