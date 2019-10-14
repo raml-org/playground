@@ -226,12 +226,23 @@ header{
   --code-background-color: #FFFFFF;
 }
 
-.section.starter_guide {
+.joint-paper.joint-theme-default {
+  background-color: #3c4c5f!important;
+}
+
+.section {
   padding: 1.5em 0 0 0;
   background-color: #3c4c5f;
 }
 .is-marginless {
   margin: 0;
+}
+
+.tabs {
+  color: #FFFFFF;
+  li {
+    padding: 5px;
+  }
 }
 
 /* Visualizataion demo */
