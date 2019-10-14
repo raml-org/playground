@@ -10,7 +10,7 @@
     <script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
 
     <script src="js/preload.js"></script>
-    <script src="js/monaco-editor/monaco-customize.js"></script>
+    <script src="js/monaco-customize.js"></script>
 
     <link rel="stylesheet" href="bower_components/bulma/css/bulma.css">
     <link rel="stylesheet" href="css/styles.css">
@@ -148,6 +148,8 @@
                         language: 'raml',
                         automaticLayout: true,
                         scrollBeyondLastLine: false,
+                        renderLineHighlight: "none",
+                        occurrencesHighlight: false,
                         readOnly: false,
                         value: [
                             "#%Validation Profile 1.0\n" +
@@ -216,6 +218,8 @@
                         automaticLayout: true,
                         language: 'raml',
                         scrollBeyondLastLine: false,
+                        renderLineHighlight: "none",
+                        occurrencesHighlight: false,
                         readOnly: false,
                         value: [
                             "#%RAML 1.0\n" +

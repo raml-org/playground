@@ -39,21 +39,22 @@
 .button.is-primary:hover, a.button.is-success:hover {
     color: #ffffff; }
 
+.menu-list a:hover {
+    background-color: transparent;
+}
+
 .menu-list a.is-active {
     background-color: #14A7DE; }
 
 .tabs ul {
     border-bottom: 3px solid #999A9B;
-    color: #999A9B;
     opacity: 0.9; }
 .tabs a {
-    color: #999A9B;
+    color: #FFFFFF;
     opacity: 0.9;
     border: none; }
-.tabs a:hover {
-    color: #3A3B3C; }
 .tabs li.is-active a {
-    color: #3A3B3C;
+    color: #FFFFFF;
     border-bottom: 3px solid #14A7DE;
     margin-bottom: -3px;
     opacity: 1; }
@@ -108,10 +109,15 @@ navbar .logo-wrapper .super {
 
 .menu-list a.is-active:hover {
     color: #ffffff; }
-
-.menu-list a:hover {
-    color: #00A2DF; }
-
+.menu-list {
+    color: #FFFFFF;
+}
+.menu-label {
+    color: #FFFFFF;
+}
+.menu-list a {
+    color: #FFFFFF!important;
+}
 #bottom-links {
     background-color: #F4F5F6;
     position: absolute;

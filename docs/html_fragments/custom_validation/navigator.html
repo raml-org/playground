@@ -40,9 +40,9 @@
            class="menu" id="errors-navigator">
         <ul class="menu-list" data-bind="foreach: errors" style="font-size: 105%">
             <li data-bind="click: $parent.selectError.bind($parent)">
-                <a style="color: red">
+                <a style="color: #FFFFFF">
                     <i class="fa fa-exclamation-circle" style="float: left"></i>
-                    <span data-bind="text: validationId.split('#').pop()" style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;color: red"></span>
+                    <span data-bind="text: validationId.split('#').pop()" style="float: left;margin-top: -1px;margin-left: 10px;font-weight: bolder;color: #FFFFFF"></span>
                 </a>
                 <ul>
                     <li><a data-bind="text: message"></a></li>
