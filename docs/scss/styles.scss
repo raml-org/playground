@@ -50,6 +50,9 @@ html,body{
   font-kerning: normal;
 }
 
+body {
+  background-color: #3c4c5f;
+}
 a:hover{
   text-decoration: none!important;
   color: $sky-blue;
@@ -268,8 +271,16 @@ header{
   }
 }
 
+
 #report-table {
+  .table thead td, .table thead th {
+    color: #ffffff!important;
+  }
+  .table td, .table th {
+    color: #ffffff!important;
+  }
   overflow: auto;
+  color: #ffffff;
   table {
     thead {
       tr {
@@ -309,12 +320,23 @@ header{
   --code-background-color: #FFFFFF;
 }
 
-.section.starter_guide {
+.joint-paper.joint-theme-default {
+  background-color: #3c4c5f!important;
+}
+
+.section {
   padding: 1.5em 0 0 0;
-  background-color: #3c4c5f;
+  color: #FFFFFF;
 }
 .is-marginless {
   margin: 0;
+}
+
+.tabs {
+  color: #FFFFFF;
+  li {
+    padding: 5px;
+  }
 }
 
 /* Visualizataion demo */

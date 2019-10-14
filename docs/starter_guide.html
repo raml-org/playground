@@ -148,47 +148,6 @@
 
           customizeMonaco();
 
-          monaco.editor.defineTheme('ramlTheme', {
-            base: 'vs-dark', // vs, hc-black, vs-dark
-            inherit: true,
-            rules: [{ background: 'EDF9FA' },
-                {token : 'type', foreground: "#26d3ff"},
-                {token : 'special', foreground:'#BDB7F4'},
-                {token : 'string', foreground: '#00b3de'},
-                {token : 'keyword', foreground: '#cccccc'},
-                {token : 'number', foreground: '#bdf1a3'},
-                {token : 'syntaxTag', foreground: '#9dd288'},
-                {token : 'tag', foreground: '#9dd288'},
-                {token : 'rootComment', foreground: '#9dd288'},
-
-                {token : 'methodGET', foreground: '#33B333'},
-                {token : 'methodPOST', foreground: '#2196F3'},
-                {token : 'methodPATCH', foreground: '#CF5AE3'},
-                {token : 'methodDELETE', foreground: '#FF7669'},
-                {token : 'methodOther', foreground: '#9A9A9A'}
-              ],
-            colors: {
-              'editor.foreground': '#000000',
-              'editor.background': '#3c4c5f',
-              'editor.lineHighlightBackground': '#222b35',
-              'editor.lineHighlightForeground': '#222b35',
-              'editor.selectionBackground': '#222b35',
-              'editor.selectionForeground': '#222b35',
-              'editor.selectionHighlightBackground': '#222b35',
-              'editor.selectionHighlightForeground': '#222b35',
-              'editor.inactiveSelectionBackground': '#222b35',
-              'editor.hoverHighlightBackground': '#222b35',
-              'editor.hoverHighlightForeground': '#222b35',
-              'editorCursor.foreground': '#8B0000',
-              'editorLineNumber.foreground': '#008800',
-              'input.background': '#FFFFFF',
-              'editorHoverWidget.background': '#F7FAFF',
-              'editorHoverWidget.border': '#222b35',
-              'editorIndentGuide.background': '#9EAAB7'
-            }
-          });
-          monaco.editor.setTheme('ramlTheme');
-
           var ramlEditor = monaco.editor
             .create(document.getElementById("editor-container-raml"), {
               value: '',
