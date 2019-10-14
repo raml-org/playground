@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "@api-components/api-documentation": "^3.0.3",
+    "@pika/web": "^0.6.1"
+  },
+  "@pika/web": {
+    "webDependencies": [
+      "@api-components/api-documentation"
+    ]
+  },
+  "scripts": {
+    "prepare": "pika install"
+  }
+}
