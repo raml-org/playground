@@ -112,7 +112,7 @@
                             var style = window.getComputedStyle(containerDiv);
                             var hidden = style.display == "none";
                             if (!hidden) {
-                                containerDiv.setAttribute("style", "height: " + (height - 200) + "px");
+                                containerDiv.setAttribute("style", "height: " + (height - 180) + "px");
                             }
                         });
 
@@ -125,7 +125,7 @@
                             document.getElementById("navigator").style.height = "auto";
                         }
 
-                        document.getElementById("shapes-list").style.height = (height - 200) + "px";
+                        document.getElementById("shapes-list").style.height = (height - 180) + "px";
                         document.getElementById("shapes-list").style.overflow = "scroll";
 
                     };

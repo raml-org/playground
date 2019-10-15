@@ -21,22 +21,22 @@ interface Shape {
 }
 
 const createModel = function (text, mode) {
-  return window.monaco.editor.createModel(text, mode)
+  return globalThis.monaco.editor.createModel(text, mode)
 }
 
 export class ViewModel extends CommonViewModel {
   public env: amf.client.environment.Environment = null;
-  public navigatorSection: KnockoutObservable<NavigatorSection> = ko.observable<NavigatorSection>('errors');
+  public navigatorSection: ko.Observable<NavigatorSection> = ko.observable<NavigatorSection>('errors');
 
-  public shapes: KnockoutObservableArray<Shape> = ko.observableArray<Shape>([]);
-  public errors: KnockoutObservableArray<amf.validate.ValidationResult> = ko.observableArray<amf.validate.ValidationResult>([]);
-  public selectedModel: KnockoutObservable<amf.model.document.BaseUnit|null> = ko.observable(null);
+  public shapes: ko.ObservableArray<Shape> = ko.observableArray<Shape>([]);
+  public errors: ko.ObservableArray<amf.validate.ValidationResult> = ko.observableArray<amf.validate.ValidationResult>([]);
+  public selectedModel: ko.Observable<amf.model.document.BaseUnit|null> = ko.observable(null);
 
-  public editorSection: KnockoutObservable<string> = ko.observable<string>('raml');
-  public validationSection: KnockoutObservable<string> = ko.observable<string>('custom');
+  public editorSection: ko.Observable<string> = ko.observable<string>('raml');
+  public validationSection: ko.Observable<string> = ko.observable<string>('custom');
   public customValidation?: string;
 
-  public selectedError: KnockoutObservable<any> = ko.observable<any>();
+  public selectedError: ko.Observable<any> = ko.observable<any>();
   public errorsMapShape: {[id: string]: boolean} = {};
 
   public model: any | null = null;
@@ -173,7 +173,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   public apply () {
-    window.viewModel = this
+    globalThis.viewModel = this
     ko.applyBindings(this)
   }
 
@@ -187,7 +187,7 @@ export class ViewModel extends CommonViewModel {
 
         const editorModel = this.ramlEditor.getModel()
         const monacoErrors = report.results.map((result) => this.buildMonacoErro(result))
-        monaco.editor.setModelMarkers(editorModel, editorModel.id, monacoErrors)
+        globalThis.monaco.editor.setModelMarkers(editorModel, editorModel.id, monacoErrors)
 
         this.errors(violations)
         this.errorsMapShape = this.errors()
@@ -195,7 +195,7 @@ export class ViewModel extends CommonViewModel {
             return e.validationId.split('#').pop()
           })
           .reduce((a, s) => { a[s] = true; return a }, {})
-        window.resizeFn()
+        globalThis.resizeFn()
       }).catch((e) => {
         console.log('Error validating API', e)
       })
@@ -216,7 +216,7 @@ export class ViewModel extends CommonViewModel {
             this.ramlEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
           })
       }
-      window.resizeFn()
+      globalThis.resizeFn()
     }
   }
 
@@ -274,7 +274,7 @@ export class ViewModel extends CommonViewModel {
     this.shapes(shapesModels)
   }
 
-  public getMainModel (): monaco.editor.ITextModel {
+  public getMainModel (): any {
     return this.profileEditor.getModel()
   }
   public parseEditorSection () {}
