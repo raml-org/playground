@@ -4,14 +4,14 @@ import { Document } from '../main/units_model'
 import { PlaygroundGraph } from '../view_models/graph'
 import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
 import { CommonViewModel } from '../view_models/common_view_model'
-import { WebApiParser as wap, core } from 'webapi-parser'
+import { WebApiParser as wap } from 'webapi-parser'
 
 export type EditorSection = 'raml' | 'graph';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
   // Units to be displayed in graph
-  public documentUnits: KnockoutObservableArray<Document> = ko.observableArray<Document>([]);
+  public documentUnits: ko.ObservableArray<Document> = ko.observableArray<Document>([]);
   public graph: any;
   // Selected editor segment decorations
   private decorations: any = [];
@@ -35,7 +35,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel (): monaco.editor.ITextModel {
+  public getMainModel (): any {
     return this.ramlEditor.getModel()
   }
 
@@ -84,7 +84,7 @@ export class ViewModel extends CommonViewModel {
       return
     }
 
-    const lexicalInfo: core.parser.Range = this.model.elementLexicalInfo(id)
+    const lexicalInfo = this.model.elementLexicalInfo(id)
     if (lexicalInfo != null) {
       this.ramlEditor.revealRangeInCenter({
         startLineNumber: lexicalInfo.start.line,
@@ -94,7 +94,7 @@ export class ViewModel extends CommonViewModel {
       })
       this.decorations = this.ramlEditor.deltaDecorations(this.decorations, [
         {
-          range: new monaco.Range(
+          range: new globalThis.monaco.Range(
             lexicalInfo.start.line,
             lexicalInfo.start.column,
             lexicalInfo.end.line,
