@@ -70,12 +70,11 @@ export class ViewModel extends CommonViewModel {
           try {
             this.doValidate()
           } catch (e) {
-            console.log('Exception parsing API')
-            console.log(e)
+            console.error(`Exception parsing API: ${e}`)
             this.errors(oldErrors)
           }
         }).catch((e) => {
-          console.log('Error parsing RAML API')
+          console.error(`Exception parsing API: ${e}`)
         })
       }
     }
@@ -103,7 +102,7 @@ export class ViewModel extends CommonViewModel {
       .then(() => {
         return this.loadShapes()
       }).catch((e) => {
-        console.log('ERROR!!! ' + e.toString())
+        console.error(`Error: ${e}`)
       })
 
     ramlEditor.onDidChangeModelContent(() => {
@@ -161,7 +160,6 @@ export class ViewModel extends CommonViewModel {
   }
 
   public hasError (shape: AnyShape): boolean {
-    console.log('ERROR? ' + shape.id)
     const errors = this.errorsMapShape || {}
     return errors[(shape.id || '').split('#').pop()] || false
   }
@@ -197,7 +195,7 @@ export class ViewModel extends CommonViewModel {
           .reduce((a, s) => { a[s] = true; return a }, {})
         globalThis.resizeFn()
       }).catch((e) => {
-        console.log('Error validating API', e)
+        console.error(`Error validating API: ${e}`)
       })
     }
   }
@@ -237,7 +235,6 @@ export class ViewModel extends CommonViewModel {
   Error = 8;
 
   protected buildMonacoErro (error: amf.validate.ValidationResult): any {
-    console.log('BUILDING ERROR ' + error.targetNode)
     let severity = this.Info
     if (error.level == 'Violation') { severity = this.Error }
     if (error.level === 'Warning') { severity = this.Warning }

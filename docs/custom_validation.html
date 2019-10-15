@@ -70,12 +70,10 @@
                     document.getElementById("preloader-progress").value = 100;
                     cb();
                 } else {
-                    console.log("loading " + assets[0]);
                     preload.loadFile(assets.shift());
                 }
             };
             preload.addEventListener("fileload", handleFileComplete);
-            console.log("loading " + assets[0]);
             preload.loadFile(assets.shift());
         };
 
@@ -104,7 +102,6 @@
                 require(['vs/editor/editor.main'], function () {
 
                     var resize = function () {
-                        console.log("** Resizing **");
                         var height = document.documentElement.clientHeight;
                         var editors = ["editor-profile-container", "editor-raml-container"];
                         editors.forEach(function(editor) {
