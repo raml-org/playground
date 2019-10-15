@@ -67,7 +67,7 @@ export class ApiConsole {
   *  1. It wraps the position;
   *  2. Has the smallest block size.
   */
-  findNearestElement (pos: monaco.Position): any | undefined {
+  findNearestElement (pos: any): any | undefined {
     let withinRange = this.elsRanges.filter(el => {
       return (
         pos.lineNumber >= el.rng.start.line &&
@@ -89,7 +89,7 @@ export class ApiConsole {
     return withinRange[0]
   }
 
-  switchSelected (pos: monaco.Position) {
+  switchSelected (pos: any) {
     const nearest = this.findNearestElement(pos)
     if (nearest === undefined) {
       this.container.selected = this.defaultSelected

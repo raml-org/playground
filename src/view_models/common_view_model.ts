@@ -23,8 +23,8 @@ export abstract class CommonViewModel {
 
   public queryParamName = 'raml';
 
-  public apply () {
-    window.viewModel = this
+  public apply (): any {
+    globalThis.viewModel = this
     return wap.init().then(() => {
       ko.applyBindings(this)
     })
@@ -55,7 +55,7 @@ export abstract class CommonViewModel {
   }
 
   protected createModel (text, mode) {
-    return window.monaco.editor.createModel(text, mode)
+    return globalThis.monaco.editor.createModel(text, mode)
   }
 
   public loadRamlFromQueryParam () {
@@ -87,7 +87,7 @@ export abstract class CommonViewModel {
     this.parseEditorSection(section)
   }
 
-  abstract getMainModel (): monaco.editor.ITextModel
+  abstract getMainModel (): any
   abstract parseEditorSection (section?: EditorSection): void
   protected abstract updateEditorsModels (): void
 }

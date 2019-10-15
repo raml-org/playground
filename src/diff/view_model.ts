@@ -11,17 +11,17 @@ import { DiffGenerator, NodeDiff } from './diff_generator'
 import { Graph } from './graph'
 
 export class ViewModel extends CommonViewModel {
-  public leftHash: ko.KnockoutObservable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
-  public rightHash: ko.KnockoutObservable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
-  public started: ko.KnockoutObservable<boolean> = ko.observable<boolean>(false);
-  public diff: ko.KnockoutObservable<DiffGenerator> = ko.observable<DiffGenerator>(new DiffGenerator(new HashGenerator([]), new HashGenerator([])));
-  public editorSection: ko.KnockoutObservable<string> = ko.observable<string>('editor');
+  public leftHash: ko.Observable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
+  public rightHash: ko.Observable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
+  public started: ko.Observable<boolean> = ko.observable<boolean>(false);
+  public diff: ko.Observable<DiffGenerator> = ko.observable<DiffGenerator>(new DiffGenerator(new HashGenerator([]), new HashGenerator([])));
+  public editorSection: ko.Observable<string> = ko.observable<string>('editor');
   public graph: Graph | null = null;
-  public allNodes: ko.KnockoutObservable<NodeDiff[]> = ko.observable<NodeDiff[]>([]);
+  public allNodes: ko.Observable<NodeDiff[]> = ko.observable<NodeDiff[]>([]);
   public sortBy: string = 'assertionsAdded';
   public sortDirection: number = 1;
-  public selectedNode: ko.KnockoutObservable<NodeDiff> = ko.observable<NodeDiff>(new NodeDiff('', ''));
-  public isLoading: ko.KnockoutObservable<boolean> = ko.observable<boolean>(false);
+  public selectedNode: ko.Observable<NodeDiff> = ko.observable<NodeDiff>(new NodeDiff('', ''));
+  public isLoading: ko.Observable<boolean> = ko.observable<boolean>(false);
 
   public constructor (public leftEditor: any, public rightEditor: any) {
     super()
@@ -36,7 +36,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public apply () {
+  public apply (): any {
     super.apply().then(() => {
       this.editorSection.subscribe(value => {
         if (value === 'graph') {
@@ -119,7 +119,7 @@ export class ViewModel extends CommonViewModel {
       })
   }
 
-  public getMainModel (): monaco.editor.ITextModel {
+  public getMainModel (): any {
     return this.leftEditor.getModel()
   }
 

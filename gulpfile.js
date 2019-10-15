@@ -19,7 +19,7 @@ function bundleHandler (name) {
       .add([
         `./src/${name}/view_model.ts`
       ])
-      .plugin(tsify, { target: 'es6' })
+      .plugin(tsify)
       .transform(babelify, { extensions: ['.tsx', '.ts'] })
       .bundle().on('error', log)
       .pipe(source(`${name}.js`))
