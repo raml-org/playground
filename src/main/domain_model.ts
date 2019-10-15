@@ -166,41 +166,30 @@ export class DomainModel {
     public process (): DomainElement {
       const encoded = this.jsonld
       if (has_type(encoded, API_DOCUMENTATION)) {
-        console.log('* Processing APIDocumentation')
         return this.buildAPIDocumentation(encoded)
       } else if (has_type(encoded, END_POINT)) {
-        console.log('* Processing EndPoint')
         return this.buildEndPoint(encoded)
       } else if (has_type(encoded, OPERATION)) {
-        console.log('* Processing Operation')
         return this.buildOperation(encoded)
       } else if (has_type(encoded, REQUEST)) {
-        console.log('* Processing Response')
         return this.buildRequest(encoded)
       } else if (has_type(encoded, RESPONSE)) {
-        console.log('* Processing Response')
         return this.buildResponse(encoded)
       } else if (has_type(encoded, PAYLOAD)) {
-        console.log('* Processing Payload')
         return this.buildPayload(encoded)
       } else if (has_type(encoded, SHAPE)) {
-        console.log('* Processing Shape')
         return this.buildShape(encoded)
       } else if (has_type(encoded, DOMAIN_PROPERTY_SCHEMA)) {
-        console.log('* Processing DomainPropertySchema')
         return this.buildDomainPropertySchema(encoded)
       } else if (has_type(encoded, TRAIT)) {
-        console.log('* Processing Trait')
         return this.buildTrait(encoded)
       } else {
-        console.log('* Unknown element ' + this.jsonld['@id'] + ' => ' + JSON.stringify(this.jsonld['@type']))
         return this.buildDomainElement(encoded)
       }
     }
 
     private buildDomainElement (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building DomainElement ' + encoded['@id'])
       const label = this.extractLabel(encoded, 'DomainElement')
       const element = new DomainElement(encoded, encoded['@id'], label)
       this.elements[element.id] = element
@@ -209,7 +198,6 @@ export class DomainModel {
 
     private buildAPIDocumentation (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building APIDocumentation ' + encoded['@id'])
       const label = this.extractLabel(encoded, 'WebAPI')
       const endpoints = extract_links(encoded, ENDPOINT).map(elm => this.buildEndPoint(elm))
       const element = new APIDocumentation(encoded, encoded['@id'], label, endpoints)
@@ -219,7 +207,6 @@ export class DomainModel {
 
     private buildEndPoint (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building EndPoint ' + encoded['@id'])
       const path = extract_value(encoded, PATH)
       const label = this.extractLabel(encoded, 'EndPoint')
       const operations = extract_links(encoded, SUPPORTED_OPERATION).map(elm => this.buildOperation(elm))
@@ -230,7 +217,6 @@ export class DomainModel {
 
     private buildOperation (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building Operation ' + encoded['@id'])
       const method = extract_value(encoded, METHOD)
       const label = this.extractLabel(encoded, 'Operation')
       const requests = extract_links(encoded, EXPECTS).map(elm => this.buildRequest(elm))
@@ -242,7 +228,6 @@ export class DomainModel {
 
     private buildResponse (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building Response ' + encoded['@id'])
       const status = extract_value(encoded, STATUS_CODE)
       const payloads = extract_links(encoded, RESPONSE_PAYLOAD).map(elm => this.buildPayload(elm))
       const label = this.extractLabel(encoded, 'Response')
@@ -262,7 +247,6 @@ export class DomainModel {
 
     private buildPayload (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building Payload ' + encoded['@id'])
       const mediaType = extract_value(encoded, MEDIA_TYPE)
       const shape = this.buildShape(extract_link(encoded, PAYLOAD_SCHEMA)) as Shape | IncludeRelationship
       const label = this.extractLabel(encoded, 'Payload')
@@ -285,7 +269,6 @@ export class DomainModel {
 
     private buildDomainPropertySchema (encoded: any) {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building DomainPropertySchema ' + encoded['@id'])
       const label = this.extractLabel(encoded, 'Property Shape')
       const domain = extract_link(encoded, DOMAIN)
       const range = extract_link(encoded, RANGE)
@@ -296,7 +279,6 @@ export class DomainModel {
 
     private buildTrait (encoded: any) {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      console.log('* Building Trait ' + encoded['@id'])
       const label = this.extractLabel(encoded, 'Trait')
       const element = new Trait(encoded, encoded['@id'], label)
       this.elements[element.id] = element

@@ -31,7 +31,6 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseEditorSection (section?: EditorSection) {
-    console.log(`Parsing text from editor section '${section}'`)
     const value = this.unresRamlEditor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     return wap.raml10.parse(value).then(model => {
@@ -43,7 +42,6 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected updateEditorsModels () {
-    console.log('Updating editors models')
     if (this.model === null || this.model.raw === null) {
       return
     }
