@@ -24,12 +24,10 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected updateEditorsModels () {
-    console.log(`Updating editors models`)
     if (this.model === null || this.model.raw === null) {
       return
     }
 
-    console.log('Updating RAML editor with existing model')
     const editorModel = this.diffEditor.getModel()
     editorModel.original = this.createModel(this.model.raw, 'raml')
     this.diffEditor.setModel(editorModel)
