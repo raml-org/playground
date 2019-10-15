@@ -102,20 +102,19 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected hashEditor (editor, cb) {
-    console.log(`Generating hash for editor ${editor.getDomNode().id}`)
     wap.raml10.parse(editor.getValue())
       .then(model => wap.amfGraph.generateString(model))
       .then(text => {
         jsonld.flatten(JSON.parse(text), (e, flattened) => {
           if (e !== null) {
-            console.log(`Error processing JSON-LD: ${e.toString()}`)
+            console.error(`Error processing JSON-LD: ${e.toString()}`)
             return
           }
           cb(new HashGenerator(flattened as any[]))
         })
       })
       .catch(e => {
-        console.log(`Error generating hash: ${e.toString()}`)
+        console.error(`Error generating hash: ${e.toString()}`)
       })
   }
 

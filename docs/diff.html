@@ -93,12 +93,10 @@
           document.getElementById("preloader-progress").value = 100;
           cb();
         } else {
-          console.log("loading " + assets[0]);
           preload.loadFile(assets.shift());
         }
       };
       preload.addEventListener("fileload", handleFileComplete);
-      console.log("loading " + assets[0]);
       preload.loadFile(assets.shift());
     };
 
