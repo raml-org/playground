@@ -113,8 +113,8 @@ export class ModelProxy {
             }
             jsonld.compact(parsed, context, (err, compacted) => {
               if (err != null) {
-                console.log(`ERROR COMPACTING: ${err}`)
-                console.log(JSON.stringify(parsed, null, 2))
+                console.error(`ERROR COMPACTING: ${err}`)
+                console.error(JSON.stringify(parsed, null, 2))
               }
               const finalJson = (err == null) ? compacted : parsed
               this.apiModelString = JSON.stringify(finalJson, null, 2)
@@ -135,7 +135,7 @@ export class ModelProxy {
         })
         .catch(cb)
     } catch (e) {
-      console.log(`Error generating JSON-LD: ${e}`)
+      console.error(`Error generating JSON-LD: ${e}`)
       cb(e)
     }
   }

@@ -40,7 +40,6 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseEditorSection (section?: EditorSection) {
-    console.log(`Parsing text from editor section '${section}'`)
     const value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
     this.parseString(section as 'raml', value, (err, model) => {
@@ -66,14 +65,11 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected updateEditorsModels () {
-    console.log('Updating editors models')
     if (this.model === null || this.model.raw === null) {
       return
     }
 
-    console.log('Updating RAML editor with existing model')
     this.ramlEditor.setModel(this.createModel(this.model.raw, 'raml'))
-    console.log('Updating graph representation')
     this.resetUnits(() => {
       this.resetGraph()
     })
