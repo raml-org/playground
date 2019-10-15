@@ -1,4 +1,5 @@
 import { extract_value, LABEL, NAME, SHACL_NAME } from './main/domain_model'
+
 export function label (uri: string): string {
   if (uri.indexOf('#') > -1) {
     const hashPart = uri.split('#')[1]

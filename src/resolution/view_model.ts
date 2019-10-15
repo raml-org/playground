@@ -26,7 +26,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel(): monaco.editor.ITextModel {
+  public getMainModel(): any {
     return this.unresRamlEditor.getModel()
   }
 

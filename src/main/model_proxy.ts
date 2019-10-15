@@ -1,7 +1,7 @@
-import { ModelType } from './playground_window'
 import * as jsonld from 'jsonld'
+import { ModelType } from './playground_window'
 import { UnitModel } from './units_model'
-import { WebApiParser as wap, model, core } from 'webapi-parser'
+import { WebApiParser as wap } from 'webapi-parser'
 
 export type ModelLevel = 'document' | 'domain';
 
@@ -11,13 +11,13 @@ export type ModelLevel = 'document' | 'domain';
 export class ModelProxy {
   // holders for the generated strings
   public ramlString: string = '';
-  public generatedRamlModel: model.document.BaseUnit;
+  public generatedRamlModel: any;
   public oasString: string = '';
-  public generatedOasModel: model.document.BaseUnit;
+  public generatedOasModel: any;
   public apiModelString: string = '';
   public raw: string = '';
 
-  constructor (public model: model.document.BaseUnit, public sourceType: ModelType) {
+  constructor (public model: any, public sourceType: ModelType) {
     // we setup the default model with the value passed in the constructor
     // for the kind of model.
     if (this.sourceType === 'raml') {
@@ -166,15 +166,15 @@ export class ModelProxy {
     }
   }
 
-  private _transitiveRefs: model.document.BaseUnit[] = null;
+  private _transitiveRefs: any[] = null;
 
-  transitiveReferences (): model.document.BaseUnit[] {
+  transitiveReferences (): any[] {
     if (this._transitiveRefs == null) {
       const refsAcc = {}
       this.model.references().forEach((ref) => { refsAcc[ref.location] = ref })
-      var pending: model.document.BaseUnit[] = this.model.references()
+      var pending: any[] = this.model.references()
       while (pending.length > 0) {
-        const next: model.document.BaseUnit = pending.pop()
+        const next: any = pending.pop()
         next.references().forEach((ref) => {
           if (refsAcc[ref.location] == null) {
             refsAcc[ref.location] = ref
@@ -182,7 +182,7 @@ export class ModelProxy {
           }
         })
       }
-      var acc: model.document.BaseUnit[] = []
+      var acc: any[] = []
       for (var p in refsAcc) {
         acc.push(refsAcc[p])
       }
@@ -192,11 +192,11 @@ export class ModelProxy {
     return this._transitiveRefs
   }
 
-  findElement (id: string): model.domain.DomainElement | undefined {
+  findElement (id: string) {
     return this.model.findById(id)
   }
 
-  elementLexicalInfo (id: string): core.parser.Range | undefined {
+  elementLexicalInfo (id: string) {
     const element = this.findElement(id)
     if (element != null) {
       return element.position

@@ -9,11 +9,11 @@ export type ModelType = 'raml' | 'oas';
 
 export class ViewModel extends CommonViewModel {
   // Editor section parsed most recently
-  public lastParsedSection: KnockoutObservable<EditorSection|undefined> = ko.observable<EditorSection|undefined>(undefined);
+  public lastParsedSection: ko.Observable<EditorSection|undefined> = ko.observable<EditorSection|undefined>(undefined);
   // Checks if we need to reparse the document
   public oasChangesFromLastUpdate = 0;
   // OAS, RAML generation options
-  public generationOptions: KnockoutObservable<any> = ko.observable<any>({ 'source-maps?': false });
+  public generationOptions: ko.Observable<any> = ko.observable<any>({ 'source-maps?': false });
 
   constructor (public ramlEditor: any, public oasEditor: any) {
     super()
@@ -39,7 +39,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel (): monaco.editor.ITextModel {
+  public getMainModel (): any {
     return this.ramlEditor.getModel()
   }
 

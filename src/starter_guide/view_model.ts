@@ -4,7 +4,7 @@ import { LoadModal, LoadFileEvent } from '../view_models/load_modal'
 import { CommonViewModel } from '../view_models/common_view_model'
 import { WebApiParser as wap } from 'webapi-parser'
 
-export type EditorSection = 'raml' | 'api-console';
+export type EditorSection = 'raml';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
@@ -29,7 +29,7 @@ export class ViewModel extends CommonViewModel {
     })
   }
 
-  public getMainModel (): monaco.editor.ITextModel {
+  public getMainModel (): any {
     return this.ramlEditor.getModel()
   }
 
