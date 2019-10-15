@@ -15,11 +15,11 @@ function getBaseUrl () {
 export class LoadModal {
   static LOAD_FILE_EVENT: string = 'load-file';
 
-  public fileUrl: KnockoutObservable<string> = ko.observable<string>('');
+  public fileUrl: ko.Observable<string> = ko.observable<string>('');
 
   public ghExamplesRepo = 'raml-org/raml-examples';
-  public ghExamples: KnockoutObservableArray<any> = ko.observableArray([]);
-  public selectedGhExample: KnockoutObservable<any> = ko.observable<any>();
+  public ghExamples: ko.ObservableArray<any> = ko.observableArray([]);
+  public selectedGhExample: ko.Observable<any> = ko.observable<any>();
 
   public constructor () {
     this.selectedGhExample.subscribe((newValue) => {

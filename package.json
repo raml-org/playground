@@ -23,6 +23,8 @@
     "webapi-parser": "^0.3.2"
   },
   "devDependencies": {
+    "@types/backbone": "^1.4.1",
+    "@types/jquery": "^3.3.31",
     "@typescript-eslint/parser": "^2.3.3",
     "babelify": "^10.0.0",
     "browser-sync": "^2.26.7",

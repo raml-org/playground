@@ -132,9 +132,9 @@ export class PlaygroundGraph {
             width: (minWidth > width ? minWidth : width),
             height: (minHeight > height ? minHeight : height),
             gridSize: 1,
-            interactive: false
+            interactive: false,
+            model: graph
           }
-          options.model = graph
           this.paper = new Paper(options)
 
           this.paper.on('cell:pointerdown',
@@ -188,7 +188,7 @@ export class PlaygroundGraph {
       container.scroll(Math.abs(offset), 0)
     } else {
       this.paper.translate(offset)
-      this.paper.setDimensions('100%')
+      this.paper.setDimensions('100%', undefined)
     }
   }
 
