@@ -17,8 +17,7 @@ export class PlaygroundWindow {
     parser.parse(fileLocation).then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
-      console.log('Error parsing file')
-      console.log(err)
+      console.error(`Error parsing file: ${err}`)
       cb(err, null)
     })
   }
@@ -28,8 +27,7 @@ export class PlaygroundWindow {
     parser.parse(value).then((model) => {
       cb(null, new ModelProxy(model, type))
     }).catch((err) => {
-      console.log('Error parsing text')
-      console.log(err)
+      console.error(`Error parsing text: ${err}`)
       cb(err, null)
     })
   }
