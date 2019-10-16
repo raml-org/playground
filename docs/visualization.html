@@ -135,6 +135,7 @@
           window.appModel = new visualization.ViewModel(ramlEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
+          window.appModel.loadDefaultRaml('examples/simple.raml');
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

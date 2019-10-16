@@ -8,6 +8,7 @@ export type EditorSection = 'raml' | 'oas';
 export type ModelType = 'raml' | 'oas';
 
 export class ViewModel extends CommonViewModel {
+  public base = window.location.href.toString().split('/raml_oas.html')[0];
   // Editor section parsed most recently
   public lastParsedSection: ko.Observable<EditorSection|undefined> = ko.observable<EditorSection|undefined>(undefined);
   // Checks if we need to reparse the document
