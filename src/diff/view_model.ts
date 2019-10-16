@@ -103,6 +103,7 @@ export class ViewModel extends CommonViewModel {
 
   protected hashEditor (editor, cb) {
     wap.raml10.parse(editor.getValue())
+      .then(model => wap.raml10.resolve(model))
       .then(model => wap.amfGraph.generateString(model))
       .then(text => {
         jsonld.flatten(JSON.parse(text), (e, flattened) => {
