@@ -23,9 +23,9 @@ export abstract class CommonViewModel {
 
   public queryParamName = 'raml';
 
-  public apply () {
+  public apply (): any {
     globalThis.viewModel = this
-    wap.init().then(() => {
+    return wap.init().then(() => {
       ko.applyBindings(this)
     })
   }

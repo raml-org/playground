@@ -73,6 +73,7 @@ gulp.task('css', function () {
 /* Bundlers */
 gulp.task('bundleRamlOas', bundleHandler('raml_oas'))
 gulp.task('bundleVisualization', bundleHandler('visualization'))
+gulp.task('bundleDiff', bundleHandler('diff'))
 gulp.task('bundleStarterGuide', bundleHandler('starter_guide'))
 gulp.task('bundleResolution', bundleHandler('resolution'))
 
@@ -92,6 +93,15 @@ gulp.task('serveVisualization', gulp.series(
   gulp.parallel(
     serveHandler('visualization'),
     watchHandler('visualization', 'bundleVisualization')
+  )
+))
+
+gulp.task('serveDiff', gulp.series(
+  'css',
+  'bundleDiff',
+  gulp.parallel(
+    serveHandler('diff'),
+    watchHandler('diff', 'bundleDiff')
   )
 ))
 
@@ -119,6 +129,7 @@ gulp.task('bundleAll', gulp.series(
   'css',
   'bundleRamlOas',
   'bundleVisualization',
+  'bundleDiff',
   'bundleStarterGuide',
   'bundleResolution'
 ))
