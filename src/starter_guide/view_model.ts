@@ -44,17 +44,6 @@ export class ViewModel extends CommonViewModel {
       })
   }
 
-  public loadInitialDocument () {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get(this.queryParamName)) {
-      return
-    }
-
-    this.loadModal.fileUrl(
-      `${this.base}/examples/world-music-api/api.raml`)
-    this.loadModal.save()
-  }
-
   public parseEditorSection (section?: EditorSection) {
     const value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
