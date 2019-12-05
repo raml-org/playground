@@ -33,10 +33,12 @@ export abstract class CommonViewModel {
   }
 
   public switchDemo (obj, event) {
+    const URL_LENGTH_LIMIT = 1950
     let href = event.target.value
     const value = this.getMainModel().getValue()
+    const encoded = encodeURIComponent(value)
     if (value) {
-      href += `?${this.queryParamName}=${encodeURIComponent(value)}`
+      href += `?${this.queryParamName}=${encoded.slice(0, URL_LENGTH_LIMIT)}`
     }
     window.location.href = href
   }
