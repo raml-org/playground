@@ -25,7 +25,7 @@ export class ViewModel extends CommonViewModel {
   public navigatorSection: ko.Observable<NavigatorSection> = ko.observable<NavigatorSection>('errors');
 
   public shapes: ko.ObservableArray<Shape> = ko.observableArray<Shape>([]);
-  public errors: ko.ObservableArray<amf.validate.ValidationResult> = ko.observableArray<amf.validate.ValidationResult>([]);
+  public errors: ko.ObservableArray<amf.client.validate.ValidationResult> = ko.observableArray<amf.client.validate.ValidationResult>([]);
   public selectedModel: ko.Observable<amf.model.document.BaseUnit|null> = ko.observable(null);
 
   public editorSection: ko.Observable<string> = ko.observable<string>('raml');
@@ -141,13 +141,13 @@ export class ViewModel extends CommonViewModel {
     const profilePath = this.profilePath
     const editor = this.profileEditor
     const EditorProfileLoader = {
-      fetch: function (resource) {
+      fetch: function (resource: string): Promise<amf.client.remote.Content> {
         return new Promise(function (resolve, reject) {
           resolve(new amf.client.remote.Content(
             editor.getValue(), profilePath))
         })
       },
-      accepts: function (resource) {
+      accepts: function (resource: string): boolean {
         return true
       }
     }
@@ -230,7 +230,7 @@ export class ViewModel extends CommonViewModel {
   Warning = 4;
   Error = 8;
 
-  protected buildMonacoErro (error: amf.validate.ValidationResult): any {
+  protected buildMonacoErro (error: amf.client.validate.ValidationResult): any {
     let severity = this.Info
     if (error.level == 'Violation') { severity = this.Error }
     if (error.level === 'Warning') { severity = this.Warning }
