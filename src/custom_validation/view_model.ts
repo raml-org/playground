@@ -1,7 +1,3 @@
-/**
- * Created by antoniogarrote on 12/05/2017.
- */
-
 import * as ko from 'knockout'
 import * as amf from 'amf-client-js'
 import { CommonViewModel } from '../view_models/common_view_model'
@@ -272,7 +268,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   public getMainModel (): any {
-    return this.profileEditor.getModel()
+    return this.ramlEditor.getModel()
   }
   public parseEditorSection () {}
   public updateEditorsModels () {}

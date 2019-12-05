@@ -1,4 +1,5 @@
 import * as ko from 'knockout'
+import * as url from 'url'
 import { ModelProxy, ModelLevel } from '../main/model_proxy'
 import { LoadModal } from '../view_models/load_modal'
 import { WebApiParser as wap } from 'webapi-parser'
@@ -22,10 +23,11 @@ export abstract class CommonViewModel {
   public RELOAD_PERIOD = 2000;
 
   public queryParamName = 'raml';
+  public base: string;
 
-  public apply () {
+  public apply (): any {
     globalThis.viewModel = this
-    wap.init().then(() => {
+    return wap.init().then(() => {
       ko.applyBindings(this)
     })
   }
@@ -58,6 +60,15 @@ export abstract class CommonViewModel {
     return globalThis.monaco.editor.createModel(text, mode)
   }
 
+  protected isUrl (val: string) {
+    try {
+      new URL(val)
+      return true
+    } catch (err) {
+      return false
+    }
+  }
+
   public loadRamlFromQueryParam () {
     const params = new URLSearchParams(window.location.search)
     let value = params.get(this.queryParamName)
@@ -65,12 +76,12 @@ export abstract class CommonViewModel {
     if (!value) {
       return
     }
-    try {
+
+    if (this.isUrl(value)) {
       // Query param value is a RAML file URL
-      new URL(value)
       this.loadModal.fileUrl(value.trim())
       this.loadModal.save()
-    } catch (e) {
+    } else {
       // Query param value is a RAML file content
       try { value = decodeURIComponent(value) } catch (err) {}
       this.getMainModel().setValue(value.trim())
@@ -85,6 +96,18 @@ export abstract class CommonViewModel {
     this.modelChanged = false
     this.ramlChangesFromLastUpdate = 0
     this.parseEditorSection(section)
+  }
+
+  public loadDefaultRaml (fpath: string) {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get(this.queryParamName)) {
+      return
+    }
+    if (!this.isUrl(fpath)) {
+      fpath = url.resolve(this.base, fpath)
+    }
+    this.loadModal.fileUrl(fpath)
+    this.loadModal.save()
   }
 
   abstract getMainModel (): any

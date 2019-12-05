@@ -150,6 +150,7 @@
           window.appModel = new raml_oas.ViewModel(ramlEditor, oasEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
+          window.appModel.loadDefaultRaml('examples/simple.raml');
 
           setTimeout(function() {
             document.getElementById("preloader").style.display = "none";

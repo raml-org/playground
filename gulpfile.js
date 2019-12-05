@@ -74,6 +74,7 @@ gulp.task('css', function () {
 gulp.task('bundleRamlOas', bundleHandler('raml_oas'))
 gulp.task('bundleVisualization', bundleHandler('visualization'))
 gulp.task('bundleCustomValidation', bundleHandler('custom_validation'))
+gulp.task('bundleDiff', bundleHandler('diff'))
 gulp.task('bundleStarterGuide', bundleHandler('starter_guide'))
 gulp.task('bundleResolution', bundleHandler('resolution'))
 
@@ -105,6 +106,15 @@ gulp.task('serveCustomValidation', gulp.series(
   )
 ))
 
+gulp.task('serveDiff', gulp.series(
+  'css',
+  'bundleDiff',
+  gulp.parallel(
+    serveHandler('diff'),
+    watchHandler('diff', 'bundleDiff')
+  )
+))
+
 gulp.task('serveStarterGuide', gulp.series(
   'css',
   'bundleStarterGuide',
@@ -130,6 +140,7 @@ gulp.task('bundleAll', gulp.series(
   'bundleRamlOas',
   'bundleVisualization',
   'bundleCustomValidation',
+  'bundleDiff',
   'bundleStarterGuide',
   'bundleResolution'
 ))

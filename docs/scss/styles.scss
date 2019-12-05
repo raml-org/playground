@@ -49,6 +49,7 @@ html,body{
   font-feature-settings: 'kern' 1;
   font-kerning: normal;
 }
+
 body {
   background-color: #3c4c5f;
 }
@@ -212,6 +213,101 @@ header{
   display: none;
 }
 
+/* Diff */
+.diff-number-plus {
+  margin-right: 5px;
+  width: 60px;
+  font-size: 14px;
+  font-weight: bolder;
+}
+
+.diff-number-minus {
+  width: 60px;
+  font-size: 14px;
+  font-weight: bolder;
+}
+
+.diff-number-identical {
+  font-size: 14px;
+  font-weight: bolder;
+}
+
+#diff-modal {
+  .modal-content {
+    width: 70%;
+    .modal-card {
+      width: 100%;
+      .modal-card-body {
+        table {
+          font-size: 120%;
+          thead {
+            th:last-child {
+              text-align: center;
+            }
+          }
+          tbody {
+            td:last-child {
+              text-align: center;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+#diff-panel {
+  padding-bottom: 15px;
+  .level-item {
+    div {
+      .title {
+        color: #FFFFFF;
+        font-size: 12px;
+        font-weight: bolder;
+      }
+      .heading {
+        color: #FFFFFF;
+      }
+    }
+  }
+  .has-text-centered {
+    margin-top: 5px;
+  }
+}
+
+
+#report-table {
+  .table thead td, .table thead th {
+    color: #ffffff!important;
+  }
+  .table td, .table th {
+    color: #ffffff!important;
+  }
+  overflow: auto;
+  color: #ffffff;
+  table {
+    thead {
+      tr {
+        .tag {
+          font-size: 14px;
+          font-weight: bolder;
+        }
+        .text-centered {
+          text-align: center;
+        }
+      }
+    }
+    tbody {
+      .text-centered {
+        text-align: center;
+      }
+    }
+  }
+}
+#graphContainer {
+  background-color: #272b30;
+}
+
 /* api-documentation */
 #api-console-container {
   font-family: 'RobotoMono-Regular';
@@ -234,6 +330,7 @@ header{
 
 .section {
   padding: 1.5em 0 0 0;
+  color: #FFFFFF;
 }
 .is-marginless {
   margin: 0;

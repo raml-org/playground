@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<div id="report-table" data-bind="visible: editorSection() === 'report'" class="imported">
+  <table class="is-paddingless table">
+    <thead>
+      <tr>
+          <th id="id-column-header" data-bind="click: function(){ nodesSortBy('id'); }">ID / Name</th>
+          <th data-bind="click: function(){ nodesSortBy('nodeClass'); }">Class</th>
+          <th data-bind="click: function(){ nodesSortBy('newHash'); }">New Hash</th>
+          <th data-bind="click: function(){ nodesSortBy('hash'); }">Old Hash</th>
+          <th class="text-centered" data-bind="click: function(){ nodesSortBy('assertionsNotChanged'); }">
+            <span class="tag is-warning">=</span>
+          </th>
+          <th class="text-centered" data-bind="click: function(){ nodesSortBy('assertionsAdded'); }">
+            <span class="tag is-success">+</span>
+          </th>
+          <th class="text-centered" data-bind="click: function(){ nodesSortBy('assertionsRemoved'); }">
+            <span class="tag is-danger">-</span>
+          </th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: allNodes()">
+      <tr>
+          <td data-bind="text: ($data.nodeName || $data.idLabel())"></td>
+          <td data-bind="text: $data.classLabel()"></td>
+          <td data-bind="text: $data.newHashLabel()"></td>
+          <td data-bind="text: $data.hashLabel()"></td>
+          <td class="text-centered" data-bind="text: $data.assertionsNotChanged.length"></td>
+          <td class="text-centered" data-bind="text: $data.assertionsAdded.length"></td>
+          <td class="text-centered" data-bind="text: $data.assertionsRemoved.length"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>

@@ -173,7 +173,7 @@
           window.appModel = new starter_guide.ViewModel(ramlEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
-          window.appModel.loadInitialDocument();
+          window.appModel.loadDefaultRaml('examples/world-music-api/api.raml');
 
           ramlEditor.onDidChangeCursorPosition(evt => {
             if (evt.reason !== monaco.editor.CursorChangeReason.ContentFlush) {
