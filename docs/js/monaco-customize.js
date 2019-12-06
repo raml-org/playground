@@ -25,6 +25,7 @@ function customizeMonaco () {
         [/\![^ ]*/,"tag"],
         [/#.*/,"rootComment"],
         [/get\??:/,"methodGET"],
+        [/put\??:/,"methodPUT"],
         [/post\??:/,"methodPOST"],
         [/patch\??:/,"methodPATCH"],
         [/delete\??:/,"methodDELETE"],
@@ -141,6 +142,7 @@ function customizeMonaco () {
 
         {token : 'methodGET', foreground: '#33B333'},
         {token : 'methodPOST', foreground: '#2196F3'},
+        {token : 'methodPUT', foreground: '#ffa500'},
         {token : 'methodPATCH', foreground: '#CF5AE3'},
         {token : 'methodDELETE', foreground: '#FF7669'},
         {token : 'methodOther', foreground: '#9A9A9A'}

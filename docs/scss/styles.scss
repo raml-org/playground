@@ -27,6 +27,7 @@
 $font-face-regular:'Roboto-Regular';
 $font-face-light:'Roboto-Light';
 
+$editor-bg:#3c4c5f;
 $sky-blue:#26D3FF;
 $slate-gray:#526881;
 $light-gray:#748599;
@@ -51,7 +52,7 @@ html,body{
 }
 
 body {
-  background-color: #3c4c5f;
+  background-color: $editor-bg;
 }
 a:hover{
   text-decoration: none!important;
@@ -317,21 +318,33 @@ header{
   position: absolute;
   top: 0;
   right: 0;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.5);
   border-radius: 7px;
   overflow-y: auto;
-
-  --code-background-color: #FFFFFF;
+  color: #f5f5f5;
+  --http-method-label-get-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-post-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-put-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-patch-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-delete-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-head-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-options-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-trace-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-connect-background-color: rgba(255, 255, 255, 0.4);
+  --link-color: #f5f5f5;
+  --api-body-document-description-color: #f5f5f5;
+  --anypoint-button-color: #f5f5f5;
+  --anypoint-button-emphasis-low-focus-color: #f5f5f5;
+  --api-annotation-document-color: #f5f5f5;
+  --http-code-snippet-container-background-color: rgba(255, 255, 255, 0.4);
+  --http-code-snippet-code-text-shadow: 0;
+  --code-background-color: rgba(255, 255, 255, 0.4);
 }
 
 .joint-paper.joint-theme-default {
   background-color: #3c4c5f!important;
 }
 
-.section {
-  padding: 1.5em 0 0 0;
-  color: #FFFFFF;
-}
 .is-marginless {
   margin: 0;
 }
