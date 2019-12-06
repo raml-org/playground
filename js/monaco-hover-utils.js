@@ -226,7 +226,10 @@ const hoverUtils = {
     let url = lineContent.trim().split(' ').pop()
     if (!url.startsWith('http')) {
       const urlObj = new URL(window.location.origin)
-      urlObj.pathname = url
+      const pathPieces = window.location.pathname.split('/')
+      pathPieces.pop()
+      pathPieces.push(url)
+      urlObj.pathname = pathPieces.join('/')
       return urlObj.href
     }
     return url
