@@ -25,6 +25,12 @@ export abstract class CommonViewModel {
   public queryParamName = 'raml';
   public base: string;
 
+  public makeBase (name: string): string {
+    const href = window.location.href.toString()
+    const sep = href.includes(`${name}.html`) ? `${name}.html` : name
+    return href.split(sep)[0]
+  }
+
   public apply (): any {
     globalThis.viewModel = this
     return wap.init().then(() => {

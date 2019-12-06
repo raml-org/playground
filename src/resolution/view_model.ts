@@ -7,7 +7,7 @@ export type EditorSection = 'raml';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
-  public base = window.location.href.toString().split('/resolution.html')[0];
+  public base = this.makeBase('resolution')
 
   constructor (public unresRamlEditor: any, public resRamlEditor: any) {
     super()

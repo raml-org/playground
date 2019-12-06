@@ -21,6 +21,7 @@ const createModel = function (text, mode) {
 }
 
 export class ViewModel extends CommonViewModel {
+  public base = this.makeBase('custom_validation')
   public env: amf.client.environment.Environment = null;
   public navigatorSection: ko.Observable<NavigatorSection> = ko.observable<NavigatorSection>('errors');
 

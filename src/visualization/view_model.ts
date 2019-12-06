@@ -10,7 +10,7 @@ export type EditorSection = 'raml' | 'graph';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
-  public base = window.location.href.toString().split('/visualization.html')[0];
+  public base = this.makeBase('visualization')
   // Units to be displayed in graph
   public documentUnits: ko.ObservableArray<Document> = ko.observableArray<Document>([]);
   public graph: any;

@@ -11,6 +11,7 @@ import { DiffGenerator, NodeDiff } from './diff_generator'
 import { Graph } from './graph'
 
 export class ViewModel extends CommonViewModel {
+  public base = this.makeBase('diff')
   public leftHash: ko.Observable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
   public rightHash: ko.Observable<HashGenerator> = ko.observable<HashGenerator>(new HashGenerator([]));
   public started: ko.Observable<boolean> = ko.observable<boolean>(false);
