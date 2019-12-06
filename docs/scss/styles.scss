@@ -322,30 +322,23 @@ header{
   border-radius: 7px;
   overflow-y: auto;
   color: #f5f5f5;
-  --http-method-label-get-background-color: #788fab;
-  --http-method-label-get-color: #f5f5f5;
-  --http-method-label-post-background-color: #788fab;
-  --http-method-label-post-color: #f5f5f5;
-  --http-method-label-patch-background-color: #788fab;
-  --http-method-label-patch-color: #f5f5f5;
-  --http-method-label-delete-background-color: #788fab;
-  --http-method-label-delete-color: #f5f5f5;
-  --http-method-label-head-background-color: #788fab;
-  --http-method-label-head-color: #f5f5f5;
-  --http-method-label-options-background-color: #788fab;
-  --http-method-label-options-color: #f5f5f5;
-  --http-method-label-trace-background-color: #788fab;
-  --http-method-label-trace-color: #f5f5f5;
-  --http-method-label-connect-background-color: #788fab;
-  --http-method-label-connect-color: #f5f5f5;
+  --http-method-label-get-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-post-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-put-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-patch-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-delete-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-head-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-options-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-trace-background-color: rgba(255, 255, 255, 0.4);
+  --http-method-label-connect-background-color: rgba(255, 255, 255, 0.4);
   --link-color: #f5f5f5;
   --api-body-document-description-color: #f5f5f5;
   --anypoint-button-color: #f5f5f5;
   --anypoint-button-emphasis-low-focus-color: #f5f5f5;
   --api-annotation-document-color: #f5f5f5;
-  --http-code-snippet-container-background-color: rgba(255, 255, 255, 0.5);
+  --http-code-snippet-container-background-color: rgba(255, 255, 255, 0.4);
   --http-code-snippet-code-text-shadow: 0;
-  --code-background-color: rgba(255, 255, 255, 0.3);
+  --code-background-color: rgba(255, 255, 255, 0.4);
 }
 
 .joint-paper.joint-theme-default {
