@@ -18,6 +18,7 @@ export class ViewModel extends CommonViewModel {
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
         .then((parsedModel) => {
+          this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
           this.unresRamlEditor.setModel(this.createModel(this.model.raw, 'raml'))
           return this.updateEditorsModels()
@@ -35,7 +36,7 @@ export class ViewModel extends CommonViewModel {
   public parseEditorSection (section?: EditorSection) {
     const value = this.unresRamlEditor.getValue()
     if (!value) { return } // Don't parse editor content if it's empty
-    return wap.raml10.parse(value).then(model => {
+    return wap.raml10.parse(value, this.loadedRamlUrl).then(model => {
       this.model = new ModelProxy(model, 'raml')
       return this.updateEditorsModels()
     }).catch(err => {

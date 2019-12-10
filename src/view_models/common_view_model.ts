@@ -24,6 +24,16 @@ export abstract class CommonViewModel {
 
   public queryParamName = 'raml';
   public base: string;
+  public loadedRamlUrl = '';
+  public ramlUrlQueryParam = 'loadedRamlUrl'
+
+  constructor () {
+    const params = new URLSearchParams(window.location.search)
+    const value = params.get(this.ramlUrlQueryParam)
+    if (value) {
+      this.loadedRamlUrl = value
+    }
+  }
 
   public makeBase (name: string): string {
     const href = window.location.href.toString()
@@ -39,12 +49,16 @@ export abstract class CommonViewModel {
   }
 
   public switchDemo (obj, event) {
-    const URL_LENGTH_LIMIT = 1950
+    const URL_LENGTH_LIMIT = 1850
     let href = event.target.value
+    if (this.loadedRamlUrl) {
+      href += `?${this.ramlUrlQueryParam}=${this.loadedRamlUrl}`
+    }
     const value = this.getMainModel().getValue()
     const encoded = encodeURIComponent(value)
     if (value) {
-      href += `?${this.queryParamName}=${encoded.slice(0, URL_LENGTH_LIMIT)}`
+      const qch = this.loadedRamlUrl ? '&' : '?'
+      href += `${qch}${this.queryParamName}=${encoded.slice(0, URL_LENGTH_LIMIT)}`
     }
     window.location.href = href
   }
