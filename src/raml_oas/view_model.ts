@@ -28,6 +28,7 @@ export class ViewModel extends CommonViewModel {
       return wap.raml10.parse(evt.location)
         .then((parsedModel) => {
           this.lastParsedSection('raml')
+          this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
           this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
             this.ramlEditor.setModel(this.createModel(string, 'raml'))
@@ -66,7 +67,7 @@ export class ViewModel extends CommonViewModel {
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
     const parsingProm = type === 'raml'
-      ? wap.raml10.parse(value)
+      ? wap.raml10.parse(value, this.loadedRamlUrl)
       : wap.oas20.parseYaml(value)
     parsingProm.then((model) => {
       cb(null, new ModelProxy(model, type))

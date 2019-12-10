@@ -21,19 +21,19 @@ import Paper = joint.dia.Paper;
 
 const CHAR_SIZE = 10
 
-const DEFAULT_LINK_COLOR = '#748599'
-const SELECTED_STROKE_COLOR = '#748599'
-const DEFAULT_LABEL_COLOR = '#748599'
+const DEFAULT_LINK_COLOR = '#ffffff'
+const SELECTED_STROKE_COLOR = '#ffffff'
+const DEFAULT_LABEL_COLOR = '#ffffff'
 const NODE_TEXT_COLOR = '#fff'
 
 const COLORS = {
-  encodes: '#748599',
-  declares: '#748599',
-  references: '#748599',
+  encodes: '#ffffff',
+  declares: '#ffffff',
+  references: '#ffffff',
 
-  unit: '#115CD4',
-  domain: '#115CD4',
-  declaration: '#115CD4'
+  unit: '#5c83c1',
+  domain: '#5c83c1',
+  declaration: '#5c83c1'
 }
 
 export class PlaygroundGraph {

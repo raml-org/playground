@@ -27,6 +27,7 @@ export class ViewModel extends CommonViewModel {
       return wap.raml10.parse(evt.location)
         .then(model => wap.raml10.resolve(model))
         .then((parsedModel) => {
+          this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
           this.updateEditorsModels()
         })
@@ -54,7 +55,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   public parseString (type: ModelType, value: string, cb: (err, model) => any) {
-    wap.raml10.parse(value)
+    wap.raml10.parse(value, this.loadedRamlUrl)
       .then(model => wap.raml10.resolve(model))
       .then((model) => {
         cb(null, new ModelProxy(model, type))

@@ -30,6 +30,7 @@ export class ViewModel extends CommonViewModel {
     this.loadModal.on(LoadModal.LOAD_FILE_EVENT, (evt: LoadFileEvent) => {
       return wap.raml10.parse(evt.location)
         .then((parsedModel) => {
+          this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
           this.getMainModel().setValue(parsedModel.raw)
         })
@@ -103,7 +104,7 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected hashEditor (editor, cb) {
-    wap.raml10.parse(editor.getValue())
+    wap.raml10.parse(editor.getValue(), this.loadedRamlUrl)
       .then(model => wap.raml10.resolve(model))
       .then(model => wap.amfGraph.generateString(model))
       .then(text => {

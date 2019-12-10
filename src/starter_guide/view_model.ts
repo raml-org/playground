@@ -15,6 +15,10 @@ export class ViewModel extends CommonViewModel {
   constructor (public ramlEditor: any) {
     super()
 
+    if (!this.ramlUrlQueryParam) {
+      this.base = this.ramlUrlQueryParam
+    }
+
     this.apiConsole = new ApiConsole()
 
     ramlEditor.onDidChangeModelContent(this.changeModelContent(
@@ -24,6 +28,8 @@ export class ViewModel extends CommonViewModel {
       return this.parseRamlInput(evt.location)
         .then(this.updateEditorsModels.bind(this))
         .then(() => {
+          this.loadedRamlUrl = evt.location
+          this.base = this.loadedRamlUrl
           return this.apiConsole.reset(this.wapModel)
         })
     })
@@ -33,8 +39,11 @@ export class ViewModel extends CommonViewModel {
     return this.ramlEditor.getModel()
   }
 
-  public parseRamlInput (inp) {
-    return wap.raml10.parse(inp)
+  public parseRamlInput (inp: string, baseUrl?: string) {
+    const parse = baseUrl
+      ? wap.raml10.parse(inp, baseUrl)
+      : wap.raml10.parse(inp)
+    return parse
       .then(parsedModel => {
         this.wapModel = parsedModel
         this.model = new ModelProxy(this.wapModel, 'raml')
@@ -47,7 +56,7 @@ export class ViewModel extends CommonViewModel {
   public parseEditorSection (section?: EditorSection) {
     const value = this.ramlEditor.getModel().getValue()
     if (!value) { return } // Don't parse editor content if it's empty
-    return this.parseRamlInput(value)
+    return this.parseRamlInput(value, this.loadedRamlUrl)
       .then(() => {
         return this.apiConsole.reset(this.wapModel)
       })
