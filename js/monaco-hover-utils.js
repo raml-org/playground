@@ -225,11 +225,17 @@ const hoverUtils = {
   parseUrl: function (lineContent) {
     let url = lineContent.trim().split(' ').pop()
     if (!url.startsWith('http')) {
-      const urlObj = new URL(window.location.origin)
-      const pathPieces = window.location.pathname.split('/')
+      const base = (
+        (window.appModel && window.appModel.base) ||
+        window.location.origin)
+      console.log('>1', window.appModel && window.appModel.base)
+      console.log('>2', base)
+      const urlObj = new URL(base)
+      const pathPieces = urlObj.pathname.split('/')
       pathPieces.pop()
       pathPieces.push(url)
       urlObj.pathname = pathPieces.join('/')
+      console.log('>3', urlObj.href, url)
       return urlObj.href
     }
     return url
