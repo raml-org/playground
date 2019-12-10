@@ -15,10 +15,6 @@ export class ViewModel extends CommonViewModel {
   constructor (public ramlEditor: any) {
     super()
 
-    if (!this.ramlUrlQueryParam) {
-      this.base = this.ramlUrlQueryParam
-    }
-
     this.apiConsole = new ApiConsole()
 
     ramlEditor.onDidChangeModelContent(this.changeModelContent(
@@ -29,7 +25,6 @@ export class ViewModel extends CommonViewModel {
         .then(this.updateEditorsModels.bind(this))
         .then(() => {
           this.loadedRamlUrl = evt.location
-          this.base = this.loadedRamlUrl
           return this.apiConsole.reset(this.wapModel)
         })
     })
