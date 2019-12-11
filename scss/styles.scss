@@ -360,3 +360,9 @@ header{
 #editor-graph {
   padding-left: 1rem;
 }
+.vs-dark .monaco-scrollable-element>.scrollbar>.slider {
+  background: #9eaab7!important;
+}
+.monaco-scrollable-element>.scrollbar>.slider:hover {
+  background: #9eaab7!important;
+}
