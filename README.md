@@ -3,16 +3,17 @@
 ![RAML Playground Logo](docs/images/ramlLogo.svg)
 
 ## Demos
-* [RAML + OAS](https://raml-org.github.io/playground/raml_oas.html)
-* [Visualization](https://raml-org.github.io/playground/visualization.html)
+* [Learn RAML](https://github.com/raml-org/playground/tree/master/src/learn_raml) ([Live Demo](https://raml-org.github.io/playground/learn_raml.html))
+* [Custom Validation](https://github.com/raml-org/playground/tree/master/src/custom_validation) ([Live Demo](https://raml-org.github.io/playground/custom_validation.html))
+* [Diff](https://github.com/raml-org/playground/tree/master/src/diff) ([Live Demo](https://raml-org.github.io/playground/diff.html))
+* [RAML+OAS](https://github.com/raml-org/playground/tree/master/src/raml_oas) ([Live Demo](https://raml-org.github.io/playground/raml_oas.html))
+* [Resolution](https://github.com/raml-org/playground/tree/master/src/resolution) ([Live Demo](https://raml-org.github.io/playground/resolution.html))
+* [Visualization](https://github.com/raml-org/playground/tree/master/src/visualization) ([Live Demo](https://raml-org.github.io/playground/visualization.html))
 
 ## Running this project
-RAML+OAS demo:
 ```bash
-$ gulp serveRamlOas
+$ gulp serve
 ```
 
-Visualization demo:
-```bash
-$ gulp serveVisualization
-```
+## Contributing
+If you wish to contribute to this project, please review our [Contribution Guidelines](https://github.com/raml-org/playground/tree/master/CONTRIBUTING.md).

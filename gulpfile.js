@@ -144,3 +144,6 @@ gulp.task('bundleAll', gulp.series(
   'bundleLearnRaml',
   'bundleResolution'
 ))
+
+
+gulp.task('serve', gulp.series('serveLearnRaml'))
