@@ -75,7 +75,7 @@ gulp.task('bundleRamlOas', bundleHandler('raml_oas'))
 gulp.task('bundleVisualization', bundleHandler('visualization'))
 gulp.task('bundleCustomValidation', bundleHandler('custom_validation'))
 gulp.task('bundleDiff', bundleHandler('diff'))
-gulp.task('bundleStarterGuide', bundleHandler('starter_guide'))
+gulp.task('bundleLearnRaml', bundleHandler('learn_raml'))
 gulp.task('bundleResolution', bundleHandler('resolution'))
 
 /* Servers  */
@@ -115,12 +115,12 @@ gulp.task('serveDiff', gulp.series(
   )
 ))
 
-gulp.task('serveStarterGuide', gulp.series(
+gulp.task('serveLearnRaml', gulp.series(
   'css',
-  'bundleStarterGuide',
+  'bundleLearnRaml',
   gulp.parallel(
-    serveHandler('starter_guide'),
-    watchHandler('starter_guide', 'bundleStarterGuide')
+    serveHandler('learn_raml'),
+    watchHandler('learn_raml', 'bundleLearnRaml')
   )
 ))
 
@@ -141,6 +141,6 @@ gulp.task('bundleAll', gulp.series(
   'bundleVisualization',
   'bundleCustomValidation',
   'bundleDiff',
-  'bundleStarterGuide',
+  'bundleLearnRaml',
   'bundleResolution'
 ))

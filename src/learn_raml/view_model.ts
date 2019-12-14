@@ -8,7 +8,7 @@ export type EditorSection = 'raml';
 export type ModelType = 'raml';
 
 export class ViewModel extends CommonViewModel {
-  public base = this.makeBase('starter_guide')
+  public base = this.makeBase('learn_raml')
   public wapModel: any = undefined;
   public apiConsole: ApiConsole;
 
