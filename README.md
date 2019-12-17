@@ -1,8 +1,6 @@
 # RAML Playground
 
-![RAML Playground Logo](docs/images/ramlLogo.svg)
-
-## Demos
+## Examples
 * [Learn RAML](https://github.com/raml-org/playground/tree/master/src/learn_raml) ([Live Demo](https://raml-org.github.io/playground/learn_raml.html))
 * [Custom Validation](https://github.com/raml-org/playground/tree/master/src/custom_validation) ([Live Demo](https://raml-org.github.io/playground/custom_validation.html))
 * [Diff](https://github.com/raml-org/playground/tree/master/src/diff) ([Live Demo](https://raml-org.github.io/playground/diff.html))
@@ -16,4 +14,4 @@ $ gulp serve
 ```
 
 ## Contributing
-If you wish to contribute to this project, please review our [Contribution Guidelines](https://github.com/raml-org/playground/tree/master/CONTRIBUTING.md).
+If you wish to contribute to this project by adding more examples, please review our [Contribution Guidelines](https://github.com/raml-org/playground/tree/master/CONTRIBUTING.md).
