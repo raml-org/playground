@@ -127,7 +127,7 @@ define(["require", "exports"], function (require, exports) {
             specialFunc: [
                 [/"/, { token: 'string', next: '@dstring' }],
                 [/'/, { token: 'string', next: '@sstring' }],
-                [/(?:(?:\:\:?)?[a-zA-Z_]\w*)+/, { token: 'type', next: '@pop' }],
+                [/\S+/, { token: 'type', next: '@pop' }],
             ]
         }
     };

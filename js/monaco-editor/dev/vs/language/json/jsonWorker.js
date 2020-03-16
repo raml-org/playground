@@ -4,6 +4,1639 @@
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
+        define('jsonc-parser/impl/scanner',["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    /*---------------------------------------------------------------------------------------------
+     *  Copyright (c) Microsoft Corporation. All rights reserved.
+     *  Licensed under the MIT License. See License.txt in the project root for license information.
+     *--------------------------------------------------------------------------------------------*/
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * Creates a JSON scanner on the given text.
+     * If ignoreTrivia is set, whitespaces or comments are ignored.
+     */
+    function createScanner(text, ignoreTrivia) {
+        if (ignoreTrivia === void 0) { ignoreTrivia = false; }
+        var len = text.length;
+        var pos = 0, value = '', tokenOffset = 0, token = 16 /* Unknown */, lineNumber = 0, lineStartOffset = 0, tokenLineStartOffset = 0, prevTokenLineStartOffset = 0, scanError = 0 /* None */;
+        function scanHexDigits(count, exact) {
+            var digits = 0;
+            var value = 0;
+            while (digits < count || !exact) {
+                var ch = text.charCodeAt(pos);
+                if (ch >= 48 /* _0 */ && ch <= 57 /* _9 */) {
+                    value = value * 16 + ch - 48 /* _0 */;
+                }
+                else if (ch >= 65 /* A */ && ch <= 70 /* F */) {
+                    value = value * 16 + ch - 65 /* A */ + 10;
+                }
+                else if (ch >= 97 /* a */ && ch <= 102 /* f */) {
+                    value = value * 16 + ch - 97 /* a */ + 10;
+                }
+                else {
+                    break;
+                }
+                pos++;
+                digits++;
+            }
+            if (digits < count) {
+                value = -1;
+            }
+            return value;
+        }
+        function setPosition(newPosition) {
+            pos = newPosition;
+            value = '';
+            tokenOffset = 0;
+            token = 16 /* Unknown */;
+            scanError = 0 /* None */;
+        }
+        function scanNumber() {
+            var start = pos;
+            if (text.charCodeAt(pos) === 48 /* _0 */) {
+                pos++;
+            }
+            else {
+                pos++;
+                while (pos < text.length && isDigit(text.charCodeAt(pos))) {
+                    pos++;
+                }
+            }
+            if (pos < text.length && text.charCodeAt(pos) === 46 /* dot */) {
+                pos++;
+                if (pos < text.length && isDigit(text.charCodeAt(pos))) {
+                    pos++;
+                    while (pos < text.length && isDigit(text.charCodeAt(pos))) {
+                        pos++;
+                    }
+                }
+                else {
+                    scanError = 3 /* UnexpectedEndOfNumber */;
+                    return text.substring(start, pos);
+                }
+            }
+            var end = pos;
+            if (pos < text.length && (text.charCodeAt(pos) === 69 /* E */ || text.charCodeAt(pos) === 101 /* e */)) {
+                pos++;
+                if (pos < text.length && text.charCodeAt(pos) === 43 /* plus */ || text.charCodeAt(pos) === 45 /* minus */) {
+                    pos++;
+                }
+                if (pos < text.length && isDigit(text.charCodeAt(pos))) {
+                    pos++;
+                    while (pos < text.length && isDigit(text.charCodeAt(pos))) {
+                        pos++;
+                    }
+                    end = pos;
+                }
+                else {
+                    scanError = 3 /* UnexpectedEndOfNumber */;
+                }
+            }
+            return text.substring(start, end);
+        }
+        function scanString() {
+            var result = '', start = pos;
+            while (true) {
+                if (pos >= len) {
+                    result += text.substring(start, pos);
+                    scanError = 2 /* UnexpectedEndOfString */;
+                    break;
+                }
+                var ch = text.charCodeAt(pos);
+                if (ch === 34 /* doubleQuote */) {
+                    result += text.substring(start, pos);
+                    pos++;
+                    break;
+                }
+                if (ch === 92 /* backslash */) {
+                    result += text.substring(start, pos);
+                    pos++;
+                    if (pos >= len) {
+                        scanError = 2 /* UnexpectedEndOfString */;
+                        break;
+                    }
+                    var ch2 = text.charCodeAt(pos++);
+                    switch (ch2) {
+                        case 34 /* doubleQuote */:
+                            result += '\"';
+                            break;
+                        case 92 /* backslash */:
+                            result += '\\';
+                            break;
+                        case 47 /* slash */:
+                            result += '/';
+                            break;
+                        case 98 /* b */:
+                            result += '\b';
+                            break;
+                        case 102 /* f */:
+                            result += '\f';
+                            break;
+                        case 110 /* n */:
+                            result += '\n';
+                            break;
+                        case 114 /* r */:
+                            result += '\r';
+                            break;
+                        case 116 /* t */:
+                            result += '\t';
+                            break;
+                        case 117 /* u */:
+                            var ch3 = scanHexDigits(4, true);
+                            if (ch3 >= 0) {
+                                result += String.fromCharCode(ch3);
+                            }
+                            else {
+                                scanError = 4 /* InvalidUnicode */;
+                            }
+                            break;
+                        default:
+                            scanError = 5 /* InvalidEscapeCharacter */;
+                    }
+                    start = pos;
+                    continue;
+                }
+                if (ch >= 0 && ch <= 0x1f) {
+                    if (isLineBreak(ch)) {
+                        result += text.substring(start, pos);
+                        scanError = 2 /* UnexpectedEndOfString */;
+                        break;
+                    }
+                    else {
+                        scanError = 6 /* InvalidCharacter */;
+                        // mark as error but continue with string
+                    }
+                }
+                pos++;
+            }
+            return result;
+        }
+        function scanNext() {
+            value = '';
+            scanError = 0 /* None */;
+            tokenOffset = pos;
+            lineStartOffset = lineNumber;
+            prevTokenLineStartOffset = tokenLineStartOffset;
+            if (pos >= len) {
+                // at the end
+                tokenOffset = len;
+                return token = 17 /* EOF */;
+            }
+            var code = text.charCodeAt(pos);
+            // trivia: whitespace
+            if (isWhiteSpace(code)) {
+                do {
+                    pos++;
+                    value += String.fromCharCode(code);
+                    code = text.charCodeAt(pos);
+                } while (isWhiteSpace(code));
+                return token = 15 /* Trivia */;
+            }
+            // trivia: newlines
+            if (isLineBreak(code)) {
+                pos++;
+                value += String.fromCharCode(code);
+                if (code === 13 /* carriageReturn */ && text.charCodeAt(pos) === 10 /* lineFeed */) {
+                    pos++;
+                    value += '\n';
+                }
+                lineNumber++;
+                tokenLineStartOffset = pos;
+                return token = 14 /* LineBreakTrivia */;
+            }
+            switch (code) {
+                // tokens: []{}:,
+                case 123 /* openBrace */:
+                    pos++;
+                    return token = 1 /* OpenBraceToken */;
+                case 125 /* closeBrace */:
+                    pos++;
+                    return token = 2 /* CloseBraceToken */;
+                case 91 /* openBracket */:
+                    pos++;
+                    return token = 3 /* OpenBracketToken */;
+                case 93 /* closeBracket */:
+                    pos++;
+                    return token = 4 /* CloseBracketToken */;
+                case 58 /* colon */:
+                    pos++;
+                    return token = 6 /* ColonToken */;
+                case 44 /* comma */:
+                    pos++;
+                    return token = 5 /* CommaToken */;
+                // strings
+                case 34 /* doubleQuote */:
+                    pos++;
+                    value = scanString();
+                    return token = 10 /* StringLiteral */;
+                // comments
+                case 47 /* slash */:
+                    var start = pos - 1;
+                    // Single-line comment
+                    if (text.charCodeAt(pos + 1) === 47 /* slash */) {
+                        pos += 2;
+                        while (pos < len) {
+                            if (isLineBreak(text.charCodeAt(pos))) {
+                                break;
+                            }
+                            pos++;
+                        }
+                        value = text.substring(start, pos);
+                        return token = 12 /* LineCommentTrivia */;
+                    }
+                    // Multi-line comment
+                    if (text.charCodeAt(pos + 1) === 42 /* asterisk */) {
+                        pos += 2;
+                        var safeLength = len - 1; // For lookahead.
+                        var commentClosed = false;
+                        while (pos < safeLength) {
+                            var ch = text.charCodeAt(pos);
+                            if (ch === 42 /* asterisk */ && text.charCodeAt(pos + 1) === 47 /* slash */) {
+                                pos += 2;
+                                commentClosed = true;
+                                break;
+                            }
+                            pos++;
+                            if (isLineBreak(ch)) {
+                                if (ch === 13 /* carriageReturn */ && text.charCodeAt(pos) === 10 /* lineFeed */) {
+                                    pos++;
+                                }
+                                lineNumber++;
+                                tokenLineStartOffset = pos;
+                            }
+                        }
+                        if (!commentClosed) {
+                            pos++;
+                            scanError = 1 /* UnexpectedEndOfComment */;
+                        }
+                        value = text.substring(start, pos);
+                        return token = 13 /* BlockCommentTrivia */;
+                    }
+                    // just a single slash
+                    value += String.fromCharCode(code);
+                    pos++;
+                    return token = 16 /* Unknown */;
+                // numbers
+                case 45 /* minus */:
+                    value += String.fromCharCode(code);
+                    pos++;
+                    if (pos === len || !isDigit(text.charCodeAt(pos))) {
+                        return token = 16 /* Unknown */;
+                    }
+                // found a minus, followed by a number so
+                // we fall through to proceed with scanning
+                // numbers
+                case 48 /* _0 */:
+                case 49 /* _1 */:
+                case 50 /* _2 */:
+                case 51 /* _3 */:
+                case 52 /* _4 */:
+                case 53 /* _5 */:
+                case 54 /* _6 */:
+                case 55 /* _7 */:
+                case 56 /* _8 */:
+                case 57 /* _9 */:
+                    value += scanNumber();
+                    return token = 11 /* NumericLiteral */;
+                // literals and unknown symbols
+                default:
+                    // is a literal? Read the full word.
+                    while (pos < len && isUnknownContentCharacter(code)) {
+                        pos++;
+                        code = text.charCodeAt(pos);
+                    }
+                    if (tokenOffset !== pos) {
+                        value = text.substring(tokenOffset, pos);
+                        // keywords: true, false, null
+                        switch (value) {
+                            case 'true': return token = 8 /* TrueKeyword */;
+                            case 'false': return token = 9 /* FalseKeyword */;
+                            case 'null': return token = 7 /* NullKeyword */;
+                        }
+                        return token = 16 /* Unknown */;
+                    }
+                    // some
+                    value += String.fromCharCode(code);
+                    pos++;
+                    return token = 16 /* Unknown */;
+            }
+        }
+        function isUnknownContentCharacter(code) {
+            if (isWhiteSpace(code) || isLineBreak(code)) {
+                return false;
+            }
+            switch (code) {
+                case 125 /* closeBrace */:
+                case 93 /* closeBracket */:
+                case 123 /* openBrace */:
+                case 91 /* openBracket */:
+                case 34 /* doubleQuote */:
+                case 58 /* colon */:
+                case 44 /* comma */:
+                case 47 /* slash */:
+                    return false;
+            }
+            return true;
+        }
+        function scanNextNonTrivia() {
+            var result;
+            do {
+                result = scanNext();
+            } while (result >= 12 /* LineCommentTrivia */ && result <= 15 /* Trivia */);
+            return result;
+        }
+        return {
+            setPosition: setPosition,
+            getPosition: function () { return pos; },
+            scan: ignoreTrivia ? scanNextNonTrivia : scanNext,
+            getToken: function () { return token; },
+            getTokenValue: function () { return value; },
+            getTokenOffset: function () { return tokenOffset; },
+            getTokenLength: function () { return pos - tokenOffset; },
+            getTokenStartLine: function () { return lineStartOffset; },
+            getTokenStartCharacter: function () { return tokenOffset - prevTokenLineStartOffset; },
+            getTokenError: function () { return scanError; },
+        };
+    }
+    exports.createScanner = createScanner;
+    function isWhiteSpace(ch) {
+        return ch === 32 /* space */ || ch === 9 /* tab */ || ch === 11 /* verticalTab */ || ch === 12 /* formFeed */ ||
+            ch === 160 /* nonBreakingSpace */ || ch === 5760 /* ogham */ || ch >= 8192 /* enQuad */ && ch <= 8203 /* zeroWidthSpace */ ||
+            ch === 8239 /* narrowNoBreakSpace */ || ch === 8287 /* mathematicalSpace */ || ch === 12288 /* ideographicSpace */ || ch === 65279 /* byteOrderMark */;
+    }
+    function isLineBreak(ch) {
+        return ch === 10 /* lineFeed */ || ch === 13 /* carriageReturn */ || ch === 8232 /* lineSeparator */ || ch === 8233 /* paragraphSeparator */;
+    }
+    function isDigit(ch) {
+        return ch >= 48 /* _0 */ && ch <= 57 /* _9 */;
+    }
+});
+
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
+        define('jsonc-parser/impl/format',["require", "exports", "./scanner"], factory);
+    }
+})(function (require, exports) {
+    /*---------------------------------------------------------------------------------------------
+     *  Copyright (c) Microsoft Corporation. All rights reserved.
+     *  Licensed under the MIT License. See License.txt in the project root for license information.
+     *--------------------------------------------------------------------------------------------*/
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var scanner_1 = require("./scanner");
+    function format(documentText, range, options) {
+        var initialIndentLevel;
+        var formatText;
+        var formatTextStart;
+        var rangeStart;
+        var rangeEnd;
+        if (range) {
+            rangeStart = range.offset;
+            rangeEnd = rangeStart + range.length;
+            formatTextStart = rangeStart;
+            while (formatTextStart > 0 && !isEOL(documentText, formatTextStart - 1)) {
+                formatTextStart--;
+            }
+            var endOffset = rangeEnd;
+            while (endOffset < documentText.length && !isEOL(documentText, endOffset)) {
+                endOffset++;
+            }
+            formatText = documentText.substring(formatTextStart, endOffset);
+            initialIndentLevel = computeIndentLevel(formatText, options);
+        }
+        else {
+            formatText = documentText;
+            initialIndentLevel = 0;
+            formatTextStart = 0;
+            rangeStart = 0;
+            rangeEnd = documentText.length;
+        }
+        var eol = getEOL(options, documentText);
+        var lineBreak = false;
+        var indentLevel = 0;
+        var indentValue;
+        if (options.insertSpaces) {
+            indentValue = repeat(' ', options.tabSize || 4);
+        }
+        else {
+            indentValue = '\t';
+        }
+        var scanner = scanner_1.createScanner(formatText, false);
+        var hasError = false;
+        function newLineAndIndent() {
+            return eol + repeat(indentValue, initialIndentLevel + indentLevel);
+        }
+        function scanNext() {
+            var token = scanner.scan();
+            lineBreak = false;
+            while (token === 15 /* Trivia */ || token === 14 /* LineBreakTrivia */) {
+                lineBreak = lineBreak || (token === 14 /* LineBreakTrivia */);
+                token = scanner.scan();
+            }
+            hasError = token === 16 /* Unknown */ || scanner.getTokenError() !== 0 /* None */;
+            return token;
+        }
+        var editOperations = [];
+        function addEdit(text, startOffset, endOffset) {
+            if (!hasError && startOffset < rangeEnd && endOffset > rangeStart && documentText.substring(startOffset, endOffset) !== text) {
+                editOperations.push({ offset: startOffset, length: endOffset - startOffset, content: text });
+            }
+        }
+        var firstToken = scanNext();
+        if (firstToken !== 17 /* EOF */) {
+            var firstTokenStart = scanner.getTokenOffset() + formatTextStart;
+            var initialIndent = repeat(indentValue, initialIndentLevel);
+            addEdit(initialIndent, formatTextStart, firstTokenStart);
+        }
+        while (firstToken !== 17 /* EOF */) {
+            var firstTokenEnd = scanner.getTokenOffset() + scanner.getTokenLength() + formatTextStart;
+            var secondToken = scanNext();
+            var replaceContent = '';
+            while (!lineBreak && (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */)) {
+                // comments on the same line: keep them on the same line, but ignore them otherwise
+                var commentTokenStart = scanner.getTokenOffset() + formatTextStart;
+                addEdit(' ', firstTokenEnd, commentTokenStart);
+                firstTokenEnd = scanner.getTokenOffset() + scanner.getTokenLength() + formatTextStart;
+                replaceContent = secondToken === 12 /* LineCommentTrivia */ ? newLineAndIndent() : '';
+                secondToken = scanNext();
+            }
+            if (secondToken === 2 /* CloseBraceToken */) {
+                if (firstToken !== 1 /* OpenBraceToken */) {
+                    indentLevel--;
+                    replaceContent = newLineAndIndent();
+                }
+            }
+            else if (secondToken === 4 /* CloseBracketToken */) {
+                if (firstToken !== 3 /* OpenBracketToken */) {
+                    indentLevel--;
+                    replaceContent = newLineAndIndent();
+                }
+            }
+            else {
+                switch (firstToken) {
+                    case 3 /* OpenBracketToken */:
+                    case 1 /* OpenBraceToken */:
+                        indentLevel++;
+                        replaceContent = newLineAndIndent();
+                        break;
+                    case 5 /* CommaToken */:
+                    case 12 /* LineCommentTrivia */:
+                        replaceContent = newLineAndIndent();
+                        break;
+                    case 13 /* BlockCommentTrivia */:
+                        if (lineBreak) {
+                            replaceContent = newLineAndIndent();
+                        }
+                        else {
+                            // symbol following comment on the same line: keep on same line, separate with ' '
+                            replaceContent = ' ';
+                        }
+                        break;
+                    case 6 /* ColonToken */:
+                        replaceContent = ' ';
+                        break;
+                    case 10 /* StringLiteral */:
+                        if (secondToken === 6 /* ColonToken */) {
+                            replaceContent = '';
+                            break;
+                        }
+                    // fall through
+                    case 7 /* NullKeyword */:
+                    case 8 /* TrueKeyword */:
+                    case 9 /* FalseKeyword */:
+                    case 11 /* NumericLiteral */:
+                    case 2 /* CloseBraceToken */:
+                    case 4 /* CloseBracketToken */:
+                        if (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */) {
+                            replaceContent = ' ';
+                        }
+                        else if (secondToken !== 5 /* CommaToken */ && secondToken !== 17 /* EOF */) {
+                            hasError = true;
+                        }
+                        break;
+                    case 16 /* Unknown */:
+                        hasError = true;
+                        break;
+                }
+                if (lineBreak && (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */)) {
+                    replaceContent = newLineAndIndent();
+                }
+            }
+            var secondTokenStart = scanner.getTokenOffset() + formatTextStart;
+            addEdit(replaceContent, firstTokenEnd, secondTokenStart);
+            firstToken = secondToken;
+        }
+        return editOperations;
+    }
+    exports.format = format;
+    function repeat(s, count) {
+        var result = '';
+        for (var i = 0; i < count; i++) {
+            result += s;
+        }
+        return result;
+    }
+    function computeIndentLevel(content, options) {
+        var i = 0;
+        var nChars = 0;
+        var tabSize = options.tabSize || 4;
+        while (i < content.length) {
+            var ch = content.charAt(i);
+            if (ch === ' ') {
+                nChars++;
+            }
+            else if (ch === '\t') {
+                nChars += tabSize;
+            }
+            else {
+                break;
+            }
+            i++;
+        }
+        return Math.floor(nChars / tabSize);
+    }
+    function getEOL(options, text) {
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (ch === '\r') {
+                if (i + 1 < text.length && text.charAt(i + 1) === '\n') {
+                    return '\r\n';
+                }
+                return '\r';
+            }
+            else if (ch === '\n') {
+                return '\n';
+            }
+        }
+        return (options && options.eol) || '\n';
+    }
+    function isEOL(text, offset) {
+        return '\r\n'.indexOf(text.charAt(offset)) !== -1;
+    }
+    exports.isEOL = isEOL;
+});
+
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
+        define('jsonc-parser/impl/parser',["require", "exports", "./scanner"], factory);
+    }
+})(function (require, exports) {
+    /*---------------------------------------------------------------------------------------------
+     *  Copyright (c) Microsoft Corporation. All rights reserved.
+     *  Licensed under the MIT License. See License.txt in the project root for license information.
+     *--------------------------------------------------------------------------------------------*/
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var scanner_1 = require("./scanner");
+    var ParseOptions;
+    (function (ParseOptions) {
+        ParseOptions.DEFAULT = {
+            allowTrailingComma: false
+        };
+    })(ParseOptions || (ParseOptions = {}));
+    /**
+     * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
+     */
+    function getLocation(text, position) {
+        var segments = []; // strings or numbers
+        var earlyReturnException = new Object();
+        var previousNode = undefined;
+        var previousNodeInst = {
+            value: {},
+            offset: 0,
+            length: 0,
+            type: 'object',
+            parent: undefined
+        };
+        var isAtPropertyKey = false;
+        function setPreviousNode(value, offset, length, type) {
+            previousNodeInst.value = value;
+            previousNodeInst.offset = offset;
+            previousNodeInst.length = length;
+            previousNodeInst.type = type;
+            previousNodeInst.colonOffset = undefined;
+            previousNode = previousNodeInst;
+        }
+        try {
+            visit(text, {
+                onObjectBegin: function (offset, length) {
+                    if (position <= offset) {
+                        throw earlyReturnException;
+                    }
+                    previousNode = undefined;
+                    isAtPropertyKey = position > offset;
+                    segments.push(''); // push a placeholder (will be replaced)
+                },
+                onObjectProperty: function (name, offset, length) {
+                    if (position < offset) {
+                        throw earlyReturnException;
+                    }
+                    setPreviousNode(name, offset, length, 'property');
+                    segments[segments.length - 1] = name;
+                    if (position <= offset + length) {
+                        throw earlyReturnException;
+                    }
+                },
+                onObjectEnd: function (offset, length) {
+                    if (position <= offset) {
+                        throw earlyReturnException;
+                    }
+                    previousNode = undefined;
+                    segments.pop();
+                },
+                onArrayBegin: function (offset, length) {
+                    if (position <= offset) {
+                        throw earlyReturnException;
+                    }
+                    previousNode = undefined;
+                    segments.push(0);
+                },
+                onArrayEnd: function (offset, length) {
+                    if (position <= offset) {
+                        throw earlyReturnException;
+                    }
+                    previousNode = undefined;
+                    segments.pop();
+                },
+                onLiteralValue: function (value, offset, length) {
+                    if (position < offset) {
+                        throw earlyReturnException;
+                    }
+                    setPreviousNode(value, offset, length, getNodeType(value));
+                    if (position <= offset + length) {
+                        throw earlyReturnException;
+                    }
+                },
+                onSeparator: function (sep, offset, length) {
+                    if (position <= offset) {
+                        throw earlyReturnException;
+                    }
+                    if (sep === ':' && previousNode && previousNode.type === 'property') {
+                        previousNode.colonOffset = offset;
+                        isAtPropertyKey = false;
+                        previousNode = undefined;
+                    }
+                    else if (sep === ',') {
+                        var last = segments[segments.length - 1];
+                        if (typeof last === 'number') {
+                            segments[segments.length - 1] = last + 1;
+                        }
+                        else {
+                            isAtPropertyKey = true;
+                            segments[segments.length - 1] = '';
+                        }
+                        previousNode = undefined;
+                    }
+                }
+            });
+        }
+        catch (e) {
+            if (e !== earlyReturnException) {
+                throw e;
+            }
+        }
+        return {
+            path: segments,
+            previousNode: previousNode,
+            isAtPropertyKey: isAtPropertyKey,
+            matches: function (pattern) {
+                var k = 0;
+                for (var i = 0; k < pattern.length && i < segments.length; i++) {
+                    if (pattern[k] === segments[i] || pattern[k] === '*') {
+                        k++;
+                    }
+                    else if (pattern[k] !== '**') {
+                        return false;
+                    }
+                }
+                return k === pattern.length;
+            }
+        };
+    }
+    exports.getLocation = getLocation;
+    /**
+     * Parses the given text and returns the object the JSON content represents. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+     * Therefore always check the errors list to find out if the input was valid.
+     */
+    function parse(text, errors, options) {
+        if (errors === void 0) { errors = []; }
+        if (options === void 0) { options = ParseOptions.DEFAULT; }
+        var currentProperty = null;
+        var currentParent = [];
+        var previousParents = [];
+        function onValue(value) {
+            if (Array.isArray(currentParent)) {
+                currentParent.push(value);
+            }
+            else if (currentProperty !== null) {
+                currentParent[currentProperty] = value;
+            }
+        }
+        var visitor = {
+            onObjectBegin: function () {
+                var object = {};
+                onValue(object);
+                previousParents.push(currentParent);
+                currentParent = object;
+                currentProperty = null;
+            },
+            onObjectProperty: function (name) {
+                currentProperty = name;
+            },
+            onObjectEnd: function () {
+                currentParent = previousParents.pop();
+            },
+            onArrayBegin: function () {
+                var array = [];
+                onValue(array);
+                previousParents.push(currentParent);
+                currentParent = array;
+                currentProperty = null;
+            },
+            onArrayEnd: function () {
+                currentParent = previousParents.pop();
+            },
+            onLiteralValue: onValue,
+            onError: function (error, offset, length) {
+                errors.push({ error: error, offset: offset, length: length });
+            }
+        };
+        visit(text, visitor, options);
+        return currentParent[0];
+    }
+    exports.parse = parse;
+    /**
+     * Parses the given text and returns a tree representation the JSON content. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+     */
+    function parseTree(text, errors, options) {
+        if (errors === void 0) { errors = []; }
+        if (options === void 0) { options = ParseOptions.DEFAULT; }
+        var currentParent = { type: 'array', offset: -1, length: -1, children: [], parent: undefined }; // artificial root
+        function ensurePropertyComplete(endOffset) {
+            if (currentParent.type === 'property') {
+                currentParent.length = endOffset - currentParent.offset;
+                currentParent = currentParent.parent;
+            }
+        }
+        function onValue(valueNode) {
+            currentParent.children.push(valueNode);
+            return valueNode;
+        }
+        var visitor = {
+            onObjectBegin: function (offset) {
+                currentParent = onValue({ type: 'object', offset: offset, length: -1, parent: currentParent, children: [] });
+            },
+            onObjectProperty: function (name, offset, length) {
+                currentParent = onValue({ type: 'property', offset: offset, length: -1, parent: currentParent, children: [] });
+                currentParent.children.push({ type: 'string', value: name, offset: offset, length: length, parent: currentParent });
+            },
+            onObjectEnd: function (offset, length) {
+                currentParent.length = offset + length - currentParent.offset;
+                currentParent = currentParent.parent;
+                ensurePropertyComplete(offset + length);
+            },
+            onArrayBegin: function (offset, length) {
+                currentParent = onValue({ type: 'array', offset: offset, length: -1, parent: currentParent, children: [] });
+            },
+            onArrayEnd: function (offset, length) {
+                currentParent.length = offset + length - currentParent.offset;
+                currentParent = currentParent.parent;
+                ensurePropertyComplete(offset + length);
+            },
+            onLiteralValue: function (value, offset, length) {
+                onValue({ type: getNodeType(value), offset: offset, length: length, parent: currentParent, value: value });
+                ensurePropertyComplete(offset + length);
+            },
+            onSeparator: function (sep, offset, length) {
+                if (currentParent.type === 'property') {
+                    if (sep === ':') {
+                        currentParent.colonOffset = offset;
+                    }
+                    else if (sep === ',') {
+                        ensurePropertyComplete(offset);
+                    }
+                }
+            },
+            onError: function (error, offset, length) {
+                errors.push({ error: error, offset: offset, length: length });
+            }
+        };
+        visit(text, visitor, options);
+        var result = currentParent.children[0];
+        if (result) {
+            delete result.parent;
+        }
+        return result;
+    }
+    exports.parseTree = parseTree;
+    /**
+     * Finds the node at the given path in a JSON DOM.
+     */
+    function findNodeAtLocation(root, path) {
+        if (!root) {
+            return undefined;
+        }
+        var node = root;
+        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+            var segment = path_1[_i];
+            if (typeof segment === 'string') {
+                if (node.type !== 'object' || !Array.isArray(node.children)) {
+                    return undefined;
+                }
+                var found = false;
+                for (var _a = 0, _b = node.children; _a < _b.length; _a++) {
+                    var propertyNode = _b[_a];
+                    if (Array.isArray(propertyNode.children) && propertyNode.children[0].value === segment) {
+                        node = propertyNode.children[1];
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return undefined;
+                }
+            }
+            else {
+                var index = segment;
+                if (node.type !== 'array' || index < 0 || !Array.isArray(node.children) || index >= node.children.length) {
+                    return undefined;
+                }
+                node = node.children[index];
+            }
+        }
+        return node;
+    }
+    exports.findNodeAtLocation = findNodeAtLocation;
+    /**
+     * Gets the JSON path of the given JSON DOM node
+     */
+    function getNodePath(node) {
+        if (!node.parent || !node.parent.children) {
+            return [];
+        }
+        var path = getNodePath(node.parent);
+        if (node.parent.type === 'property') {
+            var key = node.parent.children[0].value;
+            path.push(key);
+        }
+        else if (node.parent.type === 'array') {
+            var index = node.parent.children.indexOf(node);
+            if (index !== -1) {
+                path.push(index);
+            }
+        }
+        return path;
+    }
+    exports.getNodePath = getNodePath;
+    /**
+     * Evaluates the JavaScript object of the given JSON DOM node
+     */
+    function getNodeValue(node) {
+        switch (node.type) {
+            case 'array':
+                return node.children.map(getNodeValue);
+            case 'object':
+                var obj = Object.create(null);
+                for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
+                    var prop = _a[_i];
+                    var valueNode = prop.children[1];
+                    if (valueNode) {
+                        obj[prop.children[0].value] = getNodeValue(valueNode);
+                    }
+                }
+                return obj;
+            case 'null':
+            case 'string':
+            case 'number':
+            case 'boolean':
+                return node.value;
+            default:
+                return undefined;
+        }
+    }
+    exports.getNodeValue = getNodeValue;
+    function contains(node, offset, includeRightBound) {
+        if (includeRightBound === void 0) { includeRightBound = false; }
+        return (offset >= node.offset && offset < (node.offset + node.length)) || includeRightBound && (offset === (node.offset + node.length));
+    }
+    exports.contains = contains;
+    /**
+     * Finds the most inner node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
+     */
+    function findNodeAtOffset(node, offset, includeRightBound) {
+        if (includeRightBound === void 0) { includeRightBound = false; }
+        if (contains(node, offset, includeRightBound)) {
+            var children = node.children;
+            if (Array.isArray(children)) {
+                for (var i = 0; i < children.length && children[i].offset <= offset; i++) {
+                    var item = findNodeAtOffset(children[i], offset, includeRightBound);
+                    if (item) {
+                        return item;
+                    }
+                }
+            }
+            return node;
+        }
+        return undefined;
+    }
+    exports.findNodeAtOffset = findNodeAtOffset;
+    /**
+     * Parses the given text and invokes the visitor functions for each object, array and literal reached.
+     */
+    function visit(text, visitor, options) {
+        if (options === void 0) { options = ParseOptions.DEFAULT; }
+        var _scanner = scanner_1.createScanner(text, false);
+        function toNoArgVisit(visitFunction) {
+            return visitFunction ? function () { return visitFunction(_scanner.getTokenOffset(), _scanner.getTokenLength(), _scanner.getTokenStartLine(), _scanner.getTokenStartCharacter()); } : function () { return true; };
+        }
+        function toOneArgVisit(visitFunction) {
+            return visitFunction ? function (arg) { return visitFunction(arg, _scanner.getTokenOffset(), _scanner.getTokenLength(), _scanner.getTokenStartLine(), _scanner.getTokenStartCharacter()); } : function () { return true; };
+        }
+        var onObjectBegin = toNoArgVisit(visitor.onObjectBegin), onObjectProperty = toOneArgVisit(visitor.onObjectProperty), onObjectEnd = toNoArgVisit(visitor.onObjectEnd), onArrayBegin = toNoArgVisit(visitor.onArrayBegin), onArrayEnd = toNoArgVisit(visitor.onArrayEnd), onLiteralValue = toOneArgVisit(visitor.onLiteralValue), onSeparator = toOneArgVisit(visitor.onSeparator), onComment = toNoArgVisit(visitor.onComment), onError = toOneArgVisit(visitor.onError);
+        var disallowComments = options && options.disallowComments;
+        var allowTrailingComma = options && options.allowTrailingComma;
+        function scanNext() {
+            while (true) {
+                var token = _scanner.scan();
+                switch (_scanner.getTokenError()) {
+                    case 4 /* InvalidUnicode */:
+                        handleError(14 /* InvalidUnicode */);
+                        break;
+                    case 5 /* InvalidEscapeCharacter */:
+                        handleError(15 /* InvalidEscapeCharacter */);
+                        break;
+                    case 3 /* UnexpectedEndOfNumber */:
+                        handleError(13 /* UnexpectedEndOfNumber */);
+                        break;
+                    case 1 /* UnexpectedEndOfComment */:
+                        if (!disallowComments) {
+                            handleError(11 /* UnexpectedEndOfComment */);
+                        }
+                        break;
+                    case 2 /* UnexpectedEndOfString */:
+                        handleError(12 /* UnexpectedEndOfString */);
+                        break;
+                    case 6 /* InvalidCharacter */:
+                        handleError(16 /* InvalidCharacter */);
+                        break;
+                }
+                switch (token) {
+                    case 12 /* LineCommentTrivia */:
+                    case 13 /* BlockCommentTrivia */:
+                        if (disallowComments) {
+                            handleError(10 /* InvalidCommentToken */);
+                        }
+                        else {
+                            onComment();
+                        }
+                        break;
+                    case 16 /* Unknown */:
+                        handleError(1 /* InvalidSymbol */);
+                        break;
+                    case 15 /* Trivia */:
+                    case 14 /* LineBreakTrivia */:
+                        break;
+                    default:
+                        return token;
+                }
+            }
+        }
+        function handleError(error, skipUntilAfter, skipUntil) {
+            if (skipUntilAfter === void 0) { skipUntilAfter = []; }
+            if (skipUntil === void 0) { skipUntil = []; }
+            onError(error);
+            if (skipUntilAfter.length + skipUntil.length > 0) {
+                var token = _scanner.getToken();
+                while (token !== 17 /* EOF */) {
+                    if (skipUntilAfter.indexOf(token) !== -1) {
+                        scanNext();
+                        break;
+                    }
+                    else if (skipUntil.indexOf(token) !== -1) {
+                        break;
+                    }
+                    token = scanNext();
+                }
+            }
+        }
+        function parseString(isValue) {
+            var value = _scanner.getTokenValue();
+            if (isValue) {
+                onLiteralValue(value);
+            }
+            else {
+                onObjectProperty(value);
+            }
+            scanNext();
+            return true;
+        }
+        function parseLiteral() {
+            switch (_scanner.getToken()) {
+                case 11 /* NumericLiteral */:
+                    var value = 0;
+                    try {
+                        value = JSON.parse(_scanner.getTokenValue());
+                        if (typeof value !== 'number') {
+                            handleError(2 /* InvalidNumberFormat */);
+                            value = 0;
+                        }
+                    }
+                    catch (e) {
+                        handleError(2 /* InvalidNumberFormat */);
+                    }
+                    onLiteralValue(value);
+                    break;
+                case 7 /* NullKeyword */:
+                    onLiteralValue(null);
+                    break;
+                case 8 /* TrueKeyword */:
+                    onLiteralValue(true);
+                    break;
+                case 9 /* FalseKeyword */:
+                    onLiteralValue(false);
+                    break;
+                default:
+                    return false;
+            }
+            scanNext();
+            return true;
+        }
+        function parseProperty() {
+            if (_scanner.getToken() !== 10 /* StringLiteral */) {
+                handleError(3 /* PropertyNameExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
+                return false;
+            }
+            parseString(false);
+            if (_scanner.getToken() === 6 /* ColonToken */) {
+                onSeparator(':');
+                scanNext(); // consume colon
+                if (!parseValue()) {
+                    handleError(4 /* ValueExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
+                }
+            }
+            else {
+                handleError(5 /* ColonExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
+            }
+            return true;
+        }
+        function parseObject() {
+            onObjectBegin();
+            scanNext(); // consume open brace
+            var needsComma = false;
+            while (_scanner.getToken() !== 2 /* CloseBraceToken */ && _scanner.getToken() !== 17 /* EOF */) {
+                if (_scanner.getToken() === 5 /* CommaToken */) {
+                    if (!needsComma) {
+                        handleError(4 /* ValueExpected */, [], []);
+                    }
+                    onSeparator(',');
+                    scanNext(); // consume comma
+                    if (_scanner.getToken() === 2 /* CloseBraceToken */ && allowTrailingComma) {
+                        break;
+                    }
+                }
+                else if (needsComma) {
+                    handleError(6 /* CommaExpected */, [], []);
+                }
+                if (!parseProperty()) {
+                    handleError(4 /* ValueExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
+                }
+                needsComma = true;
+            }
+            onObjectEnd();
+            if (_scanner.getToken() !== 2 /* CloseBraceToken */) {
+                handleError(7 /* CloseBraceExpected */, [2 /* CloseBraceToken */], []);
+            }
+            else {
+                scanNext(); // consume close brace
+            }
+            return true;
+        }
+        function parseArray() {
+            onArrayBegin();
+            scanNext(); // consume open bracket
+            var needsComma = false;
+            while (_scanner.getToken() !== 4 /* CloseBracketToken */ && _scanner.getToken() !== 17 /* EOF */) {
+                if (_scanner.getToken() === 5 /* CommaToken */) {
+                    if (!needsComma) {
+                        handleError(4 /* ValueExpected */, [], []);
+                    }
+                    onSeparator(',');
+                    scanNext(); // consume comma
+                    if (_scanner.getToken() === 4 /* CloseBracketToken */ && allowTrailingComma) {
+                        break;
+                    }
+                }
+                else if (needsComma) {
+                    handleError(6 /* CommaExpected */, [], []);
+                }
+                if (!parseValue()) {
+                    handleError(4 /* ValueExpected */, [], [4 /* CloseBracketToken */, 5 /* CommaToken */]);
+                }
+                needsComma = true;
+            }
+            onArrayEnd();
+            if (_scanner.getToken() !== 4 /* CloseBracketToken */) {
+                handleError(8 /* CloseBracketExpected */, [4 /* CloseBracketToken */], []);
+            }
+            else {
+                scanNext(); // consume close bracket
+            }
+            return true;
+        }
+        function parseValue() {
+            switch (_scanner.getToken()) {
+                case 3 /* OpenBracketToken */:
+                    return parseArray();
+                case 1 /* OpenBraceToken */:
+                    return parseObject();
+                case 10 /* StringLiteral */:
+                    return parseString(true);
+                default:
+                    return parseLiteral();
+            }
+        }
+        scanNext();
+        if (_scanner.getToken() === 17 /* EOF */) {
+            if (options.allowEmptyContent) {
+                return true;
+            }
+            handleError(4 /* ValueExpected */, [], []);
+            return false;
+        }
+        if (!parseValue()) {
+            handleError(4 /* ValueExpected */, [], []);
+            return false;
+        }
+        if (_scanner.getToken() !== 17 /* EOF */) {
+            handleError(9 /* EndOfFileExpected */, [], []);
+        }
+        return true;
+    }
+    exports.visit = visit;
+    /**
+     * Takes JSON with JavaScript-style comments and remove
+     * them. Optionally replaces every none-newline character
+     * of comments with a replaceCharacter
+     */
+    function stripComments(text, replaceCh) {
+        var _scanner = scanner_1.createScanner(text), parts = [], kind, offset = 0, pos;
+        do {
+            pos = _scanner.getPosition();
+            kind = _scanner.scan();
+            switch (kind) {
+                case 12 /* LineCommentTrivia */:
+                case 13 /* BlockCommentTrivia */:
+                case 17 /* EOF */:
+                    if (offset !== pos) {
+                        parts.push(text.substring(offset, pos));
+                    }
+                    if (replaceCh !== undefined) {
+                        parts.push(_scanner.getTokenValue().replace(/[^\r\n]/g, replaceCh));
+                    }
+                    offset = _scanner.getPosition();
+                    break;
+            }
+        } while (kind !== 17 /* EOF */);
+        return parts.join('');
+    }
+    exports.stripComments = stripComments;
+    function getNodeType(value) {
+        switch (typeof value) {
+            case 'boolean': return 'boolean';
+            case 'number': return 'number';
+            case 'string': return 'string';
+            case 'object': {
+                if (!value) {
+                    return 'null';
+                }
+                else if (Array.isArray(value)) {
+                    return 'array';
+                }
+                return 'object';
+            }
+            default: return 'null';
+        }
+    }
+    exports.getNodeType = getNodeType;
+});
+
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
+        define('jsonc-parser/impl/edit',["require", "exports", "./format", "./parser"], factory);
+    }
+})(function (require, exports) {
+    /*---------------------------------------------------------------------------------------------
+     *  Copyright (c) Microsoft Corporation. All rights reserved.
+     *  Licensed under the MIT License. See License.txt in the project root for license information.
+     *--------------------------------------------------------------------------------------------*/
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var format_1 = require("./format");
+    var parser_1 = require("./parser");
+    function removeProperty(text, path, formattingOptions) {
+        return setProperty(text, path, void 0, formattingOptions);
+    }
+    exports.removeProperty = removeProperty;
+    function setProperty(text, originalPath, value, formattingOptions, getInsertionIndex) {
+        var _a;
+        var path = originalPath.slice();
+        var errors = [];
+        var root = parser_1.parseTree(text, errors);
+        var parent = void 0;
+        var lastSegment = void 0;
+        while (path.length > 0) {
+            lastSegment = path.pop();
+            parent = parser_1.findNodeAtLocation(root, path);
+            if (parent === void 0 && value !== void 0) {
+                if (typeof lastSegment === 'string') {
+                    value = (_a = {}, _a[lastSegment] = value, _a);
+                }
+                else {
+                    value = [value];
+                }
+            }
+            else {
+                break;
+            }
+        }
+        if (!parent) {
+            // empty document
+            if (value === void 0) { // delete
+                throw new Error('Can not delete in empty document');
+            }
+            return withFormatting(text, { offset: root ? root.offset : 0, length: root ? root.length : 0, content: JSON.stringify(value) }, formattingOptions);
+        }
+        else if (parent.type === 'object' && typeof lastSegment === 'string' && Array.isArray(parent.children)) {
+            var existing = parser_1.findNodeAtLocation(parent, [lastSegment]);
+            if (existing !== void 0) {
+                if (value === void 0) { // delete
+                    if (!existing.parent) {
+                        throw new Error('Malformed AST');
+                    }
+                    var propertyIndex = parent.children.indexOf(existing.parent);
+                    var removeBegin = void 0;
+                    var removeEnd = existing.parent.offset + existing.parent.length;
+                    if (propertyIndex > 0) {
+                        // remove the comma of the previous node
+                        var previous = parent.children[propertyIndex - 1];
+                        removeBegin = previous.offset + previous.length;
+                    }
+                    else {
+                        removeBegin = parent.offset + 1;
+                        if (parent.children.length > 1) {
+                            // remove the comma of the next node
+                            var next = parent.children[1];
+                            removeEnd = next.offset;
+                        }
+                    }
+                    return withFormatting(text, { offset: removeBegin, length: removeEnd - removeBegin, content: '' }, formattingOptions);
+                }
+                else {
+                    // set value of existing property
+                    return withFormatting(text, { offset: existing.offset, length: existing.length, content: JSON.stringify(value) }, formattingOptions);
+                }
+            }
+            else {
+                if (value === void 0) { // delete
+                    return []; // property does not exist, nothing to do
+                }
+                var newProperty = JSON.stringify(lastSegment) + ": " + JSON.stringify(value);
+                var index = getInsertionIndex ? getInsertionIndex(parent.children.map(function (p) { return p.children[0].value; })) : parent.children.length;
+                var edit = void 0;
+                if (index > 0) {
+                    var previous = parent.children[index - 1];
+                    edit = { offset: previous.offset + previous.length, length: 0, content: ',' + newProperty };
+                }
+                else if (parent.children.length === 0) {
+                    edit = { offset: parent.offset + 1, length: 0, content: newProperty };
+                }
+                else {
+                    edit = { offset: parent.offset + 1, length: 0, content: newProperty + ',' };
+                }
+                return withFormatting(text, edit, formattingOptions);
+            }
+        }
+        else if (parent.type === 'array' && typeof lastSegment === 'number' && Array.isArray(parent.children)) {
+            var insertIndex = lastSegment;
+            if (insertIndex === -1) {
+                // Insert
+                var newProperty = "" + JSON.stringify(value);
+                var edit = void 0;
+                if (parent.children.length === 0) {
+                    edit = { offset: parent.offset + 1, length: 0, content: newProperty };
+                }
+                else {
+                    var previous = parent.children[parent.children.length - 1];
+                    edit = { offset: previous.offset + previous.length, length: 0, content: ',' + newProperty };
+                }
+                return withFormatting(text, edit, formattingOptions);
+            }
+            else {
+                if (value === void 0 && parent.children.length >= 0) {
+                    //Removal
+                    var removalIndex = lastSegment;
+                    var toRemove = parent.children[removalIndex];
+                    var edit = void 0;
+                    if (parent.children.length === 1) {
+                        // only item
+                        edit = { offset: parent.offset + 1, length: parent.length - 2, content: '' };
+                    }
+                    else if (parent.children.length - 1 === removalIndex) {
+                        // last item
+                        var previous = parent.children[removalIndex - 1];
+                        var offset = previous.offset + previous.length;
+                        var parentEndOffset = parent.offset + parent.length;
+                        edit = { offset: offset, length: parentEndOffset - 2 - offset, content: '' };
+                    }
+                    else {
+                        edit = { offset: toRemove.offset, length: parent.children[removalIndex + 1].offset - toRemove.offset, content: '' };
+                    }
+                    return withFormatting(text, edit, formattingOptions);
+                }
+                else {
+                    throw new Error('Array modification not supported yet');
+                }
+            }
+        }
+        else {
+            throw new Error("Can not add " + (typeof lastSegment !== 'number' ? 'index' : 'property') + " to parent of type " + parent.type);
+        }
+    }
+    exports.setProperty = setProperty;
+    function withFormatting(text, edit, formattingOptions) {
+        // apply the edit
+        var newText = applyEdit(text, edit);
+        // format the new text
+        var begin = edit.offset;
+        var end = edit.offset + edit.content.length;
+        if (edit.length === 0 || edit.content.length === 0) { // insert or remove
+            while (begin > 0 && !format_1.isEOL(newText, begin - 1)) {
+                begin--;
+            }
+            while (end < newText.length && !format_1.isEOL(newText, end)) {
+                end++;
+            }
+        }
+        var edits = format_1.format(newText, { offset: begin, length: end - begin }, formattingOptions);
+        // apply the formatting edits and track the begin and end offsets of the changes
+        for (var i = edits.length - 1; i >= 0; i--) {
+            var edit_1 = edits[i];
+            newText = applyEdit(newText, edit_1);
+            begin = Math.min(begin, edit_1.offset);
+            end = Math.max(end, edit_1.offset + edit_1.length);
+            end += edit_1.content.length - edit_1.length;
+        }
+        // create a single edit with all changes
+        var editLength = text.length - (newText.length - end) - begin;
+        return [{ offset: begin, length: editLength, content: newText.substring(begin, end) }];
+    }
+    function applyEdit(text, edit) {
+        return text.substring(0, edit.offset) + edit.content + text.substring(edit.offset + edit.length);
+    }
+    exports.applyEdit = applyEdit;
+    function isWS(text, offset) {
+        return '\r\n \t'.indexOf(text.charAt(offset)) !== -1;
+    }
+    exports.isWS = isWS;
+});
+
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
+        define('jsonc-parser/main',["require", "exports", "./impl/format", "./impl/edit", "./impl/scanner", "./impl/parser"], factory);
+    }
+})(function (require, exports) {
+    /*---------------------------------------------------------------------------------------------
+     *  Copyright (c) Microsoft Corporation. All rights reserved.
+     *  Licensed under the MIT License. See License.txt in the project root for license information.
+     *--------------------------------------------------------------------------------------------*/
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var formatter = require("./impl/format");
+    var edit = require("./impl/edit");
+    var scanner = require("./impl/scanner");
+    var parser = require("./impl/parser");
+    /**
+     * Creates a JSON scanner on the given text.
+     * If ignoreTrivia is set, whitespaces or comments are ignored.
+     */
+    exports.createScanner = scanner.createScanner;
+    /**
+     * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
+     */
+    exports.getLocation = parser.getLocation;
+    /**
+     * Parses the given text and returns the object the JSON content represents. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+     * Therefore, always check the errors list to find out if the input was valid.
+     */
+    exports.parse = parser.parse;
+    /**
+     * Parses the given text and returns a tree representation the JSON content. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
+     */
+    exports.parseTree = parser.parseTree;
+    /**
+     * Finds the node at the given path in a JSON DOM.
+     */
+    exports.findNodeAtLocation = parser.findNodeAtLocation;
+    /**
+     * Finds the innermost node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
+     */
+    exports.findNodeAtOffset = parser.findNodeAtOffset;
+    /**
+     * Gets the JSON path of the given JSON DOM node
+     */
+    exports.getNodePath = parser.getNodePath;
+    /**
+     * Evaluates the JavaScript object of the given JSON DOM node
+     */
+    exports.getNodeValue = parser.getNodeValue;
+    /**
+     * Parses the given text and invokes the visitor functions for each object, array and literal reached.
+     */
+    exports.visit = parser.visit;
+    /**
+     * Takes JSON with JavaScript-style comments and remove
+     * them. Optionally replaces every none-newline character
+     * of comments with a replaceCharacter
+     */
+    exports.stripComments = parser.stripComments;
+    function printParseErrorCode(code) {
+        switch (code) {
+            case 1 /* InvalidSymbol */: return 'InvalidSymbol';
+            case 2 /* InvalidNumberFormat */: return 'InvalidNumberFormat';
+            case 3 /* PropertyNameExpected */: return 'PropertyNameExpected';
+            case 4 /* ValueExpected */: return 'ValueExpected';
+            case 5 /* ColonExpected */: return 'ColonExpected';
+            case 6 /* CommaExpected */: return 'CommaExpected';
+            case 7 /* CloseBraceExpected */: return 'CloseBraceExpected';
+            case 8 /* CloseBracketExpected */: return 'CloseBracketExpected';
+            case 9 /* EndOfFileExpected */: return 'EndOfFileExpected';
+            case 10 /* InvalidCommentToken */: return 'InvalidCommentToken';
+            case 11 /* UnexpectedEndOfComment */: return 'UnexpectedEndOfComment';
+            case 12 /* UnexpectedEndOfString */: return 'UnexpectedEndOfString';
+            case 13 /* UnexpectedEndOfNumber */: return 'UnexpectedEndOfNumber';
+            case 14 /* InvalidUnicode */: return 'InvalidUnicode';
+            case 15 /* InvalidEscapeCharacter */: return 'InvalidEscapeCharacter';
+            case 16 /* InvalidCharacter */: return 'InvalidCharacter';
+        }
+        return '<unknown ParseErrorCode>';
+    }
+    exports.printParseErrorCode = printParseErrorCode;
+    /**
+     * Computes the edits needed to format a JSON document.
+     *
+     * @param documentText The input text
+     * @param range The range to format or `undefined` to format the full content
+     * @param options The formatting options
+     * @returns A list of edit operations describing the formatting changes to the original document. Edits can be either inserts, replacements or
+     * removals of text segments. All offsets refer to the original state of the document. No two edits must change or remove the same range of
+     * text in the original document. However, multiple edits can have
+     * the same offset, for example multiple inserts, or an insert followed by a remove or replace. The order in the array defines which edit is applied first.
+     * To apply edits to an input, you can use `applyEdits`.
+     */
+    function format(documentText, range, options) {
+        return formatter.format(documentText, range, options);
+    }
+    exports.format = format;
+    /**
+     * Computes the edits needed to modify a value in the JSON document.
+     *
+     * @param documentText The input text
+     * @param path The path of the value to change. The path represents either to the document root, a property or an array item.
+     * If the path points to an non-existing property or item, it will be created.
+     * @param value The new value for the specified property or item. If the value is undefined,
+     * the property or item will be removed.
+     * @param options Options
+     * @returns A list of edit operations describing the formatting changes to the original document. Edits can be either inserts, replacements or
+     * removals of text segments. All offsets refer to the original state of the document. No two edits must change or remove the same range of
+     * text in the original document. However, multiple edits can have
+     * the same offset, for example multiple inserts, or an insert followed by a remove or replace. The order in the array defines which edit is applied first.
+     * To apply edits to an input, you can use `applyEdits`.
+     */
+    function modify(text, path, value, options) {
+        return edit.setProperty(text, path, value, options.formattingOptions, options.getInsertionIndex);
+    }
+    exports.modify = modify;
+    /**
+     * Applies edits to a input string.
+     */
+    function applyEdits(text, edits) {
+        for (var i = edits.length - 1; i >= 0; i--) {
+            text = edit.applyEdit(text, edits[i]);
+        }
+        return text;
+    }
+    exports.applyEdits = applyEdits;
+});
+
+define('jsonc-parser', ['jsonc-parser/main'], function (main) { return main; });
+
+/*---------------------------------------------------------------------------------------------
+*  Copyright (c) Microsoft Corporation. All rights reserved.
+*  Licensed under the MIT License. See License.txt in the project root for license information.
+*--------------------------------------------------------------------------------------------*/
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
+        define('vscode-json-languageservice/utils/objects',["require", "exports"], factory);
+    }
+})(function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function equals(one, other) {
+        if (one === other) {
+            return true;
+        }
+        if (one === null || one === undefined || other === null || other === undefined) {
+            return false;
+        }
+        if (typeof one !== typeof other) {
+            return false;
+        }
+        if (typeof one !== 'object') {
+            return false;
+        }
+        if ((Array.isArray(one)) !== (Array.isArray(other))) {
+            return false;
+        }
+        var i, key;
+        if (Array.isArray(one)) {
+            if (one.length !== other.length) {
+                return false;
+            }
+            for (i = 0; i < one.length; i++) {
+                if (!equals(one[i], other[i])) {
+                    return false;
+                }
+            }
+        }
+        else {
+            var oneKeys = [];
+            for (key in one) {
+                oneKeys.push(key);
+            }
+            oneKeys.sort();
+            var otherKeys = [];
+            for (key in other) {
+                otherKeys.push(key);
+            }
+            otherKeys.sort();
+            if (!equals(oneKeys, otherKeys)) {
+                return false;
+            }
+            for (i = 0; i < oneKeys.length; i++) {
+                if (!equals(one[oneKeys[i]], other[oneKeys[i]])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    exports.equals = equals;
+    function isNumber(val) {
+        return typeof val === 'number';
+    }
+    exports.isNumber = isNumber;
+    function isDefined(val) {
+        return typeof val !== 'undefined';
+    }
+    exports.isDefined = isDefined;
+    function isBoolean(val) {
+        return typeof val === 'boolean';
+    }
+    exports.isBoolean = isBoolean;
+    function isString(val) {
+        return typeof val === 'string';
+    }
+    exports.isString = isString;
+});
+
+(function (factory) {
+    if (typeof module === "object" && typeof module.exports === "object") {
+        var v = factory(require, exports);
+        if (v !== undefined) module.exports = v;
+    }
+    else if (typeof define === "function" && define.amd) {
         define('vscode-languageserver-types/main',["require", "exports"], factory);
     }
 })(function (require, exports) {
@@ -302,6 +1935,27 @@
          */
         DiagnosticSeverity.Hint = 4;
     })(DiagnosticSeverity = exports.DiagnosticSeverity || (exports.DiagnosticSeverity = {}));
+    /**
+     * The diagnostic tags.
+     *
+     * @since 3.15.0
+     */
+    var DiagnosticTag;
+    (function (DiagnosticTag) {
+        /**
+         * Unused or unnecessary code.
+         *
+         * Clients are allowed to render diagnostics with this tag faded out instead of having
+         * an error squiggle.
+         */
+        DiagnosticTag.Unnecessary = 1;
+        /**
+         * Deprecated or obsolete code.
+         *
+         * Clients are allowed to rendered diagnostics with this tag strike through.
+         */
+        DiagnosticTag.Deprecated = 2;
+    })(DiagnosticTag = exports.DiagnosticTag || (exports.DiagnosticTag = {}));
     /**
      * The Diagnostic namespace provides helper functions to work with
      * [Diagnostic](#Diagnostic) literals.
@@ -804,6 +2458,19 @@
         InsertTextFormat.Snippet = 2;
     })(InsertTextFormat = exports.InsertTextFormat || (exports.InsertTextFormat = {}));
     /**
+     * Completion item tags are extra annotations that tweak the rendering of a completion
+     * item.
+     *
+     * @since 3.15.0
+     */
+    var CompletionItemTag;
+    (function (CompletionItemTag) {
+        /**
+         * Render a completion as obsolete, usually using a strike-out.
+         */
+        CompletionItemTag.Deprecated = 1;
+    })(CompletionItemTag = exports.CompletionItemTag || (exports.CompletionItemTag = {}));
+    /**
      * The CompletionItem namespace provides functions to deal with
      * completion items.
      */
@@ -843,7 +2510,7 @@
          * @param plainText The plain text.
          */
         function fromPlainText(plainText) {
-            return plainText.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&"); // escape markdown syntax tokens: http://daringfireball.net/projects/markdown/syntax#backslash
+            return plainText.replace(/[\\`*_{}[\]()#+\-.!]/g, '\\$&'); // escape markdown syntax tokens: http://daringfireball.net/projects/markdown/syntax#backslash
         }
         MarkedString.fromPlainText = fromPlainText;
         /**
@@ -884,7 +2551,6 @@
             return documentation ? { label: label, documentation: documentation } : { label: label };
         }
         ParameterInformation.create = create;
-        ;
     })(ParameterInformation = exports.ParameterInformation || (exports.ParameterInformation = {}));
     /**
      * The SignatureInformation namespace provides helper functions to work with
@@ -980,6 +2646,17 @@
         SymbolKind.Operator = 25;
         SymbolKind.TypeParameter = 26;
     })(SymbolKind = exports.SymbolKind || (exports.SymbolKind = {}));
+    /**
+     * Symbol tags are extra annotations that tweak the rendering of a symbol.
+     * @since 3.15
+     */
+    var SymbolTag;
+    (function (SymbolTag) {
+        /**
+         * Render a symbol as obsolete, usually using a strike-out.
+         */
+        SymbolTag.Deprecated = 1;
+    })(SymbolTag = exports.SymbolTag || (exports.SymbolTag = {}));
     var SymbolInformation;
     (function (SymbolInformation) {
         /**
@@ -1004,18 +2681,7 @@
         }
         SymbolInformation.create = create;
     })(SymbolInformation = exports.SymbolInformation || (exports.SymbolInformation = {}));
-    /**
-     * Represents programming constructs like variables, classes, interfaces etc.
-     * that appear in a document. Document symbols can be hierarchical and they
-     * have two ranges: one that encloses its definition and one that points to
-     * its most interesting range, e.g. the range of an identifier.
-     */
-    var DocumentSymbol = /** @class */ (function () {
-        function DocumentSymbol() {
-        }
-        return DocumentSymbol;
-    }());
-    exports.DocumentSymbol = DocumentSymbol;
+    var DocumentSymbol;
     (function (DocumentSymbol) {
         /**
          * Creates a new symbol information literal.
@@ -1055,12 +2721,15 @@
         }
         DocumentSymbol.is = is;
     })(DocumentSymbol = exports.DocumentSymbol || (exports.DocumentSymbol = {}));
-    exports.DocumentSymbol = DocumentSymbol;
     /**
      * A set of predefined code action kinds
      */
     var CodeActionKind;
     (function (CodeActionKind) {
+        /**
+         * Empty kind.
+         */
+        CodeActionKind.Empty = '';
         /**
          * Base kind for quickfix actions: 'quickfix'
          */
@@ -1115,6 +2784,15 @@
          * Base kind for an organize imports source action: `source.organizeImports`
          */
         CodeActionKind.SourceOrganizeImports = 'source.organizeImports';
+        /**
+         * Base kind for auto-fix source actions: `source.fixAll`.
+         *
+         * Fix all actions automatically fix errors that have a clear fix that do not require user input.
+         * They should not suppress errors or perform unsafe fixes such as generating new types or classes.
+         *
+         * @since 3.15.0
+         */
+        CodeActionKind.SourceFixAll = 'source.fixAll';
     })(CodeActionKind = exports.CodeActionKind || (exports.CodeActionKind = {}));
     /**
      * The CodeActionContext namespace provides helper functions to work with
@@ -1152,7 +2830,7 @@
             else {
                 result.edit = commandOrEdit;
             }
-            if (kind !== void null) {
+            if (kind !== void 0) {
                 result.kind = kind;
             }
             return result;
@@ -1165,6 +2843,7 @@
                 (candidate.kind === void 0 || Is.string(candidate.kind)) &&
                 (candidate.edit !== void 0 || candidate.command !== void 0) &&
                 (candidate.command === void 0 || Command.is(candidate.command)) &&
+                (candidate.isPreferred === void 0 || Is.boolean(candidate.isPreferred)) &&
                 (candidate.edit === void 0 || WorkspaceEdit.is(candidate.edit));
         }
         CodeAction.is = is;
@@ -1180,8 +2859,9 @@
          */
         function create(range, data) {
             var result = { range: range };
-            if (Is.defined(data))
+            if (Is.defined(data)) {
                 result.data = data;
+            }
             return result;
         }
         CodeLens.create = create;
@@ -1217,19 +2897,10 @@
         FormattingOptions.is = is;
     })(FormattingOptions = exports.FormattingOptions || (exports.FormattingOptions = {}));
     /**
-     * A document link is a range in a text document that links to an internal or external resource, like another
-     * text document or a web site.
-     */
-    var DocumentLink = /** @class */ (function () {
-        function DocumentLink() {
-        }
-        return DocumentLink;
-    }());
-    exports.DocumentLink = DocumentLink;
-    /**
      * The DocumentLink namespace provides helper functions to work with
      * [DocumentLink](#DocumentLink) literals.
      */
+    var DocumentLink;
     (function (DocumentLink) {
         /**
          * Creates a new DocumentLink literal.
@@ -1247,8 +2918,31 @@
         }
         DocumentLink.is = is;
     })(DocumentLink = exports.DocumentLink || (exports.DocumentLink = {}));
-    exports.DocumentLink = DocumentLink;
+    /**
+     * The SelectionRange namespace provides helper function to work with
+     * SelectionRange literals.
+     */
+    var SelectionRange;
+    (function (SelectionRange) {
+        /**
+         * Creates a new SelectionRange
+         * @param range the range.
+         * @param parent an optional parent.
+         */
+        function create(range, parent) {
+            return { range: range, parent: parent };
+        }
+        SelectionRange.create = create;
+        function is(value) {
+            var candidate = value;
+            return candidate !== undefined && Range.is(candidate.range) && (candidate.parent === undefined || SelectionRange.is(candidate.parent));
+        }
+        SelectionRange.is = is;
+    })(SelectionRange = exports.SelectionRange || (exports.SelectionRange = {}));
     exports.EOL = ['\n', '\r\n', '\r'];
+    /**
+     * @deprecated Use the text document from the new vscode-languageserver-textdocument package.
+     */
     var TextDocument;
     (function (TextDocument) {
         /**
@@ -1328,32 +3022,13 @@
             return data;
         }
     })(TextDocument = exports.TextDocument || (exports.TextDocument = {}));
-    /**
-     * Represents reasons why a text document is saved.
-     */
-    var TextDocumentSaveReason;
-    (function (TextDocumentSaveReason) {
-        /**
-         * Manually triggered, e.g. by the user pressing save, by starting debugging,
-         * or by an API call.
-         */
-        TextDocumentSaveReason.Manual = 1;
-        /**
-         * Automatic after a delay.
-         */
-        TextDocumentSaveReason.AfterDelay = 2;
-        /**
-         * When the editor lost focus.
-         */
-        TextDocumentSaveReason.FocusOut = 3;
-    })(TextDocumentSaveReason = exports.TextDocumentSaveReason || (exports.TextDocumentSaveReason = {}));
     var FullTextDocument = /** @class */ (function () {
         function FullTextDocument(uri, languageId, version, content) {
             this._uri = uri;
             this._languageId = languageId;
             this._version = version;
             this._content = content;
-            this._lineOffsets = null;
+            this._lineOffsets = undefined;
         }
         Object.defineProperty(FullTextDocument.prototype, "uri", {
             get: function () {
@@ -1387,10 +3062,10 @@
         FullTextDocument.prototype.update = function (event, version) {
             this._content = event.text;
             this._version = version;
-            this._lineOffsets = null;
+            this._lineOffsets = undefined;
         };
         FullTextDocument.prototype.getLineOffsets = function () {
-            if (this._lineOffsets === null) {
+            if (this._lineOffsets === undefined) {
                 var lineOffsets = [];
                 var text = this._content;
                 var isLineStart = true;
@@ -1503,1617 +3178,278 @@ define('vscode-languageserver-types', ['vscode-languageserver-types/main'], func
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('jsonc-parser/impl/scanner',["require", "exports"], factory);
+        define('vscode-languageserver-textdocument/main',["require", "exports"], factory);
     }
 })(function (require, exports) {
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
+    /* --------------------------------------------------------------------------------------------
+     * Copyright (c) Microsoft Corporation. All rights reserved.
+     * Licensed under the MIT License. See License.txt in the project root for license information.
+     * ------------------------------------------------------------------------------------------ */
     'use strict';
     Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * Creates a JSON scanner on the given text.
-     * If ignoreTrivia is set, whitespaces or comments are ignored.
-     */
-    function createScanner(text, ignoreTrivia) {
-        if (ignoreTrivia === void 0) { ignoreTrivia = false; }
-        var pos = 0, len = text.length, value = '', tokenOffset = 0, token = 16 /* Unknown */, lineNumber = 0, lineStartOffset = 0, tokenLineStartOffset = 0, prevTokenLineStartOffset = 0, scanError = 0 /* None */;
-        function scanHexDigits(count, exact) {
-            var digits = 0;
-            var value = 0;
-            while (digits < count || !exact) {
-                var ch = text.charCodeAt(pos);
-                if (ch >= 48 /* _0 */ && ch <= 57 /* _9 */) {
-                    value = value * 16 + ch - 48 /* _0 */;
-                }
-                else if (ch >= 65 /* A */ && ch <= 70 /* F */) {
-                    value = value * 16 + ch - 65 /* A */ + 10;
-                }
-                else if (ch >= 97 /* a */ && ch <= 102 /* f */) {
-                    value = value * 16 + ch - 97 /* a */ + 10;
-                }
-                else {
-                    break;
-                }
-                pos++;
-                digits++;
-            }
-            if (digits < count) {
-                value = -1;
-            }
-            return value;
+    var FullTextDocument = /** @class */ (function () {
+        function FullTextDocument(uri, languageId, version, content) {
+            this._uri = uri;
+            this._languageId = languageId;
+            this._version = version;
+            this._content = content;
+            this._lineOffsets = undefined;
         }
-        function setPosition(newPosition) {
-            pos = newPosition;
-            value = '';
-            tokenOffset = 0;
-            token = 16 /* Unknown */;
-            scanError = 0 /* None */;
-        }
-        function scanNumber() {
-            var start = pos;
-            if (text.charCodeAt(pos) === 48 /* _0 */) {
-                pos++;
+        Object.defineProperty(FullTextDocument.prototype, "uri", {
+            get: function () {
+                return this._uri;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(FullTextDocument.prototype, "languageId", {
+            get: function () {
+                return this._languageId;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(FullTextDocument.prototype, "version", {
+            get: function () {
+                return this._version;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        FullTextDocument.prototype.getText = function (range) {
+            if (range) {
+                var start = this.offsetAt(range.start);
+                var end = this.offsetAt(range.end);
+                return this._content.substring(start, end);
             }
-            else {
-                pos++;
-                while (pos < text.length && isDigit(text.charCodeAt(pos))) {
-                    pos++;
-                }
-            }
-            if (pos < text.length && text.charCodeAt(pos) === 46 /* dot */) {
-                pos++;
-                if (pos < text.length && isDigit(text.charCodeAt(pos))) {
-                    pos++;
-                    while (pos < text.length && isDigit(text.charCodeAt(pos))) {
-                        pos++;
-                    }
-                }
-                else {
-                    scanError = 3 /* UnexpectedEndOfNumber */;
-                    return text.substring(start, pos);
-                }
-            }
-            var end = pos;
-            if (pos < text.length && (text.charCodeAt(pos) === 69 /* E */ || text.charCodeAt(pos) === 101 /* e */)) {
-                pos++;
-                if (pos < text.length && text.charCodeAt(pos) === 43 /* plus */ || text.charCodeAt(pos) === 45 /* minus */) {
-                    pos++;
-                }
-                if (pos < text.length && isDigit(text.charCodeAt(pos))) {
-                    pos++;
-                    while (pos < text.length && isDigit(text.charCodeAt(pos))) {
-                        pos++;
-                    }
-                    end = pos;
-                }
-                else {
-                    scanError = 3 /* UnexpectedEndOfNumber */;
-                }
-            }
-            return text.substring(start, end);
-        }
-        function scanString() {
-            var result = '', start = pos;
-            while (true) {
-                if (pos >= len) {
-                    result += text.substring(start, pos);
-                    scanError = 2 /* UnexpectedEndOfString */;
-                    break;
-                }
-                var ch = text.charCodeAt(pos);
-                if (ch === 34 /* doubleQuote */) {
-                    result += text.substring(start, pos);
-                    pos++;
-                    break;
-                }
-                if (ch === 92 /* backslash */) {
-                    result += text.substring(start, pos);
-                    pos++;
-                    if (pos >= len) {
-                        scanError = 2 /* UnexpectedEndOfString */;
-                        break;
-                    }
-                    ch = text.charCodeAt(pos++);
-                    switch (ch) {
-                        case 34 /* doubleQuote */:
-                            result += '\"';
-                            break;
-                        case 92 /* backslash */:
-                            result += '\\';
-                            break;
-                        case 47 /* slash */:
-                            result += '/';
-                            break;
-                        case 98 /* b */:
-                            result += '\b';
-                            break;
-                        case 102 /* f */:
-                            result += '\f';
-                            break;
-                        case 110 /* n */:
-                            result += '\n';
-                            break;
-                        case 114 /* r */:
-                            result += '\r';
-                            break;
-                        case 116 /* t */:
-                            result += '\t';
-                            break;
-                        case 117 /* u */:
-                            var ch_1 = scanHexDigits(4, true);
-                            if (ch_1 >= 0) {
-                                result += String.fromCharCode(ch_1);
-                            }
-                            else {
-                                scanError = 4 /* InvalidUnicode */;
-                            }
-                            break;
-                        default:
-                            scanError = 5 /* InvalidEscapeCharacter */;
-                    }
-                    start = pos;
-                    continue;
-                }
-                if (ch >= 0 && ch <= 0x1f) {
-                    if (isLineBreak(ch)) {
-                        result += text.substring(start, pos);
-                        scanError = 2 /* UnexpectedEndOfString */;
-                        break;
+            return this._content;
+        };
+        FullTextDocument.prototype.update = function (changes, version) {
+            for (var _i = 0, changes_1 = changes; _i < changes_1.length; _i++) {
+                var change = changes_1[_i];
+                if (FullTextDocument.isIncremental(change)) {
+                    // makes sure start is before end
+                    var range = getWellformedRange(change.range);
+                    // update content
+                    var startOffset = this.offsetAt(range.start);
+                    var endOffset = this.offsetAt(range.end);
+                    this._content = this._content.substring(0, startOffset) + change.text + this._content.substring(endOffset, this._content.length);
+                    // update the offsets
+                    var startLine = Math.max(range.start.line, 0);
+                    var endLine = Math.max(range.end.line, 0);
+                    var lineOffsets = this._lineOffsets;
+                    var addedLineOffsets = computeLineOffsets(change.text, false, startOffset);
+                    if (endLine - startLine === addedLineOffsets.length) {
+                        for (var i = 0, len = addedLineOffsets.length; i < len; i++) {
+                            lineOffsets[i + startLine + 1] = addedLineOffsets[i];
+                        }
                     }
                     else {
-                        scanError = 6 /* InvalidCharacter */;
-                        // mark as error but continue with string
+                        if (addedLineOffsets.length < 10000) {
+                            lineOffsets.splice.apply(lineOffsets, [startLine + 1, endLine - startLine].concat(addedLineOffsets));
+                        }
+                        else { // avoid too many arguments for splice
+                            this._lineOffsets = lineOffsets = lineOffsets.slice(0, startLine + 1).concat(addedLineOffsets, lineOffsets.slice(endLine + 1));
+                        }
+                    }
+                    var diff = change.text.length - (endOffset - startOffset);
+                    if (diff !== 0) {
+                        for (var i = startLine + 1 + addedLineOffsets.length, len = lineOffsets.length; i < len; i++) {
+                            lineOffsets[i] = lineOffsets[i] + diff;
+                        }
                     }
                 }
-                pos++;
-            }
-            return result;
-        }
-        function scanNext() {
-            value = '';
-            scanError = 0 /* None */;
-            tokenOffset = pos;
-            lineStartOffset = lineNumber;
-            prevTokenLineStartOffset = tokenLineStartOffset;
-            if (pos >= len) {
-                // at the end
-                tokenOffset = len;
-                return token = 17 /* EOF */;
-            }
-            var code = text.charCodeAt(pos);
-            // trivia: whitespace
-            if (isWhiteSpace(code)) {
-                do {
-                    pos++;
-                    value += String.fromCharCode(code);
-                    code = text.charCodeAt(pos);
-                } while (isWhiteSpace(code));
-                return token = 15 /* Trivia */;
-            }
-            // trivia: newlines
-            if (isLineBreak(code)) {
-                pos++;
-                value += String.fromCharCode(code);
-                if (code === 13 /* carriageReturn */ && text.charCodeAt(pos) === 10 /* lineFeed */) {
-                    pos++;
-                    value += '\n';
+                else if (FullTextDocument.isFull(change)) {
+                    this._content = change.text;
+                    this._lineOffsets = undefined;
                 }
-                lineNumber++;
-                tokenLineStartOffset = pos;
-                return token = 14 /* LineBreakTrivia */;
+                else {
+                    throw new Error('Unknown change event received');
+                }
             }
-            switch (code) {
-                // tokens: []{}:,
-                case 123 /* openBrace */:
-                    pos++;
-                    return token = 1 /* OpenBraceToken */;
-                case 125 /* closeBrace */:
-                    pos++;
-                    return token = 2 /* CloseBraceToken */;
-                case 91 /* openBracket */:
-                    pos++;
-                    return token = 3 /* OpenBracketToken */;
-                case 93 /* closeBracket */:
-                    pos++;
-                    return token = 4 /* CloseBracketToken */;
-                case 58 /* colon */:
-                    pos++;
-                    return token = 6 /* ColonToken */;
-                case 44 /* comma */:
-                    pos++;
-                    return token = 5 /* CommaToken */;
-                // strings
-                case 34 /* doubleQuote */:
-                    pos++;
-                    value = scanString();
-                    return token = 10 /* StringLiteral */;
-                // comments
-                case 47 /* slash */:
-                    var start = pos - 1;
-                    // Single-line comment
-                    if (text.charCodeAt(pos + 1) === 47 /* slash */) {
-                        pos += 2;
-                        while (pos < len) {
-                            if (isLineBreak(text.charCodeAt(pos))) {
-                                break;
-                            }
-                            pos++;
-                        }
-                        value = text.substring(start, pos);
-                        return token = 12 /* LineCommentTrivia */;
-                    }
-                    // Multi-line comment
-                    if (text.charCodeAt(pos + 1) === 42 /* asterisk */) {
-                        pos += 2;
-                        var safeLength = len - 1; // For lookahead.
-                        var commentClosed = false;
-                        while (pos < safeLength) {
-                            var ch = text.charCodeAt(pos);
-                            if (ch === 42 /* asterisk */ && text.charCodeAt(pos + 1) === 47 /* slash */) {
-                                pos += 2;
-                                commentClosed = true;
-                                break;
-                            }
-                            pos++;
-                            if (isLineBreak(ch)) {
-                                if (ch === 13 /* carriageReturn */ && text.charCodeAt(pos) === 10 /* lineFeed */) {
-                                    pos++;
-                                }
-                                lineNumber++;
-                                tokenLineStartOffset = pos;
-                            }
-                        }
-                        if (!commentClosed) {
-                            pos++;
-                            scanError = 1 /* UnexpectedEndOfComment */;
-                        }
-                        value = text.substring(start, pos);
-                        return token = 13 /* BlockCommentTrivia */;
-                    }
-                    // just a single slash
-                    value += String.fromCharCode(code);
-                    pos++;
-                    return token = 16 /* Unknown */;
-                // numbers
-                case 45 /* minus */:
-                    value += String.fromCharCode(code);
-                    pos++;
-                    if (pos === len || !isDigit(text.charCodeAt(pos))) {
-                        return token = 16 /* Unknown */;
-                    }
-                // found a minus, followed by a number so
-                // we fall through to proceed with scanning
-                // numbers
-                case 48 /* _0 */:
-                case 49 /* _1 */:
-                case 50 /* _2 */:
-                case 51 /* _3 */:
-                case 52 /* _4 */:
-                case 53 /* _5 */:
-                case 54 /* _6 */:
-                case 55 /* _7 */:
-                case 56 /* _8 */:
-                case 57 /* _9 */:
-                    value += scanNumber();
-                    return token = 11 /* NumericLiteral */;
-                // literals and unknown symbols
-                default:
-                    // is a literal? Read the full word.
-                    while (pos < len && isUnknownContentCharacter(code)) {
-                        pos++;
-                        code = text.charCodeAt(pos);
-                    }
-                    if (tokenOffset !== pos) {
-                        value = text.substring(tokenOffset, pos);
-                        // keywords: true, false, null
-                        switch (value) {
-                            case 'true': return token = 8 /* TrueKeyword */;
-                            case 'false': return token = 9 /* FalseKeyword */;
-                            case 'null': return token = 7 /* NullKeyword */;
-                        }
-                        return token = 16 /* Unknown */;
-                    }
-                    // some
-                    value += String.fromCharCode(code);
-                    pos++;
-                    return token = 16 /* Unknown */;
-            }
-        }
-        function isUnknownContentCharacter(code) {
-            if (isWhiteSpace(code) || isLineBreak(code)) {
-                return false;
-            }
-            switch (code) {
-                case 125 /* closeBrace */:
-                case 93 /* closeBracket */:
-                case 123 /* openBrace */:
-                case 91 /* openBracket */:
-                case 34 /* doubleQuote */:
-                case 58 /* colon */:
-                case 44 /* comma */:
-                case 47 /* slash */:
-                    return false;
-            }
-            return true;
-        }
-        function scanNextNonTrivia() {
-            var result;
-            do {
-                result = scanNext();
-            } while (result >= 12 /* LineCommentTrivia */ && result <= 15 /* Trivia */);
-            return result;
-        }
-        return {
-            setPosition: setPosition,
-            getPosition: function () { return pos; },
-            scan: ignoreTrivia ? scanNextNonTrivia : scanNext,
-            getToken: function () { return token; },
-            getTokenValue: function () { return value; },
-            getTokenOffset: function () { return tokenOffset; },
-            getTokenLength: function () { return pos - tokenOffset; },
-            getTokenStartLine: function () { return lineStartOffset; },
-            getTokenStartCharacter: function () { return tokenOffset - prevTokenLineStartOffset; },
-            getTokenError: function () { return scanError; },
+            this._version = version;
         };
-    }
-    exports.createScanner = createScanner;
-    function isWhiteSpace(ch) {
-        return ch === 32 /* space */ || ch === 9 /* tab */ || ch === 11 /* verticalTab */ || ch === 12 /* formFeed */ ||
-            ch === 160 /* nonBreakingSpace */ || ch === 5760 /* ogham */ || ch >= 8192 /* enQuad */ && ch <= 8203 /* zeroWidthSpace */ ||
-            ch === 8239 /* narrowNoBreakSpace */ || ch === 8287 /* mathematicalSpace */ || ch === 12288 /* ideographicSpace */ || ch === 65279 /* byteOrderMark */;
-    }
-    function isLineBreak(ch) {
-        return ch === 10 /* lineFeed */ || ch === 13 /* carriageReturn */ || ch === 8232 /* lineSeparator */ || ch === 8233 /* paragraphSeparator */;
-    }
-    function isDigit(ch) {
-        return ch >= 48 /* _0 */ && ch <= 57 /* _9 */;
-    }
-});
-//# sourceMappingURL=scanner.js.map;
-(function (factory) {
-    if (typeof module === "object" && typeof module.exports === "object") {
-        var v = factory(require, exports);
-        if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === "function" && define.amd) {
-        define('jsonc-parser/impl/format',["require", "exports", "./scanner"], factory);
-    }
-})(function (require, exports) {
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
-    'use strict';
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var scanner_1 = require("./scanner");
-    function format(documentText, range, options) {
-        var initialIndentLevel;
-        var formatText;
-        var formatTextStart;
-        var rangeStart;
-        var rangeEnd;
-        if (range) {
-            rangeStart = range.offset;
-            rangeEnd = rangeStart + range.length;
-            formatTextStart = rangeStart;
-            while (formatTextStart > 0 && !isEOL(documentText, formatTextStart - 1)) {
-                formatTextStart--;
+        FullTextDocument.prototype.getLineOffsets = function () {
+            if (this._lineOffsets === undefined) {
+                this._lineOffsets = computeLineOffsets(this._content, true);
             }
-            var endOffset = rangeEnd;
-            while (endOffset < documentText.length && !isEOL(documentText, endOffset)) {
-                endOffset++;
+            return this._lineOffsets;
+        };
+        FullTextDocument.prototype.positionAt = function (offset) {
+            offset = Math.max(Math.min(offset, this._content.length), 0);
+            var lineOffsets = this.getLineOffsets();
+            var low = 0, high = lineOffsets.length;
+            if (high === 0) {
+                return { line: 0, character: offset };
             }
-            formatText = documentText.substring(formatTextStart, endOffset);
-            initialIndentLevel = computeIndentLevel(formatText, options);
-        }
-        else {
-            formatText = documentText;
-            initialIndentLevel = 0;
-            formatTextStart = 0;
-            rangeStart = 0;
-            rangeEnd = documentText.length;
-        }
-        var eol = getEOL(options, documentText);
-        var lineBreak = false;
-        var indentLevel = 0;
-        var indentValue;
-        if (options.insertSpaces) {
-            indentValue = repeat(' ', options.tabSize || 4);
-        }
-        else {
-            indentValue = '\t';
-        }
-        var scanner = scanner_1.createScanner(formatText, false);
-        var hasError = false;
-        function newLineAndIndent() {
-            return eol + repeat(indentValue, initialIndentLevel + indentLevel);
-        }
-        function scanNext() {
-            var token = scanner.scan();
-            lineBreak = false;
-            while (token === 15 /* Trivia */ || token === 14 /* LineBreakTrivia */) {
-                lineBreak = lineBreak || (token === 14 /* LineBreakTrivia */);
-                token = scanner.scan();
-            }
-            hasError = token === 16 /* Unknown */ || scanner.getTokenError() !== 0 /* None */;
-            return token;
-        }
-        var editOperations = [];
-        function addEdit(text, startOffset, endOffset) {
-            if (!hasError && startOffset < rangeEnd && endOffset > rangeStart && documentText.substring(startOffset, endOffset) !== text) {
-                editOperations.push({ offset: startOffset, length: endOffset - startOffset, content: text });
-            }
-        }
-        var firstToken = scanNext();
-        if (firstToken !== 17 /* EOF */) {
-            var firstTokenStart = scanner.getTokenOffset() + formatTextStart;
-            var initialIndent = repeat(indentValue, initialIndentLevel);
-            addEdit(initialIndent, formatTextStart, firstTokenStart);
-        }
-        while (firstToken !== 17 /* EOF */) {
-            var firstTokenEnd = scanner.getTokenOffset() + scanner.getTokenLength() + formatTextStart;
-            var secondToken = scanNext();
-            var replaceContent = '';
-            while (!lineBreak && (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */)) {
-                // comments on the same line: keep them on the same line, but ignore them otherwise
-                var commentTokenStart = scanner.getTokenOffset() + formatTextStart;
-                addEdit(' ', firstTokenEnd, commentTokenStart);
-                firstTokenEnd = scanner.getTokenOffset() + scanner.getTokenLength() + formatTextStart;
-                replaceContent = secondToken === 12 /* LineCommentTrivia */ ? newLineAndIndent() : '';
-                secondToken = scanNext();
-            }
-            if (secondToken === 2 /* CloseBraceToken */) {
-                if (firstToken !== 1 /* OpenBraceToken */) {
-                    indentLevel--;
-                    replaceContent = newLineAndIndent();
+            while (low < high) {
+                var mid = Math.floor((low + high) / 2);
+                if (lineOffsets[mid] > offset) {
+                    high = mid;
+                }
+                else {
+                    low = mid + 1;
                 }
             }
-            else if (secondToken === 4 /* CloseBracketToken */) {
-                if (firstToken !== 3 /* OpenBracketToken */) {
-                    indentLevel--;
-                    replaceContent = newLineAndIndent();
-                }
+            // low is the least x for which the line offset is larger than the current offset
+            // or array.length if no line offset is larger than the current offset
+            var line = low - 1;
+            return { line: line, character: offset - lineOffsets[line] };
+        };
+        FullTextDocument.prototype.offsetAt = function (position) {
+            var lineOffsets = this.getLineOffsets();
+            if (position.line >= lineOffsets.length) {
+                return this._content.length;
+            }
+            else if (position.line < 0) {
+                return 0;
+            }
+            var lineOffset = lineOffsets[position.line];
+            var nextLineOffset = (position.line + 1 < lineOffsets.length) ? lineOffsets[position.line + 1] : this._content.length;
+            return Math.max(Math.min(lineOffset + position.character, nextLineOffset), lineOffset);
+        };
+        Object.defineProperty(FullTextDocument.prototype, "lineCount", {
+            get: function () {
+                return this.getLineOffsets().length;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        FullTextDocument.isIncremental = function (event) {
+            var candidate = event;
+            return candidate !== undefined && candidate !== null &&
+                typeof candidate.text === 'string' && candidate.range !== undefined &&
+                (candidate.rangeLength === undefined || typeof candidate.rangeLength === 'number');
+        };
+        FullTextDocument.isFull = function (event) {
+            var candidate = event;
+            return candidate !== undefined && candidate !== null &&
+                typeof candidate.text === 'string' && candidate.range === undefined && candidate.rangeLength === undefined;
+        };
+        return FullTextDocument;
+    }());
+    var TextDocument;
+    (function (TextDocument) {
+        /**
+         * Creates a new text document.
+         *
+         * @param uri The document's uri.
+         * @param languageId  The document's language Id.
+         * @param version The document's initial version number.
+         * @param content The document's content.
+         */
+        function create(uri, languageId, version, content) {
+            return new FullTextDocument(uri, languageId, version, content);
+        }
+        TextDocument.create = create;
+        /**
+         * Updates a TextDocument by modifing its content.
+         *
+         * @param document the document to update. Only documents created by TextDocument.create are valid inputs.
+         * @param changes the changes to apply to the document.
+         * @returns The updated TextDocument. Note: That's the same document instance passed in as first parameter.
+         *
+         */
+        function update(document, changes, version) {
+            if (document instanceof FullTextDocument) {
+                document.update(changes, version);
+                return document;
             }
             else {
-                switch (firstToken) {
-                    case 3 /* OpenBracketToken */:
-                    case 1 /* OpenBraceToken */:
-                        indentLevel++;
-                        replaceContent = newLineAndIndent();
-                        break;
-                    case 5 /* CommaToken */:
-                    case 12 /* LineCommentTrivia */:
-                        replaceContent = newLineAndIndent();
-                        break;
-                    case 13 /* BlockCommentTrivia */:
-                        if (lineBreak) {
-                            replaceContent = newLineAndIndent();
-                        }
-                        else {
-                            // symbol following comment on the same line: keep on same line, separate with ' '
-                            replaceContent = ' ';
-                        }
-                        break;
-                    case 6 /* ColonToken */:
-                        replaceContent = ' ';
-                        break;
-                    case 10 /* StringLiteral */:
-                        if (secondToken === 6 /* ColonToken */) {
-                            replaceContent = '';
-                            break;
-                        }
-                    // fall through
-                    case 7 /* NullKeyword */:
-                    case 8 /* TrueKeyword */:
-                    case 9 /* FalseKeyword */:
-                    case 11 /* NumericLiteral */:
-                    case 2 /* CloseBraceToken */:
-                    case 4 /* CloseBracketToken */:
-                        if (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */) {
-                            replaceContent = ' ';
-                        }
-                        else if (secondToken !== 5 /* CommaToken */ && secondToken !== 17 /* EOF */) {
-                            hasError = true;
-                        }
-                        break;
-                    case 16 /* Unknown */:
-                        hasError = true;
-                        break;
+                throw new Error('TextDocument.update: document must be created by TextDocument.create');
+            }
+        }
+        TextDocument.update = update;
+        function applyEdits(document, edits) {
+            var text = document.getText();
+            var sortedEdits = mergeSort(edits.map(getWellformedEdit), function (a, b) {
+                var diff = a.range.start.line - b.range.start.line;
+                if (diff === 0) {
+                    return a.range.start.character - b.range.start.character;
                 }
-                if (lineBreak && (secondToken === 12 /* LineCommentTrivia */ || secondToken === 13 /* BlockCommentTrivia */)) {
-                    replaceContent = newLineAndIndent();
-                }
-            }
-            var secondTokenStart = scanner.getTokenOffset() + formatTextStart;
-            addEdit(replaceContent, firstTokenEnd, secondTokenStart);
-            firstToken = secondToken;
-        }
-        return editOperations;
-    }
-    exports.format = format;
-    function repeat(s, count) {
-        var result = '';
-        for (var i = 0; i < count; i++) {
-            result += s;
-        }
-        return result;
-    }
-    function computeIndentLevel(content, options) {
-        var i = 0;
-        var nChars = 0;
-        var tabSize = options.tabSize || 4;
-        while (i < content.length) {
-            var ch = content.charAt(i);
-            if (ch === ' ') {
-                nChars++;
-            }
-            else if (ch === '\t') {
-                nChars += tabSize;
-            }
-            else {
-                break;
-            }
-            i++;
-        }
-        return Math.floor(nChars / tabSize);
-    }
-    function getEOL(options, text) {
-        for (var i = 0; i < text.length; i++) {
-            var ch = text.charAt(i);
-            if (ch === '\r') {
-                if (i + 1 < text.length && text.charAt(i + 1) === '\n') {
-                    return '\r\n';
-                }
-                return '\r';
-            }
-            else if (ch === '\n') {
-                return '\n';
-            }
-        }
-        return (options && options.eol) || '\n';
-    }
-    function isEOL(text, offset) {
-        return '\r\n'.indexOf(text.charAt(offset)) !== -1;
-    }
-    exports.isEOL = isEOL;
-});
-//# sourceMappingURL=format.js.map;
-(function (factory) {
-    if (typeof module === "object" && typeof module.exports === "object") {
-        var v = factory(require, exports);
-        if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === "function" && define.amd) {
-        define('jsonc-parser/impl/parser',["require", "exports", "./scanner"], factory);
-    }
-})(function (require, exports) {
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
-    'use strict';
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var scanner_1 = require("./scanner");
-    var ParseOptions;
-    (function (ParseOptions) {
-        ParseOptions.DEFAULT = {
-            allowTrailingComma: false
-        };
-    })(ParseOptions || (ParseOptions = {}));
-    /**
-     * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
-     */
-    function getLocation(text, position) {
-        var segments = []; // strings or numbers
-        var earlyReturnException = new Object();
-        var previousNode = void 0;
-        var previousNodeInst = {
-            value: {},
-            offset: 0,
-            length: 0,
-            type: 'object',
-            parent: void 0
-        };
-        var isAtPropertyKey = false;
-        function setPreviousNode(value, offset, length, type) {
-            previousNodeInst.value = value;
-            previousNodeInst.offset = offset;
-            previousNodeInst.length = length;
-            previousNodeInst.type = type;
-            previousNodeInst.colonOffset = void 0;
-            previousNode = previousNodeInst;
-        }
-        try {
-            visit(text, {
-                onObjectBegin: function (offset, length) {
-                    if (position <= offset) {
-                        throw earlyReturnException;
-                    }
-                    previousNode = void 0;
-                    isAtPropertyKey = position > offset;
-                    segments.push(''); // push a placeholder (will be replaced)
-                },
-                onObjectProperty: function (name, offset, length) {
-                    if (position < offset) {
-                        throw earlyReturnException;
-                    }
-                    setPreviousNode(name, offset, length, 'property');
-                    segments[segments.length - 1] = name;
-                    if (position <= offset + length) {
-                        throw earlyReturnException;
-                    }
-                },
-                onObjectEnd: function (offset, length) {
-                    if (position <= offset) {
-                        throw earlyReturnException;
-                    }
-                    previousNode = void 0;
-                    segments.pop();
-                },
-                onArrayBegin: function (offset, length) {
-                    if (position <= offset) {
-                        throw earlyReturnException;
-                    }
-                    previousNode = void 0;
-                    segments.push(0);
-                },
-                onArrayEnd: function (offset, length) {
-                    if (position <= offset) {
-                        throw earlyReturnException;
-                    }
-                    previousNode = void 0;
-                    segments.pop();
-                },
-                onLiteralValue: function (value, offset, length) {
-                    if (position < offset) {
-                        throw earlyReturnException;
-                    }
-                    setPreviousNode(value, offset, length, getLiteralNodeType(value));
-                    if (position <= offset + length) {
-                        throw earlyReturnException;
-                    }
-                },
-                onSeparator: function (sep, offset, length) {
-                    if (position <= offset) {
-                        throw earlyReturnException;
-                    }
-                    if (sep === ':' && previousNode && previousNode.type === 'property') {
-                        previousNode.colonOffset = offset;
-                        isAtPropertyKey = false;
-                        previousNode = void 0;
-                    }
-                    else if (sep === ',') {
-                        var last = segments[segments.length - 1];
-                        if (typeof last === 'number') {
-                            segments[segments.length - 1] = last + 1;
-                        }
-                        else {
-                            isAtPropertyKey = true;
-                            segments[segments.length - 1] = '';
-                        }
-                        previousNode = void 0;
-                    }
-                }
+                return diff;
             });
-        }
-        catch (e) {
-            if (e !== earlyReturnException) {
-                throw e;
-            }
-        }
-        return {
-            path: segments,
-            previousNode: previousNode,
-            isAtPropertyKey: isAtPropertyKey,
-            matches: function (pattern) {
-                var k = 0;
-                for (var i = 0; k < pattern.length && i < segments.length; i++) {
-                    if (pattern[k] === segments[i] || pattern[k] === '*') {
-                        k++;
-                    }
-                    else if (pattern[k] !== '**') {
-                        return false;
-                    }
+            var lastModifiedOffset = text.length;
+            for (var i = sortedEdits.length - 1; i >= 0; i--) {
+                var e = sortedEdits[i];
+                var startOffset = document.offsetAt(e.range.start);
+                var endOffset = document.offsetAt(e.range.end);
+                if (endOffset <= lastModifiedOffset) {
+                    text = text.substring(0, startOffset) + e.newText + text.substring(endOffset, text.length);
                 }
-                return k === pattern.length;
-            }
-        };
-    }
-    exports.getLocation = getLocation;
-    /**
-     * Parses the given text and returns the object the JSON content represents. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
-     * Therefore always check the errors list to find out if the input was valid.
-     */
-    function parse(text, errors, options) {
-        if (errors === void 0) { errors = []; }
-        if (options === void 0) { options = ParseOptions.DEFAULT; }
-        var currentProperty = null;
-        var currentParent = [];
-        var previousParents = [];
-        function onValue(value) {
-            if (Array.isArray(currentParent)) {
-                currentParent.push(value);
-            }
-            else if (currentProperty) {
-                currentParent[currentProperty] = value;
-            }
-        }
-        var visitor = {
-            onObjectBegin: function () {
-                var object = {};
-                onValue(object);
-                previousParents.push(currentParent);
-                currentParent = object;
-                currentProperty = null;
-            },
-            onObjectProperty: function (name) {
-                currentProperty = name;
-            },
-            onObjectEnd: function () {
-                currentParent = previousParents.pop();
-            },
-            onArrayBegin: function () {
-                var array = [];
-                onValue(array);
-                previousParents.push(currentParent);
-                currentParent = array;
-                currentProperty = null;
-            },
-            onArrayEnd: function () {
-                currentParent = previousParents.pop();
-            },
-            onLiteralValue: onValue,
-            onError: function (error, offset, length) {
-                errors.push({ error: error, offset: offset, length: length });
-            }
-        };
-        visit(text, visitor, options);
-        return currentParent[0];
-    }
-    exports.parse = parse;
-    /**
-     * Parses the given text and returns a tree representation the JSON content. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
-     */
-    function parseTree(text, errors, options) {
-        if (errors === void 0) { errors = []; }
-        if (options === void 0) { options = ParseOptions.DEFAULT; }
-        var currentParent = { type: 'array', offset: -1, length: -1, children: [], parent: void 0 }; // artificial root
-        function ensurePropertyComplete(endOffset) {
-            if (currentParent.type === 'property') {
-                currentParent.length = endOffset - currentParent.offset;
-                currentParent = currentParent.parent;
-            }
-        }
-        function onValue(valueNode) {
-            currentParent.children.push(valueNode);
-            return valueNode;
-        }
-        var visitor = {
-            onObjectBegin: function (offset) {
-                currentParent = onValue({ type: 'object', offset: offset, length: -1, parent: currentParent, children: [] });
-            },
-            onObjectProperty: function (name, offset, length) {
-                currentParent = onValue({ type: 'property', offset: offset, length: -1, parent: currentParent, children: [] });
-                currentParent.children.push({ type: 'string', value: name, offset: offset, length: length, parent: currentParent });
-            },
-            onObjectEnd: function (offset, length) {
-                currentParent.length = offset + length - currentParent.offset;
-                currentParent = currentParent.parent;
-                ensurePropertyComplete(offset + length);
-            },
-            onArrayBegin: function (offset, length) {
-                currentParent = onValue({ type: 'array', offset: offset, length: -1, parent: currentParent, children: [] });
-            },
-            onArrayEnd: function (offset, length) {
-                currentParent.length = offset + length - currentParent.offset;
-                currentParent = currentParent.parent;
-                ensurePropertyComplete(offset + length);
-            },
-            onLiteralValue: function (value, offset, length) {
-                onValue({ type: getLiteralNodeType(value), offset: offset, length: length, parent: currentParent, value: value });
-                ensurePropertyComplete(offset + length);
-            },
-            onSeparator: function (sep, offset, length) {
-                if (currentParent.type === 'property') {
-                    if (sep === ':') {
-                        currentParent.colonOffset = offset;
-                    }
-                    else if (sep === ',') {
-                        ensurePropertyComplete(offset);
-                    }
+                else {
+                    throw new Error('Overlapping edit');
                 }
-            },
-            onError: function (error, offset, length) {
-                errors.push({ error: error, offset: offset, length: length });
+                lastModifiedOffset = startOffset;
             }
-        };
-        visit(text, visitor, options);
-        var result = currentParent.children[0];
-        if (result) {
-            delete result.parent;
+            return text;
+        }
+        TextDocument.applyEdits = applyEdits;
+    })(TextDocument = exports.TextDocument || (exports.TextDocument = {}));
+    function mergeSort(data, compare) {
+        if (data.length <= 1) {
+            // sorted
+            return data;
+        }
+        var p = (data.length / 2) | 0;
+        var left = data.slice(0, p);
+        var right = data.slice(p);
+        mergeSort(left, compare);
+        mergeSort(right, compare);
+        var leftIdx = 0;
+        var rightIdx = 0;
+        var i = 0;
+        while (leftIdx < left.length && rightIdx < right.length) {
+            var ret = compare(left[leftIdx], right[rightIdx]);
+            if (ret <= 0) {
+                // smaller_equal -> take left to preserve order
+                data[i++] = left[leftIdx++];
+            }
+            else {
+                // greater -> take right
+                data[i++] = right[rightIdx++];
+            }
+        }
+        while (leftIdx < left.length) {
+            data[i++] = left[leftIdx++];
+        }
+        while (rightIdx < right.length) {
+            data[i++] = right[rightIdx++];
+        }
+        return data;
+    }
+    function computeLineOffsets(text, isAtLineStart, textOffset) {
+        if (textOffset === void 0) { textOffset = 0; }
+        var result = isAtLineStart ? [textOffset] : [];
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charCodeAt(i);
+            if (ch === 13 /* CarriageReturn */ || ch === 10 /* LineFeed */) {
+                if (ch === 13 /* CarriageReturn */ && i + 1 < text.length && text.charCodeAt(i + 1) === 10 /* LineFeed */) {
+                    i++;
+                }
+                result.push(textOffset + i + 1);
+            }
         }
         return result;
     }
-    exports.parseTree = parseTree;
-    /**
-     * Finds the node at the given path in a JSON DOM.
-     */
-    function findNodeAtLocation(root, path) {
-        if (!root) {
-            return void 0;
+    function getWellformedRange(range) {
+        var start = range.start;
+        var end = range.end;
+        if (start.line > end.line || (start.line === end.line && start.character > end.character)) {
+            return { start: end, end: start };
         }
-        var node = root;
-        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
-            var segment = path_1[_i];
-            if (typeof segment === 'string') {
-                if (node.type !== 'object' || !Array.isArray(node.children)) {
-                    return void 0;
-                }
-                var found = false;
-                for (var _a = 0, _b = node.children; _a < _b.length; _a++) {
-                    var propertyNode = _b[_a];
-                    if (Array.isArray(propertyNode.children) && propertyNode.children[0].value === segment) {
-                        node = propertyNode.children[1];
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    return void 0;
-                }
-            }
-            else {
-                var index = segment;
-                if (node.type !== 'array' || index < 0 || !Array.isArray(node.children) || index >= node.children.length) {
-                    return void 0;
-                }
-                node = node.children[index];
-            }
-        }
-        return node;
+        return range;
     }
-    exports.findNodeAtLocation = findNodeAtLocation;
-    /**
-     * Gets the JSON path of the given JSON DOM node
-     */
-    function getNodePath(node) {
-        if (!node.parent || !node.parent.children) {
-            return [];
+    function getWellformedEdit(textEdit) {
+        var range = getWellformedRange(textEdit.range);
+        if (range !== textEdit.range) {
+            return { newText: textEdit.newText, range: range };
         }
-        var path = getNodePath(node.parent);
-        if (node.parent.type === 'property') {
-            var key = node.parent.children[0].value;
-            path.push(key);
-        }
-        else if (node.parent.type === 'array') {
-            var index = node.parent.children.indexOf(node);
-            if (index !== -1) {
-                path.push(index);
-            }
-        }
-        return path;
-    }
-    exports.getNodePath = getNodePath;
-    /**
-     * Evaluates the JavaScript object of the given JSON DOM node
-     */
-    function getNodeValue(node) {
-        switch (node.type) {
-            case 'array':
-                return node.children.map(getNodeValue);
-            case 'object':
-                var obj = Object.create(null);
-                for (var _i = 0, _a = node.children; _i < _a.length; _i++) {
-                    var prop = _a[_i];
-                    var valueNode = prop.children[1];
-                    if (valueNode) {
-                        obj[prop.children[0].value] = getNodeValue(valueNode);
-                    }
-                }
-                return obj;
-            case 'null':
-            case 'string':
-            case 'number':
-            case 'boolean':
-                return node.value;
-            default:
-                return void 0;
-        }
-    }
-    exports.getNodeValue = getNodeValue;
-    function contains(node, offset, includeRightBound) {
-        if (includeRightBound === void 0) { includeRightBound = false; }
-        return (offset >= node.offset && offset < (node.offset + node.length)) || includeRightBound && (offset === (node.offset + node.length));
-    }
-    exports.contains = contains;
-    /**
-     * Finds the most inner node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
-     */
-    function findNodeAtOffset(node, offset, includeRightBound) {
-        if (includeRightBound === void 0) { includeRightBound = false; }
-        if (contains(node, offset, includeRightBound)) {
-            var children = node.children;
-            if (Array.isArray(children)) {
-                for (var i = 0; i < children.length && children[i].offset <= offset; i++) {
-                    var item = findNodeAtOffset(children[i], offset, includeRightBound);
-                    if (item) {
-                        return item;
-                    }
-                }
-            }
-            return node;
-        }
-        return void 0;
-    }
-    exports.findNodeAtOffset = findNodeAtOffset;
-    /**
-     * Parses the given text and invokes the visitor functions for each object, array and literal reached.
-     */
-    function visit(text, visitor, options) {
-        if (options === void 0) { options = ParseOptions.DEFAULT; }
-        var _scanner = scanner_1.createScanner(text, false);
-        function toNoArgVisit(visitFunction) {
-            return visitFunction ? function () { return visitFunction(_scanner.getTokenOffset(), _scanner.getTokenLength(), _scanner.getTokenStartLine(), _scanner.getTokenStartCharacter()); } : function () { return true; };
-        }
-        function toOneArgVisit(visitFunction) {
-            return visitFunction ? function (arg) { return visitFunction(arg, _scanner.getTokenOffset(), _scanner.getTokenLength(), _scanner.getTokenStartLine(), _scanner.getTokenStartCharacter()); } : function () { return true; };
-        }
-        var onObjectBegin = toNoArgVisit(visitor.onObjectBegin), onObjectProperty = toOneArgVisit(visitor.onObjectProperty), onObjectEnd = toNoArgVisit(visitor.onObjectEnd), onArrayBegin = toNoArgVisit(visitor.onArrayBegin), onArrayEnd = toNoArgVisit(visitor.onArrayEnd), onLiteralValue = toOneArgVisit(visitor.onLiteralValue), onSeparator = toOneArgVisit(visitor.onSeparator), onComment = toNoArgVisit(visitor.onComment), onError = toOneArgVisit(visitor.onError);
-        var disallowComments = options && options.disallowComments;
-        var allowTrailingComma = options && options.allowTrailingComma;
-        function scanNext() {
-            while (true) {
-                var token = _scanner.scan();
-                switch (_scanner.getTokenError()) {
-                    case 4 /* InvalidUnicode */:
-                        handleError(14 /* InvalidUnicode */);
-                        break;
-                    case 5 /* InvalidEscapeCharacter */:
-                        handleError(15 /* InvalidEscapeCharacter */);
-                        break;
-                    case 3 /* UnexpectedEndOfNumber */:
-                        handleError(13 /* UnexpectedEndOfNumber */);
-                        break;
-                    case 1 /* UnexpectedEndOfComment */:
-                        if (!disallowComments) {
-                            handleError(11 /* UnexpectedEndOfComment */);
-                        }
-                        break;
-                    case 2 /* UnexpectedEndOfString */:
-                        handleError(12 /* UnexpectedEndOfString */);
-                        break;
-                    case 6 /* InvalidCharacter */:
-                        handleError(16 /* InvalidCharacter */);
-                        break;
-                }
-                switch (token) {
-                    case 12 /* LineCommentTrivia */:
-                    case 13 /* BlockCommentTrivia */:
-                        if (disallowComments) {
-                            handleError(10 /* InvalidCommentToken */);
-                        }
-                        else {
-                            onComment();
-                        }
-                        break;
-                    case 16 /* Unknown */:
-                        handleError(1 /* InvalidSymbol */);
-                        break;
-                    case 15 /* Trivia */:
-                    case 14 /* LineBreakTrivia */:
-                        break;
-                    default:
-                        return token;
-                }
-            }
-        }
-        function handleError(error, skipUntilAfter, skipUntil) {
-            if (skipUntilAfter === void 0) { skipUntilAfter = []; }
-            if (skipUntil === void 0) { skipUntil = []; }
-            onError(error);
-            if (skipUntilAfter.length + skipUntil.length > 0) {
-                var token = _scanner.getToken();
-                while (token !== 17 /* EOF */) {
-                    if (skipUntilAfter.indexOf(token) !== -1) {
-                        scanNext();
-                        break;
-                    }
-                    else if (skipUntil.indexOf(token) !== -1) {
-                        break;
-                    }
-                    token = scanNext();
-                }
-            }
-        }
-        function parseString(isValue) {
-            var value = _scanner.getTokenValue();
-            if (isValue) {
-                onLiteralValue(value);
-            }
-            else {
-                onObjectProperty(value);
-            }
-            scanNext();
-            return true;
-        }
-        function parseLiteral() {
-            switch (_scanner.getToken()) {
-                case 11 /* NumericLiteral */:
-                    var value = 0;
-                    try {
-                        value = JSON.parse(_scanner.getTokenValue());
-                        if (typeof value !== 'number') {
-                            handleError(2 /* InvalidNumberFormat */);
-                            value = 0;
-                        }
-                    }
-                    catch (e) {
-                        handleError(2 /* InvalidNumberFormat */);
-                    }
-                    onLiteralValue(value);
-                    break;
-                case 7 /* NullKeyword */:
-                    onLiteralValue(null);
-                    break;
-                case 8 /* TrueKeyword */:
-                    onLiteralValue(true);
-                    break;
-                case 9 /* FalseKeyword */:
-                    onLiteralValue(false);
-                    break;
-                default:
-                    return false;
-            }
-            scanNext();
-            return true;
-        }
-        function parseProperty() {
-            if (_scanner.getToken() !== 10 /* StringLiteral */) {
-                handleError(3 /* PropertyNameExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
-                return false;
-            }
-            parseString(false);
-            if (_scanner.getToken() === 6 /* ColonToken */) {
-                onSeparator(':');
-                scanNext(); // consume colon
-                if (!parseValue()) {
-                    handleError(4 /* ValueExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
-                }
-            }
-            else {
-                handleError(5 /* ColonExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
-            }
-            return true;
-        }
-        function parseObject() {
-            onObjectBegin();
-            scanNext(); // consume open brace
-            var needsComma = false;
-            while (_scanner.getToken() !== 2 /* CloseBraceToken */ && _scanner.getToken() !== 17 /* EOF */) {
-                if (_scanner.getToken() === 5 /* CommaToken */) {
-                    if (!needsComma) {
-                        handleError(4 /* ValueExpected */, [], []);
-                    }
-                    onSeparator(',');
-                    scanNext(); // consume comma
-                    if (_scanner.getToken() === 2 /* CloseBraceToken */ && allowTrailingComma) {
-                        break;
-                    }
-                }
-                else if (needsComma) {
-                    handleError(6 /* CommaExpected */, [], []);
-                }
-                if (!parseProperty()) {
-                    handleError(4 /* ValueExpected */, [], [2 /* CloseBraceToken */, 5 /* CommaToken */]);
-                }
-                needsComma = true;
-            }
-            onObjectEnd();
-            if (_scanner.getToken() !== 2 /* CloseBraceToken */) {
-                handleError(7 /* CloseBraceExpected */, [2 /* CloseBraceToken */], []);
-            }
-            else {
-                scanNext(); // consume close brace
-            }
-            return true;
-        }
-        function parseArray() {
-            onArrayBegin();
-            scanNext(); // consume open bracket
-            var needsComma = false;
-            while (_scanner.getToken() !== 4 /* CloseBracketToken */ && _scanner.getToken() !== 17 /* EOF */) {
-                if (_scanner.getToken() === 5 /* CommaToken */) {
-                    if (!needsComma) {
-                        handleError(4 /* ValueExpected */, [], []);
-                    }
-                    onSeparator(',');
-                    scanNext(); // consume comma
-                    if (_scanner.getToken() === 4 /* CloseBracketToken */ && allowTrailingComma) {
-                        break;
-                    }
-                }
-                else if (needsComma) {
-                    handleError(6 /* CommaExpected */, [], []);
-                }
-                if (!parseValue()) {
-                    handleError(4 /* ValueExpected */, [], [4 /* CloseBracketToken */, 5 /* CommaToken */]);
-                }
-                needsComma = true;
-            }
-            onArrayEnd();
-            if (_scanner.getToken() !== 4 /* CloseBracketToken */) {
-                handleError(8 /* CloseBracketExpected */, [4 /* CloseBracketToken */], []);
-            }
-            else {
-                scanNext(); // consume close bracket
-            }
-            return true;
-        }
-        function parseValue() {
-            switch (_scanner.getToken()) {
-                case 3 /* OpenBracketToken */:
-                    return parseArray();
-                case 1 /* OpenBraceToken */:
-                    return parseObject();
-                case 10 /* StringLiteral */:
-                    return parseString(true);
-                default:
-                    return parseLiteral();
-            }
-        }
-        scanNext();
-        if (_scanner.getToken() === 17 /* EOF */) {
-            return true;
-        }
-        if (!parseValue()) {
-            handleError(4 /* ValueExpected */, [], []);
-            return false;
-        }
-        if (_scanner.getToken() !== 17 /* EOF */) {
-            handleError(9 /* EndOfFileExpected */, [], []);
-        }
-        return true;
-    }
-    exports.visit = visit;
-    /**
-     * Takes JSON with JavaScript-style comments and remove
-     * them. Optionally replaces every none-newline character
-     * of comments with a replaceCharacter
-     */
-    function stripComments(text, replaceCh) {
-        var _scanner = scanner_1.createScanner(text), parts = [], kind, offset = 0, pos;
-        do {
-            pos = _scanner.getPosition();
-            kind = _scanner.scan();
-            switch (kind) {
-                case 12 /* LineCommentTrivia */:
-                case 13 /* BlockCommentTrivia */:
-                case 17 /* EOF */:
-                    if (offset !== pos) {
-                        parts.push(text.substring(offset, pos));
-                    }
-                    if (replaceCh !== void 0) {
-                        parts.push(_scanner.getTokenValue().replace(/[^\r\n]/g, replaceCh));
-                    }
-                    offset = _scanner.getPosition();
-                    break;
-            }
-        } while (kind !== 17 /* EOF */);
-        return parts.join('');
-    }
-    exports.stripComments = stripComments;
-    function getLiteralNodeType(value) {
-        switch (typeof value) {
-            case 'boolean': return 'boolean';
-            case 'number': return 'number';
-            case 'string': return 'string';
-            default: return 'null';
-        }
+        return textEdit;
     }
 });
-//# sourceMappingURL=parser.js.map;
-(function (factory) {
-    if (typeof module === "object" && typeof module.exports === "object") {
-        var v = factory(require, exports);
-        if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === "function" && define.amd) {
-        define('jsonc-parser/impl/edit',["require", "exports", "./format", "./parser"], factory);
-    }
-})(function (require, exports) {
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
-    'use strict';
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var format_1 = require("./format");
-    var parser_1 = require("./parser");
-    function removeProperty(text, path, formattingOptions) {
-        return setProperty(text, path, void 0, formattingOptions);
-    }
-    exports.removeProperty = removeProperty;
-    function setProperty(text, originalPath, value, formattingOptions, getInsertionIndex) {
-        var _a;
-        var path = originalPath.slice();
-        var errors = [];
-        var root = parser_1.parseTree(text, errors);
-        var parent = void 0;
-        var lastSegment = void 0;
-        while (path.length > 0) {
-            lastSegment = path.pop();
-            parent = parser_1.findNodeAtLocation(root, path);
-            if (parent === void 0 && value !== void 0) {
-                if (typeof lastSegment === 'string') {
-                    value = (_a = {}, _a[lastSegment] = value, _a);
-                }
-                else {
-                    value = [value];
-                }
-            }
-            else {
-                break;
-            }
-        }
-        if (!parent) {
-            // empty document
-            if (value === void 0) { // delete
-                throw new Error('Can not delete in empty document');
-            }
-            return withFormatting(text, { offset: root ? root.offset : 0, length: root ? root.length : 0, content: JSON.stringify(value) }, formattingOptions);
-        }
-        else if (parent.type === 'object' && typeof lastSegment === 'string' && Array.isArray(parent.children)) {
-            var existing = parser_1.findNodeAtLocation(parent, [lastSegment]);
-            if (existing !== void 0) {
-                if (value === void 0) { // delete
-                    if (!existing.parent) {
-                        throw new Error('Malformed AST');
-                    }
-                    var propertyIndex = parent.children.indexOf(existing.parent);
-                    var removeBegin = void 0;
-                    var removeEnd = existing.parent.offset + existing.parent.length;
-                    if (propertyIndex > 0) {
-                        // remove the comma of the previous node
-                        var previous = parent.children[propertyIndex - 1];
-                        removeBegin = previous.offset + previous.length;
-                    }
-                    else {
-                        removeBegin = parent.offset + 1;
-                        if (parent.children.length > 1) {
-                            // remove the comma of the next node
-                            var next = parent.children[1];
-                            removeEnd = next.offset;
-                        }
-                    }
-                    return withFormatting(text, { offset: removeBegin, length: removeEnd - removeBegin, content: '' }, formattingOptions);
-                }
-                else {
-                    // set value of existing property
-                    return withFormatting(text, { offset: existing.offset, length: existing.length, content: JSON.stringify(value) }, formattingOptions);
-                }
-            }
-            else {
-                if (value === void 0) { // delete
-                    return []; // property does not exist, nothing to do
-                }
-                var newProperty = JSON.stringify(lastSegment) + ": " + JSON.stringify(value);
-                var index = getInsertionIndex ? getInsertionIndex(parent.children.map(function (p) { return p.children[0].value; })) : parent.children.length;
-                var edit = void 0;
-                if (index > 0) {
-                    var previous = parent.children[index - 1];
-                    edit = { offset: previous.offset + previous.length, length: 0, content: ',' + newProperty };
-                }
-                else if (parent.children.length === 0) {
-                    edit = { offset: parent.offset + 1, length: 0, content: newProperty };
-                }
-                else {
-                    edit = { offset: parent.offset + 1, length: 0, content: newProperty + ',' };
-                }
-                return withFormatting(text, edit, formattingOptions);
-            }
-        }
-        else if (parent.type === 'array' && typeof lastSegment === 'number' && Array.isArray(parent.children)) {
-            var insertIndex = lastSegment;
-            if (insertIndex === -1) {
-                // Insert
-                var newProperty = "" + JSON.stringify(value);
-                var edit = void 0;
-                if (parent.children.length === 0) {
-                    edit = { offset: parent.offset + 1, length: 0, content: newProperty };
-                }
-                else {
-                    var previous = parent.children[parent.children.length - 1];
-                    edit = { offset: previous.offset + previous.length, length: 0, content: ',' + newProperty };
-                }
-                return withFormatting(text, edit, formattingOptions);
-            }
-            else {
-                if (value === void 0 && parent.children.length >= 0) {
-                    //Removal
-                    var removalIndex = lastSegment;
-                    var toRemove = parent.children[removalIndex];
-                    var edit = void 0;
-                    if (parent.children.length === 1) {
-                        // only item
-                        edit = { offset: parent.offset + 1, length: parent.length - 2, content: '' };
-                    }
-                    else if (parent.children.length - 1 === removalIndex) {
-                        // last item
-                        var previous = parent.children[removalIndex - 1];
-                        var offset = previous.offset + previous.length;
-                        var parentEndOffset = parent.offset + parent.length;
-                        edit = { offset: offset, length: parentEndOffset - 2 - offset, content: '' };
-                    }
-                    else {
-                        edit = { offset: toRemove.offset, length: parent.children[removalIndex + 1].offset - toRemove.offset, content: '' };
-                    }
-                    return withFormatting(text, edit, formattingOptions);
-                }
-                else {
-                    throw new Error('Array modification not supported yet');
-                }
-            }
-        }
-        else {
-            throw new Error("Can not add " + (typeof lastSegment !== 'number' ? 'index' : 'property') + " to parent of type " + parent.type);
-        }
-    }
-    exports.setProperty = setProperty;
-    function withFormatting(text, edit, formattingOptions) {
-        // apply the edit
-        var newText = applyEdit(text, edit);
-        // format the new text
-        var begin = edit.offset;
-        var end = edit.offset + edit.content.length;
-        if (edit.length === 0 || edit.content.length === 0) { // insert or remove
-            while (begin > 0 && !format_1.isEOL(newText, begin - 1)) {
-                begin--;
-            }
-            while (end < newText.length && !format_1.isEOL(newText, end)) {
-                end++;
-            }
-        }
-        var edits = format_1.format(newText, { offset: begin, length: end - begin }, formattingOptions);
-        // apply the formatting edits and track the begin and end offsets of the changes
-        for (var i = edits.length - 1; i >= 0; i--) {
-            var edit_1 = edits[i];
-            newText = applyEdit(newText, edit_1);
-            begin = Math.min(begin, edit_1.offset);
-            end = Math.max(end, edit_1.offset + edit_1.length);
-            end += edit_1.content.length - edit_1.length;
-        }
-        // create a single edit with all changes
-        var editLength = text.length - (newText.length - end) - begin;
-        return [{ offset: begin, length: editLength, content: newText.substring(begin, end) }];
-    }
-    function applyEdit(text, edit) {
-        return text.substring(0, edit.offset) + edit.content + text.substring(edit.offset + edit.length);
-    }
-    exports.applyEdit = applyEdit;
-    function isWS(text, offset) {
-        return '\r\n \t'.indexOf(text.charAt(offset)) !== -1;
-    }
-    exports.isWS = isWS;
-});
-//# sourceMappingURL=edit.js.map;
-(function (factory) {
-    if (typeof module === "object" && typeof module.exports === "object") {
-        var v = factory(require, exports);
-        if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === "function" && define.amd) {
-        define('jsonc-parser/main',["require", "exports", "./impl/format", "./impl/edit", "./impl/scanner", "./impl/parser"], factory);
-    }
-})(function (require, exports) {
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
-    'use strict';
-    Object.defineProperty(exports, "__esModule", { value: true });
-    var formatter = require("./impl/format");
-    var edit = require("./impl/edit");
-    var scanner = require("./impl/scanner");
-    var parser = require("./impl/parser");
-    /**
-     * Creates a JSON scanner on the given text.
-     * If ignoreTrivia is set, whitespaces or comments are ignored.
-     */
-    exports.createScanner = scanner.createScanner;
-    /**
-     * For a given offset, evaluate the location in the JSON document. Each segment in the location path is either a property name or an array index.
-     */
-    exports.getLocation = parser.getLocation;
-    /**
-     * Parses the given text and returns the object the JSON content represents. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
-     * Therefore, always check the errors list to find out if the input was valid.
-     */
-    exports.parse = parser.parse;
-    /**
-     * Parses the given text and returns a tree representation the JSON content. On invalid input, the parser tries to be as fault tolerant as possible, but still return a result.
-     */
-    exports.parseTree = parser.parseTree;
-    /**
-     * Finds the node at the given path in a JSON DOM.
-     */
-    exports.findNodeAtLocation = parser.findNodeAtLocation;
-    /**
-     * Finds the innermost node at the given offset. If includeRightBound is set, also finds nodes that end at the given offset.
-     */
-    exports.findNodeAtOffset = parser.findNodeAtOffset;
-    /**
-     * Gets the JSON path of the given JSON DOM node
-     */
-    exports.getNodePath = parser.getNodePath;
-    /**
-     * Evaluates the JavaScript object of the given JSON DOM node
-     */
-    exports.getNodeValue = parser.getNodeValue;
-    /**
-     * Parses the given text and invokes the visitor functions for each object, array and literal reached.
-     */
-    exports.visit = parser.visit;
-    /**
-     * Takes JSON with JavaScript-style comments and remove
-     * them. Optionally replaces every none-newline character
-     * of comments with a replaceCharacter
-     */
-    exports.stripComments = parser.stripComments;
-    function printParseErrorCode(code) {
-        switch (code) {
-            case 1 /* InvalidSymbol */: return 'InvalidSymbol';
-            case 2 /* InvalidNumberFormat */: return 'InvalidNumberFormat';
-            case 3 /* PropertyNameExpected */: return 'PropertyNameExpected';
-            case 4 /* ValueExpected */: return 'ValueExpected';
-            case 5 /* ColonExpected */: return 'ColonExpected';
-            case 6 /* CommaExpected */: return 'CommaExpected';
-            case 7 /* CloseBraceExpected */: return 'CloseBraceExpected';
-            case 8 /* CloseBracketExpected */: return 'CloseBracketExpected';
-            case 9 /* EndOfFileExpected */: return 'EndOfFileExpected';
-            case 10 /* InvalidCommentToken */: return 'InvalidCommentToken';
-            case 11 /* UnexpectedEndOfComment */: return 'UnexpectedEndOfComment';
-            case 12 /* UnexpectedEndOfString */: return 'UnexpectedEndOfString';
-            case 13 /* UnexpectedEndOfNumber */: return 'UnexpectedEndOfNumber';
-            case 14 /* InvalidUnicode */: return 'InvalidUnicode';
-            case 15 /* InvalidEscapeCharacter */: return 'InvalidEscapeCharacter';
-            case 16 /* InvalidCharacter */: return 'InvalidCharacter';
-        }
-        return '<unknown ParseErrorCode>';
-    }
-    exports.printParseErrorCode = printParseErrorCode;
-    /**
-     * Computes the edits needed to format a JSON document.
-     *
-     * @param documentText The input text
-     * @param range The range to format or `undefined` to format the full content
-     * @param options The formatting options
-     * @returns A list of edit operations describing the formatting changes to the original document. Edits can be either inserts, replacements or
-     * removals of text segments. All offsets refer to the original state of the document. No two edits must change or remove the same range of
-     * text in the original document. However, multiple edits can have
-     * the same offset, for example multiple inserts, or an insert followed by a remove or replace. The order in the array defines which edit is applied first.
-     * To apply edits to an input, you can use `applyEdits`.
-     */
-    function format(documentText, range, options) {
-        return formatter.format(documentText, range, options);
-    }
-    exports.format = format;
-    /**
-     * Computes the edits needed to modify a value in the JSON document.
-     *
-     * @param documentText The input text
-     * @param path The path of the value to change. The path represents either to the document root, a property or an array item.
-     * If the path points to an non-existing property or item, it will be created.
-     * @param value The new value for the specified property or item. If the value is undefined,
-     * the property or item will be removed.
-     * @param options Options
-     * @returns A list of edit operations describing the formatting changes to the original document. Edits can be either inserts, replacements or
-     * removals of text segments. All offsets refer to the original state of the document. No two edits must change or remove the same range of
-     * text in the original document. However, multiple edits can have
-     * the same offset, for example multiple inserts, or an insert followed by a remove or replace. The order in the array defines which edit is applied first.
-     * To apply edits to an input, you can use `applyEdits`.
-     */
-    function modify(text, path, value, options) {
-        return edit.setProperty(text, path, value, options.formattingOptions, options.getInsertionIndex);
-    }
-    exports.modify = modify;
-    /**
-     * Applies edits to a input string.
-     */
-    function applyEdits(text, edits) {
-        for (var i = edits.length - 1; i >= 0; i--) {
-            text = edit.applyEdit(text, edits[i]);
-        }
-        return text;
-    }
-    exports.applyEdits = applyEdits;
-});
-//# sourceMappingURL=main.js.map;
-define('jsonc-parser', ['jsonc-parser/main'], function (main) { return main; });
 
-/*---------------------------------------------------------------------------------------------
-*  Copyright (c) Microsoft Corporation. All rights reserved.
-*  Licensed under the MIT License. See License.txt in the project root for license information.
-*--------------------------------------------------------------------------------------------*/
-(function (factory) {
-    if (typeof module === "object" && typeof module.exports === "object") {
-        var v = factory(require, exports);
-        if (v !== undefined) module.exports = v;
-    }
-    else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/utils/objects',["require", "exports"], factory);
-    }
-})(function (require, exports) {
-    "use strict";
-    Object.defineProperty(exports, "__esModule", { value: true });
-    function equals(one, other) {
-        if (one === other) {
-            return true;
-        }
-        if (one === null || one === undefined || other === null || other === undefined) {
-            return false;
-        }
-        if (typeof one !== typeof other) {
-            return false;
-        }
-        if (typeof one !== 'object') {
-            return false;
-        }
-        if ((Array.isArray(one)) !== (Array.isArray(other))) {
-            return false;
-        }
-        var i, key;
-        if (Array.isArray(one)) {
-            if (one.length !== other.length) {
-                return false;
-            }
-            for (i = 0; i < one.length; i++) {
-                if (!equals(one[i], other[i])) {
-                    return false;
-                }
-            }
-        }
-        else {
-            var oneKeys = [];
-            for (key in one) {
-                oneKeys.push(key);
-            }
-            oneKeys.sort();
-            var otherKeys = [];
-            for (key in other) {
-                otherKeys.push(key);
-            }
-            otherKeys.sort();
-            if (!equals(oneKeys, otherKeys)) {
-                return false;
-            }
-            for (i = 0; i < oneKeys.length; i++) {
-                if (!equals(one[oneKeys[i]], other[oneKeys[i]])) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    exports.equals = equals;
-    function isNumber(val) {
-        return typeof val === 'number';
-    }
-    exports.isNumber = isNumber;
-    function isDefined(val) {
-        return typeof val !== 'undefined';
-    }
-    exports.isDefined = isDefined;
-    function isBoolean(val) {
-        return typeof val === 'boolean';
-    }
-    exports.isBoolean = isBoolean;
-    function isString(val) {
-        return typeof val === 'string';
-    }
-    exports.isString = isString;
-});
+define('vscode-languageserver-textdocument', ['vscode-languageserver-textdocument/main'], function (main) { return main; });
 
 (function (factory) {
     if (typeof module === "object" && typeof module.exports === "object") {
@@ -3121,20 +3457,18 @@ define('jsonc-parser', ['jsonc-parser/main'], function (main) { return main; });
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/jsonLanguageTypes',["require", "exports", "vscode-languageserver-types"], factory);
+        define('vscode-json-languageservice/jsonLanguageTypes',["require", "exports", "vscode-languageserver-types", "vscode-languageserver-textdocument", "vscode-languageserver-types"], factory);
     }
 })(function (require, exports) {
     "use strict";
+    function __export(m) {
+        for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+    }
     Object.defineProperty(exports, "__esModule", { value: true });
     var vscode_languageserver_types_1 = require("vscode-languageserver-types");
-    exports.Range = vscode_languageserver_types_1.Range;
-    exports.TextEdit = vscode_languageserver_types_1.TextEdit;
-    exports.Color = vscode_languageserver_types_1.Color;
-    exports.ColorInformation = vscode_languageserver_types_1.ColorInformation;
-    exports.ColorPresentation = vscode_languageserver_types_1.ColorPresentation;
-    exports.FoldingRange = vscode_languageserver_types_1.FoldingRange;
-    exports.FoldingRangeKind = vscode_languageserver_types_1.FoldingRangeKind;
-    exports.SelectionRange = vscode_languageserver_types_1.SelectionRange;
+    var vscode_languageserver_textdocument_1 = require("vscode-languageserver-textdocument");
+    exports.TextDocument = vscode_languageserver_textdocument_1.TextDocument;
+    __export(require("vscode-languageserver-types"));
     /**
      * Error codes used by diagnostics
      */
@@ -3165,7 +3499,8 @@ define('jsonc-parser', ['jsonc-parser/main'], function (main) { return main; });
             textDocument: {
                 completion: {
                     completionItem: {
-                        documentationFormat: [vscode_languageserver_types_1.MarkupKind.Markdown, vscode_languageserver_types_1.MarkupKind.PlainText]
+                        documentationFormat: [vscode_languageserver_types_1.MarkupKind.Markdown, vscode_languageserver_types_1.MarkupKind.PlainText],
+                        commitCharactersSupport: true
                     }
                 }
             }
@@ -3235,7 +3570,7 @@ var __extends = (this && this.__extends) || (function () {
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/parser/jsonParser',["require", "exports", "jsonc-parser", "../utils/objects", "../jsonLanguageTypes", "vscode-nls", "vscode-languageserver-types"], factory);
+        define('vscode-json-languageservice/parser/jsonParser',["require", "exports", "jsonc-parser", "../utils/objects", "../jsonLanguageTypes", "vscode-nls"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -3244,7 +3579,6 @@ var __extends = (this && this.__extends) || (function () {
     var objects_1 = require("../utils/objects");
     var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var nls = require("vscode-nls");
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
     var localize = nls.loadMessageBundle();
     var formats = {
         'color-hex': { errorMessage: localize('colorHexFormatWarning', 'Invalid color format. Use #RGB, #RGBA, #RRGGBB or #RRGGBBAA.'), pattern: /^#([0-9A-Fa-f]{3,4}|([0-9A-Fa-f]{2}){3,4})$/ },
@@ -3535,8 +3869,8 @@ var __extends = (this && this.__extends) || (function () {
                 var validationResult = new ValidationResult();
                 validate(this.root, schema, validationResult, NoOpSchemaCollector.instance);
                 return validationResult.problems.map(function (p) {
-                    var range = vscode_languageserver_types_1.Range.create(textDocument.positionAt(p.location.offset), textDocument.positionAt(p.location.offset + p.location.length));
-                    return vscode_languageserver_types_1.Diagnostic.create(range, p.message, p.severity, p.code);
+                    var range = jsonLanguageTypes_1.Range.create(textDocument.positionAt(p.location.offset), textDocument.positionAt(p.location.offset + p.location.length));
+                    return jsonLanguageTypes_1.Diagnostic.create(range, p.message, p.severity, p.code);
                 });
             }
             return null;
@@ -3583,7 +3917,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!schema.type.some(matchesType)) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: schema.errorMessage || localize('typeArrayMismatchWarning', 'Incorrect type. Expected one of {0}.', schema.type.join(', '))
                     });
                 }
@@ -3592,7 +3926,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!matchesType(schema.type)) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: schema.errorMessage || localize('typeMismatchWarning', 'Incorrect type. Expected "{0}".', schema.type)
                     });
                 }
@@ -3611,7 +3945,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!subValidationResult.hasProblems()) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('notSchemaWarning', "Matches a schema that is not allowed.")
                     });
                 }
@@ -3661,7 +3995,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (matches.length > 1 && maxOneMatch) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: 1 },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('oneOfWarning', "Matches multiple schemas when only one must validate.")
                     });
                 }
@@ -3722,7 +4056,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!enumValueMatch) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         code: jsonLanguageTypes_1.ErrorCode.EnumValueMismatch,
                         message: schema.errorMessage || localize('enumWarning', 'Value is not accepted. Valid values: {0}.', schema.enum.map(function (v) { return JSON.stringify(v); }).join(', '))
                     });
@@ -3733,7 +4067,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!objects_1.equals(val, schema.const)) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         code: jsonLanguageTypes_1.ErrorCode.EnumValueMismatch,
                         message: schema.errorMessage || localize('constWarning', 'Value must be {0}.', JSON.stringify(schema.const))
                     });
@@ -3747,7 +4081,7 @@ var __extends = (this && this.__extends) || (function () {
             if (schema.deprecationMessage && node.parent) {
                 validationResult.problems.push({
                     location: { offset: node.parent.offset, length: node.parent.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: schema.deprecationMessage
                 });
             }
@@ -3758,7 +4092,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (val % schema.multipleOf !== 0) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('multipleOfWarning', 'Value is not divisible by {0}.', schema.multipleOf)
                     });
                 }
@@ -3782,7 +4116,7 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(exclusiveMinimum) && val <= exclusiveMinimum) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('exclusiveMinimumWarning', 'Value is below the exclusive minimum of {0}.', exclusiveMinimum)
                 });
             }
@@ -3790,7 +4124,7 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(exclusiveMaximum) && val >= exclusiveMaximum) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('exclusiveMaximumWarning', 'Value is above the exclusive maximum of {0}.', exclusiveMaximum)
                 });
             }
@@ -3798,7 +4132,7 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(minimum) && val < minimum) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('minimumWarning', 'Value is below the minimum of {0}.', minimum)
                 });
             }
@@ -3806,7 +4140,7 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(maximum) && val > maximum) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('maximumWarning', 'Value is above the maximum of {0}.', maximum)
                 });
             }
@@ -3815,14 +4149,14 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(schema.minLength) && node.value.length < schema.minLength) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('minLengthWarning', 'String is shorter than the minimum length of {0}.', schema.minLength)
                 });
             }
             if (objects_1.isNumber(schema.maxLength) && node.value.length > schema.maxLength) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('maxLengthWarning', 'String is longer than the maximum length of {0}.', schema.maxLength)
                 });
             }
@@ -3831,7 +4165,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!regex.test(node.value)) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: schema.patternErrorMessage || schema.errorMessage || localize('patternWarning', 'String does not match the pattern of "{0}".', schema.pattern)
                     });
                 }
@@ -3857,7 +4191,7 @@ var __extends = (this && this.__extends) || (function () {
                             if (errorMessage) {
                                 validationResult.problems.push({
                                     location: { offset: node.offset, length: node.length },
-                                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                     message: schema.patternErrorMessage || schema.errorMessage || localize('uriFormatWarning', 'String is not a URI: {0}', errorMessage)
                                 });
                             }
@@ -3872,7 +4206,7 @@ var __extends = (this && this.__extends) || (function () {
                         if (!node.value || !format.pattern.exec(node.value)) {
                             validationResult.problems.push({
                                 location: { offset: node.offset, length: node.length },
-                                severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                 message: schema.patternErrorMessage || schema.errorMessage || format.errorMessage
                             });
                         }
@@ -3907,7 +4241,7 @@ var __extends = (this && this.__extends) || (function () {
                     else if (schema.additionalItems === false) {
                         validationResult.problems.push({
                             location: { offset: node.offset, length: node.length },
-                            severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                            severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                             message: localize('additionalItemsWarning', 'Array has too many items according to schema. Expected {0} or fewer.', subSchemas.length)
                         });
                     }
@@ -3934,7 +4268,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (!doesContain) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: schema.errorMessage || localize('requiredItemMissingWarning', 'Array does not contain required item.')
                     });
                 }
@@ -3942,14 +4276,14 @@ var __extends = (this && this.__extends) || (function () {
             if (objects_1.isNumber(schema.minItems) && node.items.length < schema.minItems) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('minItemsWarning', 'Array has too few items. Expected {0} or more.', schema.minItems)
                 });
             }
             if (objects_1.isNumber(schema.maxItems) && node.items.length > schema.maxItems) {
                 validationResult.problems.push({
                     location: { offset: node.offset, length: node.length },
-                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                     message: localize('maxItemsWarning', 'Array has too many items. Expected {0} or fewer.', schema.maxItems)
                 });
             }
@@ -3961,7 +4295,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (duplicates) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('uniqueItemsWarning', 'Array has duplicate items.')
                     });
                 }
@@ -3984,7 +4318,7 @@ var __extends = (this && this.__extends) || (function () {
                         var location = keyNode ? { offset: keyNode.offset, length: keyNode.length } : { offset: node.offset, length: 1 };
                         validationResult.problems.push({
                             location: location,
-                            severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                            severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                             message: localize('MissingRequiredPropWarning', 'Missing property "{0}".', propertyName)
                         });
                     }
@@ -4009,7 +4343,7 @@ var __extends = (this && this.__extends) || (function () {
                                 var propertyNode = child.parent;
                                 validationResult.problems.push({
                                     location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
-                                    severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                    severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                     message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
                                 });
                             }
@@ -4042,7 +4376,7 @@ var __extends = (this && this.__extends) || (function () {
                                         var propertyNode = child.parent;
                                         validationResult.problems.push({
                                             location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
-                                            severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                            severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                             message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
                                         });
                                     }
@@ -4081,7 +4415,7 @@ var __extends = (this && this.__extends) || (function () {
                             var propertyNode = child.parent;
                             validationResult.problems.push({
                                 location: { offset: propertyNode.keyNode.offset, length: propertyNode.keyNode.length },
-                                severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                 message: schema.errorMessage || localize('DisallowedExtraPropWarning', 'Property {0} is not allowed.', propertyName)
                             });
                         }
@@ -4092,7 +4426,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (node.properties.length > schema.maxProperties) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('MaxPropWarning', 'Object has more properties than limit of {0}.', schema.maxProperties)
                     });
                 }
@@ -4101,7 +4435,7 @@ var __extends = (this && this.__extends) || (function () {
                 if (node.properties.length < schema.minProperties) {
                     validationResult.problems.push({
                         location: { offset: node.offset, length: node.length },
-                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                         message: localize('MinPropWarning', 'Object has fewer properties than the required number of {0}', schema.minProperties)
                     });
                 }
@@ -4118,7 +4452,7 @@ var __extends = (this && this.__extends) || (function () {
                                 if (!seenKeys[requiredProp]) {
                                     validationResult.problems.push({
                                         location: { offset: node.offset, length: node.length },
-                                        severity: vscode_languageserver_types_1.DiagnosticSeverity.Warning,
+                                        severity: jsonLanguageTypes_1.DiagnosticSeverity.Warning,
                                         message: localize('RequiredDependentPropWarning', 'Object is missing property {0} required by property {1}.', requiredProp, key)
                                     });
                                 }
@@ -4164,7 +4498,7 @@ var __extends = (this && this.__extends) || (function () {
                     case 12 /* LineCommentTrivia */:
                     case 13 /* BlockCommentTrivia */:
                         if (Array.isArray(commentRanges)) {
-                            commentRanges.push(vscode_languageserver_types_1.Range.create(textDocument.positionAt(scanner.getTokenOffset()), textDocument.positionAt(scanner.getTokenOffset() + scanner.getTokenLength())));
+                            commentRanges.push(jsonLanguageTypes_1.Range.create(textDocument.positionAt(scanner.getTokenOffset()), textDocument.positionAt(scanner.getTokenOffset() + scanner.getTokenLength())));
                         }
                         break;
                     case 15 /* Trivia */:
@@ -4183,10 +4517,10 @@ var __extends = (this && this.__extends) || (function () {
             return false;
         }
         function _errorAtRange(message, code, startOffset, endOffset, severity) {
-            if (severity === void 0) { severity = vscode_languageserver_types_1.DiagnosticSeverity.Error; }
+            if (severity === void 0) { severity = jsonLanguageTypes_1.DiagnosticSeverity.Error; }
             if (problems.length === 0 || startOffset !== lastProblemOffset) {
-                var range = vscode_languageserver_types_1.Range.create(textDocument.positionAt(startOffset), textDocument.positionAt(endOffset));
-                problems.push(vscode_languageserver_types_1.Diagnostic.create(range, message, severity, code, textDocument.languageId));
+                var range = jsonLanguageTypes_1.Range.create(textDocument.positionAt(startOffset), textDocument.positionAt(endOffset));
+                problems.push(jsonLanguageTypes_1.Diagnostic.create(range, message, severity, code, textDocument.languageId));
                 lastProblemOffset = startOffset;
             }
         }
@@ -4310,9 +4644,9 @@ var __extends = (this && this.__extends) || (function () {
             node.keyNode = key;
             var seen = keysSeen[key.value];
             if (seen) {
-                _errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), jsonLanguageTypes_1.ErrorCode.DuplicateKey, node.keyNode.offset, node.keyNode.offset + node.keyNode.length, vscode_languageserver_types_1.DiagnosticSeverity.Warning);
+                _errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), jsonLanguageTypes_1.ErrorCode.DuplicateKey, node.keyNode.offset, node.keyNode.offset + node.keyNode.length, jsonLanguageTypes_1.DiagnosticSeverity.Warning);
                 if (typeof seen === 'object') {
-                    _errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), jsonLanguageTypes_1.ErrorCode.DuplicateKey, seen.keyNode.offset, seen.keyNode.offset + seen.keyNode.length, vscode_languageserver_types_1.DiagnosticSeverity.Warning);
+                    _errorAtRange(localize('DuplicateKeyWarning', "Duplicate object key"), jsonLanguageTypes_1.ErrorCode.DuplicateKey, seen.keyNode.offset, seen.keyNode.offset + seen.keyNode.length, jsonLanguageTypes_1.DiagnosticSeverity.Warning);
                 }
                 keysSeen[key.value] = true; // if the same key is duplicate again, avoid duplicate error reporting
             }
@@ -4565,7 +4899,7 @@ var __extends = (this && this.__extends) || (function () {
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonCompletion',["require", "exports", "../parser/jsonParser", "jsonc-parser", "../utils/json", "../utils/strings", "../utils/objects", "vscode-languageserver-types", "vscode-nls"], factory);
+        define('vscode-json-languageservice/services/jsonCompletion',["require", "exports", "../parser/jsonParser", "jsonc-parser", "../utils/json", "../utils/strings", "../utils/objects", "../jsonLanguageTypes", "vscode-nls"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -4575,9 +4909,11 @@ var __extends = (this && this.__extends) || (function () {
     var json_1 = require("../utils/json");
     var strings_1 = require("../utils/strings");
     var objects_1 = require("../utils/objects");
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
+    var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var nls = require("vscode-nls");
     var localize = nls.loadMessageBundle();
+    var valueCommitCharacters = [',', '}', ']'];
+    var propertyCommitCharacters = [':'];
     var JSONCompletion = /** @class */ (function () {
         function JSONCompletion(schemaService, contributions, promiseConstructor, clientCapabilities) {
             if (contributions === void 0) { contributions = []; }
@@ -4606,32 +4942,53 @@ var __extends = (this && this.__extends) || (function () {
                 items: [],
                 isIncomplete: false
             };
+            var text = document.getText();
             var offset = document.offsetAt(position);
             var node = doc.getNodeFromOffset(offset, true);
             if (this.isInComment(document, node ? node.offset : 0, offset)) {
                 return Promise.resolve(result);
             }
+            if (node && (offset === node.offset + node.length) && offset > 0) {
+                var ch = text[offset - 1];
+                if (node.type === 'object' && ch === '}' || node.type === 'array' && ch === ']') {
+                    // after ] or }
+                    node = node.parent;
+                }
+            }
             var currentWord = this.getCurrentWord(document, offset);
             var overwriteRange = null;
             if (node && (node.type === 'string' || node.type === 'number' || node.type === 'boolean' || node.type === 'null')) {
-                overwriteRange = vscode_languageserver_types_1.Range.create(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
+                overwriteRange = jsonLanguageTypes_1.Range.create(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
             }
             else {
                 var overwriteStart = offset - currentWord.length;
-                if (overwriteStart > 0 && document.getText()[overwriteStart - 1] === '"') {
+                if (overwriteStart > 0 && text[overwriteStart - 1] === '"') {
                     overwriteStart--;
                 }
-                overwriteRange = vscode_languageserver_types_1.Range.create(document.positionAt(overwriteStart), position);
+                overwriteRange = jsonLanguageTypes_1.Range.create(document.positionAt(overwriteStart), position);
             }
+            var supportsCommitCharacters = false; //this.doesSupportsCommitCharacters(); disabled for now, waiting for new API: https://github.com/microsoft/vscode/issues/42544
             var proposed = {};
             var collector = {
                 add: function (suggestion) {
-                    var existing = proposed[suggestion.label];
+                    var label = suggestion.label;
+                    var existing = proposed[label];
                     if (!existing) {
-                        proposed[suggestion.label] = suggestion;
-                        if (overwriteRange) {
-                            suggestion.textEdit = vscode_languageserver_types_1.TextEdit.replace(overwriteRange, suggestion.insertText);
+                        label = label.replace(/[\n]/g, '↵');
+                        if (label.length > 60) {
+                            var shortendedLabel = label.substr(0, 57).trim() + '...';
+                            if (!proposed[shortendedLabel]) {
+                                label = shortendedLabel;
+                            }
                         }
+                        if (overwriteRange) {
+                            suggestion.textEdit = jsonLanguageTypes_1.TextEdit.replace(overwriteRange, suggestion.insertText);
+                        }
+                        if (supportsCommitCharacters) {
+                            suggestion.commitCharacters = suggestion.kind === jsonLanguageTypes_1.CompletionItemKind.Property ? propertyCommitCharacters : valueCommitCharacters;
+                        }
+                        suggestion.label = label;
+                        proposed[label] = suggestion;
                         result.items.push(suggestion);
                     }
                     else if (!existing.documentation) {
@@ -4662,7 +5019,7 @@ var __extends = (this && this.__extends) || (function () {
                         if (parent && parent.type === 'property' && parent.keyNode === node) {
                             addValue = !parent.valueNode;
                             currentProperty = parent;
-                            currentKey = document.getText().substr(node.offset + 1, node.length - 2);
+                            currentKey = text.substr(node.offset + 1, node.length - 2);
                             if (parent) {
                                 node = parent.parent;
                             }
@@ -4679,7 +5036,7 @@ var __extends = (this && this.__extends) || (function () {
                     var properties = node.properties;
                     properties.forEach(function (p) {
                         if (!currentProperty || currentProperty !== p) {
-                            proposed[p.keyNode.value] = vscode_languageserver_types_1.CompletionItem.create('__');
+                            proposed[p.keyNode.value] = jsonLanguageTypes_1.CompletionItem.create('__');
                         }
                     });
                     var separatorAfter_1 = '';
@@ -4701,12 +5058,12 @@ var __extends = (this && this.__extends) || (function () {
                             collectionPromises.push(collectPromise);
                         }
                     });
-                    if ((!schema && currentWord.length > 0 && document.getText().charAt(offset - currentWord.length - 1) !== '"')) {
+                    if ((!schema && currentWord.length > 0 && text.charAt(offset - currentWord.length - 1) !== '"')) {
                         collector.add({
-                            kind: vscode_languageserver_types_1.CompletionItemKind.Property,
+                            kind: jsonLanguageTypes_1.CompletionItemKind.Property,
                             label: _this.getLabelForValue(currentWord),
                             insertText: _this.getInsertTextForProperty(currentWord, null, false, separatorAfter_1),
-                            insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet, documentation: '',
+                            insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet, documentation: '',
                         });
                         collector.setAsIncomplete();
                     }
@@ -4748,10 +5105,10 @@ var __extends = (this && this.__extends) || (function () {
                             var propertySchema = schemaProperties_1[key];
                             if (typeof propertySchema === 'object' && !propertySchema.deprecationMessage && !propertySchema.doNotSuggest) {
                                 var proposal = {
-                                    kind: vscode_languageserver_types_1.CompletionItemKind.Property,
-                                    label: _this.sanitizeLabel(key),
+                                    kind: jsonLanguageTypes_1.CompletionItemKind.Property,
+                                    label: key,
                                     insertText: _this.getInsertTextForProperty(key, propertySchema, addValue, separatorAfter),
-                                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                                     filterText: _this.getFilterTextForValue(key),
                                     documentation: _this.fromMarkup(propertySchema.markdownDescription) || propertySchema.description || '',
                                 };
@@ -4774,10 +5131,10 @@ var __extends = (this && this.__extends) || (function () {
                 obj.properties.forEach(function (p) {
                     var key = p.keyNode.value;
                     collector.add({
-                        kind: vscode_languageserver_types_1.CompletionItemKind.Property,
-                        label: _this.sanitizeLabel(key),
+                        kind: jsonLanguageTypes_1.CompletionItemKind.Property,
+                        label: key,
                         insertText: _this.getInsertTextForValue(key, ''),
-                        insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                        insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                         filterText: _this.getFilterTextForValue(key),
                         documentation: ''
                     });
@@ -4805,10 +5162,10 @@ var __extends = (this && this.__extends) || (function () {
             }
             else if (node.type === 'object') {
                 collector.add({
-                    kind: vscode_languageserver_types_1.CompletionItemKind.Property,
+                    kind: jsonLanguageTypes_1.CompletionItemKind.Property,
                     label: '$schema',
                     insertText: this.getInsertTextForProperty('$schema', null, true, ''),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet, documentation: '',
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet, documentation: '',
                     filterText: this.getFilterTextForValue("$schema")
                 });
             }
@@ -4825,14 +5182,14 @@ var __extends = (this && this.__extends) || (function () {
                     kind: this.getSuggestionKind('object'),
                     label: 'Empty object',
                     insertText: this.getInsertTextForValue({}, ''),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     documentation: ''
                 });
                 collector.add({
                     kind: this.getSuggestionKind('array'),
                     label: 'Empty array',
                     insertText: this.getInsertTextForValue([], ''),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     documentation: ''
                 });
                 return;
@@ -4844,7 +5201,7 @@ var __extends = (this && this.__extends) || (function () {
                         kind: _this.getSuggestionKind(value.type),
                         label: _this.getLabelTextForMatchingNode(value, document),
                         insertText: _this.getInsertTextForMatchingNode(value, document, separatorAfter),
-                        insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet, documentation: ''
+                        insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet, documentation: ''
                     });
                 }
                 if (value.type === 'boolean') {
@@ -5005,7 +5362,7 @@ var __extends = (this && this.__extends) || (function () {
                     kind: this.getSuggestionKind(type),
                     label: this.getLabelForValue(value),
                     insertText: this.getInsertTextForValue(value, separatorAfter),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     detail: localize('json.suggest.default', 'Default value')
                 });
                 hasProposals = true;
@@ -5022,7 +5379,7 @@ var __extends = (this && this.__extends) || (function () {
                         kind: _this.getSuggestionKind(type),
                         label: _this.getLabelForValue(value),
                         insertText: _this.getInsertTextForValue(value, separatorAfter),
-                        insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet
+                        insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet
                     });
                     hasProposals = true;
                 });
@@ -5053,7 +5410,7 @@ var __extends = (this && this.__extends) || (function () {
                             type = 'array';
                         }
                         insertText = prefix + indent + s.bodyText.split('\n').join('\n' + indent) + suffix + separatorAfter;
-                        label = label || _this.sanitizeLabel(insertText),
+                        label = label || insertText,
                             filterText = insertText.replace(/[\n]/g, ''); // remove new lines
                     }
                     collector.add({
@@ -5061,7 +5418,7 @@ var __extends = (this && this.__extends) || (function () {
                         label: label,
                         documentation: _this.fromMarkup(s.markdownDescription) || s.description,
                         insertText: insertText,
-                        insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                        insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                         filterText: filterText
                     });
                     hasProposals = true;
@@ -5077,7 +5434,7 @@ var __extends = (this && this.__extends) || (function () {
                     kind: this.getSuggestionKind(schema.type),
                     label: this.getLabelForValue(schema.const),
                     insertText: this.getInsertTextForValue(schema.const, separatorAfter),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     documentation: this.fromMarkup(schema.markdownDescription) || schema.description
                 });
             }
@@ -5095,7 +5452,7 @@ var __extends = (this && this.__extends) || (function () {
                         kind: this.getSuggestionKind(schema.type),
                         label: this.getLabelForValue(enm),
                         insertText: this.getInsertTextForValue(enm, separatorAfter),
-                        insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                        insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                         documentation: documentation
                     });
                 }
@@ -5119,7 +5476,7 @@ var __extends = (this && this.__extends) || (function () {
                     kind: this.getSuggestionKind('object'),
                     label: '{}',
                     insertText: this.getInsertTextForGuessedValue({}, separatorAfter),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     detail: localize('defaults.object', 'New object'),
                     documentation: ''
                 });
@@ -5129,7 +5486,7 @@ var __extends = (this && this.__extends) || (function () {
                     kind: this.getSuggestionKind('array'),
                     label: '[]',
                     insertText: this.getInsertTextForGuessedValue([], separatorAfter),
-                    insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                    insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                     detail: localize('defaults.array', 'New array'),
                     documentation: ''
                 });
@@ -5140,7 +5497,7 @@ var __extends = (this && this.__extends) || (function () {
                 kind: this.getSuggestionKind('boolean'),
                 label: value ? 'true' : 'false',
                 insertText: this.getInsertTextForValue(value, separatorAfter),
-                insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                 documentation: ''
             });
         };
@@ -5149,7 +5506,7 @@ var __extends = (this && this.__extends) || (function () {
                 kind: this.getSuggestionKind('null'),
                 label: 'null',
                 insertText: 'null' + separatorAfter,
-                insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet,
+                insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet,
                 documentation: ''
             });
         };
@@ -5157,22 +5514,15 @@ var __extends = (this && this.__extends) || (function () {
             var _this = this;
             var schemaIds = this.schemaService.getRegisteredSchemaIds(function (schema) { return schema === 'http' || schema === 'https'; });
             schemaIds.forEach(function (schemaId) { return collector.add({
-                kind: vscode_languageserver_types_1.CompletionItemKind.Module,
+                kind: jsonLanguageTypes_1.CompletionItemKind.Module,
                 label: _this.getLabelForValue(schemaId),
                 filterText: _this.getFilterTextForValue(schemaId),
                 insertText: _this.getInsertTextForValue(schemaId, separatorAfter),
-                insertTextFormat: vscode_languageserver_types_1.InsertTextFormat.Snippet, documentation: ''
+                insertTextFormat: jsonLanguageTypes_1.InsertTextFormat.Snippet, documentation: ''
             }); });
         };
-        JSONCompletion.prototype.sanitizeLabel = function (label) {
-            label = label.replace(/[\n]/g, '↵');
-            if (label.length > 57) {
-                label = label.substr(0, 57).trim() + '...';
-            }
-            return label;
-        };
         JSONCompletion.prototype.getLabelForValue = function (value) {
-            return this.sanitizeLabel(JSON.stringify(value));
+            return JSON.stringify(value);
         };
         JSONCompletion.prototype.getFilterTextForValue = function (value) {
             return JSON.stringify(value);
@@ -5182,8 +5532,7 @@ var __extends = (this && this.__extends) || (function () {
         };
         JSONCompletion.prototype.getLabelForSnippetValue = function (value) {
             var label = JSON.stringify(value);
-            label = label.replace(/\$\{\d+:([^}]+)\}|\$\d+/g, '$1');
-            return this.sanitizeLabel(label);
+            return label.replace(/\$\{\d+:([^}]+)\}|\$\d+/g, '$1');
         };
         JSONCompletion.prototype.getInsertTextForPlainText = function (text) {
             return text.replace(/[\\\$\}]/g, '\\$&'); // escape $, \ and } 
@@ -5233,13 +5582,13 @@ var __extends = (this && this.__extends) || (function () {
                 type = array.length > 0 ? array[0] : null;
             }
             if (!type) {
-                return vscode_languageserver_types_1.CompletionItemKind.Value;
+                return jsonLanguageTypes_1.CompletionItemKind.Value;
             }
             switch (type) {
-                case 'string': return vscode_languageserver_types_1.CompletionItemKind.Value;
-                case 'object': return vscode_languageserver_types_1.CompletionItemKind.Module;
-                case 'property': return vscode_languageserver_types_1.CompletionItemKind.Property;
-                default: return vscode_languageserver_types_1.CompletionItemKind.Value;
+                case 'string': return jsonLanguageTypes_1.CompletionItemKind.Value;
+                case 'object': return jsonLanguageTypes_1.CompletionItemKind.Module;
+                case 'property': return jsonLanguageTypes_1.CompletionItemKind.Property;
+                default: return jsonLanguageTypes_1.CompletionItemKind.Value;
             }
         };
         JSONCompletion.prototype.getLabelTextForMatchingNode = function (node, document) {
@@ -5293,6 +5642,12 @@ var __extends = (this && this.__extends) || (function () {
                         value = this.getInsertTextForGuessedValue(propertySchema.default, '');
                     }
                     nValueProposals++;
+                }
+                if (Array.isArray(propertySchema.examples) && propertySchema.examples.length) {
+                    if (!value) {
+                        value = this.getInsertTextForGuessedValue(propertySchema.examples[0], '');
+                    }
+                    nValueProposals += propertySchema.examples.length;
                 }
                 if (nValueProposals === 0) {
                     var type = Array.isArray(propertySchema.type) ? propertySchema.type[0] : propertySchema.type;
@@ -5387,7 +5742,7 @@ var __extends = (this && this.__extends) || (function () {
         JSONCompletion.prototype.fromMarkup = function (markupString) {
             if (markupString && this.doesSupportMarkdown()) {
                 return {
-                    kind: vscode_languageserver_types_1.MarkupKind.Markdown,
+                    kind: jsonLanguageTypes_1.MarkupKind.Markdown,
                     value: markupString
                 };
             }
@@ -5396,9 +5751,16 @@ var __extends = (this && this.__extends) || (function () {
         JSONCompletion.prototype.doesSupportMarkdown = function () {
             if (!objects_1.isDefined(this.supportsMarkdown)) {
                 var completion = this.clientCapabilities.textDocument && this.clientCapabilities.textDocument.completion;
-                this.supportsMarkdown = completion && completion.completionItem && Array.isArray(completion.completionItem.documentationFormat) && completion.completionItem.documentationFormat.indexOf(vscode_languageserver_types_1.MarkupKind.Markdown) !== -1;
+                this.supportsMarkdown = completion && completion.completionItem && Array.isArray(completion.completionItem.documentationFormat) && completion.completionItem.documentationFormat.indexOf(jsonLanguageTypes_1.MarkupKind.Markdown) !== -1;
             }
             return this.supportsMarkdown;
+        };
+        JSONCompletion.prototype.doesSupportsCommitCharacters = function () {
+            if (!objects_1.isDefined(this.supportsCommitCharacters)) {
+                var completion = this.clientCapabilities.textDocument && this.clientCapabilities.textDocument.completion;
+                this.supportsCommitCharacters = completion && completion.completionItem && !!completion.completionItem.commitCharactersSupport;
+            }
+            return this.supportsCommitCharacters;
         };
         return JSONCompletion;
     }());
@@ -5415,13 +5777,13 @@ var __extends = (this && this.__extends) || (function () {
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonHover',["require", "exports", "../parser/jsonParser", "vscode-languageserver-types"], factory);
+        define('vscode-json-languageservice/services/jsonHover',["require", "exports", "../parser/jsonParser", "../jsonLanguageTypes"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var Parser = require("../parser/jsonParser");
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
+    var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var JSONHover = /** @class */ (function () {
         function JSONHover(schemaService, contributions, promiseConstructor) {
             if (contributions === void 0) { contributions = []; }
@@ -5446,7 +5808,7 @@ var __extends = (this && this.__extends) || (function () {
                     }
                 }
             }
-            var hoverRange = vscode_languageserver_types_1.Range.create(document.positionAt(hoverRangeNode.offset), document.positionAt(hoverRangeNode.offset + hoverRangeNode.length));
+            var hoverRange = jsonLanguageTypes_1.Range.create(document.positionAt(hoverRangeNode.offset), document.positionAt(hoverRangeNode.offset + hoverRangeNode.length));
             var createHover = function (contents) {
                 var result = {
                     contents: contents,
@@ -5531,9 +5893,12 @@ var __extends = (this && this.__extends) || (function () {
 });
 
 var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
     return function (d, b) {
         extendStatics(d, b);
         function __() { this.constructor = d; }
@@ -5554,6 +5919,7 @@ var __extends = (this && this.__extends) || (function () {
      *  Licensed under the MIT License. See License.txt in the project root for license information.
      *--------------------------------------------------------------------------------------------*/
     'use strict';
+    var _a;
     Object.defineProperty(exports, "__esModule", { value: true });
     var isWindows;
     if (typeof process === 'object') {
@@ -5563,29 +5929,32 @@ var __extends = (this && this.__extends) || (function () {
         var userAgent = navigator.userAgent;
         isWindows = userAgent.indexOf('Windows') >= 0;
     }
+    function isHighSurrogate(charCode) {
+        return (0xD800 <= charCode && charCode <= 0xDBFF);
+    }
+    function isLowSurrogate(charCode) {
+        return (0xDC00 <= charCode && charCode <= 0xDFFF);
+    }
+    function isLowerAsciiHex(code) {
+        return code >= 97 /* a */ && code <= 102 /* f */;
+    }
+    function isLowerAsciiLetter(code) {
+        return code >= 97 /* a */ && code <= 122 /* z */;
+    }
+    function isUpperAsciiLetter(code) {
+        return code >= 65 /* A */ && code <= 90 /* Z */;
+    }
+    function isAsciiLetter(code) {
+        return isLowerAsciiLetter(code) || isUpperAsciiLetter(code);
+    }
     //#endregion
     var _schemePattern = /^\w[\w\d+.-]*$/;
     var _singleSlashStart = /^\//;
     var _doubleSlashStart = /^\/\//;
-    var _throwOnMissingSchema = true;
-    /**
-     * @internal
-     */
-    function setUriThrowOnMissingScheme(value) {
-        var old = _throwOnMissingSchema;
-        _throwOnMissingSchema = value;
-        return old;
-    }
-    exports.setUriThrowOnMissingScheme = setUriThrowOnMissingScheme;
     function _validateUri(ret, _strict) {
         // scheme, must be set
-        if (!ret.scheme) {
-            if (_strict || _throwOnMissingSchema) {
-                throw new Error("[UriError]: Scheme is missing: {scheme: \"\", authority: \"" + ret.authority + "\", path: \"" + ret.path + "\", query: \"" + ret.query + "\", fragment: \"" + ret.fragment + "\"}");
-            }
-            else {
-                // console.warn(`[UriError]: Scheme is missing: {scheme: "", authority: "${ret.authority}", path: "${ret.path}", query: "${ret.query}", fragment: "${ret.fragment}"}`);
-            }
+        if (!ret.scheme && _strict) {
+            throw new Error("[UriError]: Scheme is missing: {scheme: \"\", authority: \"" + ret.authority + "\", path: \"" + ret.path + "\", query: \"" + ret.query + "\", fragment: \"" + ret.fragment + "\"}");
         }
         // scheme, https://tools.ietf.org/html/rfc3986#section-3.1
         // ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
@@ -5615,12 +5984,8 @@ var __extends = (this && this.__extends) || (function () {
     // back to the file-scheme. that should cause the least carnage and still be a
     // clear warning
     function _schemeFix(scheme, _strict) {
-        if (_strict || _throwOnMissingSchema) {
-            return scheme || _empty;
-        }
-        if (!scheme) {
-            // console.trace('BAD uri lacks scheme, falling back to file-scheme.');
-            scheme = 'file';
+        if (!scheme && !_strict) {
+            return 'file';
         }
         return scheme;
     }
@@ -5661,7 +6026,7 @@ var __extends = (this && this.__extends) || (function () {
      *       / \ /                        \
      *       urn:example:animal:ferret:nose
      */
-    var URI = (function () {
+    var URI = /** @class */ (function () {
         /**
          * @internal
          */
@@ -5882,7 +6247,7 @@ var __extends = (this && this.__extends) || (function () {
     exports.URI = URI;
     var _pathSepMarker = isWindows ? 1 : undefined;
     // tslint:disable-next-line:class-name
-    var _URI = (function (_super) {
+    var _URI = /** @class */ (function (_super) {
         __extends(_URI, _super);
         function _URI() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
@@ -6133,7 +6498,6 @@ var __extends = (this && this.__extends) || (function () {
         }
         return res;
     }
-    var _a;
 });
 
 define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
@@ -6427,13 +6791,25 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                     // more concise error message, URL and context are attached by caller anyways
                     errorMessage = errorSplit[1];
                 }
-                return new UnresolvedSchema({}, [errorMessage]);
+                if (Strings.endsWith(errorMessage, '.')) {
+                    errorMessage = errorMessage.substr(0, errorMessage.length - 1);
+                }
+                return new UnresolvedSchema({}, [localize('json.schema.nocontent', 'Unable to load schema from \'{0}\': {1}.', toDisplayString(url), errorMessage)]);
             });
         };
         JSONSchemaService.prototype.resolveSchemaContent = function (schemaToResolve, schemaURL, dependencies) {
             var _this = this;
             var resolveErrors = schemaToResolve.errors.slice(0);
             var schema = schemaToResolve.schema;
+            if (schema.$schema) {
+                var id = this.normalizeId(schema.$schema);
+                if (id === 'http://json-schema.org/draft-03/schema') {
+                    return this.promise.resolve(new ResolvedSchema({}, [localize('json.schema.draft03.notsupported', "Draft-03 schemas are not supported.")]));
+                }
+                else if (id === 'https://json-schema.org/draft/2019-09/schema') {
+                    schemaToResolve.errors.push(localize('json.schema.draft201909.notsupported', "Draft 2019-09 schemas are not yet fully supported."));
+                }
+            }
             var contextService = this.contextService;
             var findSection = function (schema, path) {
                 if (!path) {
@@ -6637,13 +7013,12 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonValidation',["require", "exports", "./jsonSchemaService", "vscode-languageserver-types", "../jsonLanguageTypes", "vscode-nls", "../utils/objects"], factory);
+        define('vscode-json-languageservice/services/jsonValidation',["require", "exports", "./jsonSchemaService", "../jsonLanguageTypes", "vscode-nls", "../utils/objects"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var jsonSchemaService_1 = require("./jsonSchemaService");
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
     var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var nls = require("vscode-nls");
     var objects_1 = require("../utils/objects");
@@ -6657,7 +7032,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         JSONValidation.prototype.configure = function (raw) {
             if (raw) {
                 this.validationEnabled = raw.validate;
-                this.commentSeverity = raw.allowComments ? void 0 : vscode_languageserver_types_1.DiagnosticSeverity.Error;
+                this.commentSeverity = raw.allowComments ? void 0 : jsonLanguageTypes_1.DiagnosticSeverity.Error;
             }
         };
         JSONValidation.prototype.doValidation = function (textDocument, jsonDocument, documentSettings, schema) {
@@ -6676,7 +7051,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                 }
             };
             var getDiagnostics = function (schema) {
-                var trailingCommaSeverity = documentSettings ? toDiagnosticSeverity(documentSettings.trailingCommas) : vscode_languageserver_types_1.DiagnosticSeverity.Error;
+                var trailingCommaSeverity = documentSettings ? toDiagnosticSeverity(documentSettings.trailingCommas) : jsonLanguageTypes_1.DiagnosticSeverity.Error;
                 var commentSeverity = documentSettings ? toDiagnosticSeverity(documentSettings.comments) : _this.commentSeverity;
                 if (schema) {
                     if (schema.errors.length && jsonDocument.root) {
@@ -6684,12 +7059,12 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                         var property = astRoot.type === 'object' ? astRoot.properties[0] : null;
                         if (property && property.keyNode.value === '$schema') {
                             var node = property.valueNode || property;
-                            var range = vscode_languageserver_types_1.Range.create(textDocument.positionAt(node.offset), textDocument.positionAt(node.offset + node.length));
-                            addProblem(vscode_languageserver_types_1.Diagnostic.create(range, schema.errors[0], vscode_languageserver_types_1.DiagnosticSeverity.Warning, jsonLanguageTypes_1.ErrorCode.SchemaResolveError));
+                            var range = jsonLanguageTypes_1.Range.create(textDocument.positionAt(node.offset), textDocument.positionAt(node.offset + node.length));
+                            addProblem(jsonLanguageTypes_1.Diagnostic.create(range, schema.errors[0], jsonLanguageTypes_1.DiagnosticSeverity.Warning, jsonLanguageTypes_1.ErrorCode.SchemaResolveError));
                         }
                         else {
-                            var range = vscode_languageserver_types_1.Range.create(textDocument.positionAt(astRoot.offset), textDocument.positionAt(astRoot.offset + 1));
-                            addProblem(vscode_languageserver_types_1.Diagnostic.create(range, schema.errors[0], vscode_languageserver_types_1.DiagnosticSeverity.Warning, jsonLanguageTypes_1.ErrorCode.SchemaResolveError));
+                            var range = jsonLanguageTypes_1.Range.create(textDocument.positionAt(astRoot.offset), textDocument.positionAt(astRoot.offset + 1));
+                            addProblem(jsonLanguageTypes_1.Diagnostic.create(range, schema.errors[0], jsonLanguageTypes_1.DiagnosticSeverity.Warning, jsonLanguageTypes_1.ErrorCode.SchemaResolveError));
                         }
                     }
                     else {
@@ -6718,7 +7093,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                 if (typeof commentSeverity === 'number') {
                     var message_1 = localize('InvalidCommentToken', 'Comments are not permitted in JSON.');
                     jsonDocument.comments.forEach(function (c) {
-                        addProblem(vscode_languageserver_types_1.Diagnostic.create(c, message_1, commentSeverity, jsonLanguageTypes_1.ErrorCode.CommentNotPermitted));
+                        addProblem(jsonLanguageTypes_1.Diagnostic.create(c, message_1, commentSeverity, jsonLanguageTypes_1.ErrorCode.CommentNotPermitted));
                     });
                 }
                 return diagnostics;
@@ -6756,8 +7131,11 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
     }
     function schemaAllowsTrailingCommas(schemaRef) {
         if (schemaRef && typeof schemaRef === 'object') {
-            if (objects_1.isBoolean(schemaRef.allowsTrailingCommas)) {
-                return schemaRef.allowsTrailingCommas;
+            if (objects_1.isBoolean(schemaRef.allowTrailingCommas)) {
+                return schemaRef.allowTrailingCommas;
+            }
+            if (objects_1.isBoolean(schemaRef['allowsTrailingCommas'])) { // deprecated
+                return schemaRef['allowsTrailingCommas'];
             }
             if (schemaRef.allOf) {
                 for (var _i = 0, _a = schemaRef.allOf; _i < _a.length; _i++) {
@@ -6773,8 +7151,8 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
     }
     function toDiagnosticSeverity(severityLevel) {
         switch (severityLevel) {
-            case 'error': return vscode_languageserver_types_1.DiagnosticSeverity.Error;
-            case 'warning': return vscode_languageserver_types_1.DiagnosticSeverity.Warning;
+            case 'error': return jsonLanguageTypes_1.DiagnosticSeverity.Error;
+            case 'warning': return jsonLanguageTypes_1.DiagnosticSeverity.Warning;
             case 'ignore': return void 0;
         }
         return void 0;
@@ -6876,7 +7254,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonDocumentSymbols',["require", "exports", "../parser/jsonParser", "../utils/strings", "../utils/colors", "vscode-languageserver-types"], factory);
+        define('vscode-json-languageservice/services/jsonDocumentSymbols',["require", "exports", "../parser/jsonParser", "../utils/strings", "../utils/colors", "../jsonLanguageTypes"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -6884,99 +7262,146 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
     var Parser = require("../parser/jsonParser");
     var Strings = require("../utils/strings");
     var colors_1 = require("../utils/colors");
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
+    var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var JSONDocumentSymbols = /** @class */ (function () {
         function JSONDocumentSymbols(schemaService) {
             this.schemaService = schemaService;
         }
-        JSONDocumentSymbols.prototype.findDocumentSymbols = function (document, doc) {
+        JSONDocumentSymbols.prototype.findDocumentSymbols = function (document, doc, context) {
             var _this = this;
+            if (context === void 0) { context = { resultLimit: Number.MAX_VALUE }; }
             var root = doc.root;
             if (!root) {
                 return null;
             }
+            var limit = context.resultLimit;
             // special handling for key bindings
             var resourceString = document.uri;
             if ((resourceString === 'vscode://defaultsettings/keybindings.json') || Strings.endsWith(resourceString.toLowerCase(), '/user/keybindings.json')) {
                 if (root.type === 'array') {
                     var result_1 = [];
-                    root.items.forEach(function (item) {
+                    for (var _i = 0, _a = root.items; _i < _a.length; _i++) {
+                        var item = _a[_i];
                         if (item.type === 'object') {
-                            for (var _i = 0, _a = item.properties; _i < _a.length; _i++) {
-                                var property = _a[_i];
-                                if (property.keyNode.value === 'key') {
-                                    if (property.valueNode) {
-                                        if (property.valueNode) {
-                                            var location = vscode_languageserver_types_1.Location.create(document.uri, getRange(document, item));
-                                            result_1.push({ name: Parser.getNodeValue(property.valueNode), kind: vscode_languageserver_types_1.SymbolKind.Function, location: location });
+                            for (var _b = 0, _c = item.properties; _b < _c.length; _b++) {
+                                var property = _c[_b];
+                                if (property.keyNode.value === 'key' && property.valueNode) {
+                                    var location = jsonLanguageTypes_1.Location.create(document.uri, getRange(document, item));
+                                    result_1.push({ name: Parser.getNodeValue(property.valueNode), kind: jsonLanguageTypes_1.SymbolKind.Function, location: location });
+                                    limit--;
+                                    if (limit <= 0) {
+                                        if (context && context.onResultLimitExceeded) {
+                                            context.onResultLimitExceeded(resourceString);
                                         }
-                                        return;
+                                        return result_1;
                                     }
                                 }
                             }
                         }
-                    });
+                    }
                     return result_1;
                 }
             }
-            var collectOutlineEntries = function (result, node, containerName) {
+            var toVisit = [
+                { node: root, containerName: '' }
+            ];
+            var nextToVisit = 0;
+            var limitExceeded = false;
+            var result = [];
+            var collectOutlineEntries = function (node, containerName) {
                 if (node.type === 'array') {
-                    node.items.forEach(function (node) { return collectOutlineEntries(result, node, containerName); });
-                }
-                else if (node.type === 'object') {
-                    node.properties.forEach(function (property) {
-                        var location = vscode_languageserver_types_1.Location.create(document.uri, getRange(document, property));
-                        var valueNode = property.valueNode;
-                        if (valueNode) {
-                            var childContainerName = containerName ? containerName + '.' + property.keyNode.value : property.keyNode.value;
-                            result.push({ name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), location: location, containerName: containerName });
-                            collectOutlineEntries(result, valueNode, childContainerName);
+                    node.items.forEach(function (node) {
+                        if (node) {
+                            toVisit.push({ node: node, containerName: containerName });
                         }
                     });
                 }
-                return result;
+                else if (node.type === 'object') {
+                    node.properties.forEach(function (property) {
+                        var valueNode = property.valueNode;
+                        if (valueNode) {
+                            if (limit > 0) {
+                                limit--;
+                                var location = jsonLanguageTypes_1.Location.create(document.uri, getRange(document, property));
+                                var childContainerName = containerName ? containerName + '.' + property.keyNode.value : property.keyNode.value;
+                                result.push({ name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), location: location, containerName: containerName });
+                                toVisit.push({ node: valueNode, containerName: childContainerName });
+                            }
+                            else {
+                                limitExceeded = true;
+                            }
+                        }
+                    });
+                }
             };
-            var result = collectOutlineEntries([], root, void 0);
+            // breath first traversal
+            while (nextToVisit < toVisit.length) {
+                var next = toVisit[nextToVisit++];
+                collectOutlineEntries(next.node, next.containerName);
+            }
+            if (limitExceeded && context && context.onResultLimitExceeded) {
+                context.onResultLimitExceeded(resourceString);
+            }
             return result;
         };
-        JSONDocumentSymbols.prototype.findDocumentSymbols2 = function (document, doc) {
+        JSONDocumentSymbols.prototype.findDocumentSymbols2 = function (document, doc, context) {
             var _this = this;
+            if (context === void 0) { context = { resultLimit: Number.MAX_VALUE }; }
             var root = doc.root;
             if (!root) {
                 return null;
             }
+            var limit = context.resultLimit;
             // special handling for key bindings
             var resourceString = document.uri;
             if ((resourceString === 'vscode://defaultsettings/keybindings.json') || Strings.endsWith(resourceString.toLowerCase(), '/user/keybindings.json')) {
                 if (root.type === 'array') {
                     var result_2 = [];
-                    root.items.forEach(function (item) {
+                    for (var _i = 0, _a = root.items; _i < _a.length; _i++) {
+                        var item = _a[_i];
                         if (item.type === 'object') {
-                            for (var _i = 0, _a = item.properties; _i < _a.length; _i++) {
-                                var property = _a[_i];
-                                if (property.keyNode.value === 'key') {
-                                    if (property.valueNode) {
-                                        var range = getRange(document, item);
-                                        var selectionRange = getRange(document, property.keyNode);
-                                        result_2.push({ name: Parser.getNodeValue(property.valueNode), kind: vscode_languageserver_types_1.SymbolKind.Function, range: range, selectionRange: selectionRange });
+                            for (var _b = 0, _c = item.properties; _b < _c.length; _b++) {
+                                var property = _c[_b];
+                                if (property.keyNode.value === 'key' && property.valueNode) {
+                                    var range = getRange(document, item);
+                                    var selectionRange = getRange(document, property.keyNode);
+                                    result_2.push({ name: Parser.getNodeValue(property.valueNode), kind: jsonLanguageTypes_1.SymbolKind.Function, range: range, selectionRange: selectionRange });
+                                    limit--;
+                                    if (limit <= 0) {
+                                        if (context && context.onResultLimitExceeded) {
+                                            context.onResultLimitExceeded(resourceString);
+                                        }
+                                        return result_2;
                                     }
-                                    return;
                                 }
                             }
                         }
-                    });
+                    }
                     return result_2;
                 }
             }
-            var collectOutlineEntries = function (result, node) {
+            var result = [];
+            var toVisit = [
+                { node: root, result: result }
+            ];
+            var nextToVisit = 0;
+            var limitExceeded = false;
+            var collectOutlineEntries = function (node, result) {
                 if (node.type === 'array') {
                     node.items.forEach(function (node, index) {
                         if (node) {
-                            var range = getRange(document, node);
-                            var selectionRange = range;
-                            var name = String(index);
-                            var children = collectOutlineEntries([], node);
-                            result.push({ name: name, kind: _this.getSymbolKind(node.type), range: range, selectionRange: selectionRange, children: children });
+                            if (limit > 0) {
+                                limit--;
+                                var range = getRange(document, node);
+                                var selectionRange = range;
+                                var name = String(index);
+                                var symbol = { name: name, kind: _this.getSymbolKind(node.type), range: range, selectionRange: selectionRange, children: [] };
+                                result.push(symbol);
+                                toVisit.push({ result: symbol.children, node: node });
+                            }
+                            else {
+                                limitExceeded = true;
+                            }
                         }
                     });
                 }
@@ -6984,32 +7409,45 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                     node.properties.forEach(function (property) {
                         var valueNode = property.valueNode;
                         if (valueNode) {
-                            var range = getRange(document, property);
-                            var selectionRange = getRange(document, property.keyNode);
-                            var children = collectOutlineEntries([], valueNode);
-                            result.push({ name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), range: range, selectionRange: selectionRange, children: children });
+                            if (limit > 0) {
+                                limit--;
+                                var range = getRange(document, property);
+                                var selectionRange = getRange(document, property.keyNode);
+                                var symbol = { name: _this.getKeyLabel(property), kind: _this.getSymbolKind(valueNode.type), range: range, selectionRange: selectionRange, children: [] };
+                                result.push(symbol);
+                                toVisit.push({ result: symbol.children, node: valueNode });
+                            }
+                            else {
+                                limitExceeded = true;
+                            }
                         }
                     });
                 }
-                return result;
             };
-            var result = collectOutlineEntries([], root);
+            // breath first traversal
+            while (nextToVisit < toVisit.length) {
+                var next = toVisit[nextToVisit++];
+                collectOutlineEntries(next.node, next.result);
+            }
+            if (limitExceeded && context && context.onResultLimitExceeded) {
+                context.onResultLimitExceeded(resourceString);
+            }
             return result;
         };
         JSONDocumentSymbols.prototype.getSymbolKind = function (nodeType) {
             switch (nodeType) {
                 case 'object':
-                    return vscode_languageserver_types_1.SymbolKind.Module;
+                    return jsonLanguageTypes_1.SymbolKind.Module;
                 case 'string':
-                    return vscode_languageserver_types_1.SymbolKind.String;
+                    return jsonLanguageTypes_1.SymbolKind.String;
                 case 'number':
-                    return vscode_languageserver_types_1.SymbolKind.Number;
+                    return jsonLanguageTypes_1.SymbolKind.Number;
                 case 'array':
-                    return vscode_languageserver_types_1.SymbolKind.Array;
+                    return jsonLanguageTypes_1.SymbolKind.Array;
                 case 'boolean':
-                    return vscode_languageserver_types_1.SymbolKind.Boolean;
+                    return jsonLanguageTypes_1.SymbolKind.Boolean;
                 default: // 'null'
-                    return vscode_languageserver_types_1.SymbolKind.Variable;
+                    return jsonLanguageTypes_1.SymbolKind.Variable;
             }
         };
         JSONDocumentSymbols.prototype.getKeyLabel = function (property) {
@@ -7022,10 +7460,11 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
             }
             return "\"" + name + "\"";
         };
-        JSONDocumentSymbols.prototype.findDocumentColors = function (document, doc) {
+        JSONDocumentSymbols.prototype.findDocumentColors = function (document, doc, context) {
             return this.schemaService.getSchemaForResource(document.uri, doc).then(function (schema) {
                 var result = [];
                 if (schema) {
+                    var limit = context && typeof context.resultLimit === 'number' ? context.resultLimit : Number.MAX_VALUE;
                     var matchingSchemas = doc.getMatchingSchemas(schema.schema);
                     var visitedNode = {};
                     for (var _i = 0, matchingSchemas_1 = matchingSchemas; _i < matchingSchemas_1.length; _i++) {
@@ -7039,6 +7478,13 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                                     result.push({ color: color, range: range });
                                 }
                                 visitedNode[nodeId] = true;
+                                limit--;
+                                if (limit <= 0) {
+                                    if (context && context.onResultLimitExceeded) {
+                                        context.onResultLimitExceeded(document.uri);
+                                    }
+                                    return result;
+                                }
                             }
                         }
                     }
@@ -7060,14 +7506,14 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
             else {
                 label = "#" + toTwoDigitHex(red256) + toTwoDigitHex(green256) + toTwoDigitHex(blue256) + toTwoDigitHex(Math.round(color.alpha * 255));
             }
-            result.push({ label: label, textEdit: vscode_languageserver_types_1.TextEdit.replace(range, JSON.stringify(label)) });
+            result.push({ label: label, textEdit: jsonLanguageTypes_1.TextEdit.replace(range, JSON.stringify(label)) });
             return result;
         };
         return JSONDocumentSymbols;
     }());
     exports.JSONDocumentSymbols = JSONDocumentSymbols;
     function getRange(document, node) {
-        return vscode_languageserver_types_1.Range.create(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
+        return jsonLanguageTypes_1.Range.create(document.positionAt(node.offset), document.positionAt(node.offset + node.length));
     }
 });
 
@@ -7620,12 +8066,11 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonFolding',["require", "exports", "vscode-languageserver-types", "jsonc-parser", "../jsonLanguageTypes"], factory);
+        define('vscode-json-languageservice/services/jsonFolding',["require", "exports", "jsonc-parser", "../jsonLanguageTypes"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
     var jsonc_parser_1 = require("jsonc-parser");
     var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     function getFoldingRanges(document, context) {
@@ -7666,7 +8111,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                     var startLine = document.positionAt(scanner.getTokenOffset()).line;
                     var endLine = document.positionAt(scanner.getTokenOffset() + scanner.getTokenLength()).line;
                     if (scanner.getTokenError() === 1 /* UnexpectedEndOfComment */ && startLine + 1 < document.lineCount) {
-                        scanner.setPosition(document.offsetAt(vscode_languageserver_types_1.Position.create(startLine + 1, 0)));
+                        scanner.setPosition(document.offsetAt(jsonLanguageTypes_1.Position.create(startLine + 1, 0)));
                     }
                     else {
                         if (startLine < endLine) {
@@ -7709,6 +8154,9 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         var rangeLimit = context && context.rangeLimit;
         if (typeof rangeLimit !== 'number' || ranges.length <= rangeLimit) {
             return ranges;
+        }
+        if (context && context.onRangeLimitExceeded) {
+            context.onRangeLimitExceeded(document.uri);
         }
         var counts = [];
         for (var _i = 0, nestingLevels_1 = nestingLevels; _i < nestingLevels_1.length; _i++) {
@@ -7753,12 +8201,12 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/services/jsonSelectionRanges',["require", "exports", "vscode-languageserver-types", "jsonc-parser"], factory);
+        define('vscode-json-languageservice/services/jsonSelectionRanges',["require", "exports", "../jsonLanguageTypes", "jsonc-parser"], factory);
     }
 })(function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
+    var jsonLanguageTypes_1 = require("../jsonLanguageTypes");
     var jsonc_parser_1 = require("jsonc-parser");
     function getSelectionRanges(document, positions, doc) {
         function getSelectionRange(position) {
@@ -7794,15 +8242,15 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
             }
             var current = undefined;
             for (var index = result.length - 1; index >= 0; index--) {
-                current = vscode_languageserver_types_1.SelectionRange.create(result[index], current);
+                current = jsonLanguageTypes_1.SelectionRange.create(result[index], current);
             }
             if (!current) {
-                current = vscode_languageserver_types_1.SelectionRange.create(vscode_languageserver_types_1.Range.create(position, position));
+                current = jsonLanguageTypes_1.SelectionRange.create(jsonLanguageTypes_1.Range.create(position, position));
             }
             return current;
         }
         function newRange(start, end) {
-            return vscode_languageserver_types_1.Range.create(document.positionAt(start), document.positionAt(end));
+            return jsonLanguageTypes_1.Range.create(document.positionAt(start), document.positionAt(end));
         }
         var scanner = jsonc_parser_1.createScanner(document.getText(), true);
         function getOffsetAfterNextToken(offset, expectedToken) {
@@ -7818,13 +8266,17 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
     exports.getSelectionRanges = getSelectionRanges;
 });
 
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 (function (factory) {
     if (typeof module === "object" && typeof module.exports === "object") {
         var v = factory(require, exports);
         if (v !== undefined) module.exports = v;
     }
     else if (typeof define === "function" && define.amd) {
-        define('vscode-json-languageservice/jsonLanguageService',["require", "exports", "vscode-languageserver-types", "./services/jsonCompletion", "./services/jsonHover", "./services/jsonValidation", "./services/jsonDocumentSymbols", "./parser/jsonParser", "./services/configuration", "./services/jsonSchemaService", "./services/jsonFolding", "./services/jsonSelectionRanges", "jsonc-parser", "./jsonLanguageTypes"], factory);
+        define('vscode-json-languageservice/jsonLanguageService',["require", "exports", "./services/jsonCompletion", "./services/jsonHover", "./services/jsonValidation", "./services/jsonDocumentSymbols", "./parser/jsonParser", "./services/configuration", "./services/jsonSchemaService", "./services/jsonFolding", "./services/jsonSelectionRanges", "jsonc-parser", "./jsonLanguageTypes", "./jsonLanguageTypes"], factory);
     }
 })(function (require, exports) {
     "use strict";
@@ -7832,22 +8284,6 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
     }
     Object.defineProperty(exports, "__esModule", { value: true });
-    /*---------------------------------------------------------------------------------------------
-     *  Copyright (c) Microsoft Corporation. All rights reserved.
-     *  Licensed under the MIT License. See License.txt in the project root for license information.
-     *--------------------------------------------------------------------------------------------*/
-    var vscode_languageserver_types_1 = require("vscode-languageserver-types");
-    exports.TextDocument = vscode_languageserver_types_1.TextDocument;
-    exports.Position = vscode_languageserver_types_1.Position;
-    exports.CompletionItem = vscode_languageserver_types_1.CompletionItem;
-    exports.CompletionList = vscode_languageserver_types_1.CompletionList;
-    exports.Hover = vscode_languageserver_types_1.Hover;
-    exports.Range = vscode_languageserver_types_1.Range;
-    exports.SymbolInformation = vscode_languageserver_types_1.SymbolInformation;
-    exports.Diagnostic = vscode_languageserver_types_1.Diagnostic;
-    exports.TextEdit = vscode_languageserver_types_1.TextEdit;
-    exports.FormattingOptions = vscode_languageserver_types_1.FormattingOptions;
-    exports.MarkedString = vscode_languageserver_types_1.MarkedString;
     var jsonCompletion_1 = require("./services/jsonCompletion");
     var jsonHover_1 = require("./services/jsonHover");
     var jsonValidation_1 = require("./services/jsonValidation");
@@ -7858,6 +8294,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
     var jsonFolding_1 = require("./services/jsonFolding");
     var jsonSelectionRanges_1 = require("./services/jsonSelectionRanges");
     var jsonc_parser_1 = require("jsonc-parser");
+    var jsonLanguageTypes_1 = require("./jsonLanguageTypes");
     __export(require("./jsonLanguageTypes"));
     function getLanguageService(params) {
         var promise = params.promiseConstructor || Promise;
@@ -7900,7 +8337,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
                 }
                 var options = { tabSize: o ? o.tabSize : 4, insertSpaces: o ? o.insertSpaces : true, eol: '\n' };
                 return jsonc_parser_1.format(d.getText(), range, options).map(function (e) {
-                    return vscode_languageserver_types_1.TextEdit.replace(vscode_languageserver_types_1.Range.create(d.positionAt(e.offset), d.positionAt(e.offset + e.length)), e.content);
+                    return jsonLanguageTypes_1.TextEdit.replace(jsonLanguageTypes_1.Range.create(d.positionAt(e.offset), d.positionAt(e.offset + e.length)), e.content);
                 });
             }
         };
@@ -7910,7 +8347,7 @@ define('vscode-uri', ['vscode-uri/index'], function (main) { return main; });
 
 define('vscode-json-languageservice', ['vscode-json-languageservice/jsonLanguageService'], function (main) { return main; });
 
-define('vs/language/json/jsonWorker',["require", "exports", "vscode-json-languageservice", "vscode-languageserver-types"], function (require, exports, jsonService, ls) {
+define('vs/language/json/jsonWorker',["require", "exports", "vscode-json-languageservice"], function (require, exports, jsonService) {
     /*---------------------------------------------------------------------------------------------
      *  Copyright (c) Microsoft Corporation. All rights reserved.
      *  Licensed under the MIT License. See License.txt in the project root for license information.
@@ -7991,19 +8428,25 @@ define('vs/language/json/jsonWorker',["require", "exports", "vscode-json-languag
         };
         JSONWorker.prototype.findDocumentColors = function (uri) {
             var document = this._getTextDocument(uri);
-            var stylesheet = this._languageService.parseJSONDocument(document);
-            var colorSymbols = this._languageService.findDocumentColors(document, stylesheet);
+            var jsonDocument = this._languageService.parseJSONDocument(document);
+            var colorSymbols = this._languageService.findDocumentColors(document, jsonDocument);
             return Promise.resolve(colorSymbols);
         };
         JSONWorker.prototype.getColorPresentations = function (uri, color, range) {
             var document = this._getTextDocument(uri);
-            var stylesheet = this._languageService.parseJSONDocument(document);
-            var colorPresentations = this._languageService.getColorPresentations(document, stylesheet, color, range);
+            var jsonDocument = this._languageService.parseJSONDocument(document);
+            var colorPresentations = this._languageService.getColorPresentations(document, jsonDocument, color, range);
             return Promise.resolve(colorPresentations);
         };
-        JSONWorker.prototype.provideFoldingRanges = function (uri, context) {
+        JSONWorker.prototype.getFoldingRanges = function (uri, context) {
             var document = this._getTextDocument(uri);
             var ranges = this._languageService.getFoldingRanges(document, context);
+            return Promise.resolve(ranges);
+        };
+        JSONWorker.prototype.getSelectionRanges = function (uri, positions) {
+            var document = this._getTextDocument(uri);
+            var jsonDocument = this._languageService.parseJSONDocument(document);
+            var ranges = this._languageService.getSelectionRanges(document, positions, jsonDocument);
             return Promise.resolve(ranges);
         };
         JSONWorker.prototype._getTextDocument = function (uri) {
@@ -8011,7 +8454,7 @@ define('vs/language/json/jsonWorker',["require", "exports", "vscode-json-languag
             for (var _i = 0, models_1 = models; _i < models_1.length; _i++) {
                 var model = models_1[_i];
                 if (model.uri.toString() === uri) {
-                    return ls.TextDocument.create(uri, this._languageId, model.version, model.getValue());
+                    return jsonService.TextDocument.create(uri, this._languageId, model.version, model.getValue());
                 }
             }
             return null;

@@ -48,6 +48,8 @@ define(["require", "exports"], function (require, exports) {
         ],
         tokenizer: {
             root: [
+                // markdown tables
+                [/^\s*\|/, '@rematch', '@table_header'],
                 // headers (with #)
                 [/^(\s{0,3})(#+)((?:[^\\#]|@escapes)+)((?:#+)?)/, ['white', 'keyword', 'keyword', 'keyword']],
                 // headers (with =)
@@ -68,6 +70,26 @@ define(["require", "exports"], function (require, exports) {
                 [/^\s*```\s*$/, { token: 'string', next: '@codeblock' }],
                 // markup within lines
                 { include: '@linecontent' },
+            ],
+            table_header: [
+                { include: '@table_common' },
+                [/[^\|]+/, 'keyword.table.header'],
+            ],
+            table_body: [
+                { include: '@table_common' },
+                { include: '@linecontent' },
+            ],
+            table_common: [
+                [/\s*[\-:]+\s*/, { token: 'keyword', switchTo: 'table_body' }],
+                [/^\s*\|/, 'keyword.table.left'],
+                [/^\s*[^\|]/, '@rematch', '@pop'],
+                [/^\s*$/, '@rematch', '@pop'],
+                [/\|/, {
+                        cases: {
+                            '@eos': 'keyword.table.right',
+                            '@default': 'keyword.table.middle',
+                        }
+                    }],
             ],
             codeblock: [
                 [/^\s*~~~\s*$/, { token: 'string', next: '@pop' }],

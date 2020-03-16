@@ -103,6 +103,7 @@ define(["require", "exports"], function (require, exports) {
                 [/[;,.]/, 'delimiter'],
                 // strings
                 [/"([^"\\]|\\.)*$/, 'string.invalid'],
+                [/"""/, 'string', '@multistring'],
                 [/"/, 'string', '@string'],
                 // characters
                 [/'[^\\']'/, 'string'],
@@ -117,13 +118,14 @@ define(["require", "exports"], function (require, exports) {
             ],
             comment: [
                 [/[^\/*]+/, 'comment'],
+                [/\/\*/, 'comment', '@comment'],
                 [/\*\//, 'comment', '@pop'],
                 [/[\/*]/, 'comment']
             ],
             //Identical copy of comment above, except for the addition of .doc
             javadoc: [
                 [/[^\/*]+/, 'comment.doc'],
-                // [/\/\*/, 'comment.doc', '@push' ],    // nested comment not allowed :-(
+                [/\/\*/, 'comment.doc', '@push'],
                 [/\/\*/, 'comment.doc.invalid'],
                 [/\*\//, 'comment.doc', '@pop'],
                 [/[\/*]/, 'comment.doc']
@@ -133,6 +135,13 @@ define(["require", "exports"], function (require, exports) {
                 [/@escapes/, 'string.escape'],
                 [/\\./, 'string.escape.invalid'],
                 [/"/, 'string', '@pop']
+            ],
+            multistring: [
+                [/[^\\"]+/, 'string'],
+                [/@escapes/, 'string.escape'],
+                [/\\./, 'string.escape.invalid'],
+                [/"""/, 'string', '@pop'],
+                [/./, 'string']
             ],
         },
     };
