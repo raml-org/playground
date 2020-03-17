@@ -14,7 +14,7 @@ const prefixes = {
   'http://a.ml/vocabularies/shapes#': 'raml-shapes:',
   'http://www.w3.org/ns/hydra/core#': 'hydra:',
   'http://www.w3.org/ns/shacl#': 'shacl:',
-  'http://schema.org/': 'schema-org:',
+  'http://a.ml/vocabularies/core#': 'core:',
   'http://www.w3.org/2001/XMLSchema#': 'xsd:',
   'http://www.w3.org/1999/02/22-rdf-syntax-ns#': 'rdf:'
 }
@@ -241,7 +241,7 @@ export class DiffGenerator {
   }
 
   public isName (assertion: string): boolean {
-    return assertion.indexOf('http://schema.org/name') > -1 || assertion.indexOf('http://a.ml/vocabularies/http#path') > -1
+    return assertion.indexOf('http://a.ml/vocabularies/core#name') > -1 || assertion.indexOf('http://a.ml/vocabularies/http#path') > -1
   }
 
   public predicate (assertion: string): string {

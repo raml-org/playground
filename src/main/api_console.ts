@@ -36,7 +36,7 @@ export class ApiConsole {
       { type: 'http://a.ml/vocabularies/apiContract#EndPoint', selectedType: 'endpoint' },
       { type: 'http://a.ml/vocabularies/apiContract#Operation', selectedType: 'method' },
       { type: 'http://a.ml/vocabularies/security#SecurityScheme', selectedType: 'security' },
-      { type: 'http://schema.org/CreativeWork', selectedType: 'documentation' }
+      { type: 'http://a.ml/vocabularies/core#CreativeWork', selectedType: 'documentation' }
     ]
     this.elsRanges = []
     creds.forEach(cred => {

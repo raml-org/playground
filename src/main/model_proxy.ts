@@ -108,7 +108,7 @@ export class ModelProxy {
               'raml-shapes': 'http://a.ml/vocabularies/shapes#',
               hydra: 'http://www.w3.org/ns/hydra/core#',
               shacl: 'http://www.w3.org/ns/shacl#',
-              'schema-org': 'http://schema.org/',
+              core: 'http://a.ml/vocabularies/core#',
               xsd: 'http://www.w3.org/2001/XMLSchema#'
             }
             jsonld.compact(parsed, context, (err, compacted) => {

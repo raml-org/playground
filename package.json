@@ -12,7 +12,7 @@
   "dependencies": {
     "@babel/core": "^7.8.7",
     "@types/es6-promise": "^3.3.0",
-    "amf-client-js": "^3.5.4",
+    "amf-client-js": "^4.0.6",
     "axios": "^0.19.2",
     "dagre": "^0.8.5",
     "graphlib": "^2.1.8",
@@ -24,7 +24,7 @@
     "node-gyp": "^6.1.0",
     "rdfstore": "^0.9.17",
     "vis": "^4.21.0-EOL",
-    "webapi-parser": "^0.4.0"
+    "webapi-parser": "^0.5.0"
   },
   "devDependencies": {
     "@types/backbone": "^1.4.1",
