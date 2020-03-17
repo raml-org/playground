@@ -2243,16 +2243,6 @@ class CSSResult {
         return this.cssText;
     }
 }
-/**
- * Wrap a value for interpolation in a css tagged template literal.
- *
- * This is unsafe because untrusted CSS text can be used to phone home
- * or exfiltrate data to an attacker controlled site. Take care to only use
- * this with trusted input.
- */
-const unsafeCSS = (value) => {
-    return new CSSResult(String(value), constructionToken);
-};
 const textFromCSSResult = (value) => {
     if (value instanceof CSSResult) {
         return value.cssText;
@@ -2669,7 +2659,7 @@ function clean(cssText) {
 // super simple {...} lexer that returns a node tree
 /**
  * @param {string} text
- * @return {StyleNode}
+ * @return {!StyleNode}
  */
 function lex(text) {
   let root = new StyleNode();
@@ -2700,7 +2690,7 @@ function lex(text) {
 /**
  * @param {StyleNode} node
  * @param {string} text
- * @return {StyleNode}
+ * @return {!StyleNode}
  */
 function parseCss(node, text) {
   let t = text.substring(node['start'], node['end'] - 1);
@@ -2902,7 +2892,9 @@ function processUnscopedStyle(style) {
   const text = style.textContent;
   if (!styleTextSet.has(text)) {
     styleTextSet.add(text);
-    const newStyle = style.cloneNode(true);
+    const newStyle = document.createElement('style');
+    newStyle.setAttribute('shady-unscoped', '');
+    newStyle.textContent = text;
     document.head.appendChild(newStyle);
   }
 }
@@ -5319,7 +5311,7 @@ const PropertiesChanged = dedupingMixin(
      */
     _createPropertyAccessor(property, readOnly) {
       this._addPropertyToAttributeMap(property);
-      if (!this.hasOwnProperty('__dataHasAccessor')) {
+      if (!this.hasOwnProperty(JSCompiler_renameProperty('__dataHasAccessor', this))) {
         this.__dataHasAccessor = Object.assign({}, this.__dataHasAccessor);
       }
       if (!this.__dataHasAccessor[property]) {
@@ -5337,7 +5329,7 @@ const PropertiesChanged = dedupingMixin(
      * @override
      */
     _addPropertyToAttributeMap(property) {
-      if (!this.hasOwnProperty('__dataAttributes')) {
+      if (!this.hasOwnProperty(JSCompiler_renameProperty('__dataAttributes', this))) {
         this.__dataAttributes = Object.assign({}, this.__dataAttributes);
       }
       if (!this.__dataAttributes[property]) {
@@ -6111,6 +6103,53 @@ const templateExtensions = {
   'dom-if': true,
   'dom-repeat': true
 };
+
+let placeholderBugDetect = false;
+let placeholderBug = false;
+
+function hasPlaceholderBug() {
+  if (!placeholderBugDetect) {
+    placeholderBugDetect = true;
+    const t = document.createElement('textarea');
+    t.placeholder = 'a';
+    placeholderBug = t.placeholder === t.textContent;
+  }
+  return placeholderBug;
+}
+
+/**
+ * Some browsers have a bug with textarea, where placeholder text is copied as
+ * a textnode child of the textarea.
+ *
+ * If the placeholder is a binding, this can break template stamping in two
+ * ways.
+ *
+ * One issue is that when the `placeholder` attribute is removed when the
+ * binding is processed, the textnode child of the textarea is deleted, and the
+ * template info tries to bind into that node.
+ *
+ * With `legacyOptimizations` in use, when the template is stamped and the
+ * `textarea.textContent` binding is processed, no corresponding node is found
+ * because it was removed during parsing. An exception is generated when this
+ * binding is updated.
+ *
+ * With `legacyOptimizations` not in use, the template is cloned before
+ * processing and this changes the above behavior. The cloned template also has
+ * a value property set to the placeholder and textContent. This prevents the
+ * removal of the textContent when the placeholder attribute is removed.
+ * Therefore the exception does not occur. However, there is an extra
+ * unnecessary binding.
+ *
+ * @param {!Node} node Check node for placeholder bug
+ * @return {void}
+ */
+function fixPlaceholder(node) {
+  if (hasPlaceholderBug() && node.localName === 'textarea' && node.placeholder
+        && node.placeholder === node.textContent) {
+    node.textContent = null;
+  }
+}
+
 function wrapTemplateExtension(node) {
   let is = node.getAttribute('is');
   if (is && templateExtensions[is]) {
@@ -6340,6 +6379,7 @@ const TemplateStamp = dedupingMixin(
         // For ShadyDom optimization, indicating there is an insertion point
         templateInfo.hasInsertionPoint = true;
       }
+      fixPlaceholder(element);
       if (element.firstChild) {
         this._parseTemplateChildNodes(element, templateInfo, nodeInfo);
       }
@@ -9606,7 +9646,7 @@ const PropertiesMixin = dedupingMixin(superClass => {
     * @nocollapse
     */
    static get observedAttributes() {
-     if (!this.hasOwnProperty('__observedAttributes')) {
+     if (!this.hasOwnProperty(JSCompiler_renameProperty('__observedAttributes', this))) {
        register(this.prototype);
        const props = this._properties;
        this.__observedAttributes = props ? Object.keys(props).map(p => this.attributeNameForProperty(p)) : [];
@@ -9742,7 +9782,7 @@ const PropertiesMixin = dedupingMixin(superClass => {
  * Current Polymer version in Semver notation.
  * @type {string} Semver notation of the current version of Polymer.
  */
-const version = '3.3.0';
+const version = '3.3.1';
 
 const builtCSS = window.ShadyCSS && window.ShadyCSS['cssBuild'];
 
@@ -10411,7 +10451,7 @@ const ElementMixin = dedupingMixin(base => {
             n.shadowRoot.appendChild(dom);
           }
           if (syncInitialRender && window.ShadyDOM) {
-            ShadyDOM.flushInitial(n.shadowRoot);
+            window.ShadyDOM.flushInitial(n.shadowRoot);
           }
           return n.shadowRoot;
         }
@@ -10738,10 +10778,10 @@ function isMouseEvent(name) {
 
 /* eslint no-empty: ["error", { "allowEmptyCatch": true }] */
 // check for passive event listeners
-let SUPPORTS_PASSIVE = false;
+let supportsPassive = false;
 (function() {
   try {
-    let opts = Object.defineProperty({}, 'passive', {get() {SUPPORTS_PASSIVE = true;}});
+    let opts = Object.defineProperty({}, 'passive', {get() {supportsPassive = true;}});
     window.addEventListener('test', null, opts);
     window.removeEventListener('test', null, opts);
   } catch(e) {}
@@ -10759,7 +10799,7 @@ function PASSIVE_TOUCH(eventName) {
   if (isMouseEvent(eventName) || eventName === 'touchend') {
     return;
   }
-  if (HAS_NATIVE_TA && SUPPORTS_PASSIVE && passiveTouchGestures) {
+  if (HAS_NATIVE_TA && supportsPassive && passiveTouchGestures) {
     return {passive: true};
   } else {
     return;
@@ -11010,7 +11050,7 @@ function untrackDocument(stateObj) {
 if (cancelSyntheticClickEvents) {
   // use a document-wide touchend listener to start the ghost-click prevention mechanism
   // Use passive event listeners, if supported, to not affect scrolling performance
-  document.addEventListener('touchend', ignoreMouse, SUPPORTS_PASSIVE ? {passive: true} : false);
+  document.addEventListener('touchend', ignoreMouse, supportsPassive ? {passive: true} : false);
 }
 
 /**
@@ -11731,9 +11771,6 @@ function trackForward(info, e, preventer) {
   }
 }
 
-/** @deprecated */
-const add = addListener;
-
 /**
 @license
 Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
@@ -11832,10 +11869,10 @@ const DIR_INSTANCES = [];
 /** @type {?MutationObserver} */
 let observer = null;
 
-let DOCUMENT_DIR = '';
+let documentDir = '';
 
 function getRTL() {
-  DOCUMENT_DIR = document.documentElement.getAttribute('dir');
+  documentDir = document.documentElement.getAttribute('dir');
 }
 
 /**
@@ -11844,13 +11881,13 @@ function getRTL() {
 function setRTL(instance) {
   if (!instance.__autoDirOptOut) {
     const el = /** @type {!HTMLElement} */(instance);
-    el.setAttribute('dir', DOCUMENT_DIR);
+    el.setAttribute('dir', documentDir);
   }
 }
 
 function updateDirection() {
   getRTL();
-  DOCUMENT_DIR = document.documentElement.getAttribute('dir');
+  documentDir = document.documentElement.getAttribute('dir');
   for (let i = 0; i < DIR_INSTANCES.length; i++) {
     setRTL(DIR_INSTANCES[i]);
   }
@@ -12470,7 +12507,7 @@ let FlattenedNodesObserver = class {
           /** @type {!NodeList<!Node>} */ (wrap$1(this._target).children));
       if (window.ShadyDOM) {
         this._shadyChildrenObserver =
-          ShadyDOM.observeChildren(this._target, (mutations) => {
+          window.ShadyDOM.observeChildren(this._target, (mutations) => {
             this._processMutations(mutations);
           });
       } else {
@@ -12500,7 +12537,7 @@ let FlattenedNodesObserver = class {
       this._unlistenSlots(
           /** @type {!NodeList<!Node>} */ (wrap$1(this._target).children));
       if (window.ShadyDOM && this._shadyChildrenObserver) {
-        ShadyDOM.unobserveChildren(this._shadyChildrenObserver);
+        window.ShadyDOM.unobserveChildren(this._shadyChildrenObserver);
         this._shadyChildrenObserver = null;
       } else if (this._nativeChildrenObserver) {
         this._nativeChildrenObserver.disconnect();
@@ -12699,7 +12736,7 @@ const matchesSelector = function(node, selector) {
 class DomApiNative {
 
   /**
-   * @param {Node} node Node for which to create a Polymer.dom helper object.
+   * @param {!Node} node Node for which to create a Polymer.dom helper object.
    */
   constructor(node) {
     if (window['ShadyDOM'] && window['ShadyDOM']['inUse']) {
@@ -13409,7 +13446,7 @@ const LegacyElementMixin = dedupingMixin((base) => {
      */
     _initializeProperties() {
       let proto = Object.getPrototypeOf(this);
-      if (!proto.hasOwnProperty('__hasRegisterFinished')) {
+      if (!proto.hasOwnProperty(JSCompiler_renameProperty('__hasRegisterFinished', proto))) {
         this._registered();
         // backstop in case the `_registered` implementation does not set this
         proto.__hasRegisterFinished = true;
@@ -14577,7 +14614,7 @@ function GenerateClassFromInfo(info, Base, behaviors) {
       */
       // only proceed if the generated class' prototype has not been registered.
       const generatedProto = PolymerGenerated.prototype;
-      if (!generatedProto.hasOwnProperty('__hasRegisterFinished')) {
+      if (!generatedProto.hasOwnProperty(JSCompiler_renameProperty('__hasRegisterFinished', generatedProto))) {
         generatedProto.__hasRegisterFinished = true;
         // ensure superclass is registered first.
         super._registered();
@@ -15776,7 +15813,7 @@ class DomBind extends domBindBase {
   render() {
     let template;
     if (!this.__children) {
-      template = /** @type {HTMLTemplateElement} */(template || this.querySelector('template'));
+      template = /** @type {?HTMLTemplateElement} */(template || this.querySelector('template'));
       if (!template) {
         // Wait until childList changes and template should be there by then
         let observer = new MutationObserver(() => {
@@ -17791,130 +17828,276 @@ License for the specific language governing permissions and limitations under
 the License.
 */
 
-// This URL is common to both models
-// used in the autodetection process
-const webApiDocumentType = 'http://a.ml/vocabularies/document#Document';
-
-// Version 1 of the model: old version
-const ns1 = {};
+const ns = {};
 // RAML namespace
-ns1.raml = {};
-ns1.raml.name = 'http://a.ml/';
-ns1.raml.vocabularies = {};
-ns1.raml.vocabularies.name = ns1.raml.name + 'vocabularies/';
-ns1.raml.vocabularies.document = ns1.raml.vocabularies.name + 'document#';
-ns1.raml.vocabularies.http = ns1.raml.vocabularies.name + 'http#';
-ns1.raml.vocabularies.security = ns1.raml.vocabularies.name + 'security#';
-ns1.raml.vocabularies.shapes = ns1.raml.vocabularies.name + 'shapes#';
-ns1.raml.vocabularies.data = ns1.raml.vocabularies.name + 'data#';
-ns1.raml.vocabularies.docSourceMaps = ns1.raml.vocabularies.name + 'document-source-maps#';
-// mapping to aml namespace
-ns1.aml = ns1.raml;
+ns.aml = {};
+ns.raml = ns.aml;
+ns.aml.key = 'http://a.ml/';
+ns.aml.vocabularies = {};
+ns.aml.vocabularies.key = ns.aml.key + 'vocabularies/';
+ns.aml.vocabularies.document = {};
+const docKey = ns.aml.vocabularies.document.key = ns.aml.vocabularies.key + 'document#';
+ns.aml.vocabularies.document.toString = () => docKey;
+ns.aml.vocabularies.document.Module = docKey + 'Module';
+ns.aml.vocabularies.document.Document = docKey + 'Document';
+ns.aml.vocabularies.document.SecuritySchemeFragment = docKey + 'SecuritySchemeFragment';
+ns.aml.vocabularies.document.UserDocumentation = docKey + 'UserDocumentation';
+ns.aml.vocabularies.document.DataType = docKey + 'DataType';
+// ns.aml.vocabularies.document.Example = docKey + 'Example';
+ns.aml.vocabularies.document.NamedExamples = docKey + 'NamedExamples';
+ns.aml.vocabularies.document.DomainElement = docKey + 'DomainElement';
+ns.aml.vocabularies.document.ParametrizedDeclaration = docKey + 'ParametrizedDeclaration';
+// ns.aml.vocabularies.document.ParametrizedResourceType = docKey + 'ParametrizedResourceType';
+// ns.aml.vocabularies.document.ParametrizedTrait = docKey + 'ParametrizedTrait';
+ns.aml.vocabularies.document.ExternalDomainElement = docKey + 'ExternalDomainElement';
+ns.aml.vocabularies.document.customDomainProperties = docKey + 'customDomainProperties';
+ns.aml.vocabularies.document.encodes = docKey + 'encodes';
+ns.aml.vocabularies.document.declares = docKey + 'declares';
+ns.aml.vocabularies.document.references = docKey + 'references';
+ns.aml.vocabularies.document.examples = docKey + 'examples';
+ns.aml.vocabularies.document.linkTarget = docKey + 'link-target';
+ns.aml.vocabularies.document.referenceId = docKey + 'reference-id';
+ns.aml.vocabularies.document.structuredValue = docKey + 'structuredValue';
+ns.aml.vocabularies.document.raw = docKey + 'raw';
+ns.aml.vocabularies.document.extends = docKey + 'extends';
+ns.aml.vocabularies.document.value = docKey + 'value';
+ns.aml.vocabularies.document.name = docKey + 'name';
+ns.aml.vocabularies.core = {};
+const coreKey = ns.aml.vocabularies.core.key = ns.aml.vocabularies.key + 'core#';
+ns.aml.vocabularies.core.toString = () => coreKey;
+ns.aml.vocabularies.core.CreativeWork = coreKey + 'CreativeWork';
+ns.aml.vocabularies.core.version = coreKey + 'version';
+ns.aml.vocabularies.core.urlTemplate = coreKey + 'urlTemplate';
+ns.aml.vocabularies.core.displayName = coreKey + 'displayName';
+ns.aml.vocabularies.core.title = coreKey + 'title';
+ns.aml.vocabularies.core.name = coreKey + 'name';
+ns.aml.vocabularies.core.description = coreKey + 'description';
+ns.aml.vocabularies.core.documentation = coreKey + 'documentation';
+ns.aml.vocabularies.core.version = coreKey + 'version';
+ns.aml.vocabularies.core.provider = coreKey + 'provider';
+ns.aml.vocabularies.core.email = coreKey + 'email';
+ns.aml.vocabularies.core.url = coreKey + 'url';
+ns.aml.vocabularies.core.termsOfService = coreKey + 'termsOfService';
+ns.aml.vocabularies.core.license = coreKey + 'license';
+ns.aml.vocabularies.core.mediaType = coreKey + 'mediaType';
+ns.aml.vocabularies.security = {};
+const secKey = ns.aml.vocabularies.security.key = ns.aml.vocabularies.key + 'security#';
+ns.aml.vocabularies.security.toString = () => secKey;
+ns.aml.vocabularies.security.ParametrizedSecurityScheme = secKey + 'ParametrizedSecurityScheme';
+ns.aml.vocabularies.security.SecuritySchemeFragment = secKey + 'SecuritySchemeFragment';
+ns.aml.vocabularies.security.SecurityScheme = secKey + 'SecurityScheme';
+ns.aml.vocabularies.security.OAuth1Settings = secKey + 'OAuth1Settings';
+ns.aml.vocabularies.security.OAuth2Settings = secKey + 'OAuth2Settings';
+ns.aml.vocabularies.security.OAuth2Flow = secKey + 'OAuth2Flow';
+ns.aml.vocabularies.security.Scope = secKey + 'Scope';
+ns.aml.vocabularies.security.security = secKey + 'security';
+ns.aml.vocabularies.security.scheme = secKey + 'scheme';
+ns.aml.vocabularies.security.schemes = secKey + 'schemes';
+ns.aml.vocabularies.security.settings = secKey + 'settings';
+ns.aml.vocabularies.security.name = secKey + 'name';
+ns.aml.vocabularies.security.type = secKey + 'type';
+ns.aml.vocabularies.security.scope = secKey + 'scope';
+ns.aml.vocabularies.security.accessTokenUri = secKey + 'accessTokenUri';
+ns.aml.vocabularies.security.authorizationUri = secKey + 'authorizationUri';
+ns.aml.vocabularies.security.authorizationGrant = secKey + 'authorizationGrant';
+ns.aml.vocabularies.security.flows = secKey + 'flows';
+ns.aml.vocabularies.security.flow = secKey + 'flow';
+ns.aml.vocabularies.security.signature = secKey + 'signature';
+ns.aml.vocabularies.security.tokenCredentialsUri = secKey + 'tokenCredentialsUri';
+ns.aml.vocabularies.security.requestTokenUri = secKey + 'requestTokenUri';
+ns.aml.vocabularies.security.securityRequirement = secKey + 'SecurityRequirement';
+ns.aml.vocabularies.security.in = secKey + 'in';
+ns.aml.vocabularies.apiContract = {};
+ns.aml.vocabularies.http = ns.aml.vocabularies.apiContract;
+const contractKey = ns.aml.vocabularies.apiContract.key = ns.aml.vocabularies.key + 'apiContract#';
+ns.aml.vocabularies.apiContract.toString = () => contractKey;
+ns.aml.vocabularies.apiContract.Payload = contractKey + 'Payload';
+ns.aml.vocabularies.apiContract.Request = contractKey + 'Request';
+ns.aml.vocabularies.apiContract.EndPoint = contractKey + 'EndPoint';
+ns.aml.vocabularies.apiContract.Parameter = contractKey + 'Parameter';
+ns.aml.vocabularies.apiContract.Operation = contractKey + 'Operation';
+ns.aml.vocabularies.apiContract.WebAPI = contractKey + 'WebAPI';
+ns.aml.vocabularies.apiContract.UserDocumentationFragment = contractKey + 'UserDocumentationFragment';
+ns.aml.vocabularies.apiContract.Example = contractKey + 'Example';
+ns.aml.vocabularies.apiContract.Server = contractKey + 'Server';
+ns.aml.vocabularies.apiContract.ParametrizedResourceType = contractKey + 'ParametrizedResourceType';
+ns.aml.vocabularies.apiContract.ParametrizedTrait = contractKey + 'ParametrizedTrait';
+ns.aml.vocabularies.apiContract.header = contractKey + 'header';
+ns.aml.vocabularies.apiContract.parameter = contractKey + 'parameter';
+ns.aml.vocabularies.apiContract.paramName = contractKey + 'paramName';
+ns.aml.vocabularies.apiContract.uriParameter = contractKey + 'uriParameter';
+ns.aml.vocabularies.apiContract.variable = contractKey + 'variable';
+ns.aml.vocabularies.apiContract.payload = contractKey + 'payload';
+ns.aml.vocabularies.apiContract.server = contractKey + 'server';
+ns.aml.vocabularies.apiContract.path = contractKey + 'path';
+ns.aml.vocabularies.apiContract.url = contractKey + 'url';
+ns.aml.vocabularies.apiContract.scheme = contractKey + 'scheme';
+ns.aml.vocabularies.apiContract.endpoint = contractKey + 'endpoint';
+ns.aml.vocabularies.apiContract.queryString = contractKey + 'queryString';
+// ns.aml.vocabularies.apiContract.mediaType = contractKey + 'mediaType';
+ns.aml.vocabularies.apiContract.accepts = contractKey + 'accepts';
+ns.aml.vocabularies.apiContract.guiSummary = contractKey + 'guiSummary';
+ns.aml.vocabularies.apiContract.binding = contractKey + 'binding';
+ns.aml.vocabularies.apiContract.response = contractKey + 'response';
+ns.aml.vocabularies.apiContract.returns = contractKey + 'returns';
+ns.aml.vocabularies.apiContract.expects = contractKey + 'expects';
+ns.aml.vocabularies.apiContract.examples = contractKey + 'examples';
+ns.aml.vocabularies.apiContract.supportedOperation = contractKey + 'supportedOperation';
+ns.aml.vocabularies.apiContract.statusCode = contractKey + 'statusCode';
+ns.aml.vocabularies.apiContract.method = contractKey + 'method';
+ns.aml.vocabularies.apiContract.required = contractKey + 'required';
+ns.aml.vocabularies.shapes = {};
+const shapesKey = ns.aml.vocabularies.shapes.key = ns.aml.vocabularies.key + 'shapes#';
+ns.aml.vocabularies.shapes.toString = () => shapesKey;
+ns.aml.vocabularies.shapes.ScalarShape = shapesKey + 'ScalarShape';
+ns.aml.vocabularies.shapes.ArrayShape = shapesKey + 'ArrayShape';
+ns.aml.vocabularies.shapes.UnionShape = shapesKey + 'UnionShape';
+ns.aml.vocabularies.shapes.NilShape = shapesKey + 'NilShape';
+ns.aml.vocabularies.shapes.FileShape = shapesKey + 'FileShape';
+ns.aml.vocabularies.shapes.AnyShape = shapesKey + 'AnyShape';
+ns.aml.vocabularies.shapes.SchemaShape = shapesKey + 'SchemaShape';
+ns.aml.vocabularies.shapes.MatrixShape = shapesKey + 'MatrixShape';
+ns.aml.vocabularies.shapes.TupleShape = shapesKey + 'TupleShape';
+ns.aml.vocabularies.shapes.DataTypeFragment = shapesKey + 'DataTypeFragment';
+ns.aml.vocabularies.shapes.RecursiveShape = shapesKey + 'RecursiveShape';
+ns.aml.vocabularies.shapes.range = shapesKey + 'range';
+ns.aml.vocabularies.shapes.items = shapesKey + 'items';
+ns.aml.vocabularies.shapes.anyOf = shapesKey + 'anyOf';
+ns.aml.vocabularies.shapes.fileType = shapesKey + 'fileType';
+ns.aml.vocabularies.shapes.number = shapesKey + 'number';
+ns.aml.vocabularies.shapes.integer = shapesKey + 'integer';
+ns.aml.vocabularies.shapes.long = shapesKey + 'long';
+ns.aml.vocabularies.shapes.double = shapesKey + 'double';
+ns.aml.vocabularies.shapes.boolean = shapesKey + 'boolean';
+ns.aml.vocabularies.shapes.float = shapesKey + 'float';
+ns.aml.vocabularies.shapes.nil = shapesKey + 'nil';
+ns.aml.vocabularies.shapes.dateTimeOnly = shapesKey + 'dateTimeOnly';
+ns.aml.vocabularies.shapes.password = shapesKey + 'password';
+ns.aml.vocabularies.shapes.schema = shapesKey + 'schema';
+ns.aml.vocabularies.shapes.xmlSerialization = shapesKey + 'xmlSerialization';
+ns.aml.vocabularies.shapes.xmlName = shapesKey + 'xmlName';
+ns.aml.vocabularies.shapes.xmlAttribute = shapesKey + 'xmlAttribute';
+ns.aml.vocabularies.shapes.xmlWrapped = shapesKey + 'xmlWrapped';
+ns.aml.vocabularies.data = {};
+const dataKey = ns.aml.vocabularies.data.key = ns.aml.vocabularies.key + 'data#';
+ns.aml.vocabularies.data.toString = () => dataKey;
+ns.aml.vocabularies.data.Scalar = dataKey + 'Scalar';
+ns.aml.vocabularies.data.Object = dataKey + 'Object';
+ns.aml.vocabularies.data.Array = dataKey + 'Array';
+ns.aml.vocabularies.data.value = dataKey + 'value';
+ns.aml.vocabularies.data.type = dataKey + 'type';
+ns.aml.vocabularies.data.description = dataKey + 'description';
+ns.aml.vocabularies.data.required = dataKey + 'required';
+ns.aml.vocabularies.data.displayName = dataKey + 'displayName';
+ns.aml.vocabularies.data.minLength = dataKey + 'minLength';
+ns.aml.vocabularies.data.maxLength = dataKey + 'maxLength';
+ns.aml.vocabularies.data.default = dataKey + 'default';
+ns.aml.vocabularies.data.multipleOf = dataKey + 'multipleOf';
+ns.aml.vocabularies.data.minimum = dataKey + 'minimum';
+ns.aml.vocabularies.data.maximum = dataKey + 'maximum';
+ns.aml.vocabularies.data.enum = dataKey + 'enum';
+ns.aml.vocabularies.data.pattern = dataKey + 'pattern';
+ns.aml.vocabularies.data.items = dataKey + 'items';
+ns.aml.vocabularies.data.format = dataKey + 'format';
+ns.aml.vocabularies.data.example = dataKey + 'example';
+ns.aml.vocabularies.data.examples = dataKey + 'examples';
+
+ns.aml.vocabularies.docSourceMaps = {};
+const dsmKey = ns.aml.vocabularies.docSourceMaps.key = ns.aml.vocabularies.key + 'document-source-maps#';
+ns.aml.vocabularies.docSourceMaps.toString = () => dsmKey;
+ns.aml.vocabularies.docSourceMaps.sources = dsmKey + 'sources';
+ns.aml.vocabularies.docSourceMaps.element = dsmKey + 'element';
+ns.aml.vocabularies.docSourceMaps.value = dsmKey + 'value';
+ns.aml.vocabularies.docSourceMaps.declaredElement = dsmKey + 'declared-element';
+ns.aml.vocabularies.docSourceMaps.trackedElement = dsmKey + 'tracked-element';
+ns.aml.vocabularies.docSourceMaps.parsedJsonSchema = dsmKey + 'parsed-json-schema';
+
 // W3 namespace
-ns1.w3 = {};
-ns1.w3.name = 'http://www.w3.org/';
-ns1.w3.hydra = {};
-ns1.w3.hydra.name = ns1.w3.name + 'ns/hydra/';
-ns1.w3.hydra.core = ns1.w3.hydra.name + 'core#';
-ns1.w3.xmlSchema = ns1.w3.name + '2001/XMLSchema#';
+ns.w3 = {};
+ns.w3.key = 'http://www.w3.org/';
+ns.w3.rdfSyntax = {};
+ns.w3.rdfSyntax.key = ns.w3.key + '1999/02/22-rdf-syntax-ns#';
+ns.w3.rdfSyntax.toString = () => ns.w3.rdfSyntax.key;
+// TODO: is this unescesary?
+ns.w3.rdfSyntax.member = ns.w3.rdfSyntax.key + 'member';
+ns.w3.rdfSyntax.Seq = ns.w3.rdfSyntax.key + 'Seq';
+ns.w3.rdfSchema = {};
+ns.w3.rdfSchema.key = ns.w3.key + '2000/01/rdf-schema#';
+ns.w3.rdfSchema.toString = () => ns.w3.rdfSchema.key;
+ns.w3.rdfSchema.member = ns.w3.rdfSchema.key + 'member';
+ns.w3.rdfSchema.Seq = ns.w3.rdfSchema.key + 'Seq';
+ns.w3.hydra = {};
+ns.w3.hydra.key = ns.w3.key + 'ns/hydra/';
+ns.w3.hydra.toString = () => ns.w3.hydra.key;
+ns.w3.hydra.core = ns.aml.vocabularies.apiContract;
+ns.w3.xmlSchema = {};
+ns.w3.xmlSchema.key = ns.w3.key + '2001/XMLSchema#';
+ns.w3.xmlSchema.toString = () => ns.w3.xmlSchema.key;
+ns.w3.xmlSchema.boolean = ns.w3.xmlSchema.key + 'boolean';
+ns.w3.xmlSchema.string = ns.w3.xmlSchema.key + 'string';
+ns.w3.xmlSchema.number = ns.w3.xmlSchema.key + 'number';
+ns.w3.xmlSchema.integer = ns.w3.xmlSchema.key + 'integer';
+ns.w3.xmlSchema.long = ns.w3.xmlSchema.key + 'long';
+ns.w3.xmlSchema.double = ns.w3.xmlSchema.key + 'double';
+ns.w3.xmlSchema.float = ns.w3.xmlSchema.key + 'float';
+ns.w3.xmlSchema.nil = ns.w3.xmlSchema.key + 'nil';
+ns.w3.xmlSchema.dateTime = ns.w3.xmlSchema.key + 'dateTime';
+ns.w3.xmlSchema.time = ns.w3.xmlSchema.key + 'time';
+ns.w3.xmlSchema.date = ns.w3.xmlSchema.key + 'date';
+ns.w3.xmlSchema.base64Binary = ns.w3.xmlSchema.key + 'base64Binary';
 // w3 types
-ns1.w3.shacl = {};
-ns1.w3.shacl.name = ns1.w3.name + 'ns/shacl#';
-ns1.w3.shacl.in = ns1.w3.shacl.name + 'in';
-ns1.w3.shacl.defaultValueStr = ns1.w3.shacl.name + 'defaultValueStr';
-ns1.w3.shacl.pattern = ns1.w3.shacl.name + 'pattern';
-ns1.w3.shacl.minInclusive = ns1.w3.shacl.name + 'minInclusive';
-ns1.w3.shacl.maxInclusive = ns1.w3.shacl.name + 'maxInclusive';
-ns1.w3.shacl.multipleOf = ns1.w3.shacl.name + 'multipleOf';
-ns1.w3.shacl.minLength = ns1.w3.shacl.name + 'minLength';
-ns1.w3.shacl.maxLength = ns1.w3.shacl.name + 'maxLength';
-ns1.w3.shacl.fileType = ns1.w3.shacl.name + 'fileType';
-ns1.w3.shacl.shape = ns1.w3.shacl.name + 'Shape';
+ns.w3.shacl = {};
+const n2shaclName = ns.w3.shacl.key = ns.w3.key + 'ns/shacl#';
+ns.w3.shacl.toString = () => n2shaclName;
+ns.w3.shacl.Shape = n2shaclName + 'Shape';
+ns.w3.shacl.NodeShape = n2shaclName + 'NodeShape';
+ns.w3.shacl.SchemaShape = n2shaclName + 'SchemaShape';
+ns.w3.shacl.PropertyShape = n2shaclName + 'PropertyShape';
+ns.w3.shacl.in = n2shaclName + 'in';
+ns.w3.shacl.defaultValue = n2shaclName + 'defaultValue';
+ns.w3.shacl.defaultValueStr = n2shaclName + 'defaultValueStr';
+ns.w3.shacl.pattern = n2shaclName + 'pattern';
+ns.w3.shacl.minInclusive = n2shaclName + 'minInclusive';
+ns.w3.shacl.maxInclusive = n2shaclName + 'maxInclusive';
+ns.w3.shacl.multipleOf = n2shaclName + 'multipleOf';
+ns.w3.shacl.minLength = n2shaclName + 'minLength';
+ns.w3.shacl.maxLength = n2shaclName + 'maxLength';
+ns.w3.shacl.fileType = n2shaclName + 'fileType';
+ns.w3.shacl.and = n2shaclName + 'and';
+ns.w3.shacl.property = n2shaclName + 'property';
+ns.w3.shacl.name = n2shaclName + 'name';
+ns.w3.shacl.raw = n2shaclName + 'raw';
+ns.w3.shacl.datatype = n2shaclName + 'datatype';
+ns.w3.shacl.minCount = n2shaclName + 'minCount';
 // Hydra shortcuts
-ns1.w3.hydra.supportedOperation = ns1.w3.hydra.core + 'supportedOperation';
+ns.w3.hydra.supportedOperation = contractKey + 'supportedOperation';
 // Schema org namespace
-ns1.schema = {};
-ns1.schema.name = 'http://schema.org/';
-ns1.schema.schemaName = ns1.schema.name + 'name';
-ns1.schema.desc = ns1.schema.name + 'description';
-ns1.schema.doc = ns1.schema.name + 'documentation';
-ns1.schema.webApi = ns1.schema.name + 'WebAPI';
-ns1.schema.creativeWork = ns1.schema.name + 'CreativeWork';
-ns1.schema.displayName = ns1.schema.name + 'displayName';
-ns1.schema.title = ns1.schema.name + 'title';
+ns.schema = {};
+ns.schema.key = coreKey;
+ns.schema.toString = () => coreKey;
+ns.schema.name = ns.schema.key + 'name';
+ns.schema.desc = ns.schema.key + 'description';
+ns.schema.doc = ns.schema.key + 'documentation';
+ns.schema.webApi = contractKey + 'WebAPI';
+ns.schema.creativeWork = coreKey + 'CreativeWork';
+ns.schema.displayName = coreKey + 'displayName';
+ns.schema.title = coreKey + 'title';
 
-Object.freeze(ns1.raml);
-Object.freeze(ns1.raml.vocabularies);
-Object.freeze(ns1.aml.vocabularies);
-Object.freeze(ns1.aml);
-Object.freeze(ns1.w3);
-Object.freeze(ns1.w3.hydra);
-Object.freeze(ns1.w3.shacl);
-Object.freeze(ns1.schema);
-Object.freeze(ns1);
-
-// version 2 of the model: new model
-const ns2 = {};
-// RAML namespace
-ns2.raml = {};
-ns2.raml.name = 'http://a.ml/';
-ns2.raml.vocabularies = {};
-ns2.raml.vocabularies.name = ns2.raml.name + 'vocabularies/';
-ns2.raml.vocabularies.document = ns2.raml.vocabularies.name + 'document#';
-ns2.raml.vocabularies.core = ns2.raml.vocabularies.name + 'core#';
-ns2.raml.vocabularies.apiContract = ns2.raml.vocabularies.name + 'apiContract#';
-ns2.raml.vocabularies.http = ns2.raml.vocabularies.apiContract;
-ns2.raml.vocabularies.security = ns2.raml.vocabularies.name + 'security#';
-ns2.raml.vocabularies.shapes = ns2.raml.vocabularies.name + 'shapes#';
-ns2.raml.vocabularies.data = ns2.raml.vocabularies.name + 'data#';
-ns2.raml.vocabularies.docSourceMaps = ns2.raml.vocabularies.name + 'document-source-maps#';
-// mapping to aml namespace
-ns2.aml = ns2.raml;
-// W3 namespace
-ns2.w3 = {};
-ns2.w3.name = 'http://www.w3.org/';
-ns2.w3.hydra = {};
-ns2.w3.hydra.name = ns2.w3.name + 'ns/hydra/';
-ns2.w3.hydra.core = ns2.raml.vocabularies.apiContract;
-ns2.w3.xmlSchema = ns2.w3.name + '2001/XMLSchema#';
-// w3 types
-ns2.w3.shacl = {};
-ns2.w3.shacl.name = ns2.w3.name + 'ns/shacl#';
-ns2.w3.shacl.in = ns2.w3.shacl.name + 'in';
-ns2.w3.shacl.defaultValueStr = ns2.w3.shacl.name + 'defaultValueStr';
-ns2.w3.shacl.pattern = ns2.w3.shacl.name + 'pattern';
-ns2.w3.shacl.minInclusive = ns2.w3.shacl.name + 'minInclusive';
-ns2.w3.shacl.maxInclusive = ns2.w3.shacl.name + 'maxInclusive';
-ns2.w3.shacl.multipleOf = ns2.w3.shacl.name + 'multipleOf';
-ns2.w3.shacl.minLength = ns2.w3.shacl.name + 'minLength';
-ns2.w3.shacl.maxLength = ns2.w3.shacl.name + 'maxLength';
-ns2.w3.shacl.fileType = ns2.w3.shacl.name + 'fileType';
-ns2.w3.shacl.shape = ns2.w3.shacl.name + 'Shape';
-// ApiContracts
-ns2.apiContract = {};
-ns2.apiContract.supportedOperation = ns2.raml.vocabularies.apiContract + 'supportedOperation';
-// Hydra shortcuts
-ns2.w3.hydra.supportedOperation = ns2.raml.vocabularies.apiContract + 'supportedOperation';
-// Schema org namespace
-ns2.schema = {};
-ns2.schema.name = ns2.raml.vocabularies.core;
-ns2.schema.schemaName = ns2.schema.name + 'name';
-ns2.schema.desc = ns2.schema.name + 'description';
-ns2.schema.doc = ns2.schema.name + 'documentation';
-ns2.schema.webApi = ns2.raml.vocabularies.apiContract + 'WebAPI';
-ns2.schema.creativeWork = ns2.raml.vocabularies.core + 'CreativeWork';
-ns2.schema.displayName = ns2.raml.vocabularies.core + 'displayName';
-ns2.schema.title = ns2.raml.vocabularies.core + 'title';
-
-Object.freeze(ns2.raml);
-Object.freeze(ns2.raml.vocabularies);
-Object.freeze(ns2.aml.vocabularies);
-Object.freeze(ns2.aml);
-Object.freeze(ns2.w3);
-Object.freeze(ns2.w3.hydra);
-Object.freeze(ns2.w3.shacl);
-Object.freeze(ns2.schema);
-Object.freeze(ns2);
+Object.freeze(ns.raml);
+Object.freeze(ns.aml);
+Object.freeze(ns.aml.vocabularies);
+Object.freeze(ns.aml.vocabularies.shapes);
+Object.freeze(ns.aml.vocabularies.data);
+Object.freeze(ns.aml.vocabularies.apiContract);
+Object.freeze(ns.aml.vocabularies.security);
+Object.freeze(ns.aml.vocabularies.core);
+Object.freeze(ns.aml.vocabularies.document);
+Object.freeze(ns.w3);
+Object.freeze(ns.w3.rdfSyntax);
+Object.freeze(ns.w3.hydra);
+Object.freeze(ns.w3.shacl);
+Object.freeze(ns.schema);
+Object.freeze(ns);
 /**
  * Common functions used by AMF components to compute AMF values.
  *
@@ -17967,22 +18150,12 @@ const AmfHelperMixin = dedupingMixin((base) => {
         amf: { type: Object }
       };
     }
-
-    get amfModel() {
-      return this.amf;
-    }
-
-    set amfModel(value) {
-      // console.warn(this.nodeName + `: "amfModel" property is deprecated. Use "amf" instead.`);
-      this.amf = value;
-    }
-
     /**
      * A namespace for AMF model.
      * @return {Object}
      */
     get ns() {
-      return this.__modelVersion === 2 ? ns2 : ns1;
+      return ns;
     }
 
     get amf() {
@@ -17994,16 +18167,14 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (old === value) {
         return;
       }
+      // Cached keys cannot be static as this element can be using in the sane
+      // document with different AMF models
+      this.__cachedKeys = {};
       this._amf = value;
-      this.__modelVersion = this.__detectModelVersion(value);
       this.__amfChanged(value);
       if (this.requestUpdate) {
         this.requestUpdate('amf', old);
       }
-    }
-
-    get _modelVersion() {
-      return this.__modelVersion;
     }
     /**
      * This is an abstract method to be implemented by the components.
@@ -18013,33 +18184,6 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @abstract
      */
     __amfChanged() {}
-    /**
-     * Checks for AMF model version.
-     * @param {[type]} model [description]
-     * @return {Number} Model major version when defined, `1` when version is
-     * not defined, and `0` when the model is not valid or not set.
-     */
-    __detectModelVersion(model) {
-      if (model instanceof Array) {
-        model = model[0];
-      }
-      if (!model) {
-        return 0;
-      }
-      const ctx = model['@context'];
-      let versionString;
-      if (ctx) {
-        versionString = this._getValue(model, 'doc:version');
-      } else {
-        versionString = this._getValue(model, 'http://a.ml/vocabularies/document#version');
-      }
-      if (versionString) {
-        const major = versionString.split('.')[0];
-        return major === '2' ? 2 : 1;
-      }
-      return 1;
-    }
-
     /**
      * Returns compact model key for given value.
      * @param {String} property AMF orioginal property
@@ -18057,9 +18201,16 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (amf instanceof Array) {
         amf = amf[0];
       }
+      if (!this.__cachedKeys) {
+        this.__cachedKeys = {};
+      }
       const ctx = amf['@context'];
       if (!ctx || !property) {
         return property;
+      }
+      const cache = this.__cachedKeys;
+      if (property in cache) {
+        return cache[property];
       }
       property = String(property);
       const hashIndex = property.indexOf('#');
@@ -18068,12 +18219,15 @@ const AmfHelperMixin = dedupingMixin((base) => {
       for (let i = 0, len = keys.length; i < len; i++) {
         const k = keys[i];
         if (ctx[k] === property) {
+          cache[property] = k;
           return k;
         } else if (hashIndex === -1 && property.indexOf(ctx[k]) === 0) {
           const result = property.replace(ctx[k], k + ':');
+          cache[property] = result;
           return result;
         } else if (ctx[k] === hashProperty) {
           const result = k + ':' + property.substr(hashIndex + 1);
+          cache[property] = result;
           return result;
         }
       }
@@ -18092,7 +18246,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (amf instanceof Array) {
         amf = amf[0];
       }
-      if (this._hasType(amf, webApiDocumentType)) {
+      if (this._hasType(amf, ns.aml.vocabularies.document.Document)) {
         return amf;
       }
     }
@@ -18241,19 +18395,11 @@ const AmfHelperMixin = dedupingMixin((base) => {
     }
 
     _computeHeaders(shape) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(shape, this.ns.raml.vocabularies.http + 'header');
-      } else {
-        return this._computePropertyArray(shape, this.ns.raml.vocabularies.apiContract + 'header');
-      }
+      return this._computePropertyArray(shape, this.ns.aml.vocabularies.apiContract.header);
     }
 
     _computeQueryParameters(shape) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(shape, this.ns.raml.vocabularies.http + 'parameter');
-      } else {
-        return this._computePropertyArray(shape, this.ns.raml.vocabularies.apiContract + 'parameter');
-      }
+      return this._computePropertyArray(shape, this.ns.aml.vocabularies.apiContract.parameter);
     }
     /**
      * In OAS URI parmaeters can be defined on an operation level under `uriParameter` proeprty.
@@ -18266,15 +18412,8 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!shape) {
         return;
       }
-      let operationKey;
-      let parameterKey;
-      if (this._modelVersion !== 2) {
-        operationKey = this.ns.w3.hydra.core + 'Operation';
-        parameterKey = this.ns.raml.vocabularies.http + 'uriParameter';
-      } else {
-        operationKey = this.ns.raml.vocabularies.apiContract + 'Operation';
-        parameterKey = this.ns.raml.vocabularies.apiContract + 'uriParameter';
-      }
+      const operationKey = this.ns.aml.vocabularies.apiContract.Operation;
+      const parameterKey = this.ns.aml.vocabularies.apiContract.uriParameter;
       if (this._hasType(shape, operationKey)) {
         shape = this._computeExpects(shape);
       }
@@ -18282,11 +18421,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
     }
 
     _computeResponses(shape) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(shape, this.ns.w3.hydra.core + 'response');
-      } else {
-        return this._computePropertyArray(shape, this.ns.raml.vocabularies.apiContract + 'response');
-      }
+      return this._computePropertyArray(shape, this.ns.aml.vocabularies.apiContract.response);
     }
     /**
      * Computes value for `serverVariables` property.
@@ -18295,11 +18430,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Array<Object>|undefined} Variables if defined.
      */
     _computeServerVariables(server) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(server, this.ns.raml.vocabularies.http + 'variable');
-      } else {
-        return this._computePropertyArray(server, this.ns.raml.vocabularies.apiContract + 'variable');
-      }
+      return this._computePropertyArray(server, this.ns.aml.vocabularies.apiContract.variable);
     }
     /**
      * Computes value for `endpointVariables` property.
@@ -18323,11 +18454,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Array<Object>|undefined} Payload model if defined.
      */
     _computePayload(expects) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(expects, this.ns.raml.vocabularies.http + 'payload');
-      } else {
-        return this._computePropertyArray(expects, this.ns.raml.vocabularies.apiContract + 'payload');
-      }
+      return this._computePropertyArray(expects, this.ns.aml.vocabularies.apiContract.payload);
     }
     /**
      * Computes value for `returns` property
@@ -18336,11 +18463,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Array<Object>|undefined}
      */
     _computeReturns(method) {
-      if (this._modelVersion !== 2) {
-        return this._computePropertyArray(method, this.ns.w3.hydra.core + 'returns');
-      } else {
-        return this._computePropertyArray(method, this.ns.raml.vocabularies.apiContract + 'returns');
-      }
+      return this._computePropertyArray(method, this.ns.aml.vocabularies.apiContract.returns);
     }
     /**
      * Computes value for `security` property
@@ -18349,7 +18472,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Array<Object>|undefined}
      */
     _computeSecurity(method) {
-      return this._computePropertyArray(method, this.ns.raml.vocabularies.security + 'security');
+      return this._computePropertyArray(method, this.ns.aml.vocabularies.security.security);
     }
     /**
      * Computes value for `hasCustomProperties` property.
@@ -18358,7 +18481,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Boolean}
      */
     _computeHasCustomProperties(shape) {
-      return this._hasProperty(shape, this.ns.raml.vocabularies.document + 'customDomainProperties');
+      return this._hasProperty(shape, this.ns.aml.vocabularies.document.customDomainProperties);
     }
     /**
      * Computes API version from the AMF model.
@@ -18371,11 +18494,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!api) {
         return;
       }
-      if (this._modelVersion !== 2) {
-        return this._getValue(api, this.ns.schema.name + 'version');
-      } else {
-        return this._getValue(api, this.ns.raml.vocabularies.core + 'version');
-      }
+      return this._getValue(api, this.ns.aml.vocabularies.core.version);
     }
     /**
      * Computes model's `encodes` property.
@@ -18390,7 +18509,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (model instanceof Array) {
         model = model[0];
       }
-      const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'encodes');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.document.encodes);
       const data = model[key];
       if (data) {
         return data instanceof Array ? data[0] : data;
@@ -18412,7 +18531,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!model) {
         return;
       }
-      const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'declares');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.document.declares);
       const data = this._ensureArray(model[key]);
       return data instanceof Array ? data : undefined;
     }
@@ -18432,7 +18551,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!model) {
         return;
       }
-      const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'references');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.document.references);
       const data = this._ensureArray(model[key]);
       return data instanceof Array ? data : undefined;
     }
@@ -18462,14 +18581,64 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!api) {
         return;
       }
-      let key;
-      if (this._modelVersion !== 2) {
-        key = this._getAmfKey(this.ns.raml.vocabularies.http + 'server');
-      } else {
-        key = this._getAmfKey(this.ns.raml.vocabularies.apiContract + 'server');
-      }
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.server);
       const srv = this._ensureArray(api[key]);
       return srv ? srv[0] : undefined;
+    }
+    /**
+     * 
+     * @param {?String} endpointId Optional endpoint to look for the servers in
+     * @param {?String} methodId Optional method to look for the servers in
+     * @return {Array} List of servers for method, if defined, or endpoint, if defined, or root level
+     */
+    _getServers({ endpointId, methodId }){
+      const { amf } = this;
+      let api = this._computeWebApi(amf);
+      if (Array.isArray(api)) {
+        api = api[0];
+      }
+      if (!api) {
+        return
+      }
+
+      const serverKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.server);
+
+      const getRootServers = () => {
+        return this._getValueArray(api, serverKey);
+      };
+      const getEndpointServers = () => {
+        const endpoint = this._computeEndpointModel(api, endpointId);
+        if (endpoint) {
+          return this._getValueArray(endpoint, serverKey);
+        }
+        return getRootServers();
+      };
+      const getMethodServers = () => {
+        const method = this._computeMethodModel(api, methodId);
+        if (method) {
+          return this._getValueArray(method, serverKey);
+        }
+        return getEndpointServers()
+      };
+
+      if (methodId) {
+        return getMethodServers()
+      } else if (endpointId) {
+        return getEndpointServers()
+      }
+      return getRootServers()
+    }
+    /**
+     * Compute values for `server` property based on node an optional selected id.
+     *
+     * @param {?String} endpointId Optional endpoint id, required if method is provided
+     * @param {?String} methodId Optional method id
+     * @param {?String} id Optional selected server id
+     * @return {Array|any} The server list or undefined if node has no servers
+     */
+    _getServer({ endpointId, methodId, id }) {
+      const servers = this._getServers({ endpointId, methodId });
+      return servers ? servers.filter(srv => this._getValue(srv, '@id') === id) : undefined;
     }
     /**
      * Computes endpoint's URI based on `amf` and `endpoint` models.
@@ -18486,12 +18655,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
         base = base.substr(0, base.length - 1);
       }
       base = this._ensureUrlScheme(base);
-      let path;
-      if (this._modelVersion !== 2) {
-        path = this._getValue(endpoint, this.ns.raml.vocabularies.http + 'path');
-      } else {
-        path = this._getValue(endpoint, this.ns.raml.vocabularies.apiContract + 'path');
-      }
+      const path = this._getValue(endpoint, this.ns.aml.vocabularies.apiContract.path);
       let result = base + (path || '');
       if (version && result) {
         result = result.replace('{version}', version);
@@ -18529,12 +18693,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {String|undefined} Base uri value if exists.
      */
     _getAmfBaseUri(server, protocols) {
-      let key;
-      if (this._modelVersion !== 2) {
-        key = this.ns.raml.vocabularies.http + 'url';
-      } else {
-        key = this.ns.raml.vocabularies.core + 'urlTemplate';
-      }
+      const key = this.ns.aml.vocabularies.core.urlTemplate;
       let value = this._getValue(server, key);
       value = this._ensureUrlScheme(value, protocols);
       return value;
@@ -18576,11 +18735,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!api) {
         return;
       }
-      if (this._modelVersion !== 2) {
-        return this._getValueArray(api, this.ns.raml.vocabularies.http + 'scheme');
-      } else {
-        return this._getValueArray(api, this.ns.raml.vocabularies.apiContract + 'scheme');
-      }
+      return this._getValueArray(api, this.ns.aml.vocabularies.apiContract.scheme);
     }
     /**
      * Computes value for the `expects` property.
@@ -18589,15 +18744,8 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {Object}
      */
     _computeExpects(method) {
-      let operationKey;
-      let expectsKey;
-      if (this._modelVersion !== 2) {
-        operationKey = this.ns.w3.hydra.core + 'Operation';
-        expectsKey = this.ns.w3.hydra.core + 'expects';
-      } else {
-        operationKey = this.ns.raml.vocabularies.apiContract + 'Operation';
-        expectsKey = this.ns.raml.vocabularies.apiContract + 'expects';
-      }
+      const operationKey = this.ns.aml.vocabularies.apiContract.Operation;
+      const expectsKey = this.ns.aml.vocabularies.apiContract.expects;
       if (this._hasType(method, operationKey)) {
         const key = this._getAmfKey(expectsKey);
         const expects = this._ensureArray(method[key]);
@@ -18614,27 +18762,9 @@ const AmfHelperMixin = dedupingMixin((base) => {
      * @return {String|undefined}
      */
     _computePropertyValue(item) {
-      let exKey;
-      if (this._modelVersion !== 2) {
-        exKey = this.ns.raml.vocabularies.document + 'examples';
-      } else {
-        exKey = this.ns.raml.vocabularies.apiContract + 'examples';
-      }
-
-      let schemaKey;
-      if (this._modelVersion !== 2) {
-        schemaKey = this.ns.raml.vocabularies.http + 'schema';
-      } else {
-        schemaKey = this.ns.raml.vocabularies.shapes + 'schema';
-      }
-
-      let rawKey;
-      if (this._modelVersion !== 2) {
-        rawKey = this.ns.w3.shacl.name + 'raw';
-      } else {
-        rawKey = this.ns.raml.vocabularies.document + 'raw';
-      }
-
+      const exKey = this.ns.aml.vocabularies.apiContract.examples;
+      const schemaKey = this.ns.aml.vocabularies.shapes.schema;
+      const rawKey = this.ns.aml.vocabularies.document.raw;
       const skey = this._getAmfKey(schemaKey);
       let schema = item && item[skey];
       if (!schema) {
@@ -18643,7 +18773,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (schema instanceof Array) {
         schema = schema[0];
       }
-      let value = this._getValue(schema, this.ns.w3.shacl.name + 'defaultValue');
+      let value = this._getValue(schema, this.ns.w3.shacl.defaultValue);
       if (!value) {
         const examplesKey = this._getAmfKey(exKey);
         let example = schema[examplesKey];
@@ -18665,14 +18795,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!webApi) {
         return [];
       }
-      let endpointKey;
-
-      if (this._modelVersion !== 2) {
-        endpointKey = this.ns.raml.vocabularies.http + 'endpoint';
-      } else {
-        endpointKey = this.ns.raml.vocabularies.apiContract + 'endpoint';
-      }
-
+      const endpointKey = this.ns.aml.vocabularies.apiContract.endpoint;
       const key = this._getAmfKey(endpointKey);
       return this._ensureArray(webApi[key]);
     }
@@ -18705,14 +18828,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!endpoints) {
         return;
       }
-
-      let pathKey;
-      if (this._modelVersion !== 2) {
-        pathKey = this.ns.raml.vocabularies.http + 'path';
-      } else {
-        pathKey = this.ns.raml.vocabularies.apiContract + 'path';
-      }
-
+      const pathKey = this.ns.aml.vocabularies.apiContract.path;
       for (let i = 0; i < endpoints.length; i++) {
         const ePath = this._getValue(endpoints[i], pathKey);
         if (ePath === path) {
@@ -18745,15 +18861,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!endpoint) {
         return [];
       }
-
-      let supportedOperationKey;
-      if (this._modelVersion !== 2) {
-        supportedOperationKey = this.ns.w3.hydra.supportedOperation;
-      } else {
-        supportedOperationKey = this.ns.apiContract.supportedOperation;
-      }
-
-      const opKey = this._getAmfKey(supportedOperationKey);
+      const opKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       return this._ensureArray(endpoint[opKey]);
     }
     /**
@@ -18770,15 +18878,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!endpoints) {
         return;
       }
-
-      let supportedOperationKey;
-      if (this._modelVersion !== 2) {
-        supportedOperationKey = this.ns.w3.hydra.supportedOperation;
-      } else {
-        supportedOperationKey = this.ns.apiContract.supportedOperation;
-      }
-
-      const opKey = this._getAmfKey(supportedOperationKey);
+      const opKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       for (let i = 0, len = endpoints.length; i < len; i++) {
         const endpoint = endpoints[i];
         let methods = endpoint[opKey];
@@ -18808,15 +18908,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!endpoint) {
         return;
       }
-
-      let supportedOperationKey;
-      if (this._modelVersion !== 2) {
-        supportedOperationKey = this.ns.w3.hydra.supportedOperation;
-      } else {
-        supportedOperationKey = this.ns.apiContract.supportedOperation;
-      }
-
-      const opKey = this._getAmfKey(supportedOperationKey);
+      const opKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       return this._ensureArray(endpoint[opKey]);
     }
     /**
@@ -18837,7 +18929,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       let type = declares.find((item) => item['@id'] === selected || item['@id'] === compactId);
       if (!type && references && references.length) {
         for (let i = 0, len = references.length; i < len; i++) {
-          if (!this._hasType(references[i], this.ns.raml.vocabularies.document + 'Module')) {
+          if (!this._hasType(references[i], this.ns.aml.vocabularies.document.Module)) {
             continue;
           }
           type = this._computeReferenceType(references[i], selected);
@@ -18912,7 +19004,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (typeof shape !== 'object' || shape instanceof Array || !amf || shape.__apicResolved) {
         return shape;
       }
-      let refKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'link-target');
+      let refKey = this._getAmfKey(this.ns.aml.vocabularies.document.linkTarget);
       let refValue = this._ensureArray(shape[refKey]);
       let refData;
       if (refValue) {
@@ -18924,7 +19016,7 @@ const AmfHelperMixin = dedupingMixin((base) => {
         }
         refData = this._getLinkTarget(amf, refKey);
       } else {
-        refKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'reference-id');
+        refKey = this._getAmfKey(this.ns.aml.vocabularies.document.referenceId);
         refValue = this._ensureArray(shape[refKey]);
         if (refValue) {
           const refKey = refValue[0]['@id'];
@@ -18962,17 +19054,14 @@ const AmfHelperMixin = dedupingMixin((base) => {
       if (!amf || !id) {
         return;
       }
-      const declares = this._computeDeclares(amf);
-      if (!declares) {
-        return;
-      }
       let target;
-      for (let i = 0; i < declares.length; i++) {
-        const _ref = declares[i];
-        if (_ref && _ref['@id'] === id) {
-          target = _ref;
-          break;
-        }
+      const declares = this._computeDeclares(amf);
+      if (declares) {
+        target = this._findById(declares, id);
+      }
+      if (!target) {
+        const references = this._computeReferences(amf);
+        target = this._obtainShapeFromReferences(references, id);
       }
       if (!target) {
         return;
@@ -18982,12 +19071,50 @@ const AmfHelperMixin = dedupingMixin((base) => {
       return target;
     }
 
-    _getSchemaKey(element) {
-      if (element._modelVersion === 1) {
-        return element._getAmfKey(element.ns.raml.vocabularies.http + 'schema');
-      } else {
-        return element._getAmfKey(element.ns.raml.vocabularies.shapes + 'schema');
+    /**
+     * Resolves the shape of a given reference.
+     *
+     * @param {Object} references References object to search in
+     * @param {Object} id Id of the shape to resolve
+     * @return {Object | undefined} Resolved shape for given reference, undefined otherwise
+     */
+    _obtainShapeFromReferences(references, id) {
+      let target;
+      for (let i = 0; i < references.length; i++) {
+        const _ref = references[i];
+        // case of fragment that encodes the shape
+        const encoded = this._computeEncodes(_ref);
+        if (encoded && encoded['@id'] === id) {
+          target = encoded;
+          break;
+        }
+        // case of a library which declares types
+        if (!encoded) {
+          target = this._findById(this._computeDeclares(_ref), id);
+          if (target) break;
+        }
       }
+      return target;
+    }
+
+    /**
+     * Searches a node with a given ID in an array
+     *
+     * @param {Array} array Array to search for a given ID
+     * @param {String} id Id to search for
+     * @return {Object | undefined} Node with the given ID when found, undefined otherwise
+     */
+    _findById(array, id) {
+      if (!array) return;
+      let target;
+      for (let i = 0; i < array.length; i++) {
+        const _current = array[i];
+        if (_current && _current['@id'] === id) {
+          target = _current;
+          break;
+        }
+      }
+      return target;
     }
 
     _getReferenceId(amf, id) {
@@ -19020,90 +19147,6 @@ const AmfHelperMixin = dedupingMixin((base) => {
           shape[key] = this._resolve(currentShape);
         }
       });
-    }
-    /**
-     * Gets string value for an example data model.
-     *
-     * @param {Object} item Example item model
-     * @param {Boolean} isJson If set it checks if the `raw` value is valid JSON.
-     * If it isn't then it parses structured value.
-     * @return {String}
-     * @deprecated Use `amf-excample-generator` for examples generation.
-     */
-    _getExampleValue(item, isJson) {
-      item = this._resolve(item);
-      let data = this._getValue(item, this.ns.w3.shacl.name + 'raw');
-      // This suppose to be a JSON data so lets test it.
-      if (!data || (isJson && !(data[0] === '{' || data[0] === '['))) {
-        const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'structuredValue');
-        const structured = this._ensureArray(item[key]);
-        if (structured) {
-          data = this._computeExampleFromStructuredValue(structured[0]);
-          data = JSON.stringify(data, null, 2);
-        }
-      }
-      return data;
-    }
-    /**
-     * Computes an example from example structured value.
-     *
-     * @param {Object} model `structuredValue` item model.
-     * @return {Object|Array} Javascript object or array with structured value.
-     * @deprecated Use `amf-excample-generator` for examples generation.
-     */
-    _computeExampleFromStructuredValue(model) {
-      if (this._hasType(model, this.ns.raml.vocabularies.data + 'Scalar')) {
-        return this._computeStructuredExampleValue(this._getValue(model, this.ns.raml.vocabularies.data + 'value'));
-      }
-      const isObject = this._hasType(model, this.ns.raml.vocabularies.data + 'Object');
-      const result = isObject ? {} : [];
-      const modelKeys = ['@id', '@type'];
-      Object.keys(model).forEach((key) => {
-        if (modelKeys.indexOf(key) !== -1) {
-          return;
-        }
-        const value = this._computeStructuredExampleValue(model[key][0]);
-        if (isObject) {
-          const name = key.substr(key.indexOf('#') + 1);
-          result[name] = value;
-        } else {
-          result.push(value);
-        }
-      });
-      return result;
-    }
-    /**
-     * Computes value with propert data type for a structured example.
-     * @param {Object} model Structured example item model.
-     * @return {String|Boolean|Number} Value for the example.
-     * @deprecated Use `amf-excample-generator` for examples generation.
-     */
-    _computeStructuredExampleValue(model) {
-      if (!model) {
-        return;
-      }
-      if (typeof model === 'string') {
-        return model;
-      }
-      if (this._hasType(model, this.ns.raml.vocabularies.data + 'Scalar')) {
-        const key = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
-        const mValue = this._ensureArray(model[key])[0];
-        const type = mValue['@type'];
-        const value = mValue['@value'];
-        switch (type) {
-          case this.ns.w3.xmlSchema + 'boolean':
-            return value === 'true' ? true : false;
-          case this.ns.w3.xmlSchema + 'integer':
-          case this.ns.w3.xmlSchema + 'long':
-          case this.ns.w3.xmlSchema + 'double':
-          case this.ns.w3.xmlSchema + 'float':
-          case this.ns.raml.vocabularies.shapes + 'number':
-            return Number(value);
-          default:
-            return value;
-        }
-      }
-      return this._computeExampleFromStructuredValue(model);
     }
   }
   return AHmixin;
@@ -19385,7 +19428,7 @@ var markdownStyles = css`[slot="markdown-html"] {
 [slot="markdown-html"] h5 code,
 [slot="markdown-html"] h6 tt,
 [slot="markdown-html"] h6 code {
-  font-size: inherit
+  font-size: inherit;
 }
 
 [slot="markdown-html"] h1 {
@@ -19408,19 +19451,19 @@ var markdownStyles = css`[slot="markdown-html"] {
 [slot="markdown-html"] h3 {
   font-weight: var(--arc-font-subhead-font-weight, 400);
   font-size: 1.5em;
-  line-height: 1.43
+  line-height: 1.43;
 }
 
 [slot="markdown-html"] h4 {
   font-weight: var(--arc-font-subhead-font-weight, 400);
   line-height: var(--arc-font-subhead-line-height, 24px);
-  font-size: 1.25em
+  font-size: 1.25em;
 }
 
 [slot="markdown-html"] h5 {
   font-weight: var(--arc-font-subhead-font-weight, 400);
   line-height: var(--arc-font-subhead-line-height, 24px);
-  font-size: 1em
+  font-size: 1em;
 }
 
 [slot="markdown-html"] h6 {
@@ -19494,7 +19537,7 @@ var markdownStyles = css`[slot="markdown-html"] {
 
 [slot="markdown-html"] dl dd {
   padding: 0 16px;
-  margin-bottom: 16px
+  margin-bottom: 16px;
 }
 
 [slot="markdown-html"] blockquote {
@@ -19504,11 +19547,11 @@ var markdownStyles = css`[slot="markdown-html"] {
 }
 
 [slot="markdown-html"] blockquote>:first-child {
-  margin-top: 0
+  margin-top: 0;
 }
 
 [slot="markdown-html"] blockquote>:last-child {
-  margin-bottom: 0
+  margin-bottom: 0;
 }
 
 [slot="markdown-html"] table {
@@ -19525,7 +19568,7 @@ var markdownStyles = css`[slot="markdown-html"] {
 }
 
 [slot="markdown-html"] table th {
-  font-weight: bold
+  font-weight: bold;
 }
 
 [slot="markdown-html"] table th,
@@ -19536,7 +19579,7 @@ var markdownStyles = css`[slot="markdown-html"] {
 
 [slot="markdown-html"] table tr {
   background-color: #fff;
-  border-top: 1px solid #ccc
+  border-top: 1px solid #ccc;
 }
 
 [slot="markdown-html"] table tr:nth-child(2n) {
@@ -19550,27 +19593,27 @@ var markdownStyles = css`[slot="markdown-html"] {
 }
 
 [slot="markdown-html"] img[align=right] {
-  padding-left: 20px
+  padding-left: 20px;
 }
 
 [slot="markdown-html"] img[align=left] {
-  padding-right: 20px
+  padding-right: 20px;
 }
 
 [slot="markdown-html"] code,
 [slot="markdown-html"] tt {
-  font-family: var(--arc-font-code-family, 'Roboto Mono', 'Consolas', 'Menlo', monospace;);
+  font-family: var(--arc-font-code-family, "Roboto Mono, Consolas, Menlo, monospace");
   -webkit-font-smoothing: var(--arc-font-font-smoothing);
   padding: 0;
   padding-top: 0.2em;
   padding-bottom: 0.2em;
   margin: 0;
   background-color: var(--markdown-styles-code-background-color, rgba(0, 0, 0, 0.04));
-  border-radius: 2px
+  border-radius: 2px;
 }
 
 [slot="markdown-html"] pre {
-  word-wrap: normal
+  word-wrap: normal;
 }
 
 /**
@@ -19580,7 +19623,7 @@ var markdownStyles = css`[slot="markdown-html"] {
 */
 [slot="markdown-html"] code,
 [slot="markdown-html"] pre {
-  font-family: var(--arc-font-code-family, 'Roboto Mono', 'Consolas', 'Menlo', monospace;);
+  font-family: var(--arc-font-code-family, "Roboto Mono, Consolas, Menlo, monospace");
   -webkit-font-smoothing: var(--arc-font-font-smoothing);
   color: var(--code-color, black);
   background-color: var(--code-background-color);
@@ -19833,15 +19876,22 @@ var labelStyles = css`
 `;
 
 /* eslint-disable max-len */
+/**
+ * Wraps icon into an SVG container.
+ * @param {SVGTemplateResult} tpl Icon definition
+ * @return {SVGTemplateResult} Complete SVG icon definition
+ */
 const iconWrapper = (tpl) => svg`<svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;">${tpl}</svg>`;
 const addCircleOutline = iconWrapper(svg`<path d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>`);
 const cached = iconWrapper(svg`<path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"></path>`);
 const chevronLeft = iconWrapper(svg`<path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path>`);
 const chevronRight = iconWrapper(svg`<path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path>`);
+const code = iconWrapper(svg`<path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"></path>`);
 const expandLess = iconWrapper(svg`<path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"></path>`);
 const expandMore = iconWrapper(svg`<path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path>`);
 const help = iconWrapper(svg`<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"></path>`);
 const info = iconWrapper(svg`<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"></path>`);
+const infoOutline = iconWrapper(svg`<path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path>`);
 const insertDriveFile = iconWrapper(svg`<path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"></path>`);
 const removeCircleOutline = iconWrapper(svg`<path d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>`);
 const sentimentVeryDissatisfied = iconWrapper(svg`<path d="M11.99 2C6.47 2 2 6.47 2 12s4.47 10 9.99 10S22 17.53 22 12 17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm4.18-12.24l-1.06 1.06-1.06-1.06L13 8.82l1.06 1.06L13 10.94 14.06 12l1.06-1.06L16.18 12l1.06-1.06-1.06-1.06 1.06-1.06zM7.82 12l1.06-1.06L9.94 12 11 10.94 9.94 9.88 11 8.82 9.94 7.76 8.88 8.82 7.82 7.76 6.76 8.82l1.06 1.06-1.06 1.06zM12 14c-2.33 0-4.31 1.46-5.11 3.5h10.22c-.8-2.04-2.78-3.5-5.11-3.5z"></path>`);
@@ -19869,13 +19919,12 @@ const visibilityOff = iconWrapper(svg`<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13
  * `--api-annotation-document-color` | Color of the custom property (annotation) documentation | `#616161`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       color: var(--api-annotation-document-color, #616161);
@@ -19885,11 +19934,16 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
       display: none;
     }
 
-    .custom-prtoperty {
-      margin: 12px 0;
+    .custom-property {
+      border-left: 3px var(--api-annotation-accent-color, #1976D2) solid;
+      border-radius: 2px;
+      background-color: var(--api-annotation-background-color, #F5F7F9);
+      padding: 16px 0;
+      margin: 20px 0;
+      display: flex;
     }
 
-    .custom-prtoperty > span {
+    .custom-property > span {
       display: block;
     }
 
@@ -19899,11 +19953,20 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
 
     .scalar-value {
       display: block;
+      margin-top: 3px;
     }
 
     .custom-list {
       padding: 0;
+      margin: 0;
       list-style: none;
+    }
+
+    .info-icon {
+      margin: 0 12px;
+      fill: var(--api-annotation-accent-color, #1976D2);
+      width: 24px;
+      height: 24px;
     }`;
   }
 
@@ -19983,9 +20046,17 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
     this.requestUpdate('customList', oldValue);
   }
 
-  constructor() {
-    super();
-    this._hasCustomProperties = false;
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (this._hasCustomProperties === undefined) {
+      this._hasCustomProperties = false;
+    }
+  }
+
+  ensureObject(value) {
+    return (value instanceof Array) ? value[0] : value;
   }
 
   /**
@@ -19999,7 +20070,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
    * @param {Object} shape AMF shape or range property.
    */
   _shapeChanged(shape) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'customDomainProperties');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.document.customDomainProperties);
     const custom = this._ensureArray(shape && shape[key]);
     const has = !!(custom && custom.length);
     this._hasCustomProperties = has;
@@ -20007,7 +20078,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
       return;
     }
     const keys = custom.map((item) => item['@id']);
-    const properties = keys.map((key) => shape[key] || shape['amf://id' + key]);
+    const properties = keys.map((key) => this.ensureObject(shape[key] || shape['amf://id' + key]));
     this._customList = properties;
   }
   /**
@@ -20029,7 +20100,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
   }
 
   _computeName(item) {
-    return this._getValue(item, this.ns.raml.vocabularies.document + 'name');
+    return this._getValue(item, this.ns.aml.vocabularies.document.name);
   }
   /**
    * Tests if custom propery can have value.
@@ -20041,7 +20112,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
     if (!this._isScalar(item)) {
       return true;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.data.value);
     let value = item && item[key];
     if (!value) {
       return false;
@@ -20049,7 +20120,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
     if (value instanceof Array) {
       value = value[0];
     }
-    return !this._hasType(value, this.ns.w3.xmlSchema + 'nil');
+    return !this._hasType(value, this.ns.w3.xmlSchema.nil);
   }
   /**
    * Tests if value is a scalar value
@@ -20058,7 +20129,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
    * @return {Boolean}
    */
   _isScalar(item) {
-    return this._hasType(item, this.ns.raml.vocabularies.data + 'Scalar');
+    return this._hasType(item, this.ns.aml.vocabularies.data.Scalar);
   }
   /**
    * Computes scalar value for the item.
@@ -20070,7 +20141,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
     if (item instanceof Array) {
       item = item[0];
     }
-    return this._getValue(item, this.ns.raml.vocabularies.data + 'value');
+    return this._getValue(item, this.ns.aml.vocabularies.data.value);
   }
   /**
    * Computes complex (object) value for the custom property
@@ -20083,7 +20154,7 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
       return;
     }
     const data = [];
-    const dataKey = this._getAmfKey(this.ns.raml.vocabularies.data);
+    const dataKey = this._getAmfKey(this.ns.raml.vocabularies.data + '');
     const len = dataKey.length;
     Object.keys(item).forEach((key) => {
       if (key.indexOf(dataKey) === -1) {
@@ -20103,27 +20174,41 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
   }
 
   _renderItemValue(item) {
+    const isScalar = this._isScalar(item);
+    const value = isScalar ? this._scalarValue(item) : this._renderItemComplexValue(item);
+    if (!value || value === 'nil') {
+      return '';
+    }
     return html`<span class="value">
-      ${this._isScalar(item) ?
-        html`<span class="scalar-value">${this._scalarValue(item)}</span>` :
-        this._renderItemComplexValue(item)}
+      ${isScalar ?
+        html`<span class="scalar-value">${value}</span>` :
+        value}
     </span>`;
   }
 
   _renderItemComplexValue(item) {
     const items = this._complexValue(item);
     if (!items || !items.length) {
-      return;
+      return '';
     }
     return items.map((item) => html`<span class="scalar-value">${item.label}: ${item.value}</span>`);
   }
 
   _renderItem(item) {
-    return html`
-    <li class="custom-prtoperty">
-      <span class="name">${this._computeName(item)}</span>
-      ${this._hasValue(item) ? this._renderItemValue(item) : undefined}
-    </li>`;
+    const hasValue = this._hasValue(item);
+    const name = this._computeName(item);
+    const value = hasValue ? this._renderItemValue(item) : '';
+    if (!name && !value) {
+      return '';
+    }
+    return html`<style>${this.styles}</style>
+    <div class="custom-property">
+      <div class="info-icon">${infoOutline}</div>
+      <div class="info-value">
+        ${name ? html`<span class="name">${name}</span>` : ''}
+        ${value}
+      </div>
+    </div>`;
   }
 
   render() {
@@ -20131,10 +20216,8 @@ class ApiAnnotationDocument extends AmfHelperMixin(LitElement) {
     if (!list || !list.length) {
       return;
     }
-    return html`
-    <ul class="custom-list">
-      ${list.map((item) => this._renderItem(item))}
-    </ul>`;
+    const items = list.map((item) => this._renderItem(item));
+    return html`${items}`;
   }
 }
 window.customElements.define('api-annotation-document', ApiAnnotationDocument);
@@ -21481,7 +21564,7 @@ Ripple.prototype = {
   },
 
   remove: function() {
-    dom(this.waveContainer.parentNode).removeChild(this.waveContainer);
+    dom(dom(this.waveContainer).parentNode).removeChild(this.waveContainer);
   }
 };
 
@@ -21544,12 +21627,11 @@ Apply `circle` class to make the rippling effect within a circle.
 
     <paper-ripple class="circle"></paper-ripple>
 
-@group Paper Elements
 @element paper-ripple
-@hero hero.svg
 @demo demo/index.html
 */
 Polymer({
+  /** @override */
   _template: html$1`
     <style>
       :host {
@@ -21628,8 +21710,6 @@ Polymer({
   properties: {
     /**
      * The initial opacity set on the wave.
-     *
-     * @attribute initialOpacity
      * @type number
      * @default 0.25
      */
@@ -21638,7 +21718,6 @@ Polymer({
     /**
      * How fast (opacity per second) the wave fades out.
      *
-     * @attribute opacityDecayVelocity
      * @type number
      * @default 0.8
      */
@@ -21648,7 +21727,6 @@ Polymer({
      * If true, ripples will exhibit a gravitational pull towards
      * the center of their container as they fade away.
      *
-     * @attribute recenters
      * @type boolean
      * @default false
      */
@@ -21657,7 +21735,6 @@ Polymer({
     /**
      * If true, ripples will center inside its container
      *
-     * @attribute recenters
      * @type boolean
      * @default false
      */
@@ -21666,7 +21743,6 @@ Polymer({
     /**
      * A list of the visual ripples.
      *
-     * @attribute ripples
      * @type Array
      * @default []
      */
@@ -21721,20 +21797,22 @@ Polymer({
     'space:keyup': '_onSpaceKeyup'
   },
 
+  /** @override */
   attached: function() {
     // Set up a11yKeysBehavior to listen to key events on the target,
     // so that space and enter activate the ripple even if the target doesn't
     // handle key events. The key handlers deal with `noink` themselves.
-    if (this.parentNode.nodeType == 11) {  // DOCUMENT_FRAGMENT_NODE
+    if (dom(this).parentNode.nodeType == 11) {  // DOCUMENT_FRAGMENT_NODE
       this.keyEventTarget = dom(this).getOwnerRoot().host;
     } else {
-      this.keyEventTarget = this.parentNode;
+      this.keyEventTarget = dom(this).parentNode;
     }
     var keyEventTarget = /** @type {!EventTarget} */ (this.keyEventTarget);
     this.listen(keyEventTarget, 'up', 'uiUpAction');
     this.listen(keyEventTarget, 'down', 'uiDownAction');
   },
 
+  /** @override */
   detached: function() {
     this.unlisten(this.keyEventTarget, 'up', 'uiUpAction');
     this.unlisten(this.keyEventTarget, 'down', 'uiDownAction');
@@ -21822,7 +21900,7 @@ Polymer({
 
   onAnimationComplete: function() {
     this._animating = false;
-    this.$.background.style.backgroundColor = null;
+    this.$.background.style.backgroundColor = '';
     this.fire('transitionend');
   },
 
@@ -21861,6 +21939,7 @@ Polymer({
    * https://developer.mozilla.org/en-US/docs/Web/API/Element/animate.
    *
    * @suppress {checkTypes}
+   * @override
    */
   animate: function() {
     if (!this._animating) {
@@ -22053,6 +22132,174 @@ class AnypointButtonBase extends ControlStateMixin(ButtonStateMixin(LitElement))
   }
 }
 
+var styles = css`
+:host {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-sizing: border-box;
+  min-width: 5.14em;
+  margin: 0 0.29em;
+  outline-width: 0;
+  user-select: none;
+  cursor: pointer;
+  z-index: 0;
+  padding: 0.7em 0.57em;
+  font-size: var(--anypoint-button-font-size, 15px);
+  background-color: var(--anypoint-button-background-color, inherit);
+  color: var(--anypoint-button-color, var(--anypoint-color-primary));
+  border-width: 1px;
+  border-color: var(--anypoint-button-border-color, transparent);
+  border-style: solid;
+  border-radius: var(--anypoint-button-border-radius, 3px);
+  text-transform: var(--anypoint-button-text-transform, uppercase);
+  transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:host([hidden]) {
+  display: none !important;
+}
+
+:host(:focus) {
+  outline: none;
+}
+
+:host([disabled]) {
+  cursor: auto;
+  pointer-events: none;
+}
+
+:host([emphasis="low"]:not([compatibility])) {
+  box-shadow: none !important;
+}
+
+:host([emphasis="low"][disabled]) {
+  color: var(--anypoint-button-disabled-color, #a8a8a8);
+}
+
+:host(:not([pressed])[emphasis="low"]:hover) {
+  background-color: var(--anypoint-button-emphasis-low-hover-background-color, rgba(0, 162, 223, .08));
+}
+
+:host(:not([pressed]):not([compatibility])[emphasis="low"][focused]) {
+  background-color: var(--anypoint-button-emphasis-low-focus-background-color, rgba(0, 162, 223, .12));
+  color: var(--anypoint-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
+}
+
+:host(:not([pressed])[emphasis="low"][active]) {
+  background-color: var(--anypoint-button-emphasis-low-active-background-color, rgba(0, 162, 223, .16));
+}
+
+:host([emphasis="medium"]:not([compatibility])) {
+  box-shadow: none !important;
+}
+
+:host([emphasis="medium"]) {
+  border-color: var(--anypoint-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue1));
+}
+
+:host([emphasis="medium"][disabled]) {
+  color: var(--anypoint-button-disabled-color, #a8a8a8);
+  border-color: var(--anypoint-button-disabled-color, var(--anypoint-color-aluminum4));
+}
+
+:host(:not([pressed])[emphasis="medium"]:hover) {
+  background-color: var(--anypoint-button-emphasis-medium-hover-background-color, rgba(0, 162, 223, .06));
+}
+
+:host(:not([pressed])[emphasis="medium"][focused]) {
+  background-color: var(--anypoint-button-emphasis-medium-focus-background-color, rgba(0, 162, 223, .08));
+  color: var(--anypoint-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
+  border-color: var(--anypoint-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue2));
+}
+
+:host(:not([pressed])[emphasis="medium"][active]) {
+  background-color: var(--anypoint-button-emphasis-low-active-background-color, rgba(94, 102, 249, 0.16));
+}
+
+:host([emphasis="high"]:not([compatibility])) {
+  will-change: box-shadow;
+  background-color: var(--anypoint-button-emphasis-high-background-color, var(--anypoint-color-primary));
+  color: var(--anypoint-button-emphasis-high-color, var(--anypoint-color-tertiary));
+}
+
+:host([emphasis="high"][disabled]:not([compatibility])) {
+  background: var(--anypoint-button-disabled-background-color, #eaeaea);
+  color: var(--anypoint-button-disabled-color, #a8a8a8);
+  box-shadow: none;
+}
+
+:host(:not([pressed]):not([compatibility])[emphasis="high"]:hover) {
+  background-color: var(--anypoint-button-emphasis-high-hover-background-color, rgba(0, 162, 223, 0.87));
+}
+
+:host(:not([pressed]):not([compatibility])[emphasis="high"]:focus) {
+  background-color: var(--anypoint-button-emphasis-high-focus-background-color, rgba(0, 162, 223, 0.87));
+}
+
+:host(:not([pressed]):not([compatibility])[emphasis="high"][active]) {
+  background-color: var(--anypoint-button-emphasis-high-active-background-color, var(--anypoint-color-indigo3));
+}
+
+:host([elevation="1"]) {
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
+              0 1px 5px 0 rgba(0, 0, 0, 0.12),
+              0 3px 1px -2px rgba(0, 0, 0, 0.2);
+}
+
+:host([elevation="2"]) {
+  box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+              0 1px 10px 0 rgba(0, 0, 0, 0.12),
+              0 2px 4px -1px rgba(0, 0, 0, 0.4);
+}
+
+:host([elevation="3"]) {
+  box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+              0 1px 18px 0 rgba(0, 0, 0, 0.12),
+              0 3px 5px -1px rgba(0, 0, 0, 0.4);
+}
+
+:host([emphasis="high"][compatibility]) {
+  background-color: var(--anypoint-button-background-color, var(--anypoint-color-primary));
+  color: var(--anypoint-button-color, var(--anypoint-color-tertiary));
+  border-radius: var(--anypoint-button-border-radius, 2px);
+  height: 40px;
+}
+
+:host([emphasis="high"][compatibility]:hover) {
+  background-color: var(--anypoint-button-hover-background-color, var(--anypoint-color-coreBlue4));
+}
+
+:host([compatibility][focused]) {
+  box-shadow: var(--anypoint-button-foxus-box-shadow-color, 0 0 0 3px #abe2f5);
+}
+
+:host([emphasis="high"][compatibility][pressed]) {
+  background-color: var(--anypoint-button-hover-background-color, var(--anypoint-color-coreBlue5));
+}
+
+:host([emphasis="high"][compatibility][active]) {
+  background-color: var(--anypoint-button-active-background-color, var(--anypoint-color-coreBlue5));
+}
+
+:host([compatibility]) {
+  text-transform: var(--anypoint-button-text-transform, initial);
+}
+
+:host([compatibility]) paper-ripple {
+  display: none;
+}
+
+:host([compatibility][disabled]) {
+  background: var(--anypoint-button-disabled-background-color, #eaeaea);
+  color: var(--anypoint-button-disabled-color, #a8a8a8);
+}
+
+:host ::slotted(*) {
+  margin: 0 4px;
+}`;
+
 /**
  * `anypoint-button`
  * Anypoint styled button.
@@ -22062,177 +22309,14 @@ class AnypointButtonBase extends ControlStateMixin(ButtonStateMixin(LitElement))
  * @memberof AnypointUi
  */
 class AnypointButton extends AnypointButtonBase {
-  static get styles() {
-    return css`:host {
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-      box-sizing: border-box;
-      min-width: 5.14em;
-      margin: 0 0.29em;
-      outline-width: 0;
-      user-select: none;
-      cursor: pointer;
-      z-index: 0;
-      padding: 0.7em 0.57em;
-      font-size: var(--anypoint-button-font-size, 15px);
-      background-color: var(--anypoint-button-background-color, inherit);
-      color: var(--anypoint-button-color, var(--anypoint-color-primary));
-      border-width: 1px;
-      border-color: var(--anypoint-button-border-color, transparent);
-      border-style: solid;
-      border-radius: var(--anypoint-button-border-radius, 3px);
-      text-transform: var(--anypoint-button-text-transform, uppercase);
-      transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    :host([hidden]) {
-      display: none !important;
-    }
-
-    :host(:focus) {
-      outline: none;
-    }
-
-    :host([disabled]) {
-      cursor: auto;
-      pointer-events: none;
-    }
-
-    :host([emphasis="low"]:not([compatibility])) {
-      box-shadow: none !important;
-    }
-
-    :host([emphasis="low"][disabled]) {
-      color: var(--anypoint-button-disabled-color, #a8a8a8);
-    }
-
-    :host(:not([pressed])[emphasis="low"]:hover) {
-      background-color: var(--anypoint-button-emphasis-low-hover-background-color, rgba(0, 162, 223, .08));
-    }
-
-    :host(:not([pressed]):not([compatibility])[emphasis="low"][focused]) {
-      background-color: var(--anypoint-button-emphasis-low-focus-background-color, rgba(0, 162, 223, .12));
-      color: var(--anypoint-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
-    }
-
-    :host(:not([pressed])[emphasis="low"][active]) {
-      background-color: var(--anypoint-button-emphasis-low-active-background-color, rgba(0, 162, 223, .16));
-    }
-
-    :host([emphasis="medium"]:not([compatibility])) {
-      box-shadow: none !important;
-    }
-
-    :host([emphasis="medium"]) {
-      border-color: var(--anypoint-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue1));
-    }
-
-    :host([emphasis="medium"][disabled]) {
-      color: var(--anypoint-button-disabled-color, #a8a8a8);
-      border-color: var(--anypoint-button-disabled-color, var(--anypoint-color-aluminum4));
-    }
-
-    :host(:not([pressed])[emphasis="medium"]:hover) {
-      background-color: var(--anypoint-button-emphasis-medium-hover-background-color, rgba(0, 162, 223, .06));
-    }
-
-    :host(:not([pressed])[emphasis="medium"][focused]) {
-      background-color: var(--anypoint-button-emphasis-medium-focus-background-color, rgba(0, 162, 223, .08));
-      color: var(--anypoint-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
-      border-color: var(--anypoint-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue2));
-    }
-
-    :host(:not([pressed])[emphasis="medium"][active]) {
-      background-color: var(--anypoint-button-emphasis-low-active-background-color, rgba(94, 102, 249, 0.16));
-    }
-
-    :host([emphasis="high"]:not([compatibility])) {
-      will-change: box-shadow;
-      background-color: var(--anypoint-button-emphasis-high-background-color, var(--anypoint-color-primary));
-      color: var(--anypoint-button-emphasis-high-color, var(--anypoint-color-tertiary));
-    }
-
-    :host([emphasis="high"][disabled]:not([compatibility])) {
-      background: var(--anypoint-button-disabled-background-color, #eaeaea);
-      color: var(--anypoint-button-disabled-color, #a8a8a8);
-      box-shadow: none;
-    }
-
-    :host(:not([pressed]):not([compatibility])[emphasis="high"]:hover) {
-      background-color: var(--anypoint-button-emphasis-high-hover-background-color, rgba(0, 162, 223, 0.87));
-    }
-
-    :host(:not([pressed]):not([compatibility])[emphasis="high"]:focus) {
-      background-color: var(--anypoint-button-emphasis-high-focus-background-color, rgba(0, 162, 223, 0.87));
-    }
-
-    :host(:not([pressed]):not([compatibility])[emphasis="high"][active]) {
-      background-color: var(--anypoint-button-emphasis-high-active-background-color, var(--anypoint-color-indigo3));
-    }
-
-    :host([elevation="1"]) {
-      box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 5px 0 rgba(0, 0, 0, 0.12),
-                  0 3px 1px -2px rgba(0, 0, 0, 0.2);
-    }
-
-    :host([elevation="2"]) {
-      box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 10px 0 rgba(0, 0, 0, 0.12),
-                  0 2px 4px -1px rgba(0, 0, 0, 0.4);
-    }
-
-    :host([elevation="3"]) {
-      box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 18px 0 rgba(0, 0, 0, 0.12),
-                  0 3px 5px -1px rgba(0, 0, 0, 0.4);
-    }
-
-    :host([emphasis="high"][compatibility]) {
-      background-color: var(--anypoint-button-background-color, var(--anypoint-color-primary));
-      color: var(--anypoint-button-color, var(--anypoint-color-tertiary));
-      border-radius: var(--anypoint-button-border-radius, 2px);
-      text-transform: var(--anypoint-button-text-transform, initial);
-      height: 40px;
-    }
-
-    :host([emphasis="high"][compatibility]:hover) {
-      background-color: var(--anypoint-button-hover-background-color, var(--anypoint-color-coreBlue4));
-    }
-
-    :host([compatibility][focused]) {
-      box-shadow: var(--anypoint-button-foxus-box-shadow-color, 0 0 0 3px #abe2f5);
-    }
-
-    :host([emphasis="high"][compatibility][pressed]) {
-      background-color: var(--anypoint-button-hover-background-color, var(--anypoint-color-coreBlue5));
-    }
-
-    :host([emphasis="high"][compatibility][active]) {
-      background-color: var(--anypoint-button-active-background-color, var(--anypoint-color-coreBlue5));
-    }
-
-    :host([compatibility]) paper-ripple {
-      display: none;
-    }
-
-    :host([compatibility][disabled]) {
-      background: var(--anypoint-button-disabled-background-color, #eaeaea);
-      color: var(--anypoint-button-disabled-color, #a8a8a8);
-    }
-
-    :host ::slotted(*) {
-      margin: 0 4px;
-    }
-    `;
+  get styles() {
+    return styles;
   }
 
   render() {
     const { noink, compatibility } = this;
     const stopRipple = !!noink || !!compatibility;
-    return html`<slot></slot><paper-ripple .noink="${stopRipple}"></paper-ripple>`;
+    return html`<style>${this.styles}</style><slot></slot><paper-ripple .noink="${stopRipple}"></paper-ripple>`;
   }
 
   get _ripple() {
@@ -22299,6 +22383,7 @@ var Prism = (function (_self){
 var lang = /\blang(?:uage)?-([\w-]+)\b/i;
 var uniqueId = 0;
 
+
 var _ = {
 	manual: _self.Prism && _self.Prism.manual,
 	disableWorkerMessageHandler: _self.Prism && _self.Prism.disableWorkerMessageHandler,
@@ -22362,6 +22447,66 @@ var _ = {
 
 				default:
 					return o;
+			}
+		},
+
+		/**
+		 * Returns the Prism language of the given element set by a `language-xxxx` or `lang-xxxx` class.
+		 *
+		 * If no language is set for the element or the element is `null` or `undefined`, `none` will be returned.
+		 *
+		 * @param {Element} element
+		 * @returns {string}
+		 */
+		getLanguage: function (element) {
+			while (element && !lang.test(element.className)) {
+				element = element.parentElement;
+			}
+			if (element) {
+				return (element.className.match(lang) || [, 'none'])[1].toLowerCase();
+			}
+			return 'none';
+		},
+
+		/**
+		 * Returns the script element that is currently executing.
+		 *
+		 * This does __not__ work for line script element.
+		 *
+		 * @returns {HTMLScriptElement | null}
+		 */
+		currentScript: function () {
+			if (typeof document === 'undefined') {
+				return null;
+			}
+			if ('currentScript' in document) {
+				return document.currentScript;
+			}
+
+			// IE11 workaround
+			// we'll get the src of the current script by parsing IE11's error stack trace
+			// this will not work for inline scripts
+
+			try {
+				throw new Error();
+			} catch (err) {
+				// Get file src url from stack. Specifically works with the format of stack traces in IE.
+				// A stack will look like this:
+				//
+				// Error
+				//    at _.util.currentScript (http://localhost/components/prism-core.js:119:5)
+				//    at Global code (http://localhost/components/prism-core.js:606:1)
+
+				var src = (/at [^(\r\n]*\((.*):.+:.+\)$/i.exec(err.stack) || [])[1];
+				if (src) {
+					var scripts = document.getElementsByTagName('script');
+					for (var i in scripts) {
+						if (scripts[i].src == src) {
+							return scripts[i];
+						}
+					}
+				}
+				return null;
 			}
 		}
 	},
@@ -22456,41 +22601,33 @@ var _ = {
 	highlightAllUnder: function(container, async, callback) {
 		var env = {
 			callback: callback,
+			container: container,
 			selector: 'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'
 		};
 
 		_.hooks.run('before-highlightall', env);
 
-		var elements = container.querySelectorAll(env.selector);
+		env.elements = Array.prototype.slice.apply(env.container.querySelectorAll(env.selector));
 
-		for (var i=0, element; element = elements[i++];) {
+		_.hooks.run('before-all-elements-highlight', env);
+
+		for (var i = 0, element; element = env.elements[i++];) {
 			_.highlightElement(element, async === true, env.callback);
 		}
 	},
 
 	highlightElement: function(element, async, callback) {
 		// Find language
-		var language = 'none', grammar, parent = element;
-
-		while (parent && !lang.test(parent.className)) {
-			parent = parent.parentNode;
-		}
-
-		if (parent) {
-			language = (parent.className.match(lang) || [,'none'])[1].toLowerCase();
-			grammar = _.languages[language];
-		}
+		var language = _.util.getLanguage(element);
+		var grammar = _.languages[language];
 
 		// Set language on the element, if not present
 		element.className = element.className.replace(lang, '').replace(/\s+/g, ' ') + ' language-' + language;
 
-		if (element.parentNode) {
-			// Set language on the parent, for styling
-			parent = element.parentNode;
-
-			if (/pre/i.test(parent.nodeName)) {
-				parent.className = parent.className.replace(lang, '').replace(/\s+/g, ' ') + ' language-' + language;
-			}
+		// Set language on the parent, for styling
+		var parent = element.parentNode;
+		if (parent && parent.nodeName.toLowerCase() === 'pre') {
+			parent.className = parent.className.replace(lang, '').replace(/\s+/g, ' ') + ' language-' + language;
 		}
 
 		var code = element.textContent;
@@ -22502,7 +22639,7 @@ var _ = {
 			code: code
 		};
 
-		var insertHighlightedCode = function (highlightedCode) {
+		function insertHighlightedCode(highlightedCode) {
 			env.highlightedCode = highlightedCode;
 
 			_.hooks.run('before-insert', env);
@@ -22512,12 +22649,13 @@ var _ = {
 			_.hooks.run('after-highlight', env);
 			_.hooks.run('complete', env);
 			callback && callback.call(env.element);
-		};
+		}
 
 		_.hooks.run('before-sanity-check', env);
 
 		if (!env.code) {
 			_.hooks.run('complete', env);
+			callback && callback.call(env.element);
 			return;
 		}
 
@@ -22560,18 +22698,18 @@ var _ = {
 
 	matchGrammar: function (text, strarr, grammar, index, startPos, oneshot, target) {
 		for (var token in grammar) {
-			if(!grammar.hasOwnProperty(token) || !grammar[token]) {
+			if (!grammar.hasOwnProperty(token) || !grammar[token]) {
 				continue;
 			}
 
-			if (token == target) {
-				return;
-			}
-
 			var patterns = grammar[token];
-			patterns = (_.util.type(patterns) === "Array") ? patterns : [patterns];
+			patterns = Array.isArray(patterns) ? patterns : [patterns];
 
 			for (var j = 0; j < patterns.length; ++j) {
+				if (target && target == token + ',' + j) {
+					return;
+				}
+
 				var pattern = patterns[j],
 					inside = pattern.inside,
 					lookbehind = !!pattern.lookbehind,
@@ -22581,8 +22719,8 @@ var _ = {
 
 				if (greedy && !pattern.pattern.global) {
 					// Without the global flag, lastIndex won't work
-					var flags = pattern.pattern.toString().match(/[imuy]*$/)[0];
-					pattern.pattern = RegExp(pattern.pattern.source, flags + "g");
+					var flags = pattern.pattern.toString().match(/[imsuy]*$/)[0];
+					pattern.pattern = RegExp(pattern.pattern.source, flags + 'g');
 				}
 
 				pattern = pattern.pattern || pattern;
@@ -22608,7 +22746,7 @@ var _ = {
 							break;
 						}
 
-						var from = match.index + (lookbehind ? match[1].length : 0),
+						var from = match.index + (lookbehind && match[1] ? match[1].length : 0),
 						    to = match.index + match[0].length,
 						    k = i,
 						    p = pos;
@@ -22675,7 +22813,7 @@ var _ = {
 					Array.prototype.splice.apply(strarr, args);
 
 					if (delNum != 1)
-						_.matchGrammar(text, strarr, grammar, i, pos, true, token);
+						_.matchGrammar(text, strarr, grammar, i, pos, true, token + ',' + j);
 
 					if (oneshot)
 						break;
@@ -22736,7 +22874,7 @@ function Token(type, content, alias, matchedStr, greedy) {
 	this.content = content;
 	this.alias = alias;
 	// Copy of the full string this token was created from
-	this.length = (matchedStr || "").length|0;
+	this.length = (matchedStr || '').length|0;
 	this.greedy = !!greedy;
 }
 
@@ -22799,21 +22937,37 @@ if (!_self.document) {
 }
 
 //Get current script and highlight
-var script = document.currentScript || [].slice.call(document.getElementsByTagName("script")).pop();
+var script = _.util.currentScript();
 
 if (script) {
 	_.filename = script.src;
 
-	if (!_.manual && !script.hasAttribute('data-manual')) {
-		if(document.readyState !== "loading") {
-			if (window.requestAnimationFrame) {
-				window.requestAnimationFrame(_.highlightAll);
-			} else {
-				window.setTimeout(_.highlightAll, 16);
-			}
+	if (script.hasAttribute('data-manual')) {
+		_.manual = true;
+	}
+}
+
+if (!_.manual) {
+	function highlightAutomaticallyCallback() {
+		if (!_.manual) {
+			_.highlightAll();
 		}
-		else {
-			document.addEventListener('DOMContentLoaded', _.highlightAll);
+	}
+
+	// If the document state is "loading", then we'll use DOMContentLoaded.
+	// If the document state is "interactive" and the prism.js script is deferred, then we'll also use the
+	// DOMContentLoaded event because there might be some plugins or languages which have also been deferred and they
+	// might take longer one animation frame to execute which can create a race condition where only some plugins have
+	// been loaded when Prism.highlightAll() is executed, depending on how fast resources are loaded.
+	// See https://github.com/PrismJS/prism/issues/2102
+	var readyState = document.readyState;
+	if (readyState === 'loading' || readyState === 'interactive' && script && script.defer) {
+		document.addEventListener('DOMContentLoaded', highlightAutomaticallyCallback);
+	} else {
+		if (window.requestAnimationFrame) {
+			window.requestAnimationFrame(highlightAutomaticallyCallback);
+		} else {
+			window.setTimeout(highlightAutomaticallyCallback, 16);
 		}
 	}
 }
@@ -22839,7 +22993,10 @@ if (typeof commonjsGlobal !== 'undefined') {
 Prism.languages.markup = {
 	'comment': /<!--[\s\S]*?-->/,
 	'prolog': /<\?[\s\S]+?\?>/,
-	'doctype': /<!DOCTYPE[\s\S]+?>/i,
+	'doctype': {
+		pattern: /<!DOCTYPE(?:[^>"'[\]]|"[^"]*"|'[^']*')+(?:\[(?:(?!<!--)[^"'\]]|"[^"]*"|'[^']*'|<!--[\s\S]*?-->)*\]\s*)?>/i,
+		greedy: true
+	},
 	'cdata': /<!\[CDATA\[[\s\S]*?]]>/i,
 	'tag': {
 		pattern: /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/i,
@@ -23022,17 +23179,17 @@ Prism.languages.clike = {
 		greedy: true
 	},
 	'class-name': {
-		pattern: /((?:\b(?:class|interface|extends|implements|trait|instanceof|new)\s+)|(?:catch\s+\())[\w.\\]+/i,
+		pattern: /(\b(?:class|interface|extends|implements|trait|instanceof|new)\s+|\bcatch\s+\()[\w.\\]+/i,
 		lookbehind: true,
 		inside: {
-			punctuation: /[.\\]/
+			'punctuation': /[.\\]/
 		}
 	},
 	'keyword': /\b(?:if|else|while|do|for|return|in|instanceof|function|new|try|throw|catch|finally|null|break|continue)\b/,
 	'boolean': /\b(?:true|false)\b/,
 	'function': /\w+(?=\()/,
 	'number': /\b0x[\da-f]+\b|(?:\b\d+\.?\d*|\B\.\d+)(?:e[+-]?\d+)?/i,
-	'operator': /--?|\+\+?|!=?=?|<=?|>=?|==?=?|&&?|\|\|?|\?|\*|\/|~|\^|%/,
+	'operator': /[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/,
 	'punctuation': /[{}[\];(),.:]/
 };
 
@@ -23055,21 +23212,21 @@ Prism.languages.javascript = Prism.languages.extend('clike', {
 			lookbehind: true
 		},
 		{
-			pattern: /(^|[^.])\b(?:as|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/,
+			pattern: /(^|[^.]|\.\.\.\s*)\b(?:as|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/,
 			lookbehind: true
 		},
 	],
 	'number': /\b(?:(?:0[xX](?:[\dA-Fa-f](?:_[\dA-Fa-f])?)+|0[bB](?:[01](?:_[01])?)+|0[oO](?:[0-7](?:_[0-7])?)+)n?|(?:\d(?:_\d)?)+n|NaN|Infinity)\b|(?:\b(?:\d(?:_\d)?)+\.?(?:\d(?:_\d)?)*|\B\.(?:\d(?:_\d)?)+)(?:[Ee][+-]?(?:\d(?:_\d)?)+)?/,
 	// Allow for all non-ASCII characters (See http://stackoverflow.com/a/2008444)
 	'function': /#?[_$a-zA-Z\xA0-\uFFFF][$\w\xA0-\uFFFF]*(?=\s*(?:\.\s*(?:apply|bind|call)\s*)?\()/,
-	'operator': /-[-=]?|\+[+=]?|!=?=?|<<?=?|>>?>?=?|=(?:==?|>)?|&[&=]?|\|[|=]?|\*\*?=?|\/=?|~|\^=?|%=?|\?|\.{3}/
+	'operator': /--|\+\+|\*\*=?|=>|&&|\|\||[!=]==|<<=?|>>>?=?|[-+*/%&|^!=<>]=?|\.{3}|\?[.?]?|[~:]/
 });
 
 Prism.languages.javascript['class-name'][0].pattern = /(\b(?:class|interface|extends|implements|instanceof|new)\s+)[\w.\\]+/;
 
 Prism.languages.insertBefore('javascript', 'keyword', {
 	'regex': {
-		pattern: /((?:^|[^$\w\xA0-\uFFFF."'\])\s])\s*)\/(\[(?:[^\]\\\r\n]|\\.)*]|\\.|[^/\\\[\r\n])+\/[gimyus]{0,6}(?=\s*($|[\r\n,.;})\]]))/,
+		pattern: /((?:^|[^$\w\xA0-\uFFFF."'\])\s])\s*)\/(?:\[(?:[^\]\\\r\n]|\\.)*]|\\.|[^/\\\[\r\n])+\/[gimyus]{0,6}(?=(?:\s|\/\*[\s\S]*?\*\/)*(?:$|[\r\n,.;:})\]]|\/\/))/,
 		lookbehind: true,
 		greedy: true
 	},
@@ -23219,22 +23376,6 @@ Prism.languages.js = Prism.languages.javascript;
 
 			xhr.send(null);
 		});
-
-		if (Prism.plugins.toolbar) {
-			Prism.plugins.toolbar.registerButton('download-file', function (env) {
-				var pre = env.element.parentNode;
-				if (!pre || !/pre/i.test(pre.nodeName) || !pre.hasAttribute('data-src') || !pre.hasAttribute('data-download-link')) {
-					return;
-				}
-				var src = pre.getAttribute('data-src');
-				var a = document.createElement('a');
-				a.textContent = pre.getAttribute('data-download-link-label') || 'Download';
-				a.setAttribute('download', '');
-				a.href = src;
-				return a;
-			});
-		}
-
 	};
 
 	document.addEventListener('DOMContentLoaded', function () {
@@ -23373,6 +23514,7 @@ Polymer({
   },
 });
 
+const UNKNOWN_TYPE = 'unknown-type';
 /**
  * `api-example-generator`
  *
@@ -23430,7 +23572,6 @@ Polymer({
  * - `typeName` - Processed type name, used for XML types to use right XML element wrapper name.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
@@ -23450,15 +23591,15 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       return;
     }
     if (!(payloads instanceof Array)) {
-      if (!this._hasType(payloads, this.ns.raml.vocabularies.http + 'Payload')) {
+      if (!this._hasType(payloads, this.ns.aml.vocabularies.apiContract.Payload)) {
         return;
       }
-      return [this._getValue(payloads, this.ns.raml.vocabularies.http + 'mediaType')];
+      return [this._getValue(payloads, this.ns.aml.vocabularies.core.mediaType)];
     }
     const result = [];
     for (let i = 0; i < payloads.length; i++) {
-      const payload = payloads[i];
-      const mime = this._getValue(payload, this.ns.raml.vocabularies.http + 'mediaType');
+      const payload = this._resolve(payloads[i]);
+      const mime = this._getValue(payload, this.ns.aml.vocabularies.core.mediaType);
       result[result.length] = mime;
     }
     return result;
@@ -23493,7 +23634,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     let result;
     for (let i = 0, len = payloads.length; i < len; i++) {
       const payload = payloads[i];
-      const payloadMedia = this._getValue(payload, this.ns.raml.vocabularies.http + 'mediaType');
+      const payloadMedia = this._getValue(payload, this.ns.aml.vocabularies.core.mediaType);
       if (media && payloadMedia !== media) {
         continue;
       }
@@ -23510,11 +23651,11 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>|undefined} List of examples.
    */
   generatePayloadExamples(payload, mime, opts) {
-    if (!this._hasType(payload, this.ns.raml.vocabularies.http + 'Payload')) {
+    if (!this._hasType(payload, this.ns.aml.vocabularies.apiContract.Payload)) {
       return;
     }
     this._resolve(payload);
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = payload[sKey];
     if (!schema) {
       return;
@@ -23547,7 +23688,13 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       return;
     }
     this._resolve(schema);
-    const eKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+    if (!opts.typeName) {
+      const typeName = this._getValue(schema, this.ns.w3.shacl.name);
+      if (typeName && typeName.indexOf('amf_inline_type') !== 0) {
+        opts.typeName = typeName;
+      }
+    }
+    const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
     const examples = this._ensureArray(schema[eKey]);
     if (examples) {
       return this._computeFromExamples(examples, mime, opts);
@@ -23560,20 +23707,20 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (opts.rawOnly) {
       return;
     }
-    if (this._hasType(schema, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    if (this._hasType(schema, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       const value = this._computeExampleArraySchape(schema, mime, opts);
       if (value) {
         return value;
       }
     }
-    if (this._hasType(schema, this.ns.raml.vocabularies.document + 'Example')) {
+    if (this._hasType(schema, this.ns.aml.vocabularies.apiContract.Example)) {
       const value = this._generateFromExample(schema, mime, opts);
       if (value) {
         return [value];
       }
     }
 
-    if (this._hasType(schema, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
+    if (this._hasType(schema, this.ns.aml.vocabularies.shapes.UnionShape)) {
       return this._computeUnionExamples(schema, mime, opts);
     }
 
@@ -23581,7 +23728,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       return;
     }
 
-    if (this._hasType(schema, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+    if (this._hasType(schema, this.ns.aml.vocabularies.shapes.ScalarShape)) {
       const result = this._computeJsonScalarValue(schema);
       return [{
         hasRaw: false,
@@ -23592,11 +23739,10 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       }];
     }
 
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     const properties = this._ensureArray(schema[pKey]);
     if (properties && properties.length) {
-      const typeName = this._getValue(schema, this.ns.w3.shacl.name + 'name');
-      const value = this._exampleFromProperties(properties, mime, typeName);
+      const value = this._exampleFromProperties(properties, mime, opts.typeName, opts.parentName);
       if (value) {
         return [value];
       }
@@ -23608,9 +23754,9 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} JSON schema if exists.
    */
   _readJsonSchema(schema) {
-    const sourceKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'sources');
-    const trackedKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'parsed-json-schema');
-    const valueKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'value');
+    const sourceKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.sources);
+    const trackedKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.parsedJsonSchema);
+    const valueKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.value);
     let sm = schema[sourceKey];
     if (!sm) {
       return;
@@ -23664,14 +23810,15 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {Array|undefined} List of examples to process.
    */
   _processExamples(examples) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+    // @TODO: should it be `document.examples` or `apiContract.examples`
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
     if (!(examples instanceof Array)) {
-      if (this._hasType(examples, this.ns.raml.vocabularies.document + 'NamedExamples')) {
+      if (this._hasType(examples, this.ns.aml.vocabularies.document.NamedExamples)) {
         return this._ensureArray(examples[key]);
       }
       return;
     }
-    if (examples.length === 1 && this._hasType(examples[0], this.ns.raml.vocabularies.document + 'NamedExamples')) {
+    if (examples.length === 1 && this._hasType(examples[0], this.ns.aml.vocabularies.document.NamedExamples)) {
       return this._ensureArray(examples[0][key]);
     }
     return examples;
@@ -23687,9 +23834,9 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       return examples;
     }
     const result = [];
-    const sourceKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'sources');
-    const trackedKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'tracked-element');
-    const valueKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'value');
+    const sourceKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.sources);
+    const trackedKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.trackedElement);
+    const valueKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps.value);
     const longId = typeId.indexOf('amf') === -1 ? ('amf://id' + typeId) : typeId;
     for (let i = 0, len = examples.length; i < len; i++) {
       let example = examples[i];
@@ -23732,11 +23879,11 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _generateFromExample(example, mime, opts) {
-    let raw = this._getValue(example, this.ns.raml.vocabularies.document + 'raw');
+    let raw = this._getValue(example, this.ns.aml.vocabularies.document.raw);
     if (!raw) {
-      raw = this._getValue(example, this.ns.w3.shacl.name + 'raw');
+      raw = this._getValue(example, this.ns.w3.shacl.raw);
     }
-    let title = this._getValue(example, this.ns.schema.schemaName);
+    let title = this._getValue(example, this.ns.aml.vocabularies.core.name);
     if (title && title.indexOf('example_') === 0) {
       title = undefined;
     }
@@ -23747,9 +23894,13 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (result.hasTitle) {
       result.title = title;
     }
+    if (opts.rawOnly && !raw) {
+      return;
+    }
     if (opts.rawOnly) {
       result.hasRaw = false;
       result.value = raw;
+      result.isScalar = false;
       return result;
     }
     const isJson = mime.indexOf('json') !== -1;
@@ -23764,6 +23915,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
           }
           result.hasRaw = false;
           result.value = raw;
+          result.isScalar = false;
           return result;
         } catch (_) {
           // ...
@@ -23773,13 +23925,14 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
         if (raw.trim()[0] === '<') {
           result.hasRaw = false;
           result.value = raw;
+          result.isScalar = false;
           return result;
         }
       }
       result.hasRaw = true;
       result.raw = raw;
     }
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'structuredValue');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.document.structuredValue);
     let structure = example[sKey];
     if (!structure) {
       if (result.raw) {
@@ -23787,18 +23940,20 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       } else {
         result.value = '';
       }
+      result.isScalar = false;
       return result;
     }
     if (structure instanceof Array) {
       structure = structure[0];
     }
-    if (this._hasType(structure, this.ns.raml.vocabularies.data + 'Scalar')) {
+    if (this._hasType(structure, this.ns.aml.vocabularies.data.Scalar)) {
       const value = this._getTypedValue(structure);
       result.value = value;
       result.isScalar = true;
       return result;
     }
 
+    result.isScalar = false;
     if (isJson) {
       let data = this._jsonFromStructure(structure);
       if (data) {
@@ -23823,12 +23978,15 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _computeExampleArraySchape(schema, mime, opts) {
-    const iKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+    const iKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
     const items = this._ensureArray(schema[iKey]);
     if (!items) {
       return;
     }
     const isJson = mime.indexOf('json') !== -1;
+    opts = opts || {};
+    opts.parentName = opts.typeName;
+    delete opts.typeName;
     // We need only first type here as arras can have different types
     for (let i = 0, len = items.length; i < len; i++) {
       const item = items[i];
@@ -23868,7 +24026,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _computeUnionExamples(schema, mime, opts) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const anyOf = this._ensureArray(schema[key]);
     if (!anyOf) {
       return;
@@ -23890,7 +24048,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
         continue;
       }
       data = data[0];
-      let name = this._getValue(unionSchape, this.ns.w3.shacl.name + 'name');
+      let name = this._getValue(unionSchape, this.ns.w3.shacl.name);
       if (!name) {
         name = 'Union #' + (i + 1);
       }
@@ -23906,7 +24064,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Value of the data type.
    */
   _computeScalarType(shape) {
-    const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+    const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
     let dt = shape[dtKey];
     if (!dt) {
       return;
@@ -23915,13 +24073,13 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       dt = dt[0];
     }
     let id = dt['@id'] ? dt['@id'] : dt;
-    const w3index = id.indexOf(this.ns.w3.xmlSchema);
+    const w3index = id.indexOf(this.ns.w3.xmlSchema + '');
     if (w3index !== -1) {
-      id = id.substr(this.ns.w3.xmlSchema.length);
+      id = id.substr((this.ns.w3.xmlSchema + '').length);
     }
-    const shapeindex = id.indexOf(this.ns.raml.vocabularies.shapes);
+    const shapeindex = id.indexOf(this.ns.aml.vocabularies.shapes + '');
     if (shapeindex !== -1) {
-      id = id.substr(this.ns.raml.vocabularies.shapes.length);
+      id = id.substr((this.ns.aml.vocabularies.shapes + '').length);
     }
     const index = id.indexOf(':');
     if (index !== -1) {
@@ -23939,29 +24097,28 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (!structure) {
       return;
     }
-    const prefix = this.ns.raml.vocabularies.data;
-    if (this._hasType(structure, prefix + 'Scalar')) {
+    if (this._hasType(structure, this.ns.aml.vocabularies.data.Scalar)) {
       return this._getTypedValue(structure);
     }
     let obj;
     let isArray = false;
-    if (this._hasType(structure, prefix + 'Object')) {
+    if (this._hasType(structure, this.ns.aml.vocabularies.data.Object)) {
       obj = {};
-    } else if (this._hasType(structure, prefix + 'Array')) {
+    } else if (this._hasType(structure, this.ns.aml.vocabularies.data.Array)) {
       obj = [];
       isArray = true;
     } else {
       return;
     }
-    if (isArray && this._hasProperty(structure, this.ns.w3.name + '1999/02/22-rdf-syntax-ns#member')) {
-      const key = this._getAmfKey(this.ns.w3.name + '1999/02/22-rdf-syntax-ns#member');
+    if (isArray && this._hasProperty(structure, this.ns.w3.rdfSchema.member)) {
+      const key = this._getAmfKey(this.ns.w3.rdfSchema.member);
       const items = structure[key];
       for (let i = 0, len = items.length; i < len; i++) {
         const item = items[i];
         this._jsonFromStructureValue(item, obj, isArray);
       }
     } else {
-      const resolvedPrefix = this._getAmfKey(prefix);
+      const resolvedPrefix = this._getAmfKey(this.ns.aml.vocabularies.data);
       Object.keys(structure).forEach((key) => {
         if (key.indexOf(resolvedPrefix) !== 0) {
           return;
@@ -23999,12 +24156,12 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _xmlFromStructure(structure, opts) {
-    let typeName = opts && opts.typeName || 'model';
+    let typeName = opts && opts.typeName || UNKNOWN_TYPE;
     typeName = this._normalizeXmlTagName(typeName);
     const doc = document.implementation.createDocument('', typeName, null);
     const main = doc.documentElement;
     const keys = Object.keys(structure);
-    const dataPrefix = this._getAmfKey(this.ns.raml.vocabularies.data);
+    const dataPrefix = this._getAmfKey(this.ns.aml.vocabularies.data);
     for (let i = 0, len = keys.length; i < len; i++) {
       const key = keys[i];
       if (key.indexOf(dataPrefix) !== 0) {
@@ -24022,30 +24179,69 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     value = '<?xml version="1.0" encoding="UTF-8"?>' + value;
     return this.formatXml(value);
   }
-
+  /**
+   * Formats XML string into pretty printed value.
+   * https://stackoverflow.com/a/2893259/1127848
+   * @param {String} xml The XML to process
+   * @return {String} Formatted XML
+   */
   formatXml(xml) {
-    const PADDING = ' '.repeat(2);
-    const reg = /(>)(<)(\/*)/g;
-    let pad = 0;
-    xml = xml.replace(reg, '$1\r\n$2$3');
-    return xml.split('\r\n').map((node) => {
-      let indent = 0;
-      if (node.match(/.+<\/\w[^>]*>$/)) {
-        indent = 0;
-      } else if (node.match(/^<\/\w/) && pad > 0) {
-        pad -= 1;
-      } else if (node.match(/^<\w[^>]*[^/]>.*$/)) {
-        indent = 1;
-      } else {
-        indent = 0;
+    const reg = /(>)\s*(<)(\/*)/g; // updated Mar 30, 2015
+    const wsexp = / *(.*) +\n/g;
+    const contexp = /(<.+>)(.+\n)/g;
+    xml = xml.replace(reg, '$1\n$2$3').replace(wsexp, '$1\n').replace(contexp, '$1\n$2');
+    let formatted = '';
+    const lines = xml.split('\n');
+    let indent = 0;
+    let lastType = 'other';
+    // 4 types of tags - single, closing, opening, other (text, doctype, comment) - 4*4 = 16 transitions
+    const transitions = {
+      'single->single': 0,
+      'single->closing': -2,
+      'single->opening': 0,
+      'single->other': 0,
+      'closing->single': 0,
+      'closing->closing': -2,
+      'closing->opening': 0,
+      'closing->other': 0,
+      'opening->single': 2,
+      'opening->closing': 0,
+      'opening->opening': 2,
+      'opening->other': 2,
+      'other->single': 0,
+      'other->closing': -2,
+      'other->opening': 0,
+      'other->other': 0
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i];
+      if (ln.match(/\s*<\?xml/)) {
+        formatted += ln + '\n';
+        continue;
       }
-      pad += indent;
-      return PADDING.repeat(pad - indent) + node;
-    }).join('\r\n');
+      const single = Boolean(ln.match(/<.+\/>/));
+      const closing = Boolean(ln.match(/<\/.+>/));
+      const opening = Boolean(ln.match(/<[^!].*>/));
+      const type = single ? 'single' : closing ? 'closing' : opening ? 'opening' : 'other';
+      const fromTo = lastType + '->' + type;
+      lastType = type;
+      let padding = '';
+      indent += transitions[fromTo];
+      for (let j = 0; j < indent; j++) {
+        padding += ' ';
+      }
+      if (fromTo == 'opening->closing') {
+        formatted = formatted.substr(0, formatted.length - 1) + ln + '\n';
+      } else {
+        formatted += padding + ln + '\n';
+      }
+    }
+    return formatted;
   }
 
   _getTypedValue(structure) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.data.value);
     let shape = structure[key];
     if (!shape) {
       return;
@@ -24053,13 +24249,13 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (shape instanceof Array) {
       shape = shape[0];
     }
-    const value = shape['@value'];
+    const value = typeof shape === 'object' ? shape['@value'] : shape;
     if (!value) {
       return value;
     }
     let dt = shape['@type'];
     if (!dt) {
-      const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+      const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
       dt = this._ensureArray(structure[dtKey]);
       if (dt) {
         dt = dt[0]['@id'];
@@ -24081,11 +24277,11 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>} Generated example model.
    */
   _exampleFromJsonSchema(schema, jsonSchema) {
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     const properties = this._ensureArray(schema[pKey]);
     let example;
     if (properties && properties.length) {
-      const typeName = this._getValue(schema, this.ns.w3.shacl.name + 'name');
+      const typeName = this._getValue(schema, this.ns.w3.shacl.name) || UNKNOWN_TYPE;
       example = this._exampleFromProperties(properties, 'application/json', typeName);
     }
     if (example) {
@@ -24106,21 +24302,19 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @param {Array} properties
    * @param {String} mime Media type
    * @param {?String} typeName Name of the RAML type.
-   * @param {?Boolean} isArray if true the result should be an array
+   * @param {?String} parentType For XML processing, parent type name in case of Array type.
    * @return {String|undefined}
    */
-  _exampleFromProperties(properties, mime, typeName, isArray) {
+  _exampleFromProperties(properties, mime, typeName, parentType) {
+    typeName = typeName || UNKNOWN_TYPE;
     let result;
     if (mime.indexOf('json') !== -1) {
       const value = this._jsonExampleFromProperties(properties);
       if (value) {
         result = JSON.stringify(value, null, 2);
-        if (isArray && result[0] !== '[') {
-          result = '[' + result + ']';
-        }
       }
     } else if (mime.indexOf('xml') !== -1) {
-      result = this._xmlExampleFromProperties(properties, typeName);
+      result = this._xmlExampleFromProperties(properties, typeName, parentType);
       if (result) {
         result = '<?xml version="1.0" encoding="UTF-8"?>' + result;
         result = this.formatXml(result);
@@ -24144,11 +24338,11 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     const result = {};
     for (let i = 0, len = properties.length; i < len; i++) {
       const property = properties[i];
-      const name = this._getValue(property, this.ns.w3.shacl.name + 'name');
+      const name = this._getValue(property, this.ns.w3.shacl.name);
       if (!name) {
         continue;
       }
-      const rKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'range');
+      const rKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.range);
       let range = property[rKey];
       if (!range) {
         continue;
@@ -24156,10 +24350,10 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       if (range instanceof Array) {
         range = range[0];
       }
-      const eKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+      const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
       const examples = this._ensureArray(range[eKey]);
       if (examples) {
-        const sKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'structuredValue');
+        const sKey = this._getAmfKey(this.ns.aml.vocabularies.document.structuredValue);
         examples.forEach((example) => {
           let structure = example[sKey];
           if (!structure) {
@@ -24191,19 +24385,19 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {any}
    */
   _computeJsonProperyValue(range, typeName) {
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.ScalarShape)) {
       return this._computeJsonScalarValue(range);
     }
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.UnionShape)) {
       return this._computeJsonUnionValue(range, typeName);
     }
-    if (this._hasType(range, this.ns.w3.shacl.name + 'NodeShape')) {
+    if (this._hasType(range, this.ns.w3.shacl.NodeShape)) {
       return this._computeJsonObjectValue(range);
     }
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       return this._computeJsonArrayValue(range);
     }
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'NilShape')) {
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.NilShape)) {
       return null;
     }
   }
@@ -24227,7 +24421,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
         default: return '';
       }
     }
-    const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+    const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
     let dt = range[dtKey];
     if (!dt) {
       return value || '';
@@ -24244,50 +24438,40 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {String|Number|Boolean} Casted value.
    */
   _typeToValue(value, type) {
-    let prefix = this._getAmfKey(this.ns.w3.xmlSchema);
-    if (prefix !== this.ns.w3.xmlSchema) {
-      prefix += ':';
-    }
-    let ramlPrefix = this._getAmfKey(this.ns.raml.vocabularies.shapes);
-    if (ramlPrefix !== this.ns.raml.vocabularies.shapes) {
-      ramlPrefix += ':';
-    }
     switch (type) {
-      case prefix + 'boolean':
-      case ramlPrefix + 'boolean':
-      case this.ns.w3.xmlSchema + 'boolean':
-      case this.ns.raml.vocabularies.shapes + 'boolean':
+      case this._getAmfKey(this.ns.w3.xmlSchema.boolean):
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.boolean):
+      case this.ns.w3.xmlSchema.boolean:
+      case this.ns.aml.vocabularies.shapes.boolean:
         if (value !== undefined) {
           return value === 'true' ? true : false;
         }
         return value;
 
-      case prefix + 'nil':
-      case ramlPrefix + 'nil':
-      case this.ns.w3.xmlSchema + 'nil':
-      case this.ns.raml.vocabularies.shapes + 'nil':
+      case this._getAmfKey(this.ns.w3.xmlSchema.nil):
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.nil):
+      case this.ns.w3.xmlSchema.nil:
+      case this.ns.aml.vocabularies.shapes.nil:
         return null;
-
-      case prefix + 'integer':
-      case ramlPrefix + 'integer':
-      case this.ns.w3.xmlSchema + 'integer':
-      case this.ns.raml.vocabularies.shapes + 'integer':
-      case prefix + 'number':
-      case this.ns.w3.xmlSchema + 'number':
-      case ramlPrefix + 'number':
-      case this.ns.raml.vocabularies.shapes + 'number':
-      case prefix + 'long':
-      case this.ns.w3.xmlSchema + 'long':
-      case ramlPrefix + 'long':
-      case this.ns.raml.vocabularies.shapes + 'long':
-      case prefix + 'double':
-      case this.ns.w3.xmlSchema + 'double':
-      case ramlPrefix + 'double':
-      case this.ns.raml.vocabularies.shapes + 'double':
-      case prefix + 'float':
-      case this.ns.w3.xmlSchema + 'float':
-      case ramlPrefix + 'float':
-      case this.ns.raml.vocabularies.shapes + 'float':
+      case this._getAmfKey(this.ns.w3.xmlSchema.integer):
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.integer):
+      case this.ns.w3.xmlSchema.integer:
+      case this.ns.aml.vocabularies.shapes.integer:
+      case this.ns.w3.xmlSchema.number:
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.number):
+      case this.ns.aml.vocabularies.shapes.number:
+      case this._getAmfKey(this.ns.w3.xmlSchema.long):
+      case this.ns.w3.xmlSchema.long:
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.long):
+      case this.ns.aml.vocabularies.shapes.long:
+      case this._getAmfKey(this.ns.w3.xmlSchema.double):
+      case this.ns.w3.xmlSchema.double:
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.double):
+      case this.ns.aml.vocabularies.shapes.double:
+      case this._getAmfKey(this.ns.w3.xmlSchema.float):
+      case this.ns.w3.xmlSchema.float:
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.float):
+      case this.ns.aml.vocabularies.shapes.float:
         if (value) {
           if (isNaN(value)) {
             return 0;
@@ -24305,12 +24489,12 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {Object|undefined}
    */
   _computeJsonUnionValue(range, typeName) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const list = this._ensureArray(range[key]);
     if (!list) {
       return;
     }
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     for (let i = 0, len = list.length; i < len; i++) {
       let item = list[i];
       if (item instanceof Array) {
@@ -24318,12 +24502,12 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       }
       this._resolve(item);
       if (typeName) {
-        const name = this._getValue(item, this.ns.w3.shacl.name + 'name');
+        const name = this._getValue(item, this.ns.w3.shacl.name);
         if (typeName !== name) {
           continue;
         }
       }
-      if (this._hasType(item, this.ns.w3.shacl.name + 'NodeShape')) {
+      if (this._hasType(item, this.ns.w3.shacl.NodeShape)) {
         item = this._resolve(item);
         const data = this._ensureArray(item[pKey]);
         if (data) {
@@ -24334,7 +24518,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _computeJsonObjectValue(range) {
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     const properties = this._ensureArray(range[pKey]);
     if (properties && properties.length) {
       return this._jsonExampleFromProperties(properties);
@@ -24342,7 +24526,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _computeJsonArrayValue(range) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
     const items = this._ensureArray(range[key]);
     if (!items) {
       return;
@@ -24366,14 +24550,14 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (example instanceof Array) {
       example = example[0];
     }
-    if (this._hasType(example, this.ns.raml.vocabularies.document + 'NamedExamples')) {
-      const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+    if (this._hasType(example, this.ns.aml.vocabularies.document.NamedExamples)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
       example = example[key];
       if (example instanceof Array) {
         example = example[0];
       }
     }
-    return this._getValue(example, this.ns.w3.shacl.name + 'raw');
+    return this._getValue(example, this.ns.aml.vocabularies.document.raw);
   }
   /**
    * Gets a value from a Range shape for a scalar value.
@@ -24381,15 +24565,15 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {any}
    */
   _getTypeScalarValue(range) {
-    const dvKey = this._getAmfKey(this.ns.w3.shacl.name + 'defaultValue');
+    const dvKey = this._getAmfKey(this.ns.w3.shacl.defaultValue);
     let dv = range[dvKey];
     if (dv) {
       if (dv instanceof Array) {
         dv = dv[0];
       }
-      return this._getValue(dv, this.ns.raml.vocabularies.data + 'value');
+      return this._getValue(dv, this.ns.aml.vocabularies.data.value);
     }
-    const rKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+    const rKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
     const ex = range[rKey];
     if (ex) {
       return this._extractExampleRawValue(ex);
@@ -24399,12 +24583,21 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * Computes example from RAML type for XML media type.
    * @param {Array<Object>} properties
    * @param {?String} typeName RAML type name
+   * @param {?String} parentType When the XML is an array type it is the parent type
    * @return {String}
    */
-  _xmlExampleFromProperties(properties, typeName) {
+  _xmlExampleFromProperties(properties, typeName, parentType) {
     typeName = this._normalizeXmlTagName(typeName);
-    const doc = document.implementation.createDocument('', typeName, null);
-    const main = doc.documentElement;
+    if (parentType) {
+      parentType = this._normalizeXmlTagName(parentType);
+    }
+    const doc = document.implementation.createDocument('', parentType || typeName, null);
+    let main = doc.documentElement;
+    if (parentType) {
+      const element = doc.createElement(typeName);
+      main.appendChild(element);
+      main = element;
+    }
     for (let i = 0, len = properties.length; i < len; i++) {
       this._xmlProcessProperty(doc, main, properties[i]);
     }
@@ -24421,8 +24614,8 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (!property) {
       return;
     }
-    if (this._hasType(property, this.ns.w3.shacl.name + 'NodeShape')) {
-      const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    if (this._hasType(property, this.ns.w3.shacl.NodeShape)) {
+      const pKey = this._getAmfKey(this.ns.w3.shacl.property);
       const properties = this._ensureArray(property[pKey]);
       if (!properties) {
         return;
@@ -24432,7 +24625,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       }
       return;
     }
-    const rKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'range');
+    const rKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.range);
     let range = property[rKey];
     if (!range) {
       return;
@@ -24440,29 +24633,29 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (range instanceof Array) {
       range = range[0];
     }
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'xmlSerialization');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.xmlSerialization);
     let serialization = range[sKey];
     if (serialization instanceof Array) {
       serialization = serialization[0];
     }
-    const eKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+    const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
     const examples = this._ensureArray(range[eKey]);
     if (examples) {
-      let name = this._getValue(serialization, this.ns.raml.vocabularies.shapes + 'xmlName');
+      let name = this._getValue(serialization, this.ns.aml.vocabularies.shapes.xmlName);
       if (!name) {
-        name = this._getValue(range, this.ns.w3.shacl.name + 'name');
+        name = this._getValue(range, this.ns.w3.shacl.name);
       }
       this._xmlFromExamples(doc, node, examples[0], name);
       return;
     }
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
-      const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.UnionShape)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
       const list = this._ensureArray(range[key]);
       if (!list) {
         return;
       }
       const shape = list[0];
-      if (this._hasType(shape, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+      if (this._hasType(shape, this.ns.aml.vocabularies.shapes.ScalarShape)) {
         this._xmlProcessUnionScalarProperty(doc, node, property, shape);
       } else {
         this._xmlProcessProperty(doc, node, shape);
@@ -24471,18 +24664,18 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     }
     let isWrapped = false;
     if (serialization) {
-      const isAtribute = this._getValue(serialization, this.ns.raml.vocabularies.shapes + 'xmlAttribute');
+      const isAtribute = this._getValue(serialization, this.ns.aml.vocabularies.shapes.xmlAttribute);
       if (isAtribute) {
         this._appendXmlAttribute(node, property, range, serialization);
         return;
       }
-      isWrapped = this._getValue(serialization, this.ns.raml.vocabularies.shapes + 'xmlWrapped');
+      isWrapped = this._getValue(serialization, this.ns.aml.vocabularies.shapes.xmlWrapped);
     }
-    if (this._hasType(range, this.ns.w3.shacl.name + 'NodeShape')) {
+    if (this._hasType(range, this.ns.w3.shacl.NodeShape)) {
       this._appendXmlElements(doc, node, property, range);
       return;
     }
-    if (this._hasType(range, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    if (this._hasType(range, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       this._appendXmlArray(doc, node, property, range, isWrapped);
       return;
     }
@@ -24499,7 +24692,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @param {String} propertyName Name of the property being processed
    */
   _xmlFromExamples(doc, node, example, propertyName) {
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'structuredValue');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.document.structuredValue);
     let structure = example[sKey];
     if (structure instanceof Array) {
       structure = structure[0];
@@ -24515,7 +24708,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {String} Data type
    */
   _readDataType(shape) {
-    const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+    const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
     let dataType = shape[dtKey];
     if (!dataType) {
       return;
@@ -24534,9 +24727,9 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @param {Object} serialization Serialization info
    */
   _appendXmlAttribute(node, property, range, serialization) {
-    let name = this._getValue(serialization, this.ns.raml.vocabularies.shapes + 'xmlName');
+    let name = this._getValue(serialization, this.ns.aml.vocabularies.shapes.xmlName);
     if (!name) {
-      name = this._getValue(range, this.ns.w3.shacl.name + 'name');
+      name = this._getValue(range, this.ns.w3.shacl.name);
     }
     if (!name) {
       return;
@@ -24558,13 +24751,13 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @return {Element} Newly created element
    */
   _appendXmlElement(doc, node, range) {
-    let name = this._getValue(range, this.ns.w3.shacl.name + 'name');
+    let name = this._getValue(range, this.ns.w3.shacl.name);
     if (!name) {
       return;
     }
-    let nodeValue = this._getValue(range, this.ns.w3.shacl.name + 'defaultValueStr');
+    let nodeValue = this._getValue(range, this.ns.w3.shacl.defaultValueStr);
     if (!nodeValue) {
-      const eKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+      const eKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
       const example = range[eKey];
       if (example) {
         nodeValue = this._extractExampleRawValue(example);
@@ -24587,7 +24780,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _appendXmlElements(doc, node, property, range) {
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     const properties = this._ensureArray(range[pKey]);
     const element = this._appendXmlElement(doc, node, range);
     if (!properties) {
@@ -24604,7 +24797,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
       node.appendChild(element);
       node = element;
     }
-    const pKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
     const properties = this._ensureArray(range[pKey]);
     if (!properties) {
       return;
@@ -24612,7 +24805,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     for (let i = 0, len = properties.length; i < len; i++) {
       const prop = properties[i];
       if (isWrapped) {
-        const name = this._getValue(prop, this.ns.w3.shacl.name + 'name');
+        const name = this._getValue(prop, this.ns.w3.shacl.name);
         if (!name) {
           continue;
         }
@@ -24625,7 +24818,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _xmlProcessUnionScalarProperty(doc, node, property, shape) {
-    const name = this._getValue(property, this.ns.w3.shacl.name + 'name') || 'unknown';
+    const name = this._getValue(property, this.ns.w3.shacl.name) || 'unknown';
     const type = this._readDataType(shape);
     const element = doc.createElement(name);
     element.appendChild(doc.createTextNode(type));
@@ -24652,15 +24845,15 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     }
     name = this._normalizeXmlTagName(name);
     const element = doc.createElement(name);
-    if (this._hasType(property, this.ns.raml.vocabularies.data + 'Scalar')) {
+    if (this._hasType(property, this.ns.aml.vocabularies.data.Scalar)) {
       const value = this._computeStructuredExampleValue(property);
       if (value !== undefined) {
         const vn = doc.createTextNode(value);
         element.appendChild(vn);
       }
-    } else if (this._hasType(property, this.ns.raml.vocabularies.data + 'Array')) {
+    } else if (this._hasType(property, this.ns.aml.vocabularies.data.Array)) {
       this._processDataArrayProperties(doc, element, property, name);
-    } else if (this._hasType(property, this.ns.raml.vocabularies.data + 'Object')) {
+    } else if (this._hasType(property, this.ns.aml.vocabularies.data.Object)) {
       this._processDataObjectProperties(doc, element, property, name);
     } else if (property['@value']) {
       const vn = doc.createTextNode(property['@value']);
@@ -24678,10 +24871,10 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
    * @deprecated Use `amf-excample-generator` for examples generation.
    */
   _computeExampleFromStructuredValue(model) {
-    if (this._hasType(model, this.ns.raml.vocabularies.data + 'Scalar')) {
-      return this._computeStructuredExampleValue(this._getValue(model, this.ns.raml.vocabularies.data + 'value'));
+    if (this._hasType(model, this.ns.aml.vocabularies.data.Scalar)) {
+      return this._computeStructuredExampleValue(this._getValue(model, this.ns.aml.vocabularies.data.value));
     }
-    const isObject = this._hasType(model, this.ns.raml.vocabularies.data + 'Object');
+    const isObject = this._hasType(model, this.ns.aml.vocabularies.data.Object);
     const result = isObject ? {} : [];
     const modelKeys = ['@id', '@type'];
     Object.keys(model).forEach((key) => {
@@ -24711,26 +24904,26 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     if (typeof model === 'string') {
       return model;
     }
-    if (this._hasType(model, this.ns.raml.vocabularies.data + 'Scalar')) {
-      const key = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
+    if (this._hasType(model, this.ns.aml.vocabularies.data.Scalar)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.data.value);
       const mValue = this._ensureArray(model[key])[0];
       const value = mValue['@value'];
       let type = mValue['@type'];
       if (!type) {
-        const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+        const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
         type = this._ensureArray(model[dtKey]);
         if (type) {
           type = type[0]['@id'];
         }
       }
       switch (type) {
-        case this.ns.w3.xmlSchema + 'boolean':
+        case this.ns.w3.xmlSchema.boolean:
           return value === 'true' ? true : false;
-        case this.ns.w3.xmlSchema + 'integer':
-        case this.ns.w3.xmlSchema + 'long':
-        case this.ns.w3.xmlSchema + 'double':
-        case this.ns.w3.xmlSchema + 'float':
-        case this.ns.raml.vocabularies.shapes + 'number':
+        case this.ns.w3.xmlSchema.integer:
+        case this.ns.w3.xmlSchema.long:
+        case this.ns.w3.xmlSchema.double:
+        case this.ns.w3.xmlSchema.float:
+        case this.ns.aml.vocabularies.shapes.number:
           return Number(value);
         default:
           return value;
@@ -24748,7 +24941,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     } else {
       childName = name;
     }
-    const key = this._getAmfKey(this.ns.w3.name + '1999/02/22-rdf-syntax-ns#member');
+    const key = this._getAmfKey(this.ns.w3.rdfSchema.member);
     const items = this._ensureArray(property[key]);
     for (let i = 0, len = items.length; i < len; i++) {
       let item = items[i];
@@ -24760,7 +24953,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
   }
 
   _processDataObjectProperties(doc, node, property) {
-    const prefix = this.ns.raml.vocabularies.data;
+    const prefix = this.ns.aml.vocabularies.data;
     const resolvedPrefix = this._getAmfKey(prefix);
     Object.keys(property).forEach((key) => {
       if (key.indexOf(resolvedPrefix) !== 0) {
@@ -24788,6 +24981,7 @@ class ApiExampleGenerator extends AmfHelperMixin(LitElement) {
     return key;
   }
 }
+
 window.customElements.define('api-example-generator', ApiExampleGenerator);
 
 /**
@@ -26715,7 +26909,7 @@ Custom property | Description | Default
 `--iron-overlay-backdrop-opened`           | Mixin applied to `iron-overlay-backdrop` when it is displayed | {}
 */
 class ArcOverlayBackdrop extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       position: fixed;
@@ -26869,7 +27063,8 @@ class ArcOverlayBackdrop extends LitElement {
   }
 
   render() {
-    return html`<slot></slot>`;
+    return html`<style>${this.styles}</style>
+<slot></slot>`;
   }
 }
 
@@ -27380,14 +27575,10 @@ function _getScrollingNode(nodes, deltaX, deltaY) {
     let canScroll = false;
     if (verticalScroll) {
       // delta < 0 is scroll up, delta > 0 is scroll down.
-      canScroll = deltaY < 0 ?
-          node.scrollTop > 0 :
-          node.scrollTop < node.scrollHeight - node.clientHeight;
+      canScroll = deltaY < 0 ? node.scrollTop > 0 : node.scrollTop < node.scrollHeight - node.clientHeight;
     } else {
       // delta < 0 is scroll left, delta > 0 is scroll right.
-      canScroll = deltaX < 0 ?
-          node.scrollLeft > 0 :
-          node.scrollLeft < node.scrollWidth - node.clientWidth;
+      canScroll = deltaX < 0 ? node.scrollLeft > 0 : node.scrollLeft < node.scrollWidth - node.clientWidth;
     }
     if (canScroll) {
       return node;
@@ -27414,10 +27605,10 @@ function _getScrollableNodes(nodes) {
     const node = /** @type {!Element} */ (nodes[i]);
     // Check inline style before checking computed style.
     let style = node.style;
-    if (style.overflow !== 'scroll' && style.overflow !== 'auto') {
+    if (!style.overflow.includes('scroll') && !style.overflow.includes('auto')) {
       style = window.getComputedStyle(node);
     }
-    if (style.overflow === 'scroll' || style.overflow === 'auto') {
+    if (style.overflow.includes('scroll') || style.overflow.includes('auto')) {
       scrollables.push(node);
     }
   }
@@ -27457,7 +27648,6 @@ function _shouldPreventScrolling(event) {
   // Prevent if there is no child that can scroll.
   return !_getScrollingNode(lastScrollableNodes, info.deltaX, info.deltaY);
 }
-
 
 function _scrollInteractionHandler(event) {
   // Avoid canceling an event with cancelable=false, e.g. scrolling is in
@@ -28660,7 +28850,7 @@ const ArcOverlayMixin = (superClass) => class extends ArcFitMixin(ArcResizableMi
 };
 
 class AnypointDropdown extends ArcOverlayMixin(ControlStateMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       position: fixed;
@@ -29051,7 +29241,7 @@ class AnypointDropdown extends ArcOverlayMixin(ControlStateMixin(LitElement)) {
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="contentWrapper">
       <slot name="dropdown-content"></slot>
     </div>
@@ -29060,6 +29250,156 @@ class AnypointDropdown extends ArcOverlayMixin(ControlStateMixin(LitElement)) {
 }
 
 window.customElements.define('anypoint-dropdown', AnypointDropdown);
+
+var styles$1 = css`:host {
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  outline: none;
+}
+
+paper-ripple {
+  opacity: 0.6;
+  color: currentColor;
+}
+
+:host ::slotted(*) {
+  margin: 0;
+  padding: 0;
+  color: var(--anypoint-icon-button-color, var(--anypoint-color-primary));
+}
+
+.icon {
+  cursor: pointer;
+  border-radius: 50%;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host([disabled]) {
+  pointer-events: none;
+  cursor: auto;
+}
+
+:host([disabled]) ::slotted(*) {
+  color: var(--anypoint-icon-button-disabled-color, #a8a8a8) !important;
+}
+
+/* Low emhasis styles */
+:host([emphasis="low"]:not(:disabled)) .icon {
+  background-color: none;
+  border-color: none;
+  box-shadow: none !important;
+}
+
+:host([emphasis="low"]:not(:disabled)) ::slotted(*) {
+  color: var(--anypoint-icon-button-emphasis-low-color, var(--anypoint-color-primary));
+}
+
+:host([emphasis="low"]:hover) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-low-hover-background-color, rgba(0, 162, 223, .08));
+}
+
+:host([emphasis="low"][focused]) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-low-focus-background-color, rgba(0, 162, 223, .12));
+}
+
+:host([emphasis="low"][active]) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-low-active-background-color, rgba(0, 162, 223, .16));
+}
+
+:host([emphasis="low"][active]) ::slotted(*) {
+  color: var(--anypoint-icon-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
+}
+
+/* Medium emphasis styles */
+:host([emphasis="medium"]) .icon {
+  border-color: var(--anypoint-icon-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue1));
+  box-shadow: none !important;
+}
+
+:host([emphasis="medium"][disabled]) .icon {
+  border-color: var(--anypoint-icon-button-disabled-color, var(--anypoint-color-aluminum4));
+}
+
+:host([emphasis="medium"][disabled]) ::slotted(*) {
+  color: var(--anypoint-icon-button-disabled-color, #a8a8a8);
+}
+
+:host([emphasis="medium"]:hover) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-medium-hover-background-color, rgba(0, 162, 223, .06));
+}
+
+:host([emphasis="medium"][focused]) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-medium-focus-background-color, rgba(0, 162, 223, .08));
+  border-color: var(--anypoint-icon-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue2));
+}
+
+:host([emphasis="medium"][focused]) ::slotted(*) {
+  color: var(--anypoint-icon-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
+}
+
+:host([emphasis="medium"][active]) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-low-active-background-color, rgba(94, 102, 249, 0.16));
+}
+/* High emphasis styles */
+
+:host([emphasis="high"]) .icon {
+  transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: box-shadow;
+  background-color: var(--anypoint-icon-button-emphasis-high-background-color, var(--anypoint-color-primary));
+}
+
+:host([emphasis="high"]) ::slotted(*) {
+  color: var(--anypoint-icon-button-emphasis-high-color, var(--anypoint-color-tertiary));
+}
+
+:host([emphasis="high"][disabled]) .icon {
+  background: var(--anypoint-icon-button-disabled-background-color, #eaeaea);
+  box-shadow: none;
+}
+
+:host([emphasis="high"][disabled]) ::slotted(*) {
+  color: var(--anypoint-icon-button-disabled-color, #a8a8a8);
+}
+
+:host([emphasis="high"]:hover) .icon {
+  background-color: var(--anypoint-icon-button-emphasis-high-hover-background-color, rgba(0, 162, 223, 0.87));
+}
+
+:host(:not([pressed])[emphasis="high"][active]) .icon {
+  background-color:
+    var(--anypoint-icon-button-emphasis-high-active-background-color, var(--anypoint-color-indigo3));
+}
+
+:host([elevation="1"]) .icon {
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
+              0 1px 5px 0 rgba(0, 0, 0, 0.12),
+              0 3px 1px -2px rgba(0, 0, 0, 0.2);
+}
+
+:host([elevation="2"]) .icon,
+:host([elevation][emphasis="high"][focused]) > .icon {
+  box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+              0 1px 10px 0 rgba(0, 0, 0, 0.12),
+              0 2px 4px -1px rgba(0, 0, 0, 0.4);
+}
+
+:host([elevation="3"]) .icon {
+  box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
+              0 1px 18px 0 rgba(0, 0, 0, 0.12),
+              0 3px 5px -1px rgba(0, 0, 0, 0.4);
+}`;
 
 /**
  * `anypoint-button`
@@ -29070,162 +29410,12 @@ window.customElements.define('anypoint-dropdown', AnypointDropdown);
  * @memberof AnypointUi
  */
 class AnypointIconButton extends AnypointButtonBase {
-  static get styles() {
-    return css`
-    :host {
-      display: inline-block;
-      position: relative;
-      width: 40px;
-      height: 40px;
-      outline: none;
-    }
-
-    paper-ripple {
-      opacity: 0.6;
-      color: currentColor;
-    }
-
-    :host ::slotted(*) {
-      margin: 0;
-      padding: 0;
-      color: var(--anypoint-icon-button-color, var(--anypoint-color-primary));
-    }
-
-    .icon {
-      cursor: pointer;
-      border-radius: 50%;
-      border-width: 1px;
-      border-style: solid;
-      border-color: transparent;
-
-      position: relative;
-      width: 100%;
-      height: 100%;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    :host([disabled]) {
-      pointer-events: none;
-      cursor: auto;
-    }
-
-    :host([disabled]) ::slotted(*) {
-      color: var(--anypoint-icon-button-disabled-color, #a8a8a8) !important;
-    }
-
-    /* Low emhasis styles */
-    :host([emphasis="low"]:not(:disabled)) .icon {
-      background-color: none;
-      border-color: none;
-      box-shadow: none !important;
-    }
-
-    :host([emphasis="low"]:not(:disabled)) ::slotted(*) {
-      color: var(--anypoint-icon-button-emphasis-low-color, var(--anypoint-color-primary));
-    }
-
-    :host([emphasis="low"]:hover) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-low-hover-background-color, rgba(0, 162, 223, .08));
-    }
-
-    :host([emphasis="low"][focused]) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-low-focus-background-color, rgba(0, 162, 223, .12));
-    }
-
-    :host([emphasis="low"][active]) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-low-active-background-color, rgba(0, 162, 223, .16));
-    }
-
-    :host([emphasis="low"][active]) ::slotted(*) {
-      color: var(--anypoint-icon-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
-    }
-
-    /* Medium emphasis styles */
-    :host([emphasis="medium"]) .icon {
-      border-color: var(--anypoint-icon-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue1));
-      box-shadow: none !important;
-    }
-
-    :host([emphasis="medium"][disabled]) .icon {
-      border-color: var(--anypoint-icon-button-disabled-color, var(--anypoint-color-aluminum4));
-    }
-
-    :host([emphasis="medium"][disabled]) ::slotted(*) {
-      color: var(--anypoint-icon-button-disabled-color, #a8a8a8);
-    }
-
-    :host([emphasis="medium"]:hover) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-medium-hover-background-color, rgba(0, 162, 223, .06));
-    }
-
-    :host([emphasis="medium"][focused]) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-medium-focus-background-color, rgba(0, 162, 223, .08));
-      border-color: var(--anypoint-icon-button-emphasis-medium-focus-border-color, var(--anypoint-color-robustBlue2));
-    }
-
-    :host([emphasis="medium"][focused]) ::slotted(*) {
-      color: var(--anypoint-icon-button-emphasis-low-focus-color, var(--anypoint-color-coreBlue4));
-    }
-
-    :host([emphasis="medium"][active]) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-low-active-background-color, rgba(94, 102, 249, 0.16));
-    }
-    /* High emphasis styles */
-
-    :host([emphasis="high"]) .icon {
-      transition: box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-      will-change: box-shadow;
-      background-color: var(--anypoint-icon-button-emphasis-high-background-color, var(--anypoint-color-primary));
-    }
-
-    :host([emphasis="high"]) ::slotted(*) {
-      color: var(--anypoint-icon-button-emphasis-high-color, var(--anypoint-color-tertiary));
-    }
-
-    :host([emphasis="high"][disabled]) .icon {
-      background: var(--anypoint-icon-button-disabled-background-color, #eaeaea);
-      box-shadow: none;
-    }
-
-    :host([emphasis="high"][disabled]) ::slotted(*) {
-      color: var(--anypoint-icon-button-disabled-color, #a8a8a8);
-    }
-
-    :host([emphasis="high"]:hover) .icon {
-      background-color: var(--anypoint-icon-button-emphasis-high-hover-background-color, rgba(0, 162, 223, 0.87));
-    }
-
-    :host(:not([pressed])[emphasis="high"][active]) .icon {
-      background-color:
-        var(--anypoint-icon-button-emphasis-high-active-background-color, var(--anypoint-color-indigo3));
-    }
-
-    :host([elevation="1"]) .icon {
-      box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 5px 0 rgba(0, 0, 0, 0.12),
-                  0 3px 1px -2px rgba(0, 0, 0, 0.2);
-    }
-
-    :host([elevation="2"]) .icon,
-    :host([elevation][emphasis="high"][focused]) > .icon {
-      box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 10px 0 rgba(0, 0, 0, 0.12),
-                  0 2px 4px -1px rgba(0, 0, 0, 0.4);
-    }
-
-    :host([elevation="3"]) .icon {
-      box-shadow: 0 6px 10px 0 rgba(0, 0, 0, 0.14),
-                  0 1px 18px 0 rgba(0, 0, 0, 0.12),
-                  0 3px 5px -1px rgba(0, 0, 0, 0.4);
-    }
-    `;
+  get styles() {
+    return styles$1;
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
       <div class="icon">
         <slot></slot>
         <paper-ripple class="circle" center .noink="${this.noink}"></paper-ripple>
@@ -29292,285 +29482,10 @@ class AnypointIconButton extends AnypointButtonBase {
 
 window.customElements.define('anypoint-icon-button', AnypointIconButton);
 
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-/**
- * The `iron-iconset-svg` element allows users to define their own icon sets
- * that contain svg icons. The svg icon elements should be children of the
- * `iron-iconset-svg` element. Multiple icons should be given distinct id's.
- *
- * Using svg elements to create icons has a few advantages over traditional
- * bitmap graphics like jpg or png. Icons that use svg are vector based so
- * they are resolution independent and should look good on any device. They
- * are stylable via css. Icons can be themed, colorized, and even animated.
- *
- * Example:
- *
- *     <iron-iconset-svg name="my-svg-icons" size="24">
- *       <svg>
- *         <defs>
- *           <g id="shape">
- *             <rect x="12" y="0" width="12" height="24" />
- *             <circle cx="12" cy="12" r="12" />
- *           </g>
- *         </defs>
- *       </svg>
- *     </iron-iconset-svg>
- *
- * This will automatically register the icon set "my-svg-icons" to the iconset
- * database.  To use these icons from within another element, make a
- * `iron-iconset` element and call the `byId` method
- * to retrieve a given iconset. To apply a particular icon inside an
- * element use the `applyIcon` method. For example:
- *
- *     iconset.applyIcon(iconNode, 'car');
- *
- * @element iron-iconset-svg
- * @demo demo/index.html
- * @implements {Polymer.Iconset}
- */
-Polymer({
-  is: 'iron-iconset-svg',
+/* eslint-disable max-len */
+const iconWrapper$1 = (tpl) => svg`<svg viewBox="0 0 16 16" preserveAspectRatio="xMidYMid meet" focusable="false" style="pointer-events: none; display: block; width: 100%; height: 100%;">${tpl}</svg>`;
 
-  properties: {
-
-    /**
-     * The name of the iconset.
-     */
-    name: {type: String, observer: '_nameChanged'},
-
-    /**
-     * The size of an individual icon. Note that icons must be square.
-     */
-    size: {type: Number, value: 24},
-
-    /**
-     * Set to true to enable mirroring of icons where specified when they are
-     * stamped. Icons that should be mirrored should be decorated with a
-     * `mirror-in-rtl` attribute.
-     *
-     * NOTE: For performance reasons, direction will be resolved once per
-     * document per iconset, so moving icons in and out of RTL subtrees will
-     * not cause their mirrored state to change.
-     */
-    rtlMirroring: {type: Boolean, value: false},
-
-    /**
-     * Set to true to measure RTL based on the dir attribute on the body or
-     * html elements (measured on document.body or document.documentElement as
-     * available).
-     */
-    useGlobalRtlAttribute: {type: Boolean, value: false}
-  },
-
-  created: function() {
-    this._meta = new IronMeta({type: 'iconset', key: null, value: null});
-  },
-
-  attached: function() {
-    this.style.display = 'none';
-  },
-
-  /**
-   * Construct an array of all icon names in this iconset.
-   *
-   * @return {!Array} Array of icon names.
-   */
-  getIconNames: function() {
-    this._icons = this._createIconMap();
-    return Object.keys(this._icons).map(function(n) {
-      return this.name + ':' + n;
-    }, this);
-  },
-
-  /**
-   * Applies an icon to the given element.
-   *
-   * An svg icon is prepended to the element's shadowRoot if it exists,
-   * otherwise to the element itself.
-   *
-   * If RTL mirroring is enabled, and the icon is marked to be mirrored in
-   * RTL, the element will be tested (once and only once ever for each
-   * iconset) to determine the direction of the subtree the element is in.
-   * This direction will apply to all future icon applications, although only
-   * icons marked to be mirrored will be affected.
-   *
-   * @method applyIcon
-   * @param {Element} element Element to which the icon is applied.
-   * @param {string} iconName Name of the icon to apply.
-   * @return {?Element} The svg element which renders the icon.
-   */
-  applyIcon: function(element, iconName) {
-    // Remove old svg element
-    this.removeIcon(element);
-    // install new svg element
-    var svg = this._cloneIcon(
-        iconName, this.rtlMirroring && this._targetIsRTL(element));
-    if (svg) {
-      // insert svg element into shadow root, if it exists
-      var pde = dom(element.root || element);
-      pde.insertBefore(svg, pde.childNodes[0]);
-      return element._svgIcon = svg;
-    }
-    return null;
-  },
-
-  /**
-   * Remove an icon from the given element by undoing the changes effected
-   * by `applyIcon`.
-   *
-   * @param {Element} element The element from which the icon is removed.
-   */
-  removeIcon: function(element) {
-    // Remove old svg element
-    if (element._svgIcon) {
-      dom(element.root || element).removeChild(element._svgIcon);
-      element._svgIcon = null;
-    }
-  },
-
-  /**
-   * Measures and memoizes the direction of the element. Note that this
-   * measurement is only done once and the result is memoized for future
-   * invocations.
-   */
-  _targetIsRTL: function(target) {
-    if (this.__targetIsRTL == null) {
-      if (this.useGlobalRtlAttribute) {
-        var globalElement =
-            (document.body && document.body.hasAttribute('dir')) ?
-            document.body :
-            document.documentElement;
-
-        this.__targetIsRTL = globalElement.getAttribute('dir') === 'rtl';
-      } else {
-        if (target && target.nodeType !== Node.ELEMENT_NODE) {
-          target = target.host;
-        }
-
-        this.__targetIsRTL =
-            target && window.getComputedStyle(target)['direction'] === 'rtl';
-      }
-    }
-
-    return this.__targetIsRTL;
-  },
-
-  /**
-   *
-   * When name is changed, register iconset metadata
-   *
-   */
-  _nameChanged: function() {
-    this._meta.value = null;
-    this._meta.key = this.name;
-    this._meta.value = this;
-
-    this.async(function() {
-      this.fire('iron-iconset-added', this, {node: window});
-    });
-  },
-
-  /**
-   * Create a map of child SVG elements by id.
-   *
-   * @return {!Object} Map of id's to SVG elements.
-   */
-  _createIconMap: function() {
-    // Objects chained to Object.prototype (`{}`) have members. Specifically,
-    // on FF there is a `watch` method that confuses the icon map, so we
-    // need to use a null-based object here.
-    var icons = Object.create(null);
-    dom(this).querySelectorAll('[id]').forEach(function(icon) {
-      icons[icon.id] = icon;
-    });
-    return icons;
-  },
-
-  /**
-   * Produce installable clone of the SVG element matching `id` in this
-   * iconset, or `undefined` if there is no matching element.
-   *
-   * @return {Element} Returns an installable clone of the SVG element
-   * matching `id`.
-   */
-  _cloneIcon: function(id, mirrorAllowed) {
-    // create the icon map on-demand, since the iconset itself has no discrete
-    // signal to know when it's children are fully parsed
-    this._icons = this._icons || this._createIconMap();
-    return this._prepareSvgClone(this._icons[id], this.size, mirrorAllowed);
-  },
-
-  /**
-   * @param {Element} sourceSvg
-   * @param {number} size
-   * @param {Boolean} mirrorAllowed
-   * @return {Element}
-   */
-  _prepareSvgClone: function(sourceSvg, size, mirrorAllowed) {
-    if (sourceSvg) {
-      var content = sourceSvg.cloneNode(true),
-          svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'),
-          viewBox =
-              content.getAttribute('viewBox') || '0 0 ' + size + ' ' + size,
-          cssText =
-              'pointer-events: none; display: block; width: 100%; height: 100%;';
-
-      if (mirrorAllowed && content.hasAttribute('mirror-in-rtl')) {
-        cssText +=
-            '-webkit-transform:scale(-1,1);transform:scale(-1,1);transform-origin:center;';
-      }
-
-      svg.setAttribute('viewBox', viewBox);
-      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-      svg.setAttribute('focusable', 'false');
-      // TODO(dfreedm): `pointer-events: none` works around
-      // https://crbug.com/370136
-      // TODO(sjmiles): inline style may not be ideal, but avoids requiring a
-      // shadow-root
-      svg.style.cssText = cssText;
-      svg.appendChild(content).removeAttribute('id');
-      return svg;
-    }
-    return null;
-  }
-
-});
-
-const $documentContainer = document.createElement('template');
-let hasDropdown = false;
-try {
-  const node = document.head.querySelector('iron-iconset-svg[name="anypoint-dropdown-menu"]');
-  /* istanbul ignore if */
-  if (node) {
-    hasDropdown = true;
-  }
-  /* istanbul ignore next */
-} catch (_) {
-  hasDropdown = false;
-}
-/* istanbul ignore else */
-if (!hasDropdown) {
-  $documentContainer.innerHTML = `<iron-iconset-svg name="anypoint-dropdown-menu" size="16">
-  <svg><defs>
-    <g
-      id="adm-arrow-down">
-      <path
-        xmlns="http://www.w3.org/2000/svg"
-        d="M8.002 11.352L3.501 4.924l1.027-.276 3.473 4.96 3.471-4.959 1.027.275-4.497 6.428z"></path>
-    </g>
-  </defs></svg>
-  </iron-iconset-svg>`;
-  document.head.appendChild($documentContainer.content);
-}
+const arrowDown = iconWrapper$1(svg`<path xmlns="http://www.w3.org/2000/svg" d="M8.002 11.352L3.501 4.924l1.027-.276 3.473 4.96 3.471-4.959 1.027.275-4.497 6.428z"></path>`);
 
 /**
  * Accessible dropdown menu for Anypoint platform.
@@ -29583,7 +29498,7 @@ if (!hasDropdown) {
  * See README.md file for detailed documentation.
  */
 class AnypointDropdownMenu extends ValidatableMixin(ControlStateMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       /* Default size of an <input> */
@@ -29742,6 +29657,10 @@ class AnypointDropdownMenu extends ValidatableMixin(ControlStateMixin(LitElement
       transition: transform 0.12s ease-in-out;
       will-change: transform;
       color: var(--anypoint-dropdown-menu-label-color, #616161);
+      fill: currentColor;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
     }
 
     .trigger-icon.opened {
@@ -29935,7 +29854,7 @@ class AnypointDropdownMenu extends ValidatableMixin(ControlStateMixin(LitElement
     } = this;
 
     const renderValue = value || '';
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="${_inputContainerClass}">
       <div class="${_labelClass}">
         <slot name="label"></slot>
@@ -29952,10 +29871,9 @@ class AnypointDropdownMenu extends ValidatableMixin(ControlStateMixin(LitElement
           tabindex="-1"
           aria-label="Toggles dropdown menu"
           class="${_triggerClass}"
-          ?compatibility="${compatibility}">
-          <iron-icon
-            class="trigger-icon ${opened ? 'opened' : ''}"
-            icon="anypoint-dropdown-menu:adm-arrow-down"></iron-icon>
+          ?compatibility="${compatibility}"
+        >
+          <span class="trigger-icon ${opened ? 'opened' : ''}">${arrowDown}</span>
         </anypoint-icon-button>
       </div>
 
@@ -29976,17 +29894,17 @@ class AnypointDropdownMenu extends ValidatableMixin(ControlStateMixin(LitElement
         @overlay-closed="${this._dropdownClosed}"
         @overlay-opened="${this._dropdownOpened}"
         @select="${this._selectHandler}"
-        @deselect="${this._deselectHandler}">
+        @deselect="${this._deselectHandler}"
+      >
         <div slot="dropdown-content" class="dropdown-content">
           <slot id="content" name="dropdown-content"></slot>
         </div>
       </anypoint-dropdown>
     </div>
     <div class="assistive-info">
-    ${infoMessage ? html`<p class="${_infoAddonClass}">${infoMessage}</p>` : undefined}
+    ${infoMessage ? html`<p class="${_infoAddonClass}">${infoMessage}</p>` : ''}
     ${invalidMessage ?
-      html`<p class="${_errorAddonClass}">${invalidMessage}</p>` :
-      undefined}
+      html`<p class="${_errorAddonClass}">${invalidMessage}</p>` : ''}
     </div>
     `;
   }
@@ -32259,7 +32177,7 @@ const AnypointMenuMixin = (base) => class extends AnypointMultiSelectableMixin(b
 let globalId = 1;
 
 class AnypointListbox extends AnypointMenuMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       display: block;
@@ -32275,7 +32193,7 @@ class AnypointListbox extends AnypointMenuMixin(LitElement) {
   }
 
   render() {
-    return html`<slot></slot>`;
+    return html`<style>${this.styles}</style><slot></slot>`;
   }
 
   static get properties() {
@@ -32480,7 +32398,20 @@ try {
   }
 }
 
-var styles = css`
+/**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+var styles$2 = css`
   :host,
   .anypoint-item {
     display: block;
@@ -32596,6 +32527,19 @@ var styles = css`
 `;
 
 /**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
  * `anypoint-item`
  * An Anypoint list item.
  *
@@ -32604,9 +32548,9 @@ var styles = css`
  * @memberof AnypointUi
  */
 class AnypointItem extends HoverableMixin(ControlStateMixin(ButtonStateMixin(LitElement))) {
-  static get styles() {
+  get styles() {
     return [
-      styles,
+      styles$2,
       css`
         :host {
           display: flex;
@@ -32639,7 +32583,7 @@ class AnypointItem extends HoverableMixin(ControlStateMixin(ButtonStateMixin(Lit
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
       <slot></slot>
     `;
   }
@@ -32674,7 +32618,7 @@ the License.
 */
 
 class JsonTablePrimitiveTeaser extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       margin: 4px 0;
@@ -32704,7 +32648,7 @@ class JsonTablePrimitiveTeaser extends LitElement {
 
   render() {
     const { _isOverflow, opened } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="primitive-wrapper">
       <slot></slot>
     </div>
@@ -32821,7 +32765,7 @@ the License.
  * @memberof UiElements
  */
 class JsonTableArray extends JsonTableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
      display: block;
      font-size: var(--arc-font-body1-font-size);
@@ -32971,7 +32915,7 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
         ${this._isPrimitive(displayItem, column) ?
           html`<json-table-primitive-teaser
             class="primitive-value">${this._getValue(displayItem, column)}</json-table-primitive-teaser>` :
-          undefined}
+          ''}
         ${this._isObject(displayItem, column) ?
           html`<json-table-object
             .json="${this._getValue(displayItem, column)}"
@@ -32980,10 +32924,10 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
             .itemsPerPage="${itemsPerPage}"
             ?outlined="${outlined}"
             ?compatibility="${compatibility}"></json-table-object>` :
-          undefined}
+          ''}
         ${this._isEnum(displayItem, column) ?
           this._getValue(displayItem, column).map((item) => html`<span class="enum-value">${item}</span>`) :
-          undefined}
+          ''}
 
         ${this._isArray(displayItem, column) ? html`<span class="object-info">
           <span class="object-label" array="">Array (${this._computeValueSize(displayItem, column)})</span>
@@ -32995,8 +32939,8 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
             .page="${page}"
             .itemsPerPage="${itemsPerPage}"
             ?outlined="${outlined}"
-            ?compatibility="${compatibility}"></json-table-array>` : undefined}
-      </td>`) : undefined}
+            ?compatibility="${compatibility}"></json-table-array>` : ''}
+      </td>`) : ''}
     </tr>`);
   }
 
@@ -33005,16 +32949,16 @@ class JsonTableArray extends JsonTableMixin(LitElement) {
     const hasColumns = !!(_columns && _columns.length);
     const hasDisplay = !!(_display && _display.length);
 
-    return html`
+    return html`<style>${this.styles}</style>
     ${this._paginationTemplate()}
     <table>
       ${hasColumns ? html`<thead>
         <tr>
         ${_columns.map((item) => html`<th>${item}</th>`)}
         </tr>
-      </thead>` : undefined}
+      </thead>` : ''}
       <tbody>
-        ${hasDisplay ? this._dispayTemplate(_display, hasColumns, _columns) : undefined}
+        ${hasDisplay ? this._dispayTemplate(_display, hasColumns, _columns) : ''}
       </tbody>
     </table>
     ${this._paginationTemplate()}`;
@@ -33340,7 +33284,7 @@ the License.
  * @memberof UiElements
  */
 class JsonTableObject extends JsonTableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       --json-table-property-name-width: auto;
@@ -33431,12 +33375,12 @@ class JsonTableObject extends JsonTableMixin(LitElement) {
     if (!(_display && _display.length)) {
       return;
     }
-    return html`
+    return html`<style>${this.styles}</style>
     ${_display.map((item) => html`<div class="item ${this._computeItemClass(item)}">
       <div class="property-name">
         ${item.key}
-        ${item.isObject ? html`<span class="object-label">(Object)</span>` : undefined}
-        ${this._isEnumOrArray(item) ? html`<span class="array-label">(Array ${this._computeArraySize(item)})</span>` : undefined}
+        ${item.isObject ? html`<span class="object-label">(Object)</span>` : ''}
+        ${this._isEnumOrArray(item) ? html`<span class="array-label">(Array ${this._computeArraySize(item)})</span>` : ''}
       </div>
       <div class="property-value">
         ${item.isObject ? html`<json-table-object
@@ -33445,10 +33389,10 @@ class JsonTableObject extends JsonTableMixin(LitElement) {
           .page="${page}"
           .itemsPerPage="${itemsPerPage}"
           ?outlined="${outlined}"
-          ?compatibility="${compatibility}"></json-table-object>` : undefined}
+          ?compatibility="${compatibility}"></json-table-object>` : ''}
         ${item.isEnum ?
           item.value.map((item) => html`<span class="enum-value">${item}</span>`) :
-          undefined}
+          ''}
         ${item.isArray ? html`<div class="array-wrapper">
           <json-table-array
             .json="${item.value}"
@@ -33457,9 +33401,9 @@ class JsonTableObject extends JsonTableMixin(LitElement) {
             .itemsPerPage="${itemsPerPage}"
             ?outlined="${outlined}"
             ?compatibility="${compatibility}"></json-table-array>
-        </div>` : undefined}
+        </div>` : ''}
 
-        ${item.isPrimitive ? html`<json-table-primitive-teaser class="primitive-value">${item.value}</json-table-primitive-teaser>` : undefined}
+        ${item.isPrimitive ? html`<json-table-primitive-teaser class="primitive-value">${item.value}</json-table-primitive-teaser>` : ''}
       </div>
     </div>`)}`;
   }
@@ -33588,7 +33532,7 @@ the License.
  * @memberof UiElements
  */
 class JsonTable extends JsonTableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -33614,7 +33558,7 @@ class JsonTable extends JsonTableMixin(LitElement) {
 
   render() {
     const { _renderJson, paginate, page, itemsPerPage, outlined, compatibility } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="actions-panel">
       <slot name="content-action"></slot>
     </div>
@@ -33626,14 +33570,14 @@ class JsonTable extends JsonTableMixin(LitElement) {
         .itemsPerPage="${itemsPerPage}"
         ?outlined="${outlined}"
         ?compatibility="${compatibility}"></json-table-array>
-    </div>` : undefined}
+    </div>` : ''}
     ${this.isObject(_renderJson) ? html`<json-table-object
       .json="${_renderJson}"
       ?paginate="${paginate}"
       .page="${page}"
       .itemsPerPage="${itemsPerPage}"
       ?outlined="${outlined}"
-      ?compatibility="${compatibility}"></json-table-object>` : undefined}`;
+      ?compatibility="${compatibility}"></json-table-object>` : ''}`;
   }
 
   static get properties() {
@@ -33722,7 +33666,7 @@ class JsonTable extends JsonTableMixin(LitElement) {
 }
 window.customElements.define('json-table', JsonTable);
 
-var styles$1 = css`
+var styles$3 = css`
   /**
  * prism.js default theme for JavaScript, CSS and HTML
  * Based on dabblet (http://dabblet.com)
@@ -33865,6 +33809,37 @@ var styles$1 = css`
 `;
 
 /**
+ * Transforms input into a content to be rendered in the code view.
+ */
+const SafeHtmlUtils = {
+  AMP_RE: new RegExp(/&/g),
+  GT_RE: new RegExp(/>/g),
+  LT_RE: new RegExp(/</g),
+  SQUOT_RE: new RegExp(/'/g),
+  QUOT_RE: new RegExp(/"/g),
+  htmlEscape: function(s) {
+    if (typeof s !== 'string') {
+      return s;
+    }
+    if (s.indexOf('&') !== -1) {
+      s = s.replace(SafeHtmlUtils.AMP_RE, '&amp;');
+    }
+    if (s.indexOf('<') !== -1) {
+      s = s.replace(SafeHtmlUtils.LT_RE, '&lt;');
+    }
+    if (s.indexOf('>') !== -1) {
+      s = s.replace(SafeHtmlUtils.GT_RE, '&gt;');
+    }
+    if (s.indexOf('"') !== -1) {
+      s = s.replace(SafeHtmlUtils.QUOT_RE, '&quot;');
+    }
+    if (s.indexOf("'") !== -1) {
+      s = s.replace(SafeHtmlUtils.SQUOT_RE, '&#39;');
+    }
+    return s;
+  }
+};
+/**
  * `api-example-render`
  *
  * Renders a JSON values using Prism highlighter or JSON table.
@@ -33906,18 +33881,17 @@ var styles$1 = css`
  * @memberof ApiElements
  */
 class ApiExampleRender extends LitElement {
-  static get styles() {
+  get styles() {
     return [
-      styles$1,
+      styles$3,
       css`
       :host {
         display: block;
-        padding: 4px;
-        background-color: var(--code-background-color, #f5f2f0);
+        background-color: inherit;
       }
 
       .code-wrapper {
-        padding: 8px;
+        padding: 0px;
       }
 
       #output {
@@ -33929,13 +33903,6 @@ class ApiExampleRender extends LitElement {
 
       [hidden] {
         display: none !important;
-      }
-
-      .example-title {
-        font-weight: var(--arc-font-body1-font-weight);
-        line-height: var(--arc-font-body1-line-height);
-        font-size: 15px;
-        margin: 0 8px 4px 8px;
       }
 
       .union-toggle {
@@ -33952,38 +33919,48 @@ class ApiExampleRender extends LitElement {
         color: var(--api-type-document-union-button-active-color, #000);
       }
 
-      .action-button {
-        outline: none;
-        border-width: 1px;
-        border-color: var(--api-body-document-action-button-border-color, #BDBDBD);
-        border-style: solid;
-      }
-
       .action-button[active] {
-        background-color: var(--api-resource-example-document-button-active-background-color, #e0e0e0);
+        background-color: var(--api-resource-example-document-button-active-background-color, #CDDC39);
         color: var(--api-resource-example-document-button-active-color, currentColor);
       }
 
+      .union-toggle[focused],
+      .action-button[active][focused] {
+        outline: auto;
+      }
+
       .union-type-selector {
-        margin: 12px 8px;
+        margin: 0px 8px 12px 0px;
       }
 
-      json-table {
-        margin: 0 8px;
-      }
-
-      .examples-header {
-        display: flex;
-        align-items: center;
-        flex-direction: row;
+      .code-wrapper.scalar {
+        padding-top: 1px;
       }
 
       .example-actions {
         display: flex;
+        align-items: center;
+        flex-direction: row;
         justify-content: flex-end;
         flex-wrap: wrap;
         flex: 1;
-      }`
+      }
+
+      anypoint-button {
+        margin-bottom: 8px;
+        height: 28px;
+      }
+
+      api-example-render {
+        background-color: inherit;
+      }
+
+      json-table,
+      api-example-render {
+        overflow: auto;
+        max-width: 100%;
+      }
+      `
     ];
   }
 
@@ -34020,17 +33997,13 @@ class ApiExampleRender extends LitElement {
        */
       sourceOpened: { type: Boolean },
       /**
-       * When set the title won't be rendered event if the example has one.
-       */
-      noTitle: { type: Boolean },
-      /**
        * When set the actions row (copy, switch view type) is not rendered.
        */
       noActions: { type: Boolean },
       /**
-       * Enables Anypoint legacy styling
+       * Enables Anypoint compatibility styling
        */
-      legacy: { type: Boolean }
+      compatibility: { type: Boolean }
     };
   }
 
@@ -34163,6 +34136,11 @@ class ApiExampleRender extends LitElement {
    * @return {String} Highlighted code.
    */
   highlight(code, type) {
+    if (code.length > 10000) {
+      // examples that are huge causes browser to choke or hang.
+      // This just sanitizes the schema and renders unprocessed data.
+      return SafeHtmlUtils.htmlEscape(code);
+    }
     let lang;
     if (type) {
       if (type.indexOf('json') !== -1) {
@@ -34213,6 +34191,7 @@ class ApiExampleRender extends LitElement {
       button.part.remove('content-action-button-disabled');
       button.part.remove('code-content-action-button-disabled');
     }
+    button.focus();
   }
 
   _computeUnionExamples(selectedUnion, example) {
@@ -34293,7 +34272,7 @@ class ApiExampleRender extends LitElement {
             ?activated="${selectedUnion === index}"
             @click="${this._selectUnion}"
             data-index="${index}"
-            ?legacy="${this.legacy}"
+            ?compatibility="${this.compatibility}"
             title="Select ${item} type">${item}</anypoint-button>`)}
       </div>
       ${unionExample ? html`
@@ -34303,30 +34282,16 @@ class ApiExampleRender extends LitElement {
           .mediaType="${this.mediaType}"
           .table="${this.table}"
           .renderTable="${this.renderTable}"
-          notitle
-          .noActions="${this.noActions}"></api-example-render>` : undefined}
+          .noActions="${this.noActions}"></api-example-render>` : ''}
     `;
   }
 
   _headerTemplate(example) {
-    const renderTitle = !example.isScalar || example.hasTitle;
     const noActions = !!(this.noActions || example.isScalar);
-    if (noActions && !renderTitle) {
+    if (noActions) {
       return '';
     }
-    return html`<div class="examples-header">
-      ${renderTitle ? this._titleTemplate(example) : ''}
-      ${!noActions ? this._actionsTemplate(example) : ''}
-    </div>`;
-  }
-
-  _titleTemplate(example) {
-    const label = (this.noTitle || !example.title) ? 'Example' : example.title;
-    return html`<span class="example-title">${label}</span>`;
-  }
-
-  _actionsTemplate(example) {
-    const { legacy } = this;
+    const { compatibility } = this;
     const hasRaw = this._computeHasRaw(example.value, example.raw);
     const isJson = this._computeIsJson(this.isJson, example.value);
     return html`
@@ -34336,7 +34301,7 @@ class ApiExampleRender extends LitElement {
         class="action-button"
         data-action="copy"
         @click="${this._copyToClipboard}"
-        ?legacy="${legacy}"
+        ?compatibility="${compatibility}"
         title="Copy example to clipboard"
       >Copy</anypoint-button>
       ${isJson ? html`
@@ -34347,9 +34312,9 @@ class ApiExampleRender extends LitElement {
           toggles
           .active="${this.table}"
           @active-changed="${this._toggleTable}"
-          ?legacy="${legacy}"
+          ?compatibility="${compatibility}"
           title="Toggle between table and JSON view"
-        >Table view</anypoint-button>` : undefined}
+        >Table view</anypoint-button>` : ''}
       ${hasRaw ? html`
         <anypoint-button
           part="content-action-button, code-content-action-button"
@@ -34358,34 +34323,34 @@ class ApiExampleRender extends LitElement {
           toggles
           .active="${this.sourceOpened}"
           @active-changed="${this._toggleSourceOpened}"
-          ?legacy="${legacy}"
+          ?compatibility="${compatibility}"
           title="Toggle between JSON and example source view"
-        >Source vierw</anypoint-button>` : undefined}
+        >Source view</anypoint-button>` : ''}
     </div>`;
   }
 
   _renderExample(example) {
-    return html`<div class="example">
-      ${this._headerTemplate(example)}
-      ${this.renderTable ? html`<json-table .json="${example.value}"></json-table>`: undefined}
-      <div class="code-wrapper" part="code-wrapper, example-code-wrapper" ?hidden="${this.renderTable}">
-        <code id="output" class="markdown-html" part="markdown-html" language-xml=""></code>
-      </div>
+    return html`
+    ${this._headerTemplate(example)}
+    ${this.renderTable ? html`<json-table .json="${example.value}"></json-table>`: ''}
+    <div class="code-wrapper ${example.isScalar ? 'scalar': ''}" part="code-wrapper, example-code-wrapper" ?hidden="${this.renderTable}">
+      <code id="output" class="markdown-html" part="markdown-html" language-xml=""></code>
     </div>`;
   }
 
   render() {
     const example = this.example;
     if (!example) {
-      return html``;
+      return '';
     }
     const isUnion = !!(example && example.hasUnion);
-    return html`
+    return html`<style>${this.styles}</style>
     ${isUnion ? this._renderUnion(example) : this._renderExample(example)}
     <clipboard-copy .content="${example.value}"></clipboard-copy>
     `;
   }
 }
+
 window.customElements.define('api-example-render', ApiExampleRender);
 
 /**
@@ -34425,7 +34390,7 @@ window.customElements.define('api-example-render', ApiExampleRender);
  * @appliesMixin ApiElements.AmfHelperMixin
  */
 class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       display: block;
@@ -34435,12 +34400,42 @@ class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
       margin-bottom: 24px;
     }
 
+    .item-container {
+      border-left: 3px var(--api-example-accent-color, #FF9800) solid;
+      border-radius: 2px;
+      background-color: var(--api-example-background-color, var(--code-background-color, #f5f7f9));
+      margin: 20px 0;
+    }
+
     .example-title {
       font-weight: var(--arc-font-body1-font-weight);
       line-height: var(--arc-font-body1-line-height);
-      font-size: 15px;
-      margin: 8px 8px 20px 12px;
+      font-size: 1rem;
       display: block;
+      padding: 8px 12px;
+      background-color: var(--api-example-title-background-color, #ff9800);
+      color: var(--api-example-title-color, #000);
+      border-top-right-radius: 2px;
+      border-top-left-radius: 2px;
+    }
+
+    .renderer {
+      padding: 8px 0;
+      display: flex;
+    }
+
+    .info-icon {
+      margin: 0 12px;
+      fill: var(--api-example-accent-color, #FF9800);
+      width: 24px;
+      height: 24px;
+    }
+
+    api-example-render {
+      flex: 1;
+      background-color: inherit;
+      overflow: auto;
+      max-width: 100%;
     }`;
   }
 
@@ -34521,9 +34516,9 @@ class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
        */
       rawOnly: { type: Boolean, reflect: true },
       /**
-       * Enables Anypoint legacy styling
+       * Enables Anypoint compatibility styling
        */
-      legacy: { type: Boolean },
+      compatibility: { type: Boolean },
       _effectiveTable: {
         type: Boolean
       },
@@ -34838,7 +34833,7 @@ class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
     const generator = this.shadowRoot.querySelector('#exampleGenerator');
     let result;
     if (examples instanceof Array) {
-      if (this._hasType(examples[0], this.ns.raml.vocabularies.http + 'Payload')) {
+      if (this._hasType(examples[0], this.ns.aml.vocabularies.apiContract.Payload)) {
         result = generator.generatePayloadsExamples(examples, mediaType, opts);
       } else {
         for (let i = 0, len = examples.length; i < len; i++) {
@@ -34852,7 +34847,7 @@ class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
           }
         }
       }
-    } else if (this._hasType(examples, this.ns.raml.vocabularies.http + 'Payload')) {
+    } else if (this._hasType(examples, this.ns.aml.vocabularies.apiContract.Payload)) {
       result = generator.generatePayloadExamples(examples, mediaType, opts);
     } else {
       // try anything...
@@ -34885,71 +34880,123 @@ class ApiResourceExampleDocument extends AmfHelperMixin(LitElement) {
     this.table = e.detail.value;
   }
 
+  _titleTemplate(example) {
+    if (example.isScalar) {
+      return;
+    }
+    const label = !example.title ? 'Example' : example.title;
+    return html`<div class="example-title">${label}</div>`;
+  }
+
   _examplesTemplate(examples) {
     let parts = 'content-action-button, code-content-action-button, content-action-button-disabled, ';
     parts += 'code-content-action-button-disabled content-action-button-active, ';
     parts += 'code-content-action-button-active, code-wrapper, example-code-wrapper, markdown-html';
     return examples.map((item) => html`
-      <api-example-render
-      exportparts="${parts}"
-      class="example"
-      .example="${item}"
-      ?isjson="${this.isJson}"
-      ?mediatype="${this.mediaType}"
-      ?table="${this.table}"
-      ?rendertable="${this._effectiveTable}"
-      ?noactions="${this.noActions}"
-      @table-changed="${this._tableCHangedHandler}"
-      ?legacy="${this.legacy}"></api-example-render>`);
+    <div class="item-container">
+      ${this._titleTemplate(item)}
+      <div class="renderer">
+        <div class="info-icon">${code}</div>
+        <api-example-render
+          exportparts="${parts}"
+          class="example"
+          .example="${item}"
+          ?isjson="${this.isJson}"
+          ?mediatype="${this.mediaType}"
+          ?table="${this.table}"
+          ?rendertable="${this._effectiveTable}"
+          ?noactions="${this.noActions}"
+          @table-changed="${this._tableCHangedHandler}"
+          ?compatibility="${this.compatibility}"
+        ></api-example-render>
+      </div>
+    </div>
+      `);
   }
 
   render() {
     const examples = this.renderedExamples || [];
-    return html`
+    return html`<style>${this.styles}</style>
     <prism-highlighter></prism-highlighter>
     <api-example-generator .amf="${this.amf}" id="exampleGenerator"></api-example-generator>
-    ${examples.length > 1 ? html`<span class="example-title">Examples</span>` : undefined}
-    ${examples.length ? this._examplesTemplate(examples) : undefined}`;
+    ${examples.length ? this._examplesTemplate(examples) : ''}`;
   }
 }
+
 window.customElements.define('api-resource-example-document', ApiResourceExampleDocument);
 
-var freeze$1 = Object.freeze || function (x) {
-  return x;
-};
-
-var html$2 = freeze$1(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
-
-// SVG
-var svg$1 = freeze$1(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'audio', 'canvas', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'video', 'view', 'vkern']);
-
-var svgFilters = freeze$1(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']);
-
-var mathMl = freeze$1(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msup', 'msubsup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover']);
-
-var text = freeze$1(['#text']);
-
-var freeze$2 = Object.freeze || function (x) {
-  return x;
-};
-
-var html$1$1 = freeze$2(['accept', 'action', 'align', 'alt', 'autocomplete', 'background', 'bgcolor', 'border', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'coords', 'crossorigin', 'datetime', 'default', 'dir', 'disabled', 'download', 'enctype', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'integrity', 'ismap', 'label', 'lang', 'list', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'multiple', 'name', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'type', 'usemap', 'valign', 'value', 'width', 'xmlns']);
-
-var svg$1$1 = freeze$2(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'specularconstant', 'specularexponent', 'spreadmethod', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'tabindex', 'targetx', 'targety', 'transform', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
-
-var mathMl$1 = freeze$2(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
-
-var xml = freeze$2(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
+function _toConsumableArray$1(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
 var hasOwnProperty = Object.hasOwnProperty;
 var setPrototypeOf = Object.setPrototypeOf;
+var isFrozen = Object.isFrozen;
+var objectKeys = Object.keys;
+var freeze = Object.freeze;
+var seal = Object.seal; // eslint-disable-line import/no-mutable-exports
 
-var _ref$1 = typeof Reflect !== 'undefined' && Reflect;
-var apply$1 = _ref$1.apply;
+var _ref = typeof Reflect !== 'undefined' && Reflect;
+var apply = _ref.apply;
+var construct = _ref.construct;
 
-if (!apply$1) {
-  apply$1 = function apply(fun, thisValue, args) {
+if (!apply) {
+  apply = function apply(fun, thisValue, args) {
     return fun.apply(thisValue, args);
+  };
+}
+
+if (!freeze) {
+  freeze = function freeze(x) {
+    return x;
+  };
+}
+
+if (!seal) {
+  seal = function seal(x) {
+    return x;
+  };
+}
+
+if (!construct) {
+  construct = function construct(Func, args) {
+    return new (Function.prototype.bind.apply(Func, [null].concat(_toConsumableArray$1(args))))();
+  };
+}
+
+var arrayForEach = unapply(Array.prototype.forEach);
+var arrayIndexOf = unapply(Array.prototype.indexOf);
+var arrayJoin = unapply(Array.prototype.join);
+var arrayPop = unapply(Array.prototype.pop);
+var arrayPush = unapply(Array.prototype.push);
+var arraySlice = unapply(Array.prototype.slice);
+
+var stringToLowerCase = unapply(String.prototype.toLowerCase);
+var stringMatch = unapply(String.prototype.match);
+var stringReplace = unapply(String.prototype.replace);
+var stringIndexOf = unapply(String.prototype.indexOf);
+var stringTrim = unapply(String.prototype.trim);
+
+var regExpTest = unapply(RegExp.prototype.test);
+var regExpCreate = unconstruct(RegExp);
+
+var typeErrorCreate = unconstruct(TypeError);
+
+function unapply(func) {
+  return function (thisArg) {
+    for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      args[_key - 1] = arguments[_key];
+    }
+
+    return apply(func, thisArg, args);
+  };
+}
+
+function unconstruct(func) {
+  return function () {
+    for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+      args[_key2] = arguments[_key2];
+    }
+
+    return construct(func, args);
   };
 }
 
@@ -34966,10 +35013,10 @@ function addToSet(set, array) {
   while (l--) {
     var element = array[l];
     if (typeof element === 'string') {
-      var lcElement = element.toLowerCase();
+      var lcElement = stringToLowerCase(element);
       if (lcElement !== element) {
         // Config presets (e.g. tags.js, attrs.js) are immutable.
-        if (!Object.isFrozen(array)) {
+        if (!isFrozen(array)) {
           array[l] = lcElement;
         }
 
@@ -34989,7 +35036,7 @@ function clone(object) {
 
   var property = void 0;
   for (property in object) {
-    if (apply$1(hasOwnProperty, object, [property])) {
+    if (apply(hasOwnProperty, object, [property])) {
       newObject[property] = object[property];
     }
   }
@@ -34997,9 +35044,24 @@ function clone(object) {
   return newObject;
 }
 
-var seal = Object.seal || function (x) {
-  return x;
-};
+var html$2 = freeze(['a', 'abbr', 'acronym', 'address', 'area', 'article', 'aside', 'audio', 'b', 'bdi', 'bdo', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'center', 'cite', 'code', 'col', 'colgroup', 'content', 'data', 'datalist', 'dd', 'decorator', 'del', 'details', 'dfn', 'dir', 'div', 'dl', 'dt', 'element', 'em', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meter', 'nav', 'nobr', 'ol', 'optgroup', 'option', 'output', 'p', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'select', 'shadow', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'style', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt', 'u', 'ul', 'var', 'video', 'wbr']);
+
+// SVG
+var svg$1 = freeze(['svg', 'a', 'altglyph', 'altglyphdef', 'altglyphitem', 'animatecolor', 'animatemotion', 'animatetransform', 'audio', 'canvas', 'circle', 'clippath', 'defs', 'desc', 'ellipse', 'filter', 'font', 'g', 'glyph', 'glyphref', 'hkern', 'image', 'line', 'lineargradient', 'marker', 'mask', 'metadata', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialgradient', 'rect', 'stop', 'style', 'switch', 'symbol', 'text', 'textpath', 'title', 'tref', 'tspan', 'video', 'view', 'vkern']);
+
+var svgFilters = freeze(['feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence']);
+
+var mathMl = freeze(['math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msup', 'msubsup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover']);
+
+var text = freeze(['#text']);
+
+var html$1$1 = freeze(['accept', 'action', 'align', 'alt', 'autocomplete', 'background', 'bgcolor', 'border', 'cellpadding', 'cellspacing', 'checked', 'cite', 'class', 'clear', 'color', 'cols', 'colspan', 'controls', 'coords', 'crossorigin', 'datetime', 'default', 'dir', 'disabled', 'download', 'enctype', 'face', 'for', 'headers', 'height', 'hidden', 'high', 'href', 'hreflang', 'id', 'integrity', 'ismap', 'label', 'lang', 'list', 'loop', 'low', 'max', 'maxlength', 'media', 'method', 'min', 'minlength', 'multiple', 'name', 'noshade', 'novalidate', 'nowrap', 'open', 'optimum', 'pattern', 'placeholder', 'poster', 'preload', 'pubdate', 'radiogroup', 'readonly', 'rel', 'required', 'rev', 'reversed', 'role', 'rows', 'rowspan', 'spellcheck', 'scope', 'selected', 'shape', 'size', 'sizes', 'span', 'srclang', 'start', 'src', 'srcset', 'step', 'style', 'summary', 'tabindex', 'title', 'type', 'usemap', 'valign', 'value', 'width', 'xmlns']);
+
+var svg$1$1 = freeze(['accent-height', 'accumulate', 'additive', 'alignment-baseline', 'ascent', 'attributename', 'attributetype', 'azimuth', 'basefrequency', 'baseline-shift', 'begin', 'bias', 'by', 'class', 'clip', 'clip-path', 'clip-rule', 'color', 'color-interpolation', 'color-interpolation-filters', 'color-profile', 'color-rendering', 'cx', 'cy', 'd', 'dx', 'dy', 'diffuseconstant', 'direction', 'display', 'divisor', 'dur', 'edgemode', 'elevation', 'end', 'fill', 'fill-opacity', 'fill-rule', 'filter', 'filterunits', 'flood-color', 'flood-opacity', 'font-family', 'font-size', 'font-size-adjust', 'font-stretch', 'font-style', 'font-variant', 'font-weight', 'fx', 'fy', 'g1', 'g2', 'glyph-name', 'glyphref', 'gradientunits', 'gradienttransform', 'height', 'href', 'id', 'image-rendering', 'in', 'in2', 'k', 'k1', 'k2', 'k3', 'k4', 'kerning', 'keypoints', 'keysplines', 'keytimes', 'lang', 'lengthadjust', 'letter-spacing', 'kernelmatrix', 'kernelunitlength', 'lighting-color', 'local', 'marker-end', 'marker-mid', 'marker-start', 'markerheight', 'markerunits', 'markerwidth', 'maskcontentunits', 'maskunits', 'max', 'mask', 'media', 'method', 'mode', 'min', 'name', 'numoctaves', 'offset', 'operator', 'opacity', 'order', 'orient', 'orientation', 'origin', 'overflow', 'paint-order', 'path', 'pathlength', 'patterncontentunits', 'patterntransform', 'patternunits', 'points', 'preservealpha', 'preserveaspectratio', 'primitiveunits', 'r', 'rx', 'ry', 'radius', 'refx', 'refy', 'repeatcount', 'repeatdur', 'restart', 'result', 'rotate', 'scale', 'seed', 'shape-rendering', 'specularconstant', 'specularexponent', 'spreadmethod', 'stddeviation', 'stitchtiles', 'stop-color', 'stop-opacity', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'stroke', 'stroke-width', 'style', 'surfacescale', 'tabindex', 'targetx', 'targety', 'transform', 'text-anchor', 'text-decoration', 'text-rendering', 'textlength', 'type', 'u1', 'u2', 'unicode', 'values', 'viewbox', 'visibility', 'version', 'vert-adv-y', 'vert-origin-x', 'vert-origin-y', 'width', 'word-spacing', 'wrap', 'writing-mode', 'xchannelselector', 'ychannelselector', 'x', 'x1', 'x2', 'xmlns', 'y', 'y1', 'y2', 'z', 'zoomandpan']);
+
+var mathMl$1 = freeze(['accent', 'accentunder', 'align', 'bevelled', 'close', 'columnsalign', 'columnlines', 'columnspan', 'denomalign', 'depth', 'dir', 'display', 'displaystyle', 'encoding', 'fence', 'frame', 'height', 'href', 'id', 'largeop', 'length', 'linethickness', 'lspace', 'lquote', 'mathbackground', 'mathcolor', 'mathsize', 'mathvariant', 'maxsize', 'minsize', 'movablelimits', 'notation', 'numalign', 'open', 'rowalign', 'rowlines', 'rowspacing', 'rowspan', 'rspace', 'rquote', 'scriptlevel', 'scriptminsize', 'scriptsizemultiplier', 'selection', 'separator', 'separators', 'stretchy', 'subscriptshift', 'supscriptshift', 'symmetric', 'voffset', 'width', 'xmlns']);
+
+var xml = freeze(['xlink:href', 'xml:id', 'xlink:title', 'xml:space', 'xmlns:xlink']);
 
 var MUSTACHE_EXPR = seal(/\{\{[\s\S]*|[\s\S]*\}\}/gm); // Specify template detection regex for SAFE_FOR_TEMPLATES mode
 var ERB_EXPR = seal(/<%[\s\S]*|[\s\S]*%>/gm);
@@ -35015,21 +35077,9 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 
 function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-var _ref = typeof Reflect !== 'undefined' && Reflect;
-var apply = _ref.apply;
-
-var arraySlice = Array.prototype.slice;
-var freeze = Object.freeze;
-
 var getGlobal = function getGlobal() {
   return typeof window === 'undefined' ? null : window;
 };
-
-if (!apply) {
-  apply = function apply(fun, thisValue, args) {
-    return fun.apply(thisValue, args);
-  };
-}
 
 /**
  * Creates a no-op policy for internal use only.
@@ -35081,7 +35131,7 @@ function createDOMPurify() {
    * Version label, exposed for easier checks
    * if DOMPurify is up to date or not
    */
-  DOMPurify.version = '1.0.11';
+  DOMPurify.version = '2.0.8';
 
   /**
    * Array of elements that DOMPurify removed during sanitation.
@@ -35111,7 +35161,7 @@ function createDOMPurify() {
       Text = window.Text,
       Comment = window.Comment,
       DOMParser = window.DOMParser,
-      TrustedTypes = window.TrustedTypes;
+      trustedTypes = window.trustedTypes;
 
   // As per issue #47, the web-components registry is inherited by a
   // new document created via createHTMLDocument. As per the spec
@@ -35127,7 +35177,7 @@ function createDOMPurify() {
     }
   }
 
-  var trustedTypesPolicy = _createTrustedTypesPolicy(TrustedTypes, originalDocument);
+  var trustedTypesPolicy = _createTrustedTypesPolicy(trustedTypes, originalDocument);
   var emptyHTML = trustedTypesPolicy ? trustedTypesPolicy.createHTML('') : '';
 
   var _document = document,
@@ -35152,6 +35202,7 @@ function createDOMPurify() {
       IS_SCRIPT_OR_DATA$$1 = IS_SCRIPT_OR_DATA,
       ATTR_WHITESPACE$$1 = ATTR_WHITESPACE;
   var IS_ALLOWED_URI$$1 = IS_ALLOWED_URI;
+
   /**
    * We consider the elements and attributes below to be safe. Ideally
    * don't add any new ones but feel free to remove unwanted ones.
@@ -35215,6 +35266,10 @@ function createDOMPurify() {
    * DOMPurify. */
   var RETURN_DOM_IMPORT = false;
 
+  /* Try to return a Trusted Type object instead of a string, retrun a string in
+   * case Trusted Types are not supported  */
+  var RETURN_TRUSTED_TYPE = false;
+
   /* Output should be free from DOM clobbering attacks? */
   var SANITIZE_DOM = true;
 
@@ -35229,7 +35284,7 @@ function createDOMPurify() {
   var USE_PROFILES = {};
 
   /* Tags to ignore content of when KEEP_CONTENT is true */
-  var FORBID_CONTENTS = addToSet({}, ['audio', 'head', 'math', 'script', 'style', 'template', 'svg', 'video']);
+  var FORBID_CONTENTS = addToSet({}, ['annotation-xml', 'audio', 'colgroup', 'desc', 'foreignobject', 'head', 'iframe', 'math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'noembed', 'noframes', 'plaintext', 'script', 'style', 'svg', 'template', 'thead', 'title', 'video', 'xmp']);
 
   /* Tags that are safe for data: URIs */
   var DATA_URI_TAGS = addToSet({}, ['audio', 'video', 'img', 'source', 'image']);
@@ -35265,7 +35320,7 @@ function createDOMPurify() {
     /* Set configuration parameters */
     ALLOWED_TAGS = 'ALLOWED_TAGS' in cfg ? addToSet({}, cfg.ALLOWED_TAGS) : DEFAULT_ALLOWED_TAGS;
     ALLOWED_ATTR = 'ALLOWED_ATTR' in cfg ? addToSet({}, cfg.ALLOWED_ATTR) : DEFAULT_ALLOWED_ATTR;
-    URI_SAFE_ATTRIBUTES = 'ADD_URI_SAFE_ATTR' in cfg ? addToSet({}, cfg.ADD_URI_SAFE_ATTR) : DEFAULT_URI_SAFE_ATTRIBUTES;
+    URI_SAFE_ATTRIBUTES = 'ADD_URI_SAFE_ATTR' in cfg ? addToSet(clone(DEFAULT_URI_SAFE_ATTRIBUTES), cfg.ADD_URI_SAFE_ATTR) : DEFAULT_URI_SAFE_ATTRIBUTES;
     FORBID_TAGS = 'FORBID_TAGS' in cfg ? addToSet({}, cfg.FORBID_TAGS) : {};
     FORBID_ATTR = 'FORBID_ATTR' in cfg ? addToSet({}, cfg.FORBID_ATTR) : {};
     USE_PROFILES = 'USE_PROFILES' in cfg ? cfg.USE_PROFILES : false;
@@ -35278,13 +35333,12 @@ function createDOMPurify() {
     RETURN_DOM = cfg.RETURN_DOM || false; // Default false
     RETURN_DOM_FRAGMENT = cfg.RETURN_DOM_FRAGMENT || false; // Default false
     RETURN_DOM_IMPORT = cfg.RETURN_DOM_IMPORT || false; // Default false
+    RETURN_TRUSTED_TYPE = cfg.RETURN_TRUSTED_TYPE || false; // Default false
     FORCE_BODY = cfg.FORCE_BODY || false; // Default false
     SANITIZE_DOM = cfg.SANITIZE_DOM !== false; // Default true
     KEEP_CONTENT = cfg.KEEP_CONTENT !== false; // Default true
     IN_PLACE = cfg.IN_PLACE || false; // Default false
-
     IS_ALLOWED_URI$$1 = cfg.ALLOWED_URI_REGEXP || IS_ALLOWED_URI$$1;
-
     if (SAFE_FOR_TEMPLATES) {
       ALLOW_DATA_ATTR = false;
     }
@@ -35352,9 +35406,10 @@ function createDOMPurify() {
       addToSet(ALLOWED_TAGS, ['html', 'head', 'body']);
     }
 
-    /* Add tbody to ALLOWED_TAGS in case tables are permitted, see #286 */
+    /* Add tbody to ALLOWED_TAGS in case tables are permitted, see #286, #365 */
     if (ALLOWED_TAGS.table) {
       addToSet(ALLOWED_TAGS, ['tbody']);
+      delete FORBID_TAGS.tbody;
     }
 
     // Prevent further manipulation of configuration.
@@ -35372,7 +35427,7 @@ function createDOMPurify() {
    * @param  {Node} node a DOM node
    */
   var _forceRemove = function _forceRemove(node) {
-    DOMPurify.removed.push({ element: node });
+    arrayPush(DOMPurify.removed, { element: node });
     try {
       node.parentNode.removeChild(node);
     } catch (error) {
@@ -35388,12 +35443,12 @@ function createDOMPurify() {
    */
   var _removeAttribute = function _removeAttribute(name, node) {
     try {
-      DOMPurify.removed.push({
+      arrayPush(DOMPurify.removed, {
         attribute: node.getAttributeNode(name),
         from: node
       });
     } catch (error) {
-      DOMPurify.removed.push({
+      arrayPush(DOMPurify.removed, {
         attribute: null,
         from: node
       });
@@ -35417,17 +35472,15 @@ function createDOMPurify() {
       dirty = '<remove></remove>' + dirty;
     } else {
       /* If FORCE_BODY isn't used, leading whitespace needs to be preserved manually */
-      var matches = dirty.match(/^[\s]+/);
+      var matches = stringMatch(dirty, /^[\s]+/);
       leadingWhitespace = matches && matches[0];
-      if (leadingWhitespace) {
-        dirty = dirty.slice(leadingWhitespace.length);
-      }
     }
 
+    var dirtyPayload = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
     /* Use DOMParser to workaround Firefox bug (see comment below) */
     if (useDOMParser) {
       try {
-        doc = new DOMParser().parseFromString(dirty, 'text/html');
+        doc = new DOMParser().parseFromString(dirtyPayload, 'text/html');
       } catch (error) {}
     }
 
@@ -35444,10 +35497,10 @@ function createDOMPurify() {
           body = _doc.body;
 
       body.parentNode.removeChild(body.parentNode.firstElementChild);
-      body.outerHTML = trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
+      body.outerHTML = dirtyPayload;
     }
 
-    if (leadingWhitespace) {
+    if (dirty && leadingWhitespace) {
       doc.body.insertBefore(document.createTextNode(leadingWhitespace), doc.body.childNodes[0] || null);
     }
 
@@ -35462,12 +35515,12 @@ function createDOMPurify() {
   //
   // So we feature detect the Firefox bug and use the DOMParser if necessary.
   //
-  // MS Edge, in older versions, is affected by an mXSS behavior. The second
-  // check tests for the behavior and fixes it if necessary.
+  // Chrome 77 and other versions ship an mXSS bug that caused a bypass to
+  // happen. We now check for the mXSS trigger and react accordingly.
   if (DOMPurify.isSupported) {
     (function () {
       try {
-        var doc = _initDocument('<svg><p><style><img src="</style><img src=x onerror=1//">');
+        var doc = _initDocument('<svg><p><textarea><img src="</textarea><img src=x abc=1//">');
         if (doc.querySelector('svg img')) {
           useDOMParser = true;
         }
@@ -35477,7 +35530,7 @@ function createDOMPurify() {
     (function () {
       try {
         var doc = _initDocument('<x/><title>&lt;/title&gt;&lt;img&gt;');
-        if (doc.querySelector('title').innerHTML.match(/<\/title/)) {
+        if (regExpTest(/<\/title/, doc.querySelector('title').innerHTML)) {
           removeTitle = true;
         }
       } catch (error) {}
@@ -35507,7 +35560,7 @@ function createDOMPurify() {
       return false;
     }
 
-    if (typeof elm.nodeName !== 'string' || typeof elm.textContent !== 'string' || typeof elm.removeChild !== 'function' || !(elm.attributes instanceof NamedNodeMap) || typeof elm.removeAttribute !== 'function' || typeof elm.setAttribute !== 'function') {
+    if (typeof elm.nodeName !== 'string' || typeof elm.textContent !== 'string' || typeof elm.removeChild !== 'function' || !(elm.attributes instanceof NamedNodeMap) || typeof elm.removeAttribute !== 'function' || typeof elm.setAttribute !== 'function' || typeof elm.namespaceURI !== 'string') {
       return true;
     }
 
@@ -35537,7 +35590,7 @@ function createDOMPurify() {
       return;
     }
 
-    hooks[entryPoint].forEach(function (hook) {
+    arrayForEach(hooks[entryPoint], function (hook) {
       hook.call(DOMPurify, currentNode, data, CONFIG);
     });
   };
@@ -35566,13 +35619,19 @@ function createDOMPurify() {
     }
 
     /* Now let's check the element's type and name */
-    var tagName = currentNode.nodeName.toLowerCase();
+    var tagName = stringToLowerCase(currentNode.nodeName);
 
     /* Execute a hook if present */
     _executeHook('uponSanitizeElement', currentNode, {
       tagName: tagName,
       allowedTags: ALLOWED_TAGS
     });
+
+    /* Take care of an mXSS pattern using p, br inside svg, math */
+    if ((tagName === 'svg' || tagName === 'math') && currentNode.querySelectorAll('p, br').length !== 0) {
+      _forceRemove(currentNode);
+      return true;
+    }
 
     /* Remove element if anything forbids its presence */
     if (!ALLOWED_TAGS[tagName] || FORBID_TAGS[tagName]) {
@@ -35589,23 +35648,23 @@ function createDOMPurify() {
     }
 
     /* Remove in case a noscript/noembed XSS is suspected */
-    if (tagName === 'noscript' && currentNode.innerHTML.match(/<\/noscript/i)) {
+    if (tagName === 'noscript' && regExpTest(/<\/noscript/i, currentNode.innerHTML)) {
       _forceRemove(currentNode);
       return true;
     }
 
-    if (tagName === 'noembed' && currentNode.innerHTML.match(/<\/noembed/i)) {
+    if (tagName === 'noembed' && regExpTest(/<\/noembed/i, currentNode.innerHTML)) {
       _forceRemove(currentNode);
       return true;
     }
 
     /* Convert markup to cover jQuery behavior */
-    if (SAFE_FOR_JQUERY && !currentNode.firstElementChild && (!currentNode.content || !currentNode.content.firstElementChild) && /</g.test(currentNode.textContent)) {
-      DOMPurify.removed.push({ element: currentNode.cloneNode() });
+    if (SAFE_FOR_JQUERY && !currentNode.firstElementChild && (!currentNode.content || !currentNode.content.firstElementChild) && regExpTest(/</g, currentNode.textContent)) {
+      arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
       if (currentNode.innerHTML) {
-        currentNode.innerHTML = currentNode.innerHTML.replace(/</g, '&lt;');
+        currentNode.innerHTML = stringReplace(currentNode.innerHTML, /</g, '&lt;');
       } else {
-        currentNode.innerHTML = currentNode.textContent.replace(/</g, '&lt;');
+        currentNode.innerHTML = stringReplace(currentNode.textContent, /</g, '&lt;');
       }
     }
 
@@ -35613,10 +35672,10 @@ function createDOMPurify() {
     if (SAFE_FOR_TEMPLATES && currentNode.nodeType === 3) {
       /* Get the element's text content */
       content = currentNode.textContent;
-      content = content.replace(MUSTACHE_EXPR$$1, ' ');
-      content = content.replace(ERB_EXPR$$1, ' ');
+      content = stringReplace(content, MUSTACHE_EXPR$$1, ' ');
+      content = stringReplace(content, ERB_EXPR$$1, ' ');
       if (currentNode.textContent !== content) {
-        DOMPurify.removed.push({ element: currentNode.cloneNode() });
+        arrayPush(DOMPurify.removed, { element: currentNode.cloneNode() });
         currentNode.textContent = content;
       }
     }
@@ -35646,11 +35705,11 @@ function createDOMPurify() {
         (https://html.spec.whatwg.org/multipage/dom.html#embedding-custom-non-visible-data-with-the-data-*-attributes)
         XML-compatible (https://html.spec.whatwg.org/multipage/infrastructure.html#xml-compatible and http://www.w3.org/TR/xml/#d0e804)
         We don't need to check the value; it's always URI safe. */
-    if (ALLOW_DATA_ATTR && DATA_ATTR$$1.test(lcName)) ; else if (ALLOW_ARIA_ATTR && ARIA_ATTR$$1.test(lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
+    if (ALLOW_DATA_ATTR && regExpTest(DATA_ATTR$$1, lcName)) ; else if (ALLOW_ARIA_ATTR && regExpTest(ARIA_ATTR$$1, lcName)) ; else if (!ALLOWED_ATTR[lcName] || FORBID_ATTR[lcName]) {
       return false;
 
       /* Check value is safe. First, is attr inert? If so, is safe */
-    } else if (URI_SAFE_ATTRIBUTES[lcName]) ; else if (IS_ALLOWED_URI$$1.test(value.replace(ATTR_WHITESPACE$$1, ''))) ; else if ((lcName === 'src' || lcName === 'xlink:href') && lcTag !== 'script' && value.indexOf('data:') === 0 && DATA_URI_TAGS[lcTag]) ; else if (ALLOW_UNKNOWN_PROTOCOLS && !IS_SCRIPT_OR_DATA$$1.test(value.replace(ATTR_WHITESPACE$$1, ''))) ; else if (!value) ; else {
+    } else if (URI_SAFE_ATTRIBUTES[lcName]) ; else if (regExpTest(IS_ALLOWED_URI$$1, stringReplace(value, ATTR_WHITESPACE$$1, ''))) ; else if ((lcName === 'src' || lcName === 'xlink:href' || lcName === 'href') && lcTag !== 'script' && stringIndexOf(value, 'data:') === 0 && DATA_URI_TAGS[lcTag]) ; else if (ALLOW_UNKNOWN_PROTOCOLS && !regExpTest(IS_SCRIPT_OR_DATA$$1, stringReplace(value, ATTR_WHITESPACE$$1, ''))) ; else if (!value) ; else {
       return false;
     }
 
@@ -35667,6 +35726,7 @@ function createDOMPurify() {
    *
    * @param  {Node} currentNode to sanitize
    */
+  // eslint-disable-next-line complexity
   var _sanitizeAttributes = function _sanitizeAttributes(currentNode) {
     var attr = void 0;
     var value = void 0;
@@ -35699,15 +35759,20 @@ function createDOMPurify() {
           name = _attr.name,
           namespaceURI = _attr.namespaceURI;
 
-      value = attr.value.trim();
-      lcName = name.toLowerCase();
+      value = stringTrim(attr.value);
+      lcName = stringToLowerCase(name);
 
       /* Execute a hook if present */
       hookEvent.attrName = lcName;
       hookEvent.attrValue = value;
       hookEvent.keepAttr = true;
+      hookEvent.forceKeepAttr = undefined; // Allows developers to see this is a property they can set
       _executeHook('uponSanitizeAttribute', currentNode, hookEvent);
       value = hookEvent.attrValue;
+      /* Did the hooks approve of the attribute? */
+      if (hookEvent.forceKeepAttr) {
+        continue;
+      }
 
       /* Remove attribute */
       // Safari (iOS + Mac), last tested v8.0.5, crashes if you try to
@@ -35715,10 +35780,10 @@ function createDOMPurify() {
       // attribute at the time.
       if (lcName === 'name' && currentNode.nodeName === 'IMG' && attributes.id) {
         idAttr = attributes.id;
-        attributes = apply(arraySlice, attributes, []);
+        attributes = arraySlice(attributes, []);
         _removeAttribute('id', currentNode);
         _removeAttribute(name, currentNode);
-        if (attributes.indexOf(idAttr) > l) {
+        if (arrayIndexOf(attributes, idAttr) > l) {
           currentNode.setAttribute('id', idAttr.value);
         }
       } else if (
@@ -35742,10 +35807,22 @@ function createDOMPurify() {
         continue;
       }
 
+      /* Work around a security issue in jQuery 3.0 */
+      if (SAFE_FOR_JQUERY && regExpTest(/\/>/i, value)) {
+        _removeAttribute(name, currentNode);
+        continue;
+      }
+
+      /* Take care of an mXSS pattern using namespace switches */
+      if (regExpTest(/svg|math/i, currentNode.namespaceURI) && regExpTest(regExpCreate('</(' + arrayJoin(objectKeys(FORBID_CONTENTS), '|') + ')', 'i'), value)) {
+        _removeAttribute(name, currentNode);
+        continue;
+      }
+
       /* Sanitize attribute content to be template-safe */
       if (SAFE_FOR_TEMPLATES) {
-        value = value.replace(MUSTACHE_EXPR$$1, ' ');
-        value = value.replace(ERB_EXPR$$1, ' ');
+        value = stringReplace(value, MUSTACHE_EXPR$$1, ' ');
+        value = stringReplace(value, ERB_EXPR$$1, ' ');
       }
 
       /* Is `value` valid for this attribute? */
@@ -35763,7 +35840,7 @@ function createDOMPurify() {
           currentNode.setAttribute(name, value);
         }
 
-        DOMPurify.removed.pop();
+        arrayPop(DOMPurify.removed);
       } catch (error) {}
     }
 
@@ -35830,11 +35907,11 @@ function createDOMPurify() {
     if (typeof dirty !== 'string' && !_isNode(dirty)) {
       // eslint-disable-next-line no-negated-condition
       if (typeof dirty.toString !== 'function') {
-        throw new TypeError('toString is not a function');
+        throw typeErrorCreate('toString is not a function');
       } else {
         dirty = dirty.toString();
         if (typeof dirty !== 'string') {
-          throw new TypeError('dirty is not a string, aborting');
+          throw typeErrorCreate('dirty is not a string, aborting');
         }
       }
     }
@@ -35862,6 +35939,11 @@ function createDOMPurify() {
     /* Clean up removed elements */
     DOMPurify.removed = [];
 
+    /* Check if dirty is correctly typed for IN_PLACE */
+    if (typeof dirty === 'string') {
+      IN_PLACE = false;
+    }
+
     if (IN_PLACE) ; else if (dirty instanceof Node) {
       /* If dirty is a DOM element, append to an empty document to avoid
          elements being stripped by the parser */
@@ -35878,7 +35960,7 @@ function createDOMPurify() {
       }
     } else {
       /* Exit directly if we have nothing to do */
-      if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && dirty.indexOf('<') === -1) {
+      if (!RETURN_DOM && !SAFE_FOR_TEMPLATES && !WHOLE_DOCUMENT && RETURN_TRUSTED_TYPE && dirty.indexOf('<') === -1) {
         return trustedTypesPolicy ? trustedTypesPolicy.createHTML(dirty) : dirty;
       }
 
@@ -35958,11 +36040,11 @@ function createDOMPurify() {
 
     /* Sanitize final string template-safe */
     if (SAFE_FOR_TEMPLATES) {
-      serializedHTML = serializedHTML.replace(MUSTACHE_EXPR$$1, ' ');
-      serializedHTML = serializedHTML.replace(ERB_EXPR$$1, ' ');
+      serializedHTML = stringReplace(serializedHTML, MUSTACHE_EXPR$$1, ' ');
+      serializedHTML = stringReplace(serializedHTML, ERB_EXPR$$1, ' ');
     }
 
-    return trustedTypesPolicy ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
+    return trustedTypesPolicy && RETURN_TRUSTED_TYPE ? trustedTypesPolicy.createHTML(serializedHTML) : serializedHTML;
   };
 
   /**
@@ -36002,8 +36084,8 @@ function createDOMPurify() {
       _parseConfig({});
     }
 
-    var lcTag = tag.toLowerCase();
-    var lcName = attr.toLowerCase();
+    var lcTag = stringToLowerCase(tag);
+    var lcName = stringToLowerCase(attr);
     return _isValidAttribute(lcTag, lcName, value);
   };
 
@@ -36020,7 +36102,7 @@ function createDOMPurify() {
     }
 
     hooks[entryPoint] = hooks[entryPoint] || [];
-    hooks[entryPoint].push(hookFunction);
+    arrayPush(hooks[entryPoint], hookFunction);
   };
 
   /**
@@ -36032,7 +36114,7 @@ function createDOMPurify() {
    */
   DOMPurify.removeHook = function (entryPoint) {
     if (hooks[entryPoint]) {
-      hooks[entryPoint].pop();
+      arrayPop(hooks[entryPoint]);
     }
   };
 
@@ -37764,6 +37846,7 @@ var marked$2 = /*#__PURE__*/Object.freeze({
     __moduleExports: marked$1
 });
 
+/* istanbul ignore if */
 if (!window.marked) {
   // For webpack support for the Polymer 3 version created by the Polymer
   // Modulizer More info:
@@ -37771,34 +37854,6 @@ if (!window.marked) {
   window.marked = marked$2;
 }
 
-const SafeHtmlUtils = {
-  AMP_RE: new RegExp(/&/g),
-  GT_RE: new RegExp(/>/g),
-  LT_RE: new RegExp(/</g),
-  SQUOT_RE: new RegExp(/'/g),
-  QUOT_RE: new RegExp(/"/g),
-  htmlEscape: function(s) {
-    if (typeof s !== 'string') {
-      return s;
-    }
-    if (s.indexOf('&') !== -1) {
-      s = s.replace(SafeHtmlUtils.AMP_RE, '&amp;');
-    }
-    if (s.indexOf('<') !== -1) {
-      s = s.replace(SafeHtmlUtils.LT_RE, '&lt;');
-    }
-    if (s.indexOf('>') !== -1) {
-      s = s.replace(SafeHtmlUtils.GT_RE, '&gt;');
-    }
-    if (s.indexOf('"') !== -1) {
-      s = s.replace(SafeHtmlUtils.QUOT_RE, '&quot;');
-    }
-    if (s.indexOf("'") !== -1) {
-      s = s.replace(SafeHtmlUtils.SQUOT_RE, '&#39;');
-    }
-    return s;
-  }
-};
 /**
 Element wrapper for the [marked](https://github.com/chjj/marked) library.
 
@@ -37875,11 +37930,11 @@ as you would a regular DOM element:
 @demo demo/index.html
  */
 class ArcMarked extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: block;
-        padding: 24px;
+        padding: 4px;
       }
     `;
   }
@@ -38114,12 +38169,7 @@ class ArcMarked extends LitElement {
     if (this.renderer) {
       this.renderer(renderer);
     }
-    let data;
-    if (this.sanitize) {
-      data = SafeHtmlUtils.htmlEscape(this.markdown);
-    } else {
-      data = this.markdown;
-    }
+    const data = this.markdown;
     const opts = {
       renderer: renderer,
       highlight: this._highlight.bind(this),
@@ -38271,6 +38321,9 @@ class ArcMarked extends LitElement {
 
   render() {
     return html`
+      <style>
+        ${this.styles}
+      </style>
       <slot name="markdown-html">
         <div id="content"></div>
       </slot>
@@ -38401,82 +38454,82 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
     if (!range) {
       return;
     }
-    const rs = this.ns.raml.vocabularies.shapes;
-    if (this._hasType(range, rs + 'ScalarShape')) {
+    const rs = this.ns.aml.vocabularies.shapes;
+    if (this._hasType(range, rs.ScalarShape)) {
       const sc = this.ns.w3.xmlSchema;
-      const key = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+      const key = this._getAmfKey(this.ns.w3.shacl.datatype);
       const data = this._ensureArray(range[key]);
       const id = (data && data[0]) ? data[0]['@id'] : '';
       switch (id) {
-        case this._getAmfKey(sc + 'string'):
-        case sc + 'string':
+        case this._getAmfKey(sc.string):
+        case sc.string:
           return 'String';
-        case this._getAmfKey(sc + 'integer'):
-        case sc + 'integer':
+        case this._getAmfKey(sc.integer):
+        case sc.integer:
           return 'Integer';
-        case this._getAmfKey(sc + 'long'):
-        case sc + 'long':
+        case this._getAmfKey(sc.long):
+        case sc.long:
           return 'Long';
-        case this._getAmfKey(sc + 'float'):
-        case sc + 'float':
+        case this._getAmfKey(sc.float):
+        case sc.float:
           return 'Float';
-        case this._getAmfKey(sc + 'double'):
-        case sc + 'double':
+        case this._getAmfKey(sc.double):
+        case sc.double:
           return 'Double';
-        case this._getAmfKey(rs + 'number'):
-        case rs + 'number':
+        case this._getAmfKey(rs.number):
+        case rs.number:
           return 'Number';
-        case this._getAmfKey(sc + 'boolean'):
-        case sc + 'boolean':
+        case this._getAmfKey(sc.boolean):
+        case sc.boolean:
           return 'Boolean';
-        case this._getAmfKey(sc + 'dateTime'):
-        case sc + 'dateTime':
+        case this._getAmfKey(sc.dateTime):
+        case sc.dateTime:
           return 'DateTime';
-        case this._getAmfKey(rs + 'dateTimeOnly'):
-        case rs + 'dateTimeOnly':
+        case this._getAmfKey(rs.dateTimeOnly):
+        case rs.dateTimeOnly:
           return 'Time';
-        case this._getAmfKey(sc + 'time'):
-        case sc + 'time':
+        case this._getAmfKey(sc.time):
+        case sc.time:
           return 'Time';
-        case this._getAmfKey(sc + 'date'):
-        case sc + 'date':
+        case this._getAmfKey(sc.date):
+        case sc.date:
           return 'Date';
-        case this._getAmfKey(sc + 'base64Binary'):
-        case sc + 'base64Binary':
+        case this._getAmfKey(sc.base64Binary):
+        case sc.base64Binary:
           return 'Base64 binary';
-        case this._getAmfKey(rs + 'password'):
-        case rs + 'password':
+        case this._getAmfKey(rs.password):
+        case rs.password:
           return 'Password';
       }
     }
-    if (this._hasType(range, rs + 'UnionShape')) {
+    if (this._hasType(range, rs.UnionShape)) {
       return 'Union';
     }
-    if (this._hasType(range, rs + 'ArrayShape')) {
+    if (this._hasType(range, rs.ArrayShape)) {
       return 'Array';
     }
-    if (this._hasType(range, this.ns.w3.shacl.name + 'NodeShape')) {
+    if (this._hasType(range, this.ns.w3.shacl.NodeShape)) {
       return 'Object';
     }
-    if (this._hasType(range, rs + 'FileShape')) {
+    if (this._hasType(range, rs.FileShape)) {
       return 'File';
     }
-    if (this._hasType(range, rs + 'NilShape')) {
+    if (this._hasType(range, rs.NilShape)) {
       return 'Null';
     }
-    if (this._hasType(range, rs + 'AnyShape')) {
+    if (this._hasType(range, rs.AnyShape)) {
       return 'Any';
     }
-    if (this._hasType(range, rs + 'MatrixShape')) {
+    if (this._hasType(range, rs.MatrixShape)) {
       return 'Matrix';
     }
-    if (this._hasType(range, rs + 'TupleShape')) {
+    if (this._hasType(range, rs.TupleShape)) {
       return 'Tuple';
     }
-    if (this._hasType(range, rs + 'UnionShape')) {
+    if (this._hasType(range, rs.UnionShape)) {
       return 'Union';
     }
-    if (this._hasType(range, rs + 'RecursiveShape')) {
+    if (this._hasType(range, rs.RecursiveShape)) {
       return 'Recursive';
     }
     return 'Unknown type';
@@ -38491,14 +38544,14 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
       return;
     }
     let data;
-    if (this._hasType(shape, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+    if (this._hasType(shape, this.ns.aml.vocabularies.shapes.ScalarShape)) {
       data = shape;
-    } else if (this._hasType(shape, this.ns.raml.vocabularies.http + 'Parameter')) {
-      const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    } else if (this._hasType(shape, this.ns.aml.vocabularies.apiContract.Parameter)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
       data = this._ensureArray(shape[key]);
       data = (data && data.length) ? data[0] : undefined;
     } else {
-      const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'range');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.range);
       data = this._ensureArray(shape[key]);
       data = (data && data.length) ? data[0] : undefined;
     }
@@ -38514,7 +38567,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
     if (!range) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
     let item = range[key];
     if (!item) {
       return;
@@ -38527,16 +38580,16 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
       return;
     }
     switch (true) {
-      case this._hasType(item, this.ns.raml.vocabularies.shapes + 'ScalarShape'):
+      case this._hasType(item, this.ns.aml.vocabularies.shapes.ScalarShape):
         item.isShape = true;
         return this._ensureArray(item);
-      case this._hasType(item, this.ns.raml.vocabularies.shapes + 'UnionShape'):
-      case this._hasType(item, this.ns.raml.vocabularies.shapes + 'ArrayShape'):
+      case this._hasType(item, this.ns.aml.vocabularies.shapes.UnionShape):
+      case this._hasType(item, this.ns.aml.vocabularies.shapes.ArrayShape):
         item.isType = true;
         return [item];
       default:
         {
-          const pkey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+          const pkey = this._getAmfKey(this.ns.w3.shacl.property);
           const items = this._ensureArray(item[pkey]);
           if (items) {
             items.forEach((item) => item.isShape = true);
@@ -38554,7 +38607,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
    * @return {Boolean}
    */
   _computeIsUnion(range) {
-    return this._hasType(range, this.ns.raml.vocabularies.shapes + 'UnionShape');
+    return this._hasType(range, this.ns.aml.vocabularies.shapes.UnionShape);
   }
   /**
    * Computes value for `isObject` property.
@@ -38565,7 +38618,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
    * @return {Boolean}
    */
   _computeIsObject(range) {
-    return this._hasType(range, this.ns.w3.shacl.name + 'NodeShape');
+    return this._hasType(range, this.ns.w3.shacl.NodeShape);
   }
   /**
    * Computes value for `isArray` property.
@@ -38576,7 +38629,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
    * @return {Boolean}
    */
   _computeIsArray(range) {
-    return this._hasType(range, this.ns.raml.vocabularies.shapes + 'ArrayShape');
+    return this._hasType(range, this.ns.aml.vocabularies.shapes.ArrayShape);
   }
   /**
    * Computes list of union type labels to render.
@@ -38589,7 +38642,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
     if (!isUnion || !range) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const list = this._ensureArray(range[key]);
     if (!list) {
       return;
@@ -38599,28 +38652,28 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
         item = item[0];
       }
       item = this._resolve(item);
-      let isScalar = this._hasType(item, this.ns.raml.vocabularies.shapes + 'ScalarShape');
-      const isNil = this._hasType(item, this.ns.raml.vocabularies.shapes + 'NilShape');
+      let isScalar = this._hasType(item, this.ns.aml.vocabularies.shapes.ScalarShape);
+      const isNil = this._hasType(item, this.ns.aml.vocabularies.shapes.NilShape);
       if (!isScalar && isNil) {
         isScalar = true;
       }
-      const isArray = this._hasType(item, this.ns.raml.vocabularies.shapes + 'ArrayShape');
+      const isArray = this._hasType(item, this.ns.aml.vocabularies.shapes.ArrayShape);
       const isType = !isScalar && !isArray;
       let label;
       if (isArray) {
-        label = this._getValue(item, this.ns.w3.shacl.name + 'name');
+        label = this._getValue(item, this.ns.w3.shacl.name);
         if (!label) {
-          const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+          const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
           label = this._computeArrayUnionLabel(item[key]);
         }
       } else if (isNil) {
         label = 'Null';
       } else {
-        label = this._getValue(item, this.ns.schema.schemaName);
+        label = this._getValue(item, this.ns.aml.vocabularies.core.name);
         if (!label) {
-          label = this._getValue(item, this.ns.w3.shacl.name + 'name');
+          label = this._getValue(item, this.ns.w3.shacl.name);
         }
-        if (!label && this._hasType(item, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+        if (!label && this._hasType(item, this.ns.aml.vocabularies.shapes.ScalarShape)) {
           label = this._computeRangeDataType(item);
         }
       }
@@ -38649,7 +38702,7 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
       items = items[0];
     }
     items = this._resolve(items);
-    if (this._hasType(items, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+    if (this._hasType(items, this.ns.aml.vocabularies.shapes.ScalarShape)) {
       return this._computeRangeDataType(items);
     }
     return this._computeDisplayName(items, items);
@@ -38667,15 +38720,15 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
       return;
     }
     // let name;
-    if (this._hasType(shape, this.ns.raml.vocabularies.http + 'Parameter')) {
-      return this._getValue(range, this.ns.schema.schemaName);
+    if (this._hasType(shape, this.ns.aml.vocabularies.apiContract.Parameter)) {
+      return this._getValue(range, this.ns.aml.vocabularies.core.name);
       // if(!name) {
       //   name =  this._getValue(shape, this.ns.raml.vocabularies.http + 'paramName');
       // }
-    } else if (this._hasType(range, this.ns.w3.shacl.name + 'NodeShape')) {
-      return this._getValue(shape, this.ns.w3.shacl.name + 'name');
+    } else if (this._hasType(range, this.ns.w3.shacl.NodeShape)) {
+      return this._getValue(shape, this.ns.w3.shacl.name);
     } else {
-      return this._getValue(range, this.ns.schema.schemaName);
+      return this._getValue(range, this.ns.aml.vocabularies.core.name);
       // if (!name) {
       //   name = this._getValue(range, this.ns.w3.shacl.name + 'name');
       // }
@@ -38717,13 +38770,12 @@ const PropertyDocumentMixin = (base) => class extends AmfHelperMixin(base) {
  * `--arc-font-body2` | Mixin applied to the examples section title | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin PropertyDocumentMixin
  */
 class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -38733,8 +38785,11 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     }
 
     .property-attribute {
+      display: -ms-flexbox;
       display: flex;
+      -ms-flex-direction: row;
       flex-direction: row;
+      -ms-flex-align: start;
       align-items: flex-start;
       margin: 4px 0;
       padding: 0;
@@ -38751,6 +38806,7 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     }
 
     .attribute-value {
+      -ms-flex: 1 1 0.000000001px;
       flex: 1;
       flex-basis: 0.000000001px;
     }
@@ -38761,8 +38817,7 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     }
 
     .examples {
-      border: 1px var(--api-type-document-examples-border-color, transparent) solid;
-      background-color: var(--code-background-color);
+      padding: 1px;
     }
 
     api-annotation-document {
@@ -38839,6 +38894,15 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     }
   }
 
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (window.ShadyCSS) {
+      window.ShadyCSS.styleElement(this);
+    }
+  }
+
   _rangeChanged(range) {
     this._hasExamples = false;
     const isEnum = this.isEnum = this._computeIsEnum(range);
@@ -38854,42 +38918,8 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
    * @return {Boolean} Curently it always returns `false`
    */
   _computeIsEnum(range) {
-    const key = this._getAmfKey(this.ns.w3.shacl.name + 'in');
+    const key = this._getAmfKey(this.ns.w3.shacl.in);
     return !!(range && (key in range));
-  }
-  /**
-   * Computes value for `isUnion` property.
-   * Union type is identified as a `http://raml.org/vocabularies/shapes#UnionShape`
-   * type.
-   *
-   * @param {Object} range Range object of current shape.
-   * @return {Boolean}
-   */
-  _computeIsUnion(range) {
-    return this._hasType(range, this.ns.raml.vocabularies.shapes + 'UnionShape');
-  }
-  /**
-   * Computes value for `isObject` property.
-   * Object type is identified as a `http://raml.org/vocabularies/shapes#NodeShape`
-   * type.
-   *
-   * @param {Object} range Range object of current shape.
-   * @return {Boolean}
-   */
-  _computeIsObject(range) {
-    return this._hasType(range, this.ns.w3.shacl.name + 'NodeShape');
-  }
-
-  /**
-   * Computes value for `isArray` property.
-   * Array type is identified as a `http://raml.org/vocabularies/shapes#ArrayShape`
-   * type.
-   *
-   * @param {Object} range Range object of current shape.
-   * @return {Boolean}
-   */
-  _computeIsArray(range) {
-    return this._hasType(range, this.ns.raml.vocabularies.shapes + 'ArrayShape');
   }
   /**
    * Computes value for `isFile` property
@@ -38898,14 +38928,14 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
    * @return {Boolean}
    */
   _computeIsFile(range) {
-    return this._hasType(range, this.ns.raml.vocabularies.shapes + 'FileShape');
+    return this._hasType(range, this.ns.aml.vocabularies.shapes.FileShape);
   }
 
   _computeObjectProperties(range) {
     if (!range) {
       return;
     }
-    const pkey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pkey = this._getAmfKey(this.ns.w3.shacl.property);
     return range[pkey];
   }
   /**
@@ -38918,7 +38948,7 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     if (!range) {
       return;
     }
-    const ikey = this._getAmfKey(this.ns.w3.shacl.name + 'in');
+    const ikey = this._getAmfKey(this.ns.w3.shacl.in);
     let model = range[ikey];
     if (!model) {
       return;
@@ -38929,7 +38959,7 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     }
     const results = [];
     Object.keys(model).forEach((key) => {
-      const amfKey = this._getAmfKey('http://www.w3.org/2000/01/rdf-schema#');
+      const amfKey = this._getAmfKey(this.ns.w3.rdfSchema.key);
       if (key.indexOf(amfKey) !== 0) {
         return;
       }
@@ -38937,7 +38967,7 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
       if (value instanceof Array) {
         value = value[0];
       }
-      let result = this._getValue(value, this.ns.raml.vocabularies.data + 'value');
+      let result = this._getValue(value, this.ns.aml.vocabularies.data.value);
       if (result) {
         if (result['@value']) {
           result = result['@value'];
@@ -38973,10 +39003,10 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     return html`
     ${this._hasProperty(range, this.ns.w3.shacl.minLength) ?
       this._listItemTemplate('Minimum characters', 'Minimum number of characters in the value', this.ns.w3.shacl.minLength) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.maxLength) ?
       this._listItemTemplate('Maximum characters', 'Maximum number of characters in the value', this.ns.w3.shacl.maxLength) :
-      undefined}`;
+      ''}`;
   }
 
   _filePropertisTemplate() {
@@ -38985,19 +39015,19 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
     <section class="file-properties">
     ${this._hasProperty(range, this.ns.w3.shacl.fileType) ?
       this._listItemTemplate('File types', 'File mime types accepted by the endpoint', this.ns.w3.shacl.fileType, true) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.aml.vocabularies.shapes + 'fileType') ?
       this._listItemTemplate('File types', 'File mime types accepted by the endpoint',
         this.ns.aml.vocabularies.shapes + 'fileType', true) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.minLength) ?
       this._listItemTemplate('File minimum size', 'Minimum size of the file accepted by this endpoint',
         this.ns.w3.shacl.minLength) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.maxLength) ?
       this._listItemTemplate('File maximum size', 'Maximum size of the file accepted by this endpoint',
         this.ns.w3.shacl.maxLength) :
-      undefined}
+      ''}
     </section>`;
   }
 
@@ -39018,29 +39048,29 @@ class PropertyRangeDocument extends PropertyDocumentMixin(LitElement) {
 
   render() {
     const range = this.range;
-    return html`
+    return html`<style>${this.styles}</style>
+    <api-annotation-document ?compatibility="${this.compatibility}" .amf="${this.amf}" .shape="${range}"></api-annotation-document>
     ${this._hasProperty(range, this.ns.w3.shacl.defaultValueStr) ?
       this._listItemTemplate('Default value', 'This value is used as a default value', this.ns.w3.shacl.defaultValueStr) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.pattern) ?
       this._listItemTemplate('Pattern', 'Regular expression value for this property', this.ns.w3.shacl.pattern) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.minInclusive) ?
       this._listItemTemplate('Min value', 'Minimum numeric value possible to set on this property',
         this.ns.w3.shacl.minInclusive) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.maxInclusive) ?
       this._listItemTemplate('Max value', 'Maximum numeric value possible to set on this property',
         this.ns.w3.shacl.maxInclusive) :
-      undefined}
+      ''}
     ${this._hasProperty(range, this.ns.w3.shacl.multipleOf) ?
       this._listItemTemplate('Multiple of', 'The numeric value has to be multiplicable by this value',
         this.ns.w3.shacl.multipleOf) :
-      undefined}
+      ''}
     ${this.isFile ? this._filePropertisTemplate() : this._nonFilePropertisTemplate()}
-    ${this.isEnum ? this._enumTemplate() : undefined}
+    ${this.isEnum ? this._enumTemplate() : ''}
 
-    <api-annotation-document ?compatibility="${this.compatibility}" .amf="${this.amf}" .shape="${this.range}"></api-annotation-document>
     <section class="examples" ?hidden="${!this._hasExamples}">
       <api-resource-example-document
         .amf="${this.amf}"
@@ -39091,7 +39121,7 @@ window.customElements.define('property-range-document', PropertyRangeDocument);
  * @appliesMixin PropertyDocumentMixin
  */
 class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css`:host {
@@ -39160,7 +39190,7 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
       }
 
       :host([isarray]) api-type-document,
-      :host([isarray]) property-range-document {
+      :host([isarray]):not([isscalararray]) property-range-document {
         border-left: 2px var(--property-shape-document-array-color, #8BC34A) solid;
         padding-left: 12px;
       }
@@ -39172,9 +39202,12 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
       }
 
       .property-traits {
+        display: -ms-flexbox;
         display: flex;
         flex-direction: row;
+        -ms-flex-direction: row;
         flex-wrap: wrap;
+        -ms-flex-wrap: wrap;
         margin-bottom: 8px;
       }
 
@@ -39208,12 +39241,16 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
       }
 
       .shape-header {
+        display: -ms-flexbox;
         display: flex;
+        -ms-flex-direction: row;
         flex-direction: row;
+        -ms-flex-align: center;
         align-items: start;
       }
 
       .name-area {
+        -ms-flex: 1;
         flex: 1;
       }`
     ];
@@ -39262,6 +39299,11 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
         type: Boolean,
         reflect: true
       },
+      /**
+       * Computed value, true if current property is an array and the item
+       * is a scalar.
+       */
+      isScalarArray: { type: Boolean, reflect: true },
       /**
        * Computed value, true if this propery contains a complex
        * structure. It is computed when the property is and array,
@@ -39358,11 +39400,42 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     return this.opened ? 'Hide' : 'Show';
   }
 
+  get _renderToggleButton() {
+    const { isComplex, isScalarArray } = this;
+    return isComplex && !isScalarArray;
+  }
+
+  get arrayScalarTypeName() {
+    const { range } = this;
+    try {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
+      const items = this._ensureArray(range[key]);
+      const item = items[0];
+      const dkey = this._getAmfKey(this.ns.w3.shacl.datatype);
+      let type = this._ensureArray(item[dkey]);
+      type = type[0]['@id'];
+      type = type.replace(this.ns.w3.xmlSchema.key, '');
+      const stLetter = type[0].toUpperCase();
+      return `${stLetter}${type.substr(1)}`;
+    } catch (_) {
+      return 'Unknown';
+    }
+  }
+
   constructor() {
     super();
     this.hasDisplayName = false;
     this.hasParentTypeName = false;
     this.hasPropertyDescription = false;
+  }
+
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (window.ShadyCSS) {
+      window.ShadyCSS.styleElement(this);
+    }
   }
 
   __amfChanged() {
@@ -39385,9 +39458,9 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     this.isEnum = this._computeIsEnum(range);
     this.isUnion = this._computeIsUnion(range);
     this.isObject = this._computeIsObject(range);
-    this.isArray = this._computeIsArray(range);
+    const isArray = this.isArray = this._computeIsArray(range);
     this.isComplex = this._computeIsComplex(this.isUnion, this.isObject, this.isArray);
-
+    this.isScalarArray = isArray ? this._computeIsScalarArray(range) : false;
     this._evaluateGraph();
   }
 
@@ -39419,20 +39492,29 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     }
     if (shape) {
       shape = this._resolve(shape);
-      if (this._hasType(shape, this.ns.raml.vocabularies.http + 'Parameter')) {
-        return this._getValue(shape, this.ns.schema.schemaName);
+      if (this._hasType(shape, this.ns.aml.vocabularies.apiContract.Parameter)) {
+        // https://www.mulesoft.org/jira/browse/APIC-289
+        let name = this._getValue(shape, this.ns.aml.vocabularies.apiContract.paramName);
+        if (!name) {
+          name = this._getValue(shape, this.ns.aml.vocabularies.core.name);
+        }
+        return name;
       }
-      if (this._hasType(shape, this.ns.w3.shacl.name + 'PropertyShape') ||
-        this._hasType(shape, this.ns.raml.vocabularies.shapes + 'NilShape') ||
-        this._hasType(shape, this.ns.raml.vocabularies.shapes + 'AnyShape')) {
-        return this._getValue(shape, this.ns.w3.shacl.name + 'name');
+      if (this._hasType(shape, this.ns.w3.shacl.PropertyShape) ||
+        this._hasType(shape, this.ns.aml.vocabularies.shapes.NilShape) ||
+        this._hasType(shape, this.ns.aml.vocabularies.shapes.AnyShape)) {
+        const name = this._getValue(shape, this.ns.w3.shacl.name);
+        if (name && name.indexOf('amf_inline_type') === 0) {
+          return;
+        }
+        return name;
       }
     }
     if (range) {
       range = this._resolve(range);
-      const name = this._getValue(range, this.ns.w3.shacl.name + 'name');
+      const name = this._getValue(range, this.ns.w3.shacl.name);
       if (name === 'items' &&
-      this._hasType(shape, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+      this._hasType(shape, this.ns.aml.vocabularies.shapes.ScalarShape)) {
         return;
       }
       return name;
@@ -39470,10 +39552,10 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
       return false;
     }
     shape = this._resolve(shape);
-    if (this._hasType(shape, this.ns.raml.vocabularies.http + 'Parameter')) {
-      return this._getValue(shape, this.ns.w3.hydra.core + 'required');
+    if (this._hasType(shape, this.ns.aml.vocabularies.http.Parameter)) {
+      return this._getValue(shape, this.ns.aml.vocabularies.apiContract.required);
     }
-    const data = this._getValue(shape, this.ns.w3.shacl.name + 'minCount');
+    const data = this._getValue(shape, this.ns.w3.shacl.minCount);
     return data !== undefined && data !== 0;
   }
   /**
@@ -39482,7 +39564,7 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
    * @return {Boolean} Curently it always returns `false`
    */
   _computeIsEnum(range) {
-    const ikey = this._getAmfKey(this.ns.w3.shacl.name + 'in');
+    const ikey = this._getAmfKey(this.ns.w3.shacl.in);
     return !!(range && (ikey in range));
   }
   /**
@@ -39494,7 +39576,7 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     if (!range) {
       return;
     }
-    return this._getValue(range, this.ns.schema.desc);
+    return this._getValue(range, this.ns.aml.vocabularies.core.description);
   }
   /**
    * Computes value for `isComplex` property.
@@ -39517,24 +39599,24 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     if (!amf || !range) {
       return;
     }
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'sources');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.docSourceMaps.sources);
     const maps = this._ensureArray(range[sKey]);
     if (!maps) {
       return;
     }
-    const dKey = this._getAmfKey(this.ns.raml.vocabularies.docSourceMaps + 'declared-element');
+    const dKey = this._getAmfKey(this.ns.aml.vocabularies.docSourceMaps.declaredElement);
     const dElm = this._ensureArray(maps[0][dKey]);
     if (!dElm) {
       return;
     }
-    const id = this._getValue(dElm[0], this.ns.raml.vocabularies.docSourceMaps + 'element');
+    const id = this._getValue(dElm[0], this.ns.aml.vocabularies.docSourceMaps.element);
     this._targetTypeId = id;
     const type = this._getType(amf, id);
     if (!type) {
       return;
     }
 
-    this._targetTypeName = this._getValue(type, this.ns.w3.shacl.name + 'name');
+    this._targetTypeName = this._getValue(type, this.ns.w3.shacl.name);
   }
 
   _getType(amf, id) {
@@ -39564,9 +39646,23 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
   toggle() {
     this.opened = !this.opened;
   }
+  /**
+   * @param {Object} range The range definition.
+   * @return {Boolean} True when the proeprty type is Array and the items on the
+   * array are scalars only.
+   */
+  _computeIsScalarArray(range) {
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
+    const items = this._ensureArray(range[key]);
+    if (!items) {
+      return false;
+    }
+    const item = items[0];
+    return this._hasType(item, this.ns.aml.vocabularies.shapes.ScalarShape);
+  }
 
   _complexTemplate() {
-    if (!this.isComplex || !this.opened) {
+    if (!this.isComplex || !this.opened || this.isScalarArray) {
       return;
     }
     const range = this._resolve(this.range);
@@ -39586,8 +39682,9 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
   }
 
   _getTypeNameTemplate() {
-    const dataType = this.propertyDataType;
+    let dataType = this.propertyDataType;
     const id = this._targetTypeId;
+    const { isScalarArray } = this;
     if (id) {
       const label = this._targetTypeName;
       return html`
@@ -39599,6 +39696,10 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
           @keydown="${this._linkKeydown}">${label}</span>
         <span class="type-data-type">${dataType}</span>
       `;
+    }
+    if (isScalarArray) {
+      const itemType = this.arrayScalarTypeName;
+      dataType = `${dataType} of ${itemType}`;
     }
     return html`<span class="data-type">${dataType}</span>`;
   }
@@ -39616,13 +39717,14 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
 
   _headerTemplate() {
     const {
-      isComplex
+      isComplex,
+      _renderToggleButton
     } = this;
     return isComplex ? html`<div class="shape-header">
       <div class="name-area">
         ${this._headerNameTemplate()}
       </div>
-      ${isComplex ? html`<anypoint-button
+      ${_renderToggleButton ? html`<anypoint-button
         class="complex-toggle"
         @click="${this.toggle}"
         ?compatibility="${this.compatibility}"
@@ -39644,18 +39746,18 @@ class PropertyShapeDocument extends PropertyDocumentMixin(LitElement) {
     ${propertyName ? html`<div class="property-title" ?secondary="${hasDisplayName}">
       <span class="parent-label" ?hidden="${!hasParentTypeName}">${parentTypeName}.</span>
       <span class="property-name">${propertyName}</span>
-    </div>` : undefined}`;
+    </div>` : ''}`;
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     ${this._headerTemplate()}
     <div class="property-traits">
       ${this._getTypeNameTemplate()}
       ${this.isRequired ?
-        html`<span class="required-type" title="This property is required by the API">Required</span>` : undefined}
+        html`<span class="required-type" title="This property is required by the API">Required</span>` : ''}
       ${this.isEnum ?
-        html`<span class="enum-type" title="This property represent enumerable value">Enum</span>` : undefined}
+        html`<span class="enum-type" title="This property represent enumerable value">Enum</span>` : ''}
     </div>
     ${this._descriptionTemplate()}
     <property-range-document
@@ -39682,14 +39784,13 @@ window.customElements.define('property-shape-document', PropertyShapeDocument);
  * Pass AMF's shape type `property` array to render the documentation.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin PropertyDocumentMixin
  * @appliesMixin AmfHelperMixin
  */
 class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       font-size: var(--arc-font-body1-font-size);
@@ -39939,6 +40040,15 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     this.hasParentType = false;
   }
 
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (window.ShadyCSS) {
+      window.ShadyCSS.styleElement(this);
+    }
+  }
+
   _computeRenderMainExample(noMainExample, hasExamples) {
     return !!(!noMainExample && hasExamples);
   }
@@ -39974,18 +40084,18 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     let isAnd = false;
     if (type instanceof Array) {
       isObject = true;
-    } else if (this._hasType(type, this.ns.raml.vocabularies.shapes + 'ScalarShape') ||
-      this._hasType(type, this.ns.raml.vocabularies.shapes + 'NilShape')) {
+    } else if (this._hasType(type, this.ns.aml.vocabularies.shapes.ScalarShape) ||
+      this._hasType(type, this.ns.aml.vocabularies.shapes.NilShape)) {
       isScalar = true;
-    } else if (this._hasType(type, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
+    } else if (this._hasType(type, this.ns.aml.vocabularies.shapes.UnionShape)) {
       isUnion = true;
       this.unionTypes = this._computeUnionTypes(true, type);
-    } else if (this._hasType(type, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    } else if (this._hasType(type, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       isArray = true;
-    } else if (this._hasType(type, this.ns.w3.shacl.name + 'NodeShape')) {
+    } else if (this._hasType(type, this.ns.w3.shacl.NodeShape)) {
       isObject = true;
-    } else if (this._hasType(type, this.ns.raml.vocabularies.shapes + 'AnyShape')) {
-      const key = this._getAmfKey(this.ns.w3.shacl.name + 'and');
+    } else if (this._hasType(type, this.ns.aml.vocabularies.shapes.AnyShape)) {
+      const key = this._getAmfKey(this.ns.w3.shacl.and);
       if (key in type) {
         isAnd = true;
         this.andTypes = this._computeAndTypes(type[key]);
@@ -40047,7 +40157,7 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     if (!type) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const data = type[key];
     if (!data) {
       return;
@@ -40059,9 +40169,9 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     if (item instanceof Array) {
       item = item[0];
     }
-    if (this._hasType(item, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    if (this._hasType(item, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       item = this._resolve(item);
-      const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
       const items = this._ensureArray(item[key]);
       if (items && items.length === 1) {
         let result = items[0];
@@ -40091,7 +40201,7 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     if (item instanceof Array) {
       return item;
     }
-    const key = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const key = this._getAmfKey(this.ns.w3.shacl.property);
     return this._ensureArray(item[key]);
   }
   /**
@@ -40108,9 +40218,9 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
         item = item[0];
       }
       item = this._resolve(item);
-      let label = this._getValue(item, this.ns.schema.schemaName);
+      let label = this._getValue(item, this.ns.aml.vocabularies.core.name);
       if (!label) {
-        label = this._getValue(item, this.ns.w3.shacl.name + 'name');
+        label = this._getValue(item, this.ns.w3.shacl.name);
       }
       if (label && label.indexOf('item') === 0) {
         label = undefined;
@@ -40204,12 +40314,12 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
       class="array-document"
       .amf="${this.amf}"
       .shape="${this._resolvedType}"
-      parentTypeName="Array test"
+      .parentTypeName="${this.parentTypeName}"
       ?narrow="${this.narrow}"
       ?noexamplesactions="${this.noExamplesActions}"
       ?compatibility="${this.compatibility}"
       .mediaType="${this.mediaType}"
-      ?graph="${this.graph}"></property-shape-document>` : undefined}
+      ?graph="${this.graph}"></property-shape-document>` : ''}
 
       <div class="array-children">
       ${items.map((item) => html`
@@ -40222,7 +40332,7 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
           ?noexamplesactions="${this.noExamplesActions}"
           ?compatibility="${this.compatibility}"
           .mediaType="${this.mediaType}"
-          ?graph="${this.graph}"></property-shape-document>` : undefined}
+          ?graph="${this.graph}"></property-shape-document>` : ''}
         ${item.isType ? html`<api-type-document
           class="union-document"
           .amf="${this.amf}"
@@ -40233,7 +40343,7 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
           ?nomainexample="${this._renderMainExample}"
           ?compatibility="${this.compatibility}"
           .mediaType="${this.mediaType}"
-          ?graph="${this.graph}"></api-type-document>` : undefined}
+          ?graph="${this.graph}"></api-type-document>` : ''}
       `)}
       </div>
     `;
@@ -40294,9 +40404,9 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
     parts += 'code-content-action-button-disabled content-action-button-active, ';
     parts += 'code-content-action-button-active, code-wrapper, example-code-wrapper, markdown-html';
     const mediaTypes = this.mediaTypes || [];
-    return html`
+    return html`<style>${this.styles}</style>
     ${this.aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" scope="${this.aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" scope="${this.aware}"></raml-aware>` : ''}
     <section class="examples" ?hidden="${!this._renderMainExample}">
       ${this.renderMediaSelector ? html`<div class="media-type-selector">
         <span>Media type:</span>
@@ -40313,7 +40423,7 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
             ?compatibility="${this.compatibility}"
             title="Select ${item} media type">${item}</anypoint-button>`;
         })}
-      </div>` : undefined}
+      </div>` : ''}
 
       <api-resource-example-document
         .amf="${this.amf}"
@@ -40329,8 +40439,8 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
         exportparts="${parts}"></api-resource-example-document>
     </section>
 
-    ${this.isObject ? this._objectTemplate() : undefined}
-    ${this.isArray ? this._arrayTemplate() : undefined}
+    ${this.isObject ? this._objectTemplate() : ''}
+    ${this.isArray ? this._arrayTemplate() : ''}
     ${this.isScalar ? html`<property-shape-document
       class="shape-document"
       .amf="${this.amf}"
@@ -40340,9 +40450,9 @@ class ApiTypeDocument extends PropertyDocumentMixin(LitElement) {
       ?noexamplesactions="${this.noExamplesActions}"
       ?compatibility="${this.compatibility}"
       .mediaType="${this.mediaType}"
-      ?graph="${this.graph}"></property-shape-document>` : undefined}
-    ${this.isUnion ? this._unionTemplate() : undefined}
-    ${this.isAnd ? this._anyTemplate() : undefined}`;
+      ?graph="${this.graph}"></property-shape-document>` : ''}
+    ${this.isUnion ? this._unionTemplate() : ''}
+    ${this.isAnd ? this._anyTemplate() : ''}`;
   }
 }
 window.customElements.define('api-type-document', ApiTypeDocument);
@@ -40906,7 +41016,7 @@ Polymer({
  * @memberof ApiElements
  */
 class ApiParametersDocument extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       font-size: var(--arc-font-body1-font-size);
@@ -40928,6 +41038,11 @@ class ApiParametersDocument extends LitElement {
       -ms-user-select: none;
       user-select: none;
       border-bottom: 1px var(--api-parameters-document-title-border-color, #e5e5e5) solid;
+      transition: border-bottom-color 0.15s ease-in-out;
+    }
+
+    .section-title-area[opened] {
+      border-bottom-color: transparent;
     }
 
     .section-title-area .table-title {
@@ -40981,15 +41096,19 @@ class ApiParametersDocument extends LitElement {
       graph
     } = this;
     const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
-    const hasQueryParameters = !!(queryParameters && queryParameters.length);
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
       html`<raml-aware
         @api-changed="${this._apiChangedHandler}"
         .scope="${aware}"
-        data-source="api-parameters-document"></raml-aware>` : undefined}
+        data-source="api-parameters-document"></raml-aware>` : ''}
     ${hasPathParameters ? html`<section class="uri-parameters">
-      <div class="section-title-area" @click="${this.toggleUri}" title="Toogle URI parameters details">
+      <div
+        class="section-title-area"
+        @click="${this.toggleUri}"
+        title="Toogle URI parameters details"
+        ?opened="${pathOpened}"
+      >
         <div class="table-title" role="heading" aria-level="${headerLevel}">URI parameters</div>
         <div class="title-area-actions">
           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
@@ -41004,12 +41123,19 @@ class ApiParametersDocument extends LitElement {
           .type="${_effectivePathParameters}"
           ?compatibility="${compatibility}"
           ?narrow="${narrow}"
-          ?graph="${graph}"></api-type-document>
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
       </iron-collapse>
-    </section>` : undefined}
+    </section>` : ''}
 
-    ${hasQueryParameters ? html`<section class="query-parameters">
-      <div class="section-title-area" @click="${this.toggleQuery}" title="Toogle query parameters details">
+    ${queryParameters ? html`<section class="query-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleQuery}"
+        title="Toogle query parameters details"
+        ?opened="${queryOpened}"
+      >
         <div class="table-title" role="heading" aria-level="${headerLevel}">Query parameters</div>
         <div class="title-area-actions">
           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
@@ -41024,9 +41150,11 @@ class ApiParametersDocument extends LitElement {
           .type="${queryParameters}"
           ?compatibility="${compatibility}"
           ?narrow="${narrow}"
-          ?graph="${graph}"></api-type-document>
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
       </iron-collapse>
-    </section>`: undefined}`;
+    </section>`: ''}`;
   }
 
   static get properties() {
@@ -41207,6 +41335,7 @@ class ApiParametersDocument extends LitElement {
     this.queryOpened = !this.queryOpened;
   }
 }
+
 window.customElements.define('api-parameters-document', ApiParametersDocument);
 
 /**
@@ -41905,7 +42034,7 @@ Polymer({
 });
 
 class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: flex;
@@ -41960,11 +42089,6 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
 
       .hidden {
         display: none;
-      }
-
-      .not-visible {
-        opacity: 0;
-        cursor: default;
       }
 
       anypoint-icon-button {
@@ -42135,13 +42259,13 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
   }
 
   get _leftButtonClass() {
-    const { _leftHidden, scrollable, hideScrollButtons } = this;
-    return this._computeScrollButtonClass(_leftHidden, scrollable, hideScrollButtons);
+    const { scrollable, hideScrollButtons } = this;
+    return this._computeScrollButtonClass(scrollable, hideScrollButtons);
   }
 
   get _rightButtonClass() {
-    const { _rightHidden, scrollable, hideScrollButtons } = this;
-    return this._computeScrollButtonClass(_rightHidden, scrollable, hideScrollButtons);
+    const { scrollable, hideScrollButtons } = this;
+    return this._computeScrollButtonClass(scrollable, hideScrollButtons);
   }
 
   get _tabsContainer() {
@@ -42213,6 +42337,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
     if (!this.hasAttribute('role')) {
       this.setAttribute('role', 'tablist');
     }
+    /* istanbul ignore else */
     if (super.connectedCallback) {
       super.connectedCallback();
     }
@@ -42225,6 +42350,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
   }
 
   disconnectedCallback() {
+    /* istanbul ignore else */
     if (super.disconnectedCallback) {
       super.disconnectedCallback();
     }
@@ -42306,6 +42432,9 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
 
   _affectScroll(dx) {
     const node = this._tabsContainer;
+    if (!node) {
+      return;
+    }
     node.scrollLeft += dx;
     const scrollLeft = node.scrollLeft;
     this._leftHidden = scrollLeft === 0;
@@ -42441,6 +42570,9 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
 
   _scrollToSelectedIfNeeded(tabWidth, tabOffsetLeft) {
     const node = this._tabsContainer;
+    if (!node) {
+      return;
+    }
     let left = tabOffsetLeft - node.scrollLeft;
     if (left < 0) {
       node.scrollLeft += left;
@@ -42452,12 +42584,9 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
     }
   }
 
-  _computeScrollButtonClass(isHidden, scrollable, hideScrollButtons) {
+  _computeScrollButtonClass(scrollable, hideScrollButtons) {
     if (!scrollable || hideScrollButtons) {
       return 'hidden';
-    }
-    if (isHidden) {
-      return 'not-visible';
     }
     return '';
   }
@@ -42479,11 +42608,19 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
   }
 
   _scrollToLeft() {
-    this._affectScroll(-this._step);
+    if (this._leftHidden) {
+      this._onScrollButtonUp();
+    } else {
+      this._affectScroll(-this._step);
+    }
   }
 
   _scrollToRight() {
-    this._affectScroll(this._step);
+    if (this._rightHidden) {
+      this._onScrollButtonUp();
+    } else {
+      this._affectScroll(this._step);
+    }
   }
 
   _touchMove(e) {
@@ -42517,6 +42654,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
     return html`<anypoint-icon-button
       aria-label="Activate to move tabs left"
       class="${this._leftButtonClass}"
+      .disabled="${this._leftHidden}"
       @mouseup="${this._onScrollButtonUp}"
       @mousedown="${this._onLeftScrollButtonDown}" tabindex="-1">
       <svg viewBox="0 0 24 24"
@@ -42535,6 +42673,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
     return html`<anypoint-icon-button
       aria-label="Activate to move tabs right"
       class="${this._rightButtonClass}"
+      .disabled="${this._rightHidden}"
       @mouseup="${this._onScrollButtonUp}"
       @mousedown="${this._onRightScrollButtonDown}" tabindex="-1">
       <svg viewBox="0 0 24 24"
@@ -42564,7 +42703,7 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
     const startEvent = scrollable ? _touchstartConfig : undefined;
     const moveEvent = scrollable ? _touchmoveConfig : undefined;
     const endEvent = scrollable ? _touchendConfig : undefined;
-    return html`
+    return html`<style>${this.styles}</style>
       ${this._leftButtonTemplate(scrollable)}
       <div
         id="tabsContainer"
@@ -42584,9 +42723,9 @@ class AnypointTabs extends AnypointMenubarMixin(ArcResizableMixin(LitElement)) {
 window.customElements.define('anypoint-tabs', AnypointTabs);
 
 class AnypointTab extends AnypointButton {
-  static get styles() {
+  get styles() {
     return [
-      AnypointButton.styles,
+      super.styles,
       css`
       :host {
         overflow: hidden;
@@ -42668,19 +42807,23 @@ class AnypointTab extends AnypointButton {
       const nodes = slot.assignedNodes();
       let target;
       for (let i = 0; i < nodes.length; i++) {
+        /* istanbul ignore if */
         if (nodes[i].localName === 'a') {
           target = nodes[i];
           break;
         }
       }
+      /* istanbul ignore else */
       if (!target) {
         return;
       }
       // Don't get stuck in a loop delegating
       // the listener from the child anchor
+      /* istanbul ignore next */
       if (e.target === target) {
         return;
       }
+      /* istanbul ignore next */
       target.click();
     }
   }
@@ -42688,7 +42831,7 @@ class AnypointTab extends AnypointButton {
   render() {
     const { noink, legacy } = this;
     const stopRipple = !!noink || !!legacy;
-    return html`
+    return html`<style>${this.styles}</style>
       <div class="tab-content">
         <slot></slot>
       </div>
@@ -42699,185 +42842,39 @@ class AnypointTab extends AnypointButton {
 window.customElements.define('anypoint-tab', AnypointTab);
 
 /**
-@license
-Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-const template$1 = html$1`
-<dom-module id="prism-theme-default">
-  <template>
-    <style>
-    /**
-    * prism.js default theme for JavaScript, CSS and HTML
-    * Based on dabblet (http://dabblet.com)
-    * @author Lea Verou
-    */
-    code[class*="language-"],
-    pre[class*="language-"] {
-    color: black;
-    background: none;
-    text-shadow: 0 1px white;
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    text-align: left;
-    white-space: pre;
-    word-spacing: normal;
-    word-break: normal;
-    word-wrap: normal;
-    line-height: 1.5;
-
-    -moz-tab-size: 4;
-    -o-tab-size: 4;
-    tab-size: 4;
-
-    -webkit-hyphens: none;
-    -moz-hyphens: none;
-    -ms-hyphens: none;
-    hyphens: none;
+ * Transforms input into a content to be rendered in the code view.
+ */
+const SafeHtmlUtils$1 = {
+  AMP_RE: new RegExp(/&/g),
+  GT_RE: new RegExp(/>/g),
+  LT_RE: new RegExp(/</g),
+  SQUOT_RE: new RegExp(/'/g),
+  QUOT_RE: new RegExp(/"/g),
+  htmlEscape: function(s) {
+    if (typeof s !== 'string') {
+      return s;
     }
-
-    pre[class*="language-"]::-moz-selection, pre[class*="language-"] ::-moz-selection,
-    code[class*="language-"]::-moz-selection, code[class*="language-"] ::-moz-selection {
-    text-shadow: none;
-    background: #b3d4fc;
+    if (s.indexOf('&') !== -1) {
+      s = s.replace(SafeHtmlUtils$1.AMP_RE, '&amp;');
     }
-
-    pre[class*="language-"]::selection, pre[class*="language-"] ::selection,
-    code[class*="language-"]::selection, code[class*="language-"] ::selection {
-    text-shadow: none;
-    background: #b3d4fc;
+    if (s.indexOf('<') !== -1) {
+      s = s.replace(SafeHtmlUtils$1.LT_RE, '&lt;');
     }
-
-    @media print {
-    code[class*="language-"],
-    pre[class*="language-"] {
-      text-shadow: none;
+    if (s.indexOf('>') !== -1) {
+      s = s.replace(SafeHtmlUtils$1.GT_RE, '&gt;');
     }
+    if (s.indexOf('"') !== -1) {
+      s = s.replace(SafeHtmlUtils$1.QUOT_RE, '&quot;');
     }
-
-    /* Code blocks */
-    pre[class*="language-"] {
-    padding: 1em;
-    margin: .5em 0;
-    overflow: auto;
+    if (s.indexOf("'") !== -1) {
+      s = s.replace(SafeHtmlUtils$1.SQUOT_RE, '&#39;');
     }
-
-    :not(pre) > code[class*="language-"],
-    pre[class*="language-"] {
-    background: #f5f2f0;
-    }
-
-    /* Inline code */
-    :not(pre) > code[class*="language-"] {
-    padding: .1em;
-    border-radius: .3em;
-    white-space: normal;
-    }
-
-    .token.comment,
-    .token.prolog,
-    .token.doctype,
-    .token.cdata {
-    color: slategray;
-    }
-
-    .token.punctuation {
-    color: #999;
-    }
-
-    .namespace {
-    opacity: .7;
-    }
-
-    .token.property,
-    .token.tag,
-    .token.boolean,
-    .token.number,
-    .token.constant,
-    .token.symbol,
-    .token.deleted {
-    color: #905;
-    }
-
-    .token.selector,
-    .token.attr-name,
-    .token.string,
-    .token.char,
-    .token.builtin,
-    .token.inserted {
-    color: #690;
-    }
-
-    .token.operator,
-    .token.entity,
-    .token.url,
-    .language-css .token.string,
-    .style .token.string {
-    color: #a67f59;
-    background: hsla(0, 0%, 100%, .5);
-    }
-
-    .token.atrule,
-    .token.attr-value,
-    .token.keyword {
-    color: #07a;
-    }
-
-    .token.function {
-    color: #DD4A68;
-    }
-
-    .token.regex,
-    .token.important,
-    .token.variable {
-    color: #e90;
-    }
-
-    .token.important,
-    .token.bold {
-    font-weight: bold;
-    }
-    .token.italic {
-    font-style: italic;
-    }
-
-    .token.entity {
-    cursor: help;
-    }
-    </style>
-  </template>
-</dom-module>`;
-
-document.head.appendChild(template$1.content);
+    return s;
+  }
+};
 
 class ApiSchemaRender extends LitElement {
-  /**
-   * This is rather dirty hack to import Polymer's `prism-theme-default`.
-   * The theme inserts `dom-module` with styles to the head section upon import.
-   * This method reads the content of the theme and creates CSSResult instance
-   * of it.
-   * @return {CSSResult}
-   */
-  static getPrismTheme() {
-    const theme = document.head.querySelector('dom-module#prism-theme-default');
-    if (!theme) {
-      return;
-    }
-    const tpl = theme.querySelector('template');
-    if (!tpl) {
-      return;
-    }
-    const clone = tpl.content.cloneNode(true);
-    const style = clone.querySelector('style');
-    return unsafeCSS(style.innerText);
-  }
-
-  static get styles() {
+  get styles() {
     const styles = css`:host {
       display: block;
       background-color: var(--code-background-color, #f5f2f0);
@@ -42887,16 +42884,12 @@ class ApiSchemaRender extends LitElement {
       white-space: pre-wrap;
       font-family: var(--arc-font-code-family, initial);
     }`;
-    const prism = ApiSchemaRender.getPrismTheme();
-    const result = [styles];
-    if (prism) {
-      result[result.length] = prism;
-    }
-    return result;
+    return [styles, styles$3];
   }
 
   render() {
-    return html`<code id="output" part="markdown-html" class="markdown-html"></code>`;
+    return html`<style>${this.styles}</style>
+<code id="output" part="markdown-html" class="markdown-html"></code>`;
   }
 
   static get properties() {
@@ -42905,7 +42898,9 @@ class ApiSchemaRender extends LitElement {
        * Data to render.
        */
       code: { type: String },
-
+      /**
+       * A syntax highlighter type. One of PrismJs types.
+       */
       type: { type: String }
     };
   }
@@ -42922,16 +42917,12 @@ class ApiSchemaRender extends LitElement {
   }
 
   get type() {
-    return this.__type;
+    return this._type;
   }
 
-  get _type() {
-    return this.__type;
-  }
-
-  set _type(value) {
-    const old = this.__type;
-    this.__type = value;
+  set type(value) {
+    const old = this._type;
+    this._type = value;
     this.requestUpdate('type', old);
     this._typeChanged(value);
   }
@@ -42948,6 +42939,17 @@ class ApiSchemaRender extends LitElement {
       this._typeChanged(this.type);
     }
   }
+
+  _detectType(code) {
+    let isJson;
+    try {
+      JSON.parse(code);
+      isJson = true;
+    } catch (_) {
+      isJson = false;
+    }
+    this.type = isJson ? 'json' : 'xml';
+  }
   /**
    * Handles highlighting when code changed.
    * Note that the operation is async.
@@ -42962,14 +42964,9 @@ class ApiSchemaRender extends LitElement {
       output.innerHTML = '';
       return;
     }
-    let isJson;
-    try {
-      JSON.parse(code);
-      isJson = true;
-    } catch (_) {
-      isJson = false;
-    }
-    this._type = isJson ? 'json' : 'xml';
+    code = String(code);
+    if (!this.type) {
+      this._detectType(code);    }
     setTimeout(() => {
       this.output.innerHTML = this.highlight(code);
     });
@@ -42980,6 +42977,11 @@ class ApiSchemaRender extends LitElement {
    * @return {String} Highlighted code.
    */
   highlight(code) {
+    if (code.length > 10000) {
+      // schemas that are huge causes browser to choke or hang.
+      // This just sanitizes the schema and renders unprocessed data.
+      return SafeHtmlUtils$1.htmlEscape(code);
+    }
     const ev = new CustomEvent('syntax-highlight', {
       bubbles: true,
       composed: true,
@@ -43037,26 +43039,26 @@ window.customElements.define('api-schema-render', ApiSchemaRender);
  * `api-schema-render` | Mixin applied to schema renderer element | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
   }
 
   render() {
-    return html`<prism-highlighter></prism-highlighter>
+    return html`<style>${this.styles}</style>
+    <prism-highlighter></prism-highlighter>
     ${this.aware ?
-      html`<raml-aware @api-changed="${this._apiChanged}" .scope="${this.aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChanged}" .scope="${this.aware}"></raml-aware>` : ''}
 
-    ${this._schemaOnly ? this._schemaOnlyTemplate() : undefined}
-    ${this._exampleOnly ? this._exampleOnlyTemplate() : undefined}
-    ${this._schemaAndExample ? this._schemaAndExampleTemplate() : undefined}`;
+    ${this._schemaOnly ? this._schemaOnlyTemplate() : ''}
+    ${this._exampleOnly ? this._exampleOnlyTemplate() : ''}
+    ${this._schemaAndExample ? this._schemaAndExampleTemplate() : ''}`;
   }
 
   _exampleOnlyTemplate() {
@@ -43064,8 +43066,10 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
     if (!items || !items.length) {
       return;
     }
+    const type = this._mediaType;
     return items.map((item) => html`<api-schema-render
-      .code="${this._computeExampleValue(item)}"></api-schema-render>`);
+      .code="${item.value}"
+      .type="${type}"></api-schema-render>`);
   }
 
   _schemaAndExampleTemplate() {
@@ -43090,7 +43094,9 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
   }
 
   _schemaOnlyTemplate() {
-    return html`<api-schema-render .code="${this._raw}"></api-schema-render>`;
+    return html`<api-schema-render
+      .code="${this._raw}"
+      .type="${this._mediaType}"></api-schema-render>`;
   }
 
   static get properties() {
@@ -43098,20 +43104,31 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
       /**
        * `raml-aware` scope property to use.
        */
-      aware: String,
+      aware: { type: String },
       /**
        * AMF's shape object object.
        * Values for sheba and examples are computed from this model.
        */
-      shape: Object,
+      shape: { type: Object },
+      /**
+       * A media type of the schema. Currently only `application/json` and
+       * `application/xml` is supported.
+       */
+      mediaType: { type: String },
+      /**
+       * A parent AMF schape ID, if available.
+       * This is to be used when the view renders examples for method documentation
+       * and partent type is Payload definition.
+       */
+      partentTypeId: { type: String },
       /**
        * Computed `http://www.w3.org/ns/shacl#raw`
        */
-      _raw: String,
+      _raw: { type: String },
       /**
        * Computed list of examples
        */
-      _examples: Array,
+      _examples: { type: Array },
 
       /**
        * Computed value, true when data contains example only
@@ -43152,9 +43169,42 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
     this._schemaChanged(value);
   }
 
+  /**
+   * @return {Element} Instance of `api-example-generator` element.
+   */
+  get _exampleGenerator() {
+    if (!this.__exampleGenerator) {
+      this.__exampleGenerator = document.createElement('api-example-generator');
+    }
+    return this.__exampleGenerator;
+  }
+
+  get _mediaType() {
+    const { mediaType } = this;
+    if (typeof mediaType !== 'string') {
+      return null;
+    }
+    if (mediaType.indexOf('xml') !== -1) {
+      return 'xml';
+    }
+    if (mediaType.indexOf('json') !== -1) {
+      return 'json';
+    }
+    return null
+  }
+
   constructor() {
     super();
     this.selectedPage = 0;
+  }
+
+  disconnectedCallback() {
+    if (super.disconnectedCallback) {
+      super.disconnectedCallback();
+    }
+    if (this.__exampleGenerator) {
+      delete this.__exampleGenerator;
+    }
   }
 
   _apiChanged(e) {
@@ -43176,20 +43226,14 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
     let schemaAndExample = false;
     let raw;
     let examples;
-
     if (schema) {
       schema = this._resolve(schema);
-      if (this._hasType(schema, this.ns.w3.shacl.name + 'SchemaShape') ||
-        this._hasType(schema, this.ns.raml.vocabularies.shapes + 'AnyShape') ||
-        this._hasType(schema, this.ns.raml.vocabularies.shapes + 'ScalarShape') ||
-        this._hasType(schema, this.ns.w3.shacl.name + 'NodeShape')) {
-        raw = this._getValue(schema, this.ns.raml.vocabularies.document + 'raw');
-        if (!raw) {
-          raw = this._getValue(schema, this.ns.w3.shacl.name + 'raw');
-        }
-        const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
-        const exs = this._ensureArray(schema[key]);
-        examples = this._processExamples(exs);
+      if (this._hasType(schema, this.ns.w3.shacl.SchemaShape) ||
+        this._hasType(schema, this.ns.aml.vocabularies.shapes.AnyShape) ||
+        this._hasType(schema, this.ns.aml.vocabularies.shapes.ScalarShape) ||
+        this._hasType(schema, this.ns.w3.shacl.NodeShape)) {
+        raw = this._computeRawValue(schema);
+        examples = this._computeModelExamples(schema);
       }
     }
     exampleOnly = !!(examples && examples.length && !raw);
@@ -43202,20 +43246,53 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
     this._raw = raw;
   }
 
-  _processExamples(examples) {
-    if (!examples || !examples.length) {
-      return;
-    }
-    return examples.map((item) => this._resolve(item));
-  }
-
-  _computeExampleValue(item) {
-    item = this._resolve(item);
-    let raw = this._getValue(item, this.ns.raml.vocabularies.document + 'raw');
+  _computeRawValue(schema) {
+    let raw = this._getValue(schema, this.ns.aml.vocabularies.document.raw);
     if (!raw) {
-      raw = this._getValue(item, this.ns.w3.shacl.name + 'raw');
+      raw = this._getValue(schema, this.ns.w3.shacl.raw);
+    }
+    if (!raw) {
+      raw = this._computeSourceMapsSchema(schema);
     }
     return raw;
+  }
+
+  _computeSourceMapsSchema(schema) {
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.docSourceMaps.sources);
+    let sources = this._ensureArray(schema[sKey]);
+    if (!sources) {
+      return;
+    }
+    sources = sources[0];
+    const jKey = this._getAmfKey(this.ns.aml.vocabularies.docSourceMaps.parsedJsonSchema);
+    let jSchema = this._ensureArray(sources[jKey]);
+    if (!jSchema) {
+      return;
+    }
+    jSchema = jSchema[0];
+    const vKey = this._getAmfKey(this.ns.aml.vocabularies.docSourceMaps.value);
+    let result = this._ensureArray(jSchema[vKey]);
+    if (Array.isArray(result)) {
+      result = result[0]['@value'];
+    }
+    return result;
+  }
+
+  /**
+   * Computes list of examples for the Property model.
+   *
+   * @param {Object} model AMF property model
+   * @return {Array<Object>|undefined} List of examples or `undefined` if not
+   * defined.
+   */
+  _computeModelExamples(model) {
+    const gen = this._exampleGenerator;
+    gen.amf = this.amf;
+    const mt = this.mediaType || 'application/xml';
+    return gen.computeExamples(model, mt, {
+      // noAuto: true,
+      typeId: this.partentTypeId
+    });
   }
 }
 window.customElements.define('api-schema-document', ApiSchemaDocument);
@@ -43226,13 +43303,12 @@ window.customElements.define('api-schema-document', ApiSchemaDocument);
  * A component to render HTTP method body documentation based on AMF model.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiBodyDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css`:host {
@@ -43256,6 +43332,11 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
         -ms-user-select: none;
         user-select: none;
         border-bottom: 1px var(--api-body-document-title-border-color, #e5e5e5) solid;
+        transition: border-bottom-color 0.15s ease-in-out;
+      }
+
+      .section-title-area[opened] {
+        border-bottom-color: transparent;
       }
 
       .section-title-area .table-title {
@@ -43317,25 +43398,8 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
         margin-top: 0;
       }
 
-      .examples {
-        margin-top: 12px;
-        border: 1px var(--api-body-document-examples-border-color, transparent) solid;
-      }
-
-      .examples,
       api-schema-document {
         background-color: var(--code-background-color);
-      }
-
-      .examples-section-title {
-        font-size: 16px;
-        padding: 16px 12px;
-        margin: 0;
-        color: var(--api-body-document-examples-title-color);
-      }
-
-      api-resource-example-document,
-      api-schema-document {
         padding: 8px;
         color: var(--api-body-document-code-color, initial);
         word-break: break-all;
@@ -43476,8 +43540,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
         * `api-navigation-selection-changed` when clicked.
         */
        graph: { type: Boolean },
-       _hasObjectExamples: { type: Boolean },
-       _hasAnyExamples: { type: Boolean }
+       _hasObjectExamples: { type: Boolean }
     };
   }
   get _mediaTypes() {
@@ -43553,7 +43616,6 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     super();
     this._renderMediaSelector = false;
     this._hasObjectExamples = false;
-    this._hasAnyExamples = false;
     this.headerLevel = 2;
   }
 
@@ -43587,7 +43649,6 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     this._selectedBodyId = value && value['@id'];
     this._selectedSchema = this._computeSelectedSchema(value);
     this._hasObjectExamples = false;
-    this._hasAnyExamples = false;
   }
   /**
    * Computes list of media types in the `body`
@@ -43597,14 +43658,14 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   _computeMediaTypes(body) {
     const result = [];
     body.forEach((item) => {
-      const label = this._getValue(item, this.ns.raml.vocabularies.http + 'mediaType');
+      const label = this._getValue(item, this.ns.aml.vocabularies.core.mediaType);
       if (label) {
         result.push({
           label
         });
       }
     });
-    return result.length ? result : undefined;
+    return result.length ? result : '';
   }
   /**
    * Computes value for `renderMediaSelector` properety.
@@ -43661,7 +43722,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     if (!selectedBody) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = selectedBody[key];
     if (!schema) {
       return;
@@ -43682,7 +43743,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       return;
     }
     const data = body[selected];
-    return this._getValue(data, this.ns.raml.vocabularies.http + 'mediaType');
+    return this._getValue(data, this.ns.aml.vocabularies.core.mediaType);
   }
   /**
    * Handler for body value change. Computes basic view control properties.
@@ -43690,26 +43751,29 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
    */
   _selectedSchemaChanged(body) {
     this._typeName = this._computeTypeName(body);
-    this._bodyName = this._getValue(body, this.ns.schema.schemaName);
+    this._bodyName = this._getValue(body, this.ns.aml.vocabularies.core.name);
     this._description = this._computeDescription(body);
     let isObject = false;
     let isSchema = false;
     let isAnyType = false;
     let isAnd = false;
-    if (this._hasType(body, this.ns.w3.shacl.name + 'NodeShape') ||
-      this._hasType(body, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
-      isObject = true;
-    } else if (this._hasType(body, this.ns.w3.shacl.name + 'SchemaShape') ||
-      this._hasType(body, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
-      isSchema = true;
-    } else if (this._hasType(body, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
-      isObject = true;
-    } else if (this._hasType(body, this.ns.raml.vocabularies.shapes + 'AnyShape')) {
-      const key = this._getAmfKey(this.ns.w3.shacl.name + 'and');
-      if (key in body) {
-        isAnd = true;
-      } else {
-        isAnyType = true;
+    const types = body && body['@type'];
+    if (types) {
+      if (types.indexOf(this._getAmfKey(this.ns.w3.shacl.NodeShape)) > -1 ||
+        types.indexOf(this._getAmfKey(this.ns.aml.vocabularies.shapes.UnionShape)) > -1) {
+        isObject = true;
+      } else if (types.indexOf(this._getAmfKey(this.ns.aml.vocabularies.shapes.SchemaShape)) > -1 ||
+        types.indexOf(this._getAmfKey(this.ns.aml.vocabularies.shapes.ScalarShape)) > -1) {
+        isSchema = true;
+      } else if (types.indexOf(this._getAmfKey(this.ns.aml.vocabularies.shapes.ArrayShape)) > -1) {
+        isObject = true;
+      } else if (types.indexOf(this._getAmfKey(this.ns.aml.vocabularies.shapes.AnyShape)) > -1) {
+        const key = this._getAmfKey(this.ns.w3.shacl.and);
+        if (key in body) {
+          isAnd = true;
+        } else {
+          isAnyType = true;
+        }
       }
     }
     this._isObject = isObject || isAnd;
@@ -43742,7 +43806,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeTypeName(body) {
-    let value = this._getValue(body, this.ns.w3.shacl.name + 'name');
+    let value = this._getValue(body, this.ns.w3.shacl.name);
     if (value && (value === 'schema' || value.indexOf('amf_inline_type') === 0)) {
       value = undefined;
     }
@@ -43752,11 +43816,6 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   _apiChangedHandler(e) {
     const { value } = e.detail;
     this.amf = value;
-  }
-
-  _hasExamplesHandler(e) {
-    const { value } = e.detail;
-    this._hasAnyExamples = value;
   }
   /**
    * A template to render for "Any" AMF model.
@@ -43768,7 +43827,6 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       _bodyName,
       _description,
       _typeName,
-      _hasAnyExamples,
       _selectedBody,
       _selectedMediaType,
       _selectedBodyId
@@ -43776,27 +43834,25 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     const hasBodyName = !!_bodyName;
     const hasDescription = !!_description;
     const hasTypeName = !!_typeName;
-
     return html`
-    ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
+    ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : ''}
     ${hasDescription ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
-    </arc-marked>` : undefined}
+    </arc-marked>` : ''}
     <p class="any-info">Any instance of data is allowed.</p>
     <p class="any-info-description">
       The API file specifies body for this request but it does not specify the data model.
     </p>
-    <section class="examples" ?hidden="${!_hasAnyExamples}">
-      <div class="examples-section-title">Examples</div>
-      <api-resource-example-document
-        .amf="${this.amf}"
-        .examples="${_selectedBody}"
-        .mediaType="${_selectedMediaType}"
-        .typeName="${_typeName}"
-        .payloadId="${_selectedBodyId}"
-        ?compatibility="${compatibility}"
-        @has-examples-changed="${this._hasExamplesHandler}"></api-resource-example-document>
-    </section>`;
+
+    <api-resource-example-document
+      .amf="${this.amf}"
+      .examples="${_selectedBody}"
+      .mediaType="${_selectedMediaType}"
+      .typeName="${_typeName}"
+      .payloadId="${_selectedBodyId}"
+      ?compatibility="${compatibility}"
+    ></api-resource-example-document>
+    `;
   }
   /**
    * A template to render for any AMF model\ that is different than "any".
@@ -43829,12 +43885,12 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
         this._mediaTypesTemplate() :
         html`<span class="media-type-label">${_selectedMediaType}</span>`}
     </div>
-    ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : undefined}
-    ${hasTypeName ? html`<div class="type-title">${_typeName}</div>` : undefined}
+    ${hasBodyName ? html`<div class="body-name type-title">${_bodyName}</div>` : ''}
+    ${hasTypeName ? html`<div class="type-title">${_typeName}</div>` : ''}
     ${hasDescription ? html`
     <arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html" ?data-with-title="${hasTypeName}"></div>
-    </arc-marked>` : undefined}
+    </arc-marked>` : ''}
 
     ${_isObject ?
       html`<api-type-document
@@ -43844,13 +43900,15 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       .narrow="${narrow}"
       .mediaType="${_selectedMediaType}"
       ?compatibility="${compatibility}"
-      ?graph="${graph}"></api-type-document>` : undefined}
+      ?graph="${graph}"></api-type-document>` : ''}
     ${_isSchema ?
       html`<api-schema-document
         .amf="${amf}"
+        .mediaType="${_selectedMediaType}"
+        .partentTypeId="${_selectedBodyId}"
         .shape="${_selectedSchema}"
         ?compatibility="${compatibility}"></api-schema-document>` :
-      undefined}`;
+      ''}`;
   }
 
   _mediaTypesTemplate() {
@@ -43873,11 +43931,16 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   render() {
     const { opened, _isAnyType, aware, compatibility, headerLevel } = this;
     const iconClass = this._computeToggleIconClass(opened);
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
 
-    <div class="section-title-area" @click="${this.toggle}" title="Toogle body details">
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle body details"
+      ?opened="${opened}"
+    >
       <div class="table-title" role="heading" aria-level="${headerLevel}">Body</div>
       <div class="title-area-actions">
         <anypoint-button
@@ -43911,12 +43974,11 @@ window.customElements.define('api-body-document', ApiBodyDocument);
  * ```
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  */
 class ApiHeadersDocument extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -43935,6 +43997,11 @@ class ApiHeadersDocument extends LitElement {
       -ms-user-select: none;
       user-select: none;
       border-bottom: 1px var(--api-headers-document-title-border-color, #e5e5e5) solid;
+      transition: border-bottom-color 0.15s ease-in-out;
+    }
+
+    .section-title-area[opened] {
+      border-bottom-color: transparent;
     }
 
     .toggle-icon {
@@ -43979,11 +44046,16 @@ class ApiHeadersDocument extends LitElement {
   render() {
     const { aware, opened, headers, amf, narrow, compatibility, headerLevel, graph } = this;
     const hasHeaders = !!(headers && headers.length);
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
 
-    <div class="section-title-area" @click="${this.toggle}" title="Toogle headers details">
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle headers details"
+      ?opened="${opened}"
+    >
       <div class="headers-title" role="heading" aria-level="${headerLevel}">Headers</div>
       <div class="title-area-actions">
         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
@@ -43999,7 +44071,9 @@ class ApiHeadersDocument extends LitElement {
           .amf="${amf}"
           .type="${headers}"
           ?narrow="${narrow}"
-          ?graph="${graph}"></api-type-document>` :
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>` :
         html`<p class="no-info">Headers are not required by this endpoint</p>`}
     </iron-collapse>`;
   }
@@ -44103,6 +44177,7 @@ class ApiHeadersDocument extends LitElement {
     this.opened = !this.opened;
   }
 }
+
 window.customElements.define('api-headers-document', ApiHeadersDocument);
 
 /**
@@ -44122,13 +44197,12 @@ window.customElements.define('api-headers-document', ApiHeadersDocument);
  *
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin ApiElements.AmfHelperMixin
  */
 class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css`:host {
@@ -44186,29 +44260,29 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
     const hasPayload = !!(_payload && _payload.length);
     const hasHeaders = !!(_headers && _headers.length);
     const noDocs = this._computeNoDocs(_hasCustomProperties, hasHeaders, hasPayload, hasDescription);
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
     ${this._codesSelectorTemplate()}
-    ${_hasCustomProperties ? html`<api-annotation-document ?legacy="${compatibility}" .shape="${_selectedResponse}"></api-annotation-document>`:undefined}
+    ${_hasCustomProperties ? html`<api-annotation-document ?legacy="${compatibility}" .shape="${_selectedResponse}"></api-annotation-document>`:''}
     ${_description ? html`<arc-marked .markdown="${_description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
-    </arc-marked>` : undefined}
+    </arc-marked>` : ''}
     ${hasHeaders ? html`<api-headers-document
       opened
       .amf="${amf}"
       .headers="${_headers}"
       ?compatibility="${compatibility}"
       ?narrow="${narrow}"
-      ?graph="${graph}"></api-headers-document>` : undefined}
+      ?graph="${graph}"></api-headers-document>` : ''}
     ${hasPayload ? html`<api-body-document
       .amf="${amf}"
       .body="${_payload}"
       ?narrow="${narrow}"
       ?compatibility="${compatibility}"
       ?graph="${graph}"
-      opened></api-body-document>` : undefined}
-    ${noDocs ? html`<p class="no-info">No description provided</p>` : undefined}`;
+      opened></api-body-document>` : ''}
+    ${noDocs ? html`<p class="no-info">No description provided</p>` : ''}`;
   }
 
   static get properties() {
@@ -44373,7 +44447,7 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
     }
     const codes = [];
     returns.forEach((item) => {
-      const value = this._getValue(item, this.ns.w3.hydra.core + 'statusCode');
+      const value = this._getValue(item, this.ns.aml.vocabularies.apiContract.statusCode);
       if (value) {
         codes.push(value);
       }
@@ -44406,7 +44480,7 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
     if (!item) {
       return false;
     }
-    const value = this._getValue(item, this.ns.w3.hydra.core + 'statusCode');
+    const value = this._getValue(item, this.ns.aml.vocabularies.apiContract.statusCode);
     return value === status;
   }
   /**
@@ -44435,6 +44509,7 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
     this.selected = e.detail.value;
   }
 }
+
 window.customElements.define('api-responses-document', ApiResponsesDocument);
 
 /**
@@ -44691,12 +44766,13 @@ class BaseCodeSnippet extends LitElement {
     return httpStyles;
   }
 
-  static get styles() {
+  get styles() {
     return BaseCodeSnippet._httpStyles;
   }
 
   render() {
-    return html`<button class="copy-button" title="Copy to clipboard" @click="${this._copyToClipboard}">Copy</button>
+    return html`<style>${this.styles}</style>
+<button class="copy-button" title="Copy to clipboard" @click="${this._copyToClipboard}">Copy</button>
     <code class="code language-snippet"></code>`;
   }
 
@@ -44881,6 +44957,7 @@ class BaseCodeSnippet extends LitElement {
     }
     let port = uri.port;
     if (!port) {
+      result.autoPort = true;
       if (uri.protocol === 'https:') {
         port = 443;
       } else {
@@ -44956,7 +45033,7 @@ class BaseCodeSnippet extends LitElement {
 }
 window.customElements.define('base-code-snippet', BaseCodeSnippet);
 
-!function(t){t.languages.http={"request-line":{pattern:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\s(?:https?:\/\/|\/)\S+\sHTTP\/[0-9.]+/m,inside:{property:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\b/,"attr-name":/:\w+/}},"response-status":{pattern:/^HTTP\/1.[01] \d+.*/m,inside:{property:{pattern:/(^HTTP\/1.[01] )\d+.*/i,lookbehind:!0}}},"header-name":{pattern:/^[\w-]+:(?=.)/m,alias:"keyword"}};var a,e,n,i=t.languages,s={"application/javascript":i.javascript,"application/json":i.json||i.javascript,"application/xml":i.xml,"text/xml":i.xml,"text/html":i.html,"text/css":i.css},p={"application/json":!0,"application/xml":!0};for(var r in s)if(s[r]){a=a||{};var T=p[r]?(n=(e=r).replace(/^[a-z]+\//,""),"(?:"+e+"|\\w+/(?:[\\w.-]+\\+)+"+n+"(?![+\\w.-]))"):r;a[r]={pattern:RegExp("(content-type:\\s*"+T+"[\\s\\S]*?)(?:\\r?\\n|\\r){2}[\\s\\S]*","i"),lookbehind:!0,inside:{rest:s[r]}};}a&&t.languages.insertBefore("http","header-name",a);}(Prism);
+!function(t){t.languages.http={"request-line":{pattern:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\s(?:https?:\/\/|\/)\S+\sHTTP\/[0-9.]+/m,inside:{property:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\b/,"attr-name":/:\w+/}},"response-status":{pattern:/^HTTP\/1.[01] \d+.*/m,inside:{property:{pattern:/(^HTTP\/1.[01] )\d+.*/i,lookbehind:!0}}},"header-name":{pattern:/^[\w-]+:(?=.)/m,alias:"keyword"}};var a,e,n,i=t.languages,p={"application/javascript":i.javascript,"application/json":i.json||i.javascript,"application/xml":i.xml,"text/xml":i.xml,"text/html":i.html,"text/css":i.css},s={"application/json":!0,"application/xml":!0};for(var r in p)if(p[r]){a=a||{};var T=s[r]?(n=(e=r).replace(/^[a-z]+\//,""),"(?:"+e+"|\\w+/(?:[\\w.-]+\\+)+"+n+"(?![+\\w.-]))"):r;a[r.replace(/\//g,"-")]={pattern:RegExp("(content-type:\\s*"+T+"[\\s\\S]*?)(?:\\r?\\n|\\r){2}[\\s\\S]*","i"),lookbehind:!0,inside:p[r]};}a&&t.languages.insertBefore("http","header-name",a);}(Prism);
 
 /**
 @license
@@ -45175,8 +45252,12 @@ class XhrHttpSnippet extends BaseCodeSnippet {
     if (hasPayload) {
       result += 'var body = \'\';\n';
       const re = /'/g;
-      payload.split('\n').forEach((line) => {
-        result += 'body += \'' + line.replace(re, '\\\'') + '\\n\';\n';
+      const list = payload.split('\n');
+      const size = list.length;
+      list.forEach((line, i) => {
+        const nl = i + 1 === size ? '' : '\\n';
+        line = line.replace(re, '\\\'');
+        result += `body += '${line}${nl}';\n`;
       });
       result += 'xhr.send(body);\n';
     } else {
@@ -45253,7 +45334,7 @@ class FetchJsHttpSnippet extends BaseCodeSnippet {
         result += `,\n  body`;
       }
       result += '\n';
-      result += '}\n\n';
+      result += '};\n\n';
     }
 
     result += `fetch('${url}'`;
@@ -45334,12 +45415,19 @@ class NodeHttpSnippet extends BaseCodeSnippet {
     if (!url || !method) {
       return '';
     }
-    let result = 'const http = require(\'http\');\n';
+    const isHttps = String(url).indexOf('https:') === 0;
+    let libName = 'http';
+    if (isHttps) {
+      libName += 's';
+    }
+    let result = `const http = require('${libName}');\n`;
     const data = this.urlDetails(url);
     result += 'const init = {\n';
     result += `  host: '${data.hostValue}',\n`;
     result += `  path: '${data.path}',\n`;
-    result += `  port: ${data.port},\n`;
+    if (!data.autoPort) {
+      result += `  port: ${data.port},\n`;
+    }
     result += `  method: '${method}',\n`;
     result += this._genHeadersPart(headers);
     result += '};\n';
@@ -45351,7 +45439,7 @@ class NodeHttpSnippet extends BaseCodeSnippet {
     result += '  \n';
     result += '  response.on(\'end\', function() {\n';
     result += '    // result has response body buffer\n';
-    result += '    console.log(str.toString());\n';
+    result += '    console.log(result.toString());\n';
     result += '  });\n';
     result += '};\n';
     result += '\n';
@@ -45403,6 +45491,118 @@ License for the specific language governing permissions and limitations under
 the License.
 */
 /**
+ * `fetch-js-http-snippet`
+ *
+ * A snippet for requests made in JavaScript using Fetch API.
+ *
+ * ### Styling
+ *
+ * See `http-code-snippets` for styling documentation.
+ *
+ * @customElement
+ * @demo demo/fetch-js.html Fetch (JavaScript) demo
+ * @memberof ApiElements
+ * @extends BaseCodeSnippet
+ */
+class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
+  get lang() {
+    return 'javascript';
+  }
+
+  /**
+   * Computes code for JavaScript (Fetch API).
+   * @param {String} url
+   * @param {String} method
+   * @param {Array<Object>|undefined} headers
+   * @param {String} payload
+   * @return {String} Complete code for given arguments
+   */
+  _computeCommand(url, method, headers, payload) {
+    if (!url || !method) {
+      return '';
+    }
+    const hasHeaders = !!(headers && headers instanceof Array && headers.length);
+    const hasPayload = !!payload;
+    const hasInit = hasHeaders || hasPayload || !!(method && method !== 'GET');
+    let result = '(async () => {\n';
+
+    if (hasInit) {
+      if (hasHeaders) {
+        result += this._createHeaders(headers);
+      }
+      if (hasPayload) {
+        result += this._createPayload(payload);
+      }
+      result += '  const init = {\n';
+      result += `    method: '${method}'`;
+      if (hasHeaders) {
+        result += `,\n    headers`;
+      }
+      if (hasPayload) {
+        result += `,\n    body`;
+      }
+      result += '\n';
+      result += '  };\n\n';
+    }
+
+    result += `  const response = await fetch('${url}'`;
+    if (hasInit) {
+      result += ', init';
+    }
+    result += ');\n';
+    result += '  console.log(`response status is ${response.status}`);\n';
+    result += '  const mediaType = response.headers.get(\'content-type\');\n';
+    result += '  let data;\n';
+    result += '  if (mediaType.includes(\'json\')) {\n';
+    result += '    data = await response.json();\n';
+    result += '  } else {\n';
+    result += '    data = await response.text();\n';
+    result += '  }\n';
+    result += '  console.log(data);\n';
+    result += '})();';
+    return result;
+  }
+
+  _createHeaders(headers) {
+    let result = '  const headers = new Headers();\n';
+    for (let i = 0, len = headers.length; i < len; i++) {
+      const h = headers[i];
+      result += `  headers.append('${h.name}', '${h.value}');\n`;
+    }
+    result += '\n';
+    return result;
+  }
+
+  _createPayload(payload) {
+    // return `  const body = \`${payload}\`;\n\n`;
+    let result = '  const body = `';
+    const list = payload.split('\n');
+    const size = list.length;
+    list.forEach((line, i) => {
+      const nl = i + 1 === size ? '' : '\n';
+      const spaces = i === 0 ? '' : '  ';
+      result += `${spaces}${line}${nl}`;
+    });
+    result += '`;\n\n';
+    return result;
+  }
+}
+window.customElements.define('async-fetch-js-http-snippet', AsyncFetchJsHttpSnippet);
+
+/**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
  * `javascript-http-snippet`
  *
  * A set of code snippets for JavaScript requests.
@@ -45419,7 +45619,7 @@ the License.
  * @memberof ApiElements
  */
 class JavascriptHttpSnippets extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
@@ -45433,12 +45633,17 @@ class JavascriptHttpSnippets extends LitElement {
         .method="${method}"
         .payload="${payload}"
         .headers="${headers}"></fetch-js-http-snippet>`;
-      case 1: return html`<node-http-snippet
+      case 1: return html`<async-fetch-js-http-snippet
+        .url="${url}"
+        .method="${method}"
+        .payload="${payload}"
+        .headers="${headers}"></async-js-http-snippet>`;
+      case 2: return html`<node-http-snippet
         .url="${url}"
         .method="${method}"
         .payload="${payload}"
         .headers="${headers}"></node-http-snippet>`;
-      case 2: return html`<xhr-http-snippet
+      case 3: return html`<xhr-http-snippet
         .url="${url}"
         .method="${method}"
         .payload="${payload}"
@@ -45448,12 +45653,13 @@ class JavascriptHttpSnippets extends LitElement {
 
   render() {
     const { selected, compatibility } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <anypoint-tabs
       ?compatibility="${compatibility}"
       .selected="${selected}"
       @selected-changed="${this._selectedCHanged}">
       <anypoint-tab>Fetch</anypoint-tab>
+      <anypoint-tab>Fetch/Async</anypoint-tab>
       <anypoint-tab>Node</anypoint-tab>
       <anypoint-tab>XHR</anypoint-tab>
     </anypoint-tabs>
@@ -45502,7 +45708,7 @@ class JavascriptHttpSnippets extends LitElement {
 }
 window.customElements.define('javascript-http-snippets', JavascriptHttpSnippets);
 
-Prism.languages.python={comment:{pattern:/(^|[^\\])#.*/,lookbehind:!0},"string-interpolation":{pattern:/(?:f|rf|fr)(?:("""|''')[\s\S]+?\1|("|')(?:\\.|(?!\2)[^\\\r\n])*\2)/i,greedy:!0,inside:{interpolation:{pattern:/((?:^|[^{])(?:{{)*){(?!{)(?:[^{}]|{(?!{)(?:[^{}]|{(?!{)(?:[^{}])+})+})+}/,lookbehind:!0,inside:{"format-spec":{pattern:/(:)[^:(){}]+(?=}$)/,lookbehind:!0},"conversion-option":{pattern:/![sra](?=[:}]$)/,alias:"punctuation"},rest:null}},string:/[\s\S]+/}},"triple-quoted-string":{pattern:/(?:[rub]|rb|br)?("""|''')[\s\S]+?\1/i,greedy:!0,alias:"string"},string:{pattern:/(?:[rub]|rb|br)?("|')(?:\\.|(?!\1)[^\\\r\n])*\1/i,greedy:!0},function:{pattern:/((?:^|\s)def[ \t]+)[a-zA-Z_]\w*(?=\s*\()/g,lookbehind:!0},"class-name":{pattern:/(\bclass\s+)\w+/i,lookbehind:!0},decorator:{pattern:/(^\s*)@\w+(?:\.\w+)*/i,lookbehind:!0,alias:["annotation","punctuation"],inside:{punctuation:/\./}},keyword:/\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|exec|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|print|raise|return|try|while|with|yield)\b/,builtin:/\b(?:__import__|abs|all|any|apply|ascii|basestring|bin|bool|buffer|bytearray|bytes|callable|chr|classmethod|cmp|coerce|compile|complex|delattr|dict|dir|divmod|enumerate|eval|execfile|file|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|intern|isinstance|issubclass|iter|len|list|locals|long|map|max|memoryview|min|next|object|oct|open|ord|pow|property|range|raw_input|reduce|reload|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|unichr|unicode|vars|xrange|zip)\b/,boolean:/\b(?:True|False|None)\b/,number:/(?:\b(?=\d)|\B(?=\.))(?:0[bo])?(?:(?:\d|0x[\da-f])[\da-f]*\.?\d*|\.\d+)(?:e[+-]?\d+)?j?\b/i,operator:/[-+%=]=?|!=|\*\*?=?|\/\/?=?|<[<=>]?|>[=>]?|[&|^~]/,punctuation:/[{}[\];(),.:]/},Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest=Prism.languages.python,Prism.languages.py=Prism.languages.python;
+Prism.languages.python={comment:{pattern:/(^|[^\\])#.*/,lookbehind:!0},"string-interpolation":{pattern:/(?:f|rf|fr)(?:("""|''')[\s\S]+?\1|("|')(?:\\.|(?!\2)[^\\\r\n])*\2)/i,greedy:!0,inside:{interpolation:{pattern:/((?:^|[^{])(?:{{)*){(?!{)(?:[^{}]|{(?!{)(?:[^{}]|{(?!{)(?:[^{}])+})+})+}/,lookbehind:!0,inside:{"format-spec":{pattern:/(:)[^:(){}]+(?=}$)/,lookbehind:!0},"conversion-option":{pattern:/![sra](?=[:}]$)/,alias:"punctuation"},rest:null}},string:/[\s\S]+/}},"triple-quoted-string":{pattern:/(?:[rub]|rb|br)?("""|''')[\s\S]+?\1/i,greedy:!0,alias:"string"},string:{pattern:/(?:[rub]|rb|br)?("|')(?:\\.|(?!\1)[^\\\r\n])*\1/i,greedy:!0},function:{pattern:/((?:^|\s)def[ \t]+)[a-zA-Z_]\w*(?=\s*\()/g,lookbehind:!0},"class-name":{pattern:/(\bclass\s+)\w+/i,lookbehind:!0},decorator:{pattern:/(^\s*)@\w+(?:\.\w+)*/im,lookbehind:!0,alias:["annotation","punctuation"],inside:{punctuation:/\./}},keyword:/\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|exec|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|print|raise|return|try|while|with|yield)\b/,builtin:/\b(?:__import__|abs|all|any|apply|ascii|basestring|bin|bool|buffer|bytearray|bytes|callable|chr|classmethod|cmp|coerce|compile|complex|delattr|dict|dir|divmod|enumerate|eval|execfile|file|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|intern|isinstance|issubclass|iter|len|list|locals|long|map|max|memoryview|min|next|object|oct|open|ord|pow|property|range|raw_input|reduce|reload|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|unichr|unicode|vars|xrange|zip)\b/,boolean:/\b(?:True|False|None)\b/,number:/(?:\b(?=\d)|\B(?=\.))(?:0[bo])?(?:(?:\d|0x[\da-f])[\da-f]*\.?\d*|\.\d+)(?:e[+-]?\d+)?j?\b/i,operator:/[-+%=]=?|!=|\*\*?=?|\/\/?=?|<[<=>]?|>[=>]?|[&|^~]/,punctuation:/[{}[\];(),.:]/},Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest=Prism.languages.python,Prism.languages.py=Prism.languages.python;
 
 /**
 @license
@@ -45914,7 +46120,7 @@ the License.
  * @memberof ApiElements
  */
 class PythonHttpSnippets extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
@@ -45943,7 +46149,7 @@ class PythonHttpSnippets extends LitElement {
 
   render() {
     const { selected, compatibility } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <anypoint-tabs
       ?compatibility="${compatibility}"
       .selected="${selected}"
@@ -46091,7 +46297,7 @@ class CcurlHttpSnippet extends BaseCodeSnippet {
 }
 window.customElements.define('c-curl-http-snippet', CcurlHttpSnippet);
 
-!function(e){var t=/\b(?:abstract|continue|for|new|switch|assert|default|goto|package|synchronized|boolean|do|if|private|this|break|double|implements|protected|throw|byte|else|import|public|throws|case|enum|instanceof|return|transient|catch|extends|int|short|try|char|final|interface|static|void|class|finally|long|strictfp|volatile|const|float|native|super|while|var|null|exports|module|open|opens|provides|requires|to|transitive|uses|with)\b/,a=/\b[A-Z](?:\w*[a-z]\w*)?\b/;e.languages.java=e.languages.extend("clike",{"class-name":[a,/\b[A-Z]\w*(?=\s+\w+\s*[;,=())])/],keyword:t,function:[e.languages.clike.function,{pattern:/(\:\:)[a-z_]\w*/,lookbehind:!0}],number:/\b0b[01][01_]*L?\b|\b0x[\da-f_]*\.?[\da-f_p+-]+\b|(?:\b\d[\d_]*\.?[\d_]*|\B\.\d[\d_]*)(?:e[+-]?\d[\d_]*)?[dfl]?/i,operator:{pattern:/(^|[^.])(?:<<=?|>>>?=?|->|([-+&|])\2|[?:~]|[-+*/%&|^!=<>]=?)/m,lookbehind:!0}}),e.languages.insertBefore("java","class-name",{annotation:{alias:"punctuation",pattern:/(^|[^.])@\w+/,lookbehind:!0},namespace:{pattern:/(\b(?:exports|import(?:\s+static)?|module|open|opens|package|provides|requires|to|transitive|uses|with)\s+)[a-z]\w*(\.[a-z]\w*)+/,lookbehind:!0,inside:{punctuation:/\./}},generics:{pattern:/<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<[\w\s,.&?]*>)*>)*>)*>/,inside:{"class-name":a,keyword:t,punctuation:/[<>(),.:]/,operator:/[?&|]/}}});}(Prism);
+!function(e){var t=/\b(?:abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|exports|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|module|native|new|null|open|opens|package|private|protected|provides|public|requires|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|to|transient|transitive|try|uses|var|void|volatile|while|with|yield)\b/,a=/\b[A-Z](?:\w*[a-z]\w*)?\b/;e.languages.java=e.languages.extend("clike",{"class-name":[a,/\b[A-Z]\w*(?=\s+\w+\s*[;,=())])/],keyword:t,function:[e.languages.clike.function,{pattern:/(\:\:)[a-z_]\w*/,lookbehind:!0}],number:/\b0b[01][01_]*L?\b|\b0x[\da-f_]*\.?[\da-f_p+-]+\b|(?:\b\d[\d_]*\.?[\d_]*|\B\.\d[\d_]*)(?:e[+-]?\d[\d_]*)?[dfl]?/i,operator:{pattern:/(^|[^.])(?:<<=?|>>>?=?|->|--|\+\+|&&|\|\||::|[?:~]|[-+*/%&|^!=<>]=?)/m,lookbehind:!0}}),e.languages.insertBefore("java","string",{"triple-quoted-string":{pattern:/"""[ \t]*[\r\n](?:(?:"|"")?(?:\\.|[^"\\]))*"""/,greedy:!0,alias:"string"}}),e.languages.insertBefore("java","class-name",{annotation:{alias:"punctuation",pattern:/(^|[^.])@\w+/,lookbehind:!0},namespace:{pattern:/(\b(?:exports|import(?:\s+static)?|module|open|opens|package|provides|requires|to|transitive|uses|with)\s+)[a-z]\w*(?:\.[a-z]\w*)+/,lookbehind:!0,inside:{punctuation:/\./}},generics:{pattern:/<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<[\w\s,.&?]*>)*>)*>)*>/,inside:{"class-name":a,keyword:t,punctuation:/[<>(),.:]/,operator:/[?&|]/}}});}(Prism);
 
 /**
 @license
@@ -46183,8 +46389,10 @@ class JavaPlatformHttpSnippet extends BaseCodeSnippet {
       result += 'con.setDoOutput(true);\n';
       result += 'DataOutputStream out = new DataOutputStream(con.getOutputStream());\n';
       const list = this._payloadToList(payload);
-      list.forEach((line) => {
-        result += `out.writeBytes("${line}\\n");\n`;
+      const size = list.length;
+      list.forEach((line, i) => {
+        const nl = i + 1 === size ? '' : '\\n';
+        result += `out.writeBytes("${line}${nl}");\n`;
       });
       result += 'out.flush();\n';
       result += 'out.close();\n';
@@ -46251,7 +46459,8 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
     result += 'HttpEntity<String> requestEntity = new HttpEntity<String>(body, headers);\n';
     result += 'ResponseEntity<String> responseEntity = rest.exchange(';
     result += `"${url}", HttpMethod.${method}, requestEntity, String.class);\n`;
-    result += 'int status = responseEntity.getStatusCode();\n';
+    result += 'HttpStatus httpStatus = responseEntity.getStatusCode();\n';
+    result += 'int status = httpStatus.value();\n';
     result += 'String response = responseEntity.getBody();\n';
     result += 'System.out.println("Response status: " + status);\n';
     result += 'System.out.println(response);';
@@ -46273,8 +46482,12 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
     if (payload) {
       result += '\nStringBuilder sb = new StringBuilder();\n';
       const list = this._payloadToList(payload);
-      list.forEach((line) => {
-        result += `sb.append("${line}\\n");\n`;
+      const len = list.length;
+      list.forEach((line, i) => {
+        if (i + 1 !== len) {
+          line += '\\n';
+        }
+        result += `sb.append("${line}");\n`;
       });
       result += 'String body = sb.toString();\n';
     } else {
@@ -46313,7 +46526,7 @@ the License.
  * @memberof ApiElements
  */
 class JavatHttpSnippets extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
@@ -46337,7 +46550,7 @@ class JavatHttpSnippets extends LitElement {
 
   render() {
     const { selected, compatibility } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <anypoint-tabs
       ?compatibility="${compatibility}"
       .selected="${selected}"
@@ -46412,7 +46625,7 @@ window.customElements.define('java-http-snippets', JavatHttpSnippets);
  * @memberof ApiElements
  */
 class HttpCodeSnippets extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
@@ -46420,7 +46633,7 @@ class HttpCodeSnippets extends LitElement {
 
   render() {
     const { selected, scrollable, compatibility } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <prism-highlighter></prism-highlighter>
     <anypoint-tabs
       .selected="${selected}"
@@ -46613,13 +46826,12 @@ window.customElements.define('http-code-snippets', HttpCodeSnippets);
  * `--api-oauth2-settings-document` | Mixin applied to this elment | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -46642,6 +46854,7 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
       padding: 1em;
       margin: .5em 0;
       user-select: text;
+      word-break: break-all;
     }
 
     .settings-list-value {
@@ -46649,28 +46862,28 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
       display: block;
       padding: 1em;
       user-select: text;
+      word-break: break-all;
     }`;
   }
 
   render() {
     const { accessTokenUri, authorizationUri, authorizationGrants, scopes } = this;
-    // const hasCustomProperties = this._computeHasCustomProperties(settings);
-    return html`
+    return html`<style>${this.styles}</style>
     ${accessTokenUri ? html`<h4 data-type="access-token-uri">Access token URI</h4>
-    <code class="settings-value">${accessTokenUri}</code>` : undefined}
+    <code class="settings-value">${accessTokenUri}</code>` : ''}
 
     ${authorizationUri ? html`<h4 data-type="authorization-uri">Authorization URI</h4>
-    <code class="settings-value">${authorizationUri}</code>` : undefined}
+    <code class="settings-value">${authorizationUri}</code>` : ''}
 
     ${authorizationGrants && authorizationGrants.length ? html`<h4 data-type="authorization-grants">Authorization grants</h4>
     <ul>
     ${authorizationGrants.map((item) => html`<li class="settings-list-value">${item}</li>`)}
-    </ul>` : undefined}
+    </ul>` : ''}
 
     ${scopes && scopes.length ? html`<h4 data-type="authorization-scopes">Authorization scopes</h4>
     <ul>
     ${scopes.map((item) => html`<li class="settings-list-value">${item.label}</li>`)}
-    </ul>` : undefined}`;
+    </ul>` : ''}`;
   }
 
   static get properties() {
@@ -46752,7 +46965,11 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeAccessTokenUri(settings) {
-    return this._getValue(settings, this.ns.raml.vocabularies.security + 'accessTokenUri');
+    const flows = this._getValueArray(settings, this.ns.aml.vocabularies.security.flows);
+    if (flows) {
+      settings = flows[0];
+    }
+    return this._getValue(settings, this.ns.aml.vocabularies.security.accessTokenUri);
   }
   /**
    * Computes value for `authorizationUri` property.
@@ -46760,7 +46977,11 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeAuthorizationUri(settings) {
-    return this._getValue(settings, this.ns.raml.vocabularies.security + 'authorizationUri');
+    const flows = this._getValueArray(settings, this.ns.aml.vocabularies.security.flows);
+    if (flows) {
+      settings = flows[0];
+    }
+    return this._getValue(settings, this.ns.aml.vocabularies.security.authorizationUri);
   }
   /**
    * Computes value for `authorizationGrants` property.
@@ -46768,7 +46989,7 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {Array<String>|undefined}
    */
   _computeAuthorizationGrants(settings) {
-    return this._getValueArray(settings, this.ns.raml.vocabularies.security + 'authorizationGrant');
+    return this._getValueArray(settings, this.ns.aml.vocabularies.security.authorizationGrant);
   }
   /**
    * Computes value for `scopes` property.
@@ -46776,19 +46997,27 @@ class ApiOauth2SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>|undefined}
    */
   _computeScopes(settings) {
-    if (!this._hasProperty(settings, this.ns.raml.vocabularies.security + 'scope')) {
+    const flows = this._getValueArray(settings, this.ns.aml.vocabularies.security.flows);
+    if (flows) {
+      settings = flows[0];
+    }
+    if (!this._hasType(settings, this.ns.aml.vocabularies.security.OAuth2Flow) && !this._hasType(settings, this.ns.aml.vocabularies.security.OAuth2Settings)) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.security + 'scope');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.security.scope);
     const scopes = this._ensureArray(settings[key]);
+    if (!scopes) {
+      return;
+    }
     return scopes.map((item) => {
       return {
         description: this._computeDescription(item),
-        label: this._getValue(item, this.ns.raml.vocabularies.security + 'name')
+        label: this._getValue(item, this.ns.aml.vocabularies.core.name)
       };
     });
   }
 }
+
 window.customElements.define('api-oauth2-settings-document', ApiOauth2SettingsDocument);
 
 /**
@@ -46824,13 +47053,12 @@ window.customElements.define('api-oauth2-settings-document', ApiOauth2SettingsDo
  * `--api-oauth1-settings-document` | Mixin applied to this elment | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -46846,27 +47074,29 @@ class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
       display: block;
       padding: 1em;
       margin: .5em 0;
+      word-break: break-all;
+      user-select: text;
     }`;
   }
 
   render() {
     const { requestTokenUri, authorizationUri, tokenCredentialsUri, signatures } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${requestTokenUri ? html`<h4 data-type="request-token-uri">Request token URI</h4>
-    <code class="settings-value">${requestTokenUri}</code>` : undefined}
+    <code class="settings-value">${requestTokenUri}</code>` : ''}
 
     ${authorizationUri ? html`<h4 data-type="authorization-uri">Authorization URI</h4>
-    <code class="settings-value">${authorizationUri}</code>` : undefined}
+    <code class="settings-value">${authorizationUri}</code>` : ''}
 
     ${tokenCredentialsUri ? html`<h4 data-type="token-credentials-uri">Token credentials URI</h4>
-    <code class="settings-value">${tokenCredentialsUri}</code>` : undefined}
+    <code class="settings-value">${tokenCredentialsUri}</code>` : ''}
 
     ${signatures && signatures.length ? html`
       <h4 data-type="signatures">Supported signatures</h4>
       <ul>
       ${signatures.map((item) => html`<li>${item}</li>`)}
       </ul>
-      ` : undefined}`;
+      ` : ''}`;
   }
 
   static get properties() {
@@ -46951,7 +47181,7 @@ class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Request token URI value
    */
   _computeRequestTokenUri(settings) {
-    const result = this._getValue(settings, this.ns.raml.vocabularies.security + 'requestTokenUri');
+    const result = this._getValue(settings, this.ns.aml.vocabularies.security.requestTokenUri);
     return this._deArray(result);
   }
   /**
@@ -46960,7 +47190,7 @@ class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Authorization URI value
    */
   _computeAuthorizationUri(settings) {
-    const result = this._getValue(settings, this.ns.raml.vocabularies.security + 'authorizationUri');
+    const result = this._getValue(settings, this.ns.aml.vocabularies.security.authorizationUri);
     return this._deArray(result);
   }
   /**
@@ -46969,7 +47199,7 @@ class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Token credentials URI value
    */
   _computeTokenCredentialsUri(settings) {
-    const result = this._getValue(settings, this.ns.raml.vocabularies.security + 'tokenCredentialsUri');
+    const result = this._getValue(settings, this.ns.aml.vocabularies.security.tokenCredentialsUri);
     return this._deArray(result);
   }
   /**
@@ -46978,9 +47208,10 @@ class ApiOauth1SettingsDocument extends AmfHelperMixin(LitElement) {
    * @return {Array<String>|undefined} List of signatures.
    */
   _computeSignatures(settings) {
-    return this._getValueArray(settings, this.ns.raml.vocabularies.security + 'signature');
+    return this._getValueArray(settings, this.ns.aml.vocabularies.security.signature);
   }
 }
+
 window.customElements.define('api-oauth1-settings-document', ApiOauth1SettingsDocument);
 
 /**
@@ -47003,13 +47234,12 @@ window.customElements.define('api-oauth1-settings-document', ApiOauth1SettingsDo
  * `--api-security-documentation-main-section-title-narrow` | Mixin applied to main sections title element in narrow layout | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
  */
 class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css`:host {
@@ -47056,30 +47286,30 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
       hasOauth1Settings = this._computeHasOA1Settings(settings);
       hasOauth2Settings = this._computeHasOA2Settings(settings);
     }
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
 
     <section class="title">
       <h2>${type}</h2>
     </section>
 
     ${hasCustomProperties ? html`<api-annotation-document
-      .shape="${security}"></api-annotation-document>`:undefined}
+      .shape="${security}"></api-annotation-document>`:''}
 
     ${description ? html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
-    </arc-marked>`:undefined}
+    </arc-marked>`:''}
 
     ${hasOauth1Settings ? html`<h3 class="settings-title">Settings</h3>
       <api-oauth1-settings-document
       .amf="${amf}"
-      .settings="${settings}"></api-oauth1-settings-document>` : undefined}
+      .settings="${settings}"></api-oauth1-settings-document>` : ''}
 
     ${hasOauth2Settings ? html`<h3 class="settings-title">Settings</h3>
       <api-oauth2-settings-document
       .amf="${amf}"
-      .settings="${settings}"></api-oauth2-settings-document>` : undefined}
+      .settings="${settings}"></api-oauth2-settings-document>` : ''}
 
     ${queryParameters && queryParameters.length ?
       html`<api-parameters-document
@@ -47087,7 +47317,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
         queryopened
         .queryParameters="${queryParameters}"
         ?narrow="${narrow}"></api-parameters-document>` :
-      undefined}
+      ''}
 
     ${headers && headers.length ?
       html`<api-headers-document
@@ -47095,7 +47325,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
         .amf="${amf}"
         .headers="${headers}"
         ?narrow="${narrow}"></api-headers-document>` :
-      undefined}
+      ''}
 
     ${responses && responses.length ?
       html`<section class="response-documentation">
@@ -47105,7 +47335,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
           .returns="${responses}"
           ?narrow="${narrow}"></api-responses-document>
       </section>` :
-      undefined}`;
+      ''}`;
   }
 
   static get properties() {
@@ -47169,21 +47399,6 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     };
   }
 
-  get amf() {
-    return this._amf;
-  }
-
-  set amf(value) {
-    const old = this._amf;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this._amf = value;
-    this._scheme = this._computeScheme(this.security);
-    this.requestUpdate('amf', old);
-  }
-
   get security() {
     return this._security;
   }
@@ -47211,6 +47426,10 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     this.__scheme = value;
     this._schemeChanged(value);
   }
+
+  __amfChanged(amf) {
+    this._scheme = this._computeScheme(this.security);
+  }
   /**
    * Computes value of security scheme's scheme model.
    * @param {Array|Object} security AMF security description.
@@ -47223,10 +47442,23 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     if (security instanceof Array) {
       security = security[0];
     }
-    if (this._hasType(security, this.ns.raml.vocabularies.security + 'SecurityScheme')) {
+    if (this._hasType(security, this.ns.aml.vocabularies.security.SecurityScheme)) {
       return security;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.security + 'scheme');
+
+    // For now, we need to get the first "security:schemes" element so as to not break compatibility
+    if (this._hasType(security, this.ns.aml.vocabularies.security.securityRequirement)) {
+      const schemesKey = this._getAmfKey(this.ns.aml.vocabularies.security.schemes);
+      const schemes = security[schemesKey];
+
+      if (schemes instanceof Array) {
+        security = schemes[0];
+      } else {
+        security = schemes;
+      }
+    }
+
+    const key = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
     let scheme = security[key];
     if (!scheme) {
       return;
@@ -47268,7 +47500,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeType(shape) {
-    return this._getValue(shape, this.ns.raml.vocabularies.security + 'type');
+    return this._getValue(shape, this.ns.aml.vocabularies.security.type);
   }
   /**
    * Computes scheme's settings model.
@@ -47276,7 +47508,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
    * @return {Object|undefined} Settings model
    */
   _computeSettings(shape) {
-    return this._computePropertyObject(shape, this.ns.raml.vocabularies.security + 'settings');
+    return this._computePropertyObject(shape, this.ns.aml.vocabularies.security.settings);
   }
   /**
    * @param {Object|undefined} settings Computed settings object
@@ -47286,7 +47518,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     if (!settings) {
       return false;
     }
-    return this._hasType(settings, this.ns.raml.vocabularies.security + 'OAuth2Settings');
+    return this._hasType(settings, this.ns.aml.vocabularies.security.OAuth2Settings);
   }
   /**
    * @param {Object|undefined} settings Computed settings object
@@ -47296,7 +47528,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     if (!settings) {
       return false;
     }
-    return this._hasType(settings, this.ns.raml.vocabularies.security + 'OAuth1Settings');
+    return this._hasType(settings, this.ns.aml.vocabularies.security.OAuth1Settings);
   }
 
   _apiChangedHandler(e) {
@@ -47304,6 +47536,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
     this.amf = value;
   }
 }
+
 window.customElements.define('api-security-documentation', ApiSecurityDocumentation);
 
 /**
@@ -47408,7 +47641,7 @@ window.customElements.define('api-security-documentation', ApiSecurityDocumentat
  * @appliesMixin AmfHelperMixin
  */
 class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       labelStyles,
@@ -47497,6 +47730,11 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
         border-bottom: 1px var(--api-parameters-document-title-border-color, #e5e5e5) solid;
         cursor: pointer;
         user-select: none;
+        transition: border-bottom-color 0.15s ease-in-out;
+      }
+
+      .section-title-area[opened] {
+        border-bottom-color: transparent;
       }
 
       .url-value {
@@ -47922,7 +48160,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     this.security = this._computeSecurity(method);
     const extendsTypes = this.extendsTypes = this._computeExtends(method);
     this.traits = this._computeTraits(extendsTypes);
-    this.methodSummary = this._getValue(method, this.ns.raml.vocabularies.http + 'guiSummary');
+    this.methodSummary = this._getValue(method, this.ns.aml.vocabularies.apiContract.guiSummary);
   }
 
   _processEndpointChange() {
@@ -47948,6 +48186,32 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       this._computeHasPathParameters(this.serverVariables, endpointVariables);
     this.hasParameters = hasPathParameters || !!(this.queryParameters && this.queryParameters.length);
   }
+  /**
+   * Computes list of query parameters to be rendered in the query parameters table.
+   *
+   * The parameters document can pass a type definition for query parameters
+   * or a list of properties to be rendered without the parent type definition.
+   *
+   * @param {Object} scheme Model for Expects shape of AMF model.
+   * @return {Array<Object>|Object} Either list of properties or a type definition
+   * for a queryString property of RAML's
+   */
+  _computeQueryParameters(scheme) {
+    if (!scheme) {
+      return;
+    }
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
+    let result = this._ensureArray(scheme[pKey]);
+    if (result) {
+      return result;
+    }
+    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
+    result = this._ensureArray(scheme[qKey]);
+    if (result) {
+      result = this._resolve(result[0]);
+    }
+    return result;
+  }
 
   /**
    * Computes value for `methodName` property.
@@ -47957,9 +48221,9 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Method friendly name
    */
   _computeMethodName(method) {
-    let name = this._getValue(method, this.ns.schema.schemaName);
+    let name = this._getValue(method, this.ns.aml.vocabularies.core.name);
     if (!name) {
-      name = this._getValue(method, this.ns.w3.hydra.core + 'method');
+      name = this._getValue(method, this.ns.aml.vocabularies.apiContract.method);
     }
     return name;
   }
@@ -47970,7 +48234,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} HTTP method name
    */
   _computeHttpMethod(method) {
-    let name = this._getValue(method, this.ns.w3.hydra.core + 'method');
+    let name = this._getValue(method, this.ns.aml.vocabularies.apiContract.method);
     if (name) {
       name = name.toUpperCase();
     }
@@ -48068,7 +48332,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     if (headers && headers.length) {
       result = '';
       headers.forEach((item) => {
-        const name = this._getValue(item, this.ns.schema.schemaName);
+        const name = this._getValue(item, this.ns.aml.vocabularies.core.name);
         const value = this._computePropertyValue(item) || '';
         result += `${name}: ${value}\n`;
       });
@@ -48087,7 +48351,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     if (!payload) {
       return;
     }
-    let mt = this._getValue(payload, this.ns.raml.vocabularies.http + 'mediaType');
+    let mt = this._getValue(payload, this.ns.aml.vocabularies.core.mediaType);
     if (!mt) {
       mt = 'application/json';
     }
@@ -48105,7 +48369,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computePropertyValue(item) {
-    const skey = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const skey = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = item && item[skey];
     if (!schema) {
       return;
@@ -48113,7 +48377,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     if (schema instanceof Array) {
       schema = schema[0];
     }
-    let value = this._getValue(schema, this.ns.w3.shacl.name + 'defaultValue');
+    let value = this._getValue(schema, this.ns.w3.shacl.defaultValue);
     if (!value) {
       const items = this._exampleGenerator.computeExamples(schema, null, { rawOnly: true });
       if (items) {
@@ -48141,7 +48405,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>|undefined}
    */
   _computeExtends(shape) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'extends');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.document.extends);
     return shape && this._ensureArray(shape[key]);
   }
   /**
@@ -48156,7 +48420,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     const data = types.filter((item) =>
-      this._hasType(item, this.ns.raml.vocabularies.document + 'ParametrizedTrait'));
+      this._hasType(item, this.ns.aml.vocabularies.apiContract.ParametrizedTrait));
     return data.length ? data : undefined;
   }
 
@@ -48170,7 +48434,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     if (!traits || !traits.length) {
       return;
     }
-    const names = traits.map((trait) => this._getValue(trait, this.ns.schema.schemaName));
+    const names = traits.map((trait) => this._getValue(trait, this.ns.aml.vocabularies.core.name));
     if (names.length === 2) {
       return names.join(' and ');
     }
@@ -48195,11 +48459,10 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       hasCustomProperties,
       method
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
-
     ${this._getTitleTemplate()}
     ${this._getUrlTemplate()}
     ${this._getTraitsTemplate()}
@@ -48218,7 +48481,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
 
   _getTitleTemplate() {
     if (this._titleHidden) {
-      return html``;
+      return '';
     }
     const {
       methodName,
@@ -48253,7 +48516,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getTraitsTemplate() {
     const traits = this.traits;
     if (!traits || !traits.length) {
-      return html``;
+      return '';
     }
     const value = this._computeTraitNames(traits);
     return html`<section class="extensions">
@@ -48266,7 +48529,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getDescriptionTemplate() {
     const { description } = this;
     if (!description) {
-      return html``;
+      return '';
     }
     return html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
@@ -48275,7 +48538,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
 
   _getCodeSnippetsTemplate() {
     if (!this.renderCodeSnippets) {
-      return html``;
+      return '';
     }
     const {
       _snippetsOpened,
@@ -48289,7 +48552,12 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     const label = this._computeToggleActionLabel(_snippetsOpened);
     const iconClass = this._computeToggleIconClass(_snippetsOpened);
     return html`<section class="snippets">
-      <div class="section-title-area" @click="${this._toggleSnippets}" title="Toogle code example details">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSnippets}"
+        title="Toogle code example details"
+        ?opened="${_snippetsOpened}"
+      >
         <div class="heading3 table-title" role="heading" aria-level="2">Code examples</div>
         <div class="title-area-actions">
           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
@@ -48301,6 +48569,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
       ${_renderSnippets ? html`<http-code-snippets
         scrollable
+        ?compatibility="${compatibility}"
         .url="${endpointUri}"
         .method="${httpMethod}"
         .headers="${this._computeSnippetsHeaders(headers)}"
@@ -48312,13 +48581,18 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getSecurityTemplate() {
     const { renderSecurity, security } = this;
     if (!renderSecurity || !security || !security.length) {
-      return html``;
+      return '';
     }
     const { securityOpened, compatibility, amf, narrow } = this;
     const label = this._computeToggleActionLabel(securityOpened);
     const iconClass = this._computeToggleIconClass(securityOpened);
     return html`<section class="security">
-      <div class="section-title-area" @click="${this._toggleSecurity}" title="Toogle security details">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSecurity}"
+        title="Toogle security details"
+        ?opened="${securityOpened}"
+      >
         <div class="heading3 table-title" role="heading" aria-level="2">Security</div>
         <div class="title-area-actions">
           <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
@@ -48339,7 +48613,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
 
   _getParametersTemplate() {
     if (!this.hasParameters) {
-      return;
+      return '';
     }
     const {
       serverVariables,
@@ -48365,7 +48639,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getHeadersTemplate() {
     const { headers } = this;
     if (!headers || !headers.length) {
-      return;
+      return '';
     }
     const {
       amf,
@@ -48385,7 +48659,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getBodyTemplate() {
     const { payload } = this;
     if (!payload || !payload.length) {
-      return;
+      return '';
     }
     const {
       amf,
@@ -48405,7 +48679,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getReturnsTemplate() {
     const { returns } = this;
     if (!returns || !returns.length) {
-      return;
+      return '';
     }
     const {
       amf,
@@ -48414,7 +48688,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       graph
     } = this;
     return html`<section class="response-documentation">
-      <div class="heading2" role="heading" aria-level="1">Response</div>
+      <div class="heading2" role="heading" aria-level="1">Responses</div>
       <api-responses-document
         .amf="${amf}"
         ?narrow="${narrow}"
@@ -48427,7 +48701,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _getNavigationTemplate() {
     const { next, previous, noNavigation } = this;
     if (!next && !previous || noNavigation) {
-      return;
+      return '';
     }
     const { compatibility } = this;
     return html`<section class="bottom-nav">
@@ -48461,6 +48735,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @param {String} type
    */
 }
+
 window.customElements.define('api-method-documentation', ApiMethodDocumentation);
 
 /**
@@ -48495,7 +48770,6 @@ const ERROR_MESSAGES = {
  *
  * @polymer
  * @mixinFunction
- * @memberof ArcMixins
  */
 const HeadersParserMixin = dedupingMixin((base) => {
   /**
@@ -49372,14 +49646,14 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
         }
       }
     } else {
-      if (this._hasType(items, this.ns.raml.vocabularies.data + 'Object')) {
+      if (this._hasType(items, this.ns.raml.vocabularies.data.Object)) {
         const data = this.modelForRawObject(items);
         if (data) {
           result = data;
         }
-      } else if (this._hasType(items, this.ns.w3.shacl.name + 'NodeShape')) {
+      } else if (this._hasType(items, this.ns.w3.shacl.NodeShape)) {
         result = this._processNodeSchape(items);
-      } else if (this._hasType(items, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+      } else if (this._hasType(items, this.ns.aml.vocabularies.shapes.ScalarShape)) {
         const data = this._uiModelForPropertyShape(items);
         if (data) {
           result[result.length] = data;
@@ -49395,10 +49669,10 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {Object} UI data model.
    */
   uiModelForAmfItem(amfItem) {
-    if (this._hasType(amfItem, this.ns.raml.vocabularies.http + 'Parameter')) {
+    if (this._hasType(amfItem, this.ns.aml.vocabularies.apiContract.Parameter)) {
       return this._uiModelForParameter(amfItem);
     }
-    if (this._hasType(amfItem, this.ns.w3.shacl.name + 'PropertyShape')) {
+    if (this._hasType(amfItem, this.ns.w3.shacl.PropertyShape)) {
       return this._uiModelForPropertyShape(amfItem);
     }
   }
@@ -49411,7 +49685,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    */
   _processNodeSchape(shape) {
     this._resolve(shape);
-    const key = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const key = this._getAmfKey(this.ns.w3.shacl.property);
     const items = this._ensureArray(shape[key]);
     const result = [];
     if (!items) {
@@ -49439,7 +49713,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     result.name = this._computeFormName(amfItem);
     result.required = this._computeRequired(amfItem);
     result.schema = {};
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = amfItem[sKey];
     if (schema) {
       if (schema instanceof Array) {
@@ -49509,10 +49783,10 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     result.binding = 'type';
     result.name = this._computeShaclProperty(amfItem, 'name');
     let def;
-    if (this._hasType(amfItem, this.ns.raml.vocabularies.shapes + 'ScalarShape')) {
+    if (this._hasType(amfItem, this.ns.aml.vocabularies.shapes.ScalarShape)) {
       def = amfItem;
     } else {
-      const rangeKey = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'range');
+      const rangeKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.range);
       def = amfItem[rangeKey];
       if (!def) {
         return result;
@@ -49565,13 +49839,13 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     if (result.schema.type === 'file') {
       result.schema.isFile = true;
       result.schema.fileTypes = this._getValueArray(def,
-        this.ns.raml.vocabularies.shapes + 'fileType');
+        this.ns.aml.vocabularies.shapes.fileType);
     } else {
       result.schema.isFile = false;
     }
     if (result.schema.isObject) {
       const props = [];
-      const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+      const pKey = this._getAmfKey(this.ns.w3.shacl.property);
       const items = this._ensureArray(def[pKey]);
       if (items) {
         items.forEach((item) => {
@@ -49602,7 +49876,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     }
     const result = [];
     const keys = Object.keys(model);
-    const dataKey = this._getAmfKey(this.ns.raml.vocabularies.data);
+    const dataKey = this._getAmfKey(this.ns.raml.vocabularies.data + '');
     keys.forEach((key) => {
       if (key.indexOf(dataKey) === -1) {
         return;
@@ -49640,8 +49914,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     const result = {};
     result.binding = 'type';
     result.name = name;
-    const dPrefix = this.ns.raml.vocabularies.data;
-    const typeKey = this._getAmfKey(dPrefix + 'type');
+    const typeKey = this._getAmfKey(this.ns.raml.vocabularies.data.type);
     let type = this._computeRawModelValue(model[typeKey]);
     if (!type) {
       type = 'string';
@@ -49656,25 +49929,29 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     if (this.noDocs) {
       result.hasDescription = false;
     } else {
-      const descKey = this._getAmfKey(dPrefix + 'description');
+      const descKey = this._getAmfKey(this.ns.raml.vocabularies.data.description);
       result.description = this._computeRawModelValue(model[descKey]);
       result.hasDescription = !!result.description;
     }
 
-    result.required = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'required')]);
+    result.required = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.required)]);
     result.schema = {};
     result.schema.enabled = true;
     result.schema.type = type || 'string';
-    const displayName = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'displayName')]);
+    const displayName = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.displayName)]);
     result.schema.inputLabel = this._completeInputLabel(displayName, name, result.required);
-    result.schema.minLength = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'minLength')]);
-    result.schema.maxLength = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'maxLength')]);
-    result.schema.defaultValue = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'default')]);
-    result.schema.multipleOf = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'multipleOf')]);
-    result.schema.minimum = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'minimum')]);
-    result.schema.maximum = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'maximum')]);
-    result.schema.enum = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'enum')]);
-    let pattern = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'pattern')]);
+    const mlKey = this._getAmfKey(this.ns.raml.vocabularies.data.minLength);
+    result.schema.minLength = this._computeRawModelValue(model[mlKey]);
+    const mxKey = this._getAmfKey(this.ns.raml.vocabularies.data.maxLength);
+    result.schema.maxLength = this._computeRawModelValue(model[mxKey]);
+    const dfKey = this._getAmfKey(this.ns.raml.vocabularies.data.default);
+    result.schema.defaultValue = this._computeRawModelValue(model[dfKey]);
+    const mpKey = this._getAmfKey(this.ns.raml.vocabularies.data.multipleOf);
+    result.schema.multipleOf = this._computeRawModelValue(model[mpKey]);
+    result.schema.minimum = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.minimum)]);
+    result.schema.maximum = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.maximum)]);
+    result.schema.enum = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.enum)]);
+    let pattern = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.pattern)]);
     if (pattern instanceof Array) {
       pattern = '[' + pattern[0] + ']';
     }
@@ -49684,16 +49961,17 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     result.schema.isBool = result.schema.type === 'boolean';
     // result.schema.examples = this._computeModelExamples(def);
     if (result.schema.isArray) {
-      result.schema.items = items ? items : this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'items')]);
+      result.schema.items = items ? items :
+        this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.items)]);
     }
     result.schema.inputType = this._computeModelInputType(result.schema.type, result.schema.items);
-    result.schema.format = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'format')]);
+    result.schema.format = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.format)]);
     result.schema.pattern = this._computeModelPattern(result.schema.type, result.schema.pattern, result.schema.format);
-    const example = this._computeRawModelValue(model[this._getAmfKey(dPrefix + 'example')]);
+    const example = this._computeRawModelValue(model[this._getAmfKey(this.ns.raml.vocabularies.data.example)]);
     if (example) {
       result.schema.examples = [example];
     }
-    const examples = this._computeRawExamples(model[this._getAmfKey(dPrefix + 'examples')]);
+    const examples = this._computeRawExamples(model[this._getAmfKey(this.ns.raml.vocabularies.data.examples)]);
     if (examples) {
       const existing = result.schema.examples || [];
       result.schema.examples = existing.concat(examples);
@@ -49799,7 +50077,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     model = model[0];
     const keys = Object.keys(model);
     keys.forEach((key) => {
-      const dKey = this._getAmfKey(this.ns.raml.vocabularies.data);
+      const dKey = this._getAmfKey(this.ns.raml.vocabularies.data + '');
       if (key.indexOf(dKey) === -1) {
         return;
       }
@@ -49822,7 +50100,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {String|undefined} Binding property or undefined if not found.
    */
   _computeBinding(model) {
-    const key = this.ns.raml.vocabularies.http + 'binding';
+    const key = this.ns.aml.vocabularies.apiContract.binding;
     return this._getValue(model, key);
   }
   /**
@@ -49831,8 +50109,13 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {String|undefined} Name property or undefined if not found.
    */
   _computeFormName(model) {
-    const key = this.ns.schema.schemaName;
-    return this._getValue(model, key);
+    const pNameKey = this.ns.aml.vocabularies.apiContract.paramName;
+    let name = this._getValue(model, pNameKey);
+    if (!name) {
+      const key = this.ns.aml.vocabularies.core.name;
+      name = this._getValue(model, key);
+    }
+    return name;
   }
   /**
    * Computes `required` property from AMF model.
@@ -49840,7 +50123,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {Boolean} True if the property is required.
    */
   _computeRequired(model) {
-    const key = this.ns.w3.hydra.core + 'required';
+    const key = this.ns.aml.vocabularies.apiContract.required;
     return this._getValue(model, key);
   }
   /**
@@ -49850,7 +50133,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {Boolean} True if `minCount` equals `1`
    */
   _computeRequiredPropertyShape(model) {
-    const key = this.ns.w3.shacl.name + 'minCount';
+    const key = this.ns.w3.shacl.minCount;
     const result = this._getValue(model, key);
     return result === 1;
   }
@@ -49863,37 +50146,38 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     if (!shape) {
       return;
     }
-    const vsh = this.ns.raml.vocabularies.shapes;
-    const sa = this.ns.w3.shacl.name;
-    if (this._hasType(shape, vsh + 'UnionShape')) {
+    const vsh = this.ns.aml.vocabularies.shapes;
+    const sa = this.ns.w3.shacl;
+    if (this._hasType(shape, vsh.UnionShape)) {
       return 'union';
     }
-    if (this._hasType(shape, vsh + 'ArrayShape')) {
+    if (this._hasType(shape, vsh.ArrayShape)) {
       return 'array';
     }
-    if (this._hasType(shape, sa + 'NodeShape')) {
+    if (this._hasType(shape, sa.NodeShape)) {
       return 'object';
     }
-    if (this._hasType(shape, sa + 'PropertyShape')) {
+    if (this._hasType(shape, sa.PropertyShape)) {
       return 'object';
     }
-    if (this._hasType(shape, vsh + 'FileShape')) {
+    if (this._hasType(shape, vsh.FileShape)) {
       return 'file';
     }
-    if (this._hasType(shape, vsh + 'NilShape')) {
+    if (this._hasType(shape, vsh.NilShape)) {
       return 'null';
     }
-    if (this._hasType(shape, vsh + 'AnyShape')) {
-      return 'string';
-    }
-    if (this._hasType(shape, vsh + 'MatrixShape')) {
+    // Apparently version 2 of the model has AnyShape type with ScalarShape.
+    // if (this._hasType(shape, vsh.AnyShape)) {
+    //   return 'string';
+    // }
+    if (this._hasType(shape, vsh.MatrixShape)) {
       return 'array';
     }
-    if (this._hasType(shape, vsh + 'TupleShape')) {
+    if (this._hasType(shape, vsh.TupleShape)) {
       return 'object';
     }
-    if (this._hasType(shape, vsh + 'ScalarShape')) {
-      let dt = shape[this._getAmfKey(sa + 'datatype')];
+    if (this._hasType(shape, vsh.ScalarShape)) {
+      let dt = shape[this._getAmfKey(sa.datatype)];
       if (dt instanceof Array) {
         dt = dt[0];
       }
@@ -49903,44 +50187,44 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
       }
       const x = this.ns.w3.xmlSchema;
       switch (id) {
-        case x + 'string':
-        case this._getAmfKey(x + 'string'):
+        case x.string:
+        case this._getAmfKey(x.string):
           return 'string';
-        case x + 'integer':
-        case this._getAmfKey(x + 'integer'):
+        case x.integer:
+        case this._getAmfKey(x.integer):
           return 'integer';
-        case x + 'long':
-        case this._getAmfKey(x + 'long'):
+        case x.long:
+        case this._getAmfKey(x.long):
           return 'long';
-        case x + 'float':
-        case this._getAmfKey(x + 'float'):
+        case x.float:
+        case this._getAmfKey(x.float):
           return 'float';
-        case x + 'double':
-        case this._getAmfKey(x + 'double'):
+        case x.double:
+        case this._getAmfKey(x.double):
           return 'double';
-        case vsh + 'number':
-        case this._getAmfKey(vsh + 'number'):
+        case vsh.number:
+        case this._getAmfKey(vsh.number):
           return 'number';
-        case x + 'boolean':
-        case this._getAmfKey(x + 'boolean'):
+        case x.boolean:
+        case this._getAmfKey(x.boolean):
           return 'boolean';
-        case x + 'dateTime':
-        case this._getAmfKey(x + 'dateTime'):
+        case x.dateTime:
+        case this._getAmfKey(x.dateTime):
           return 'datetime';
-        case vsh + 'dateTimeOnly':
-        case this._getAmfKey(vsh + 'dateTimeOnly'):
+        case vsh.dateTimeOnly:
+        case this._getAmfKey(vsh.dateTimeOnly):
           return 'datetime-only';
-        case x + 'time':
-        case this._getAmfKey(x + 'time'):
+        case x.time:
+        case this._getAmfKey(x.time):
           return 'time';
-        case x + 'date':
-        case this._getAmfKey(x + 'date'):
+        case x.date:
+        case this._getAmfKey(x.date):
           return 'date';
-        case x + 'base64Binary':
-        case this._getAmfKey(x + 'base64Binary'):
+        case x.base64Binary:
+        case this._getAmfKey(x.base64Binary):
           return 'string';
-        case vsh + 'password':
-        case this._getAmfKey(vsh + 'password'):
+        case vsh.password:
+        case this._getAmfKey(vsh.password):
           return 'password';
       }
     }
@@ -49964,12 +50248,12 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
       dataType = dataType[0];
     }
     switch (dataType) {
-      case this._getAmfKey(this.ns.raml.vocabularies.data + 'Scalar'):
+      case this._getAmfKey(this.ns.raml.vocabularies.data.Scalar):
         return this._computeRawScalarValue(model);
-      case this._getAmfKey(this.ns.raml.vocabularies.data + 'Array'):
+      case this._getAmfKey(this.ns.raml.vocabularies.data.Array):
         return this._computeRawArrayValue(model);
-      case this._getAmfKey(this.ns.raml.vocabularies.shapes + 'FileShape'):
-        return this._getValueArray(model, this.ns.raml.vocabularies.shapes + 'fileType');
+      case this._getAmfKey(this.ns.aml.vocabularies.shapes.FileShape):
+        return this._getValueArray(model, this.ns.aml.vocabularies.shapes.fileType);
     }
   }
   /**
@@ -49978,28 +50262,22 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {String|Number|Boolean}
    */
   _computeRawScalarValue(item) {
-    const valueKey = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
-    let value = item[valueKey];
-    if (!value) {
-      return;
-    }
-    if (value instanceof Array) {
-      value = value[0];
-    }
-    let type = value['@type'];
+    const value = this._getValue(item, this.ns.raml.vocabularies.data.value);
+    const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
+    let type = item[dtKey];
     if (type instanceof Array) {
       type = type[0];
     }
-    value = value['@value'];
+    type = type['@id'];
     const s = this.ns.w3.xmlSchema;
     switch (type) {
-      case this._getAmfKey(s + 'number'):
-      case this._getAmfKey(s + 'long'):
-      case this._getAmfKey(s + 'integer'):
-      case this._getAmfKey(s + 'float'):
-      case this._getAmfKey(s + 'double'):
+      case this._getAmfKey(s.number):
+      case this._getAmfKey(s.long):
+      case this._getAmfKey(s.integer):
+      case this._getAmfKey(s.float):
+      case this._getAmfKey(s.double):
         return Number(value);
-      case this._getAmfKey(s + 'boolean'):
+      case this._getAmfKey(s.boolean):
         return value === 'false' ? false : true;
       default:
         return value;
@@ -50007,7 +50285,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
   }
 
   _computeRawArrayValue(item) {
-    const key = this._getAmfKey('http://www.w3.org/1999/02/22-rdf-syntax-ns#member');
+    const key = this._getAmfKey(this.ns.w3.rdfSchema.member);
     const values = this._ensureArray(item[key]);
     if (!values) {
       return;
@@ -50030,7 +50308,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {String} Input display name.
    */
   _computeInputLabel(def, required, name) {
-    const result = this._getValue(def, this.ns.schema.schemaName);
+    const result = this._getValue(def, this.ns.aml.vocabularies.core.name);
     return this._completeInputLabel(result, name, required);
   }
   /**
@@ -50042,7 +50320,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {any|undefined} Value of the property or undefined if not set.
    */
   _computeShaclProperty(shape, property) {
-    const key = this.ns.w3.shacl.name + String(property);
+    const key = this.ns.w3.shacl.key + String(property);
     return this._getValue(shape, key);
   }
   /**
@@ -50054,7 +50332,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {any|undefined} Value of the property or undefined if not set.
    */
   _computeVocabularyShapeProperty(shape, property) {
-    const key = this.ns.raml.vocabularies.shapes + String(property);
+    const key = this.ns.aml.vocabularies.shapes + String(property);
     return this._getValue(shape, key);
   }
   /**
@@ -50063,8 +50341,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {any|undefined} Default value for the model or undefined.
    */
   _computeDefaultValue(shape) {
-    const vsh = this.ns.raml.vocabularies.shapes;
-    const valueKey = this._getAmfKey(this.ns.w3.shacl.name + 'defaultValueStr');
+    const valueKey = this._getAmfKey(this.ns.w3.shacl.defaultValueStr);
     let value = shape[valueKey];
     if (!value) {
       return;
@@ -50075,8 +50352,8 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     if (value['@value']) {
       value = value['@value'];
     }
-    if (this._hasType(shape, vsh + 'ScalarShape')) {
-      const dtKey = this._getAmfKey(this.ns.w3.shacl.name + 'datatype');
+    if (this._hasType(shape, this.ns.aml.vocabularies.shapes.ScalarShape)) {
+      const dtKey = this._getAmfKey(this.ns.w3.shacl.datatype);
       let type = shape[dtKey];
       if (type instanceof Array) {
         type = type[0];
@@ -50084,25 +50361,25 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
       type = type['@id'];
       const s = this.ns.w3.xmlSchema;
       switch (type) {
-        case s + 'number':
-        case s + 'long':
-        case s + 'integer':
-        case s + 'float':
-        case s + 'double':
-        case this._getAmfKey(s + 'number'):
-        case this._getAmfKey(s + 'long'):
-        case this._getAmfKey(s + 'integer'):
-        case this._getAmfKey(s + 'float'):
-        case this._getAmfKey(s + 'double'):
+        case s.number:
+        case s.long:
+        case s.integer:
+        case s.float:
+        case s.double:
+        case this._getAmfKey(s.number):
+        case this._getAmfKey(s.long):
+        case this._getAmfKey(s.integer):
+        case this._getAmfKey(s.float):
+        case this._getAmfKey(s.double):
           return Number(value);
-        case s + 'boolean':
-        case this._getAmfKey(s + 'boolean'):
+        case s.boolean:
+        case this._getAmfKey(s.boolean):
           return value === 'false' ? false : true;
         default:
           return value;
       }
-    } else if (this._hasType(shape, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
-      const valueKey = this._getAmfKey(this.ns.w3.shacl.name + 'defaultValue');
+    } else if (this._hasType(shape, this.ns.aml.vocabularies.shapes.ArrayShape)) {
+      const valueKey = this._getAmfKey(this.ns.w3.shacl.defaultValue);
       let value2 = shape[valueKey];
       if (!value2) {
         return value;
@@ -50130,7 +50407,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
       model = model[0];
     }
     const result = [];
-    const rdfKey = this._getAmfKey('http://www.w3.org/2000/01/rdf-schema#');
+    const rdfKey = this._getAmfKey(this.ns.w3.rdfSchema.key);
     Object.keys(model).forEach((key) => {
       if (key.indexOf(rdfKey) === -1) {
         return;
@@ -50139,7 +50416,7 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
       if (shape instanceof Array) {
         shape = shape[0];
       }
-      const vKey = this._getAmfKey(this.ns.raml.vocabularies.data + 'value');
+      const vKey = this._getAmfKey(this.ns.raml.vocabularies.data.value);
       const value = this._getValue(shape, vKey);
       if (value) {
         result.push(value);
@@ -50167,11 +50444,11 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
    * @return {Object} Array definition model
    */
   _computeModelItems(model) {
-    if (!this._hasType(model, this.ns.raml.vocabularies.shapes + 'ArrayShape')) {
+    if (!this._hasType(model, this.ns.aml.vocabularies.shapes.ArrayShape)) {
       return;
     }
     model = this._resolve(model);
-    const itKeys = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'items');
+    const itKeys = this._getAmfKey(this.ns.aml.vocabularies.shapes.items);
     let item = model[itKeys];
     if (!item) {
       return;
@@ -50473,19 +50750,20 @@ class ApiViewModelTransformer extends AmfHelperMixin(EventsTargetMixin(LitElemen
     if (!shape) {
       return false;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const values = this._ensureArray(shape[key]);
     if (!values) {
       return false;
     }
     for (let i = 0, len = values.length; i < len; i++) {
-      if (this._hasType(values[i], this.ns.raml.vocabularies.shapes + 'NilShape')) {
+      if (this._hasType(values[i], this.ns.aml.vocabularies.shapes.NilShape)) {
         return true;
       }
     }
     return false;
   }
 }
+
 window.customElements.define('api-view-model-transformer', ApiViewModelTransformer);
 
 /**
@@ -50506,13 +50784,13 @@ window.customElements.define('api-view-model-transformer', ApiViewModelTransform
  * @memberof ApiElements
  */
 class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {display: none !important;}`;
   }
 
   render() {
     const { aware } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ?
       html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}`;
   }
@@ -50964,7 +51242,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    if (!model || !this._hasType(model, this.ns.raml.vocabularies.document + 'Document')) {
+    if (!model || !this._hasType(model, this.ns.aml.vocabularies.document.Document)) {
       return;
     }
     const server = this._computeServer(model);
@@ -51016,7 +51294,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     }
     if (version) {
       for (let i = variables.length - 1; i >=0; i--) {
-        const name = this._getValue(variables[i], this.ns.schema.schemaName);
+        const name = this._getValue(variables[i], this.ns.aml.vocabularies.core.name);
         if (name === 'version') {
           variables.splice(i, 1);
           break;
@@ -51072,7 +51350,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (!request) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'uriParameter');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.uriParameter);
     const params = this._ensureArray(request[key]);
     return params && params.length ? params : undefined;
   }
@@ -51102,13 +51380,40 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     }
     return data;
   }
+
+  /**
+   * Computes list of query parameters to be rendered in the query parameters table.
+   *
+   * The parameters document can pass a type definition for query parameters
+   * or a list of properties to be rendered without the parent type definition.
+   *
+   * @param {Object} scheme Model for Expects shape of AMF model.
+   * @return {Array<Object>|Object} Either list of properties or a type definition
+   * for a queryString property of RAML's
+   */
+  _computeQueryParameters(scheme) {
+    if (!scheme) {
+      return;
+    }
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
+    let result = this._ensureArray(scheme[pKey]);
+    if (result) {
+      return result;
+    }
+    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
+    result = this._ensureArray(scheme[qKey]);
+    if (result) {
+      result = this._resolve(result[0]);
+    }
+    return result;
+  }
   /**
    * Computes endpoint's path value
    * @param {Object} endpoint Endpoint model
    * @return {String}
    */
   _computeEndpointPath(endpoint) {
-    return this._getValue(endpoint, this.ns.raml.vocabularies.http + 'path');
+    return this._getValue(endpoint, this.ns.raml.vocabularies.apiContract.path);
   }
   /**
    * Computes value of endpoint model.
@@ -51131,7 +51436,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (amf instanceof Array) {
       amf = amf[0];
     }
-    if (this._hasType(amf, this.ns.raml.vocabularies.http + 'EndPoint')) {
+    if (this._hasType(amf, this.ns.raml.vocabularies.apiContract.EndPoint)) {
       this._endpoint = amf;
       return;
     }
@@ -51164,13 +51469,13 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (amf instanceof Array) {
       amf = amf[0];
     }
-    if (this._hasType(amf, this.ns.raml.vocabularies.document + 'Document')) {
+    if (this._hasType(amf, this.ns.aml.vocabularies.document.Document)) {
       const webApi = this._computeWebApi(amf);
       const model = this._computeMethodModel(webApi, selected);
       this._method = model;
       return;
     }
-    const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const methods = this._ensureArray(amf[key]);
     if (!methods) {
       this._method = undefined;
@@ -51178,6 +51483,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     }
     for (let i = 0; i < methods.length; i++) {
       if (methods[i]['@id'] === selected) {
+
         this._method = methods[i];
         return;
       }
@@ -51188,6 +51494,12 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
   _apiChangedHandler(e) {
     const { value } = e.detail;
     this.amf = value;
+  }
+  /**
+   * Clears the cache in the view model transformer.
+   */
+  clearCache() {
+    this._transformer.clearCache();
   }
 }
 window.customElements.define('api-url-data-model', ApiUrlDataModel);
@@ -52025,7 +52337,7 @@ var commonStyles = css`
   font-size: 1rem;
   position: relative;
   /* Anypoint UI controls margin in forms */
-  margin: 16px 8px;
+  margin: 20px 8px;
 }
 
 .hidden {
@@ -52153,7 +52465,7 @@ var commonStyles = css`
 }
 
 .invalid.info-offset {
-  transform: translateY(-12px);
+  transform: translateY(-1.2rem);
 }
 
 /* Outlined theme */
@@ -52252,7 +52564,7 @@ var commonStyles = css`
 const floatTypes = ['date', 'color', 'datetime-local', 'file', 'month', 'time', 'week'];
 
 class AnypointInput extends AnypointInputMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       commonStyles,
       css`
@@ -52336,7 +52648,7 @@ class AnypointInput extends AnypointInputMixin(LitElement) {
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="input-container">
       ${this._prefixTemplate()}
       <div class="input-label">
@@ -52369,10 +52681,9 @@ class AnypointInput extends AnypointInputMixin(LitElement) {
       _infoAddonClass,
     } = this;
     return html`<div class="assistive-info">
-    ${infoMessage ? html`<p class="${_infoAddonClass}">${this.infoMessage}</p>` : undefined}
+    ${infoMessage ? html`<p class="${_infoAddonClass}">${this.infoMessage}</p>` : ''}
     ${invalidMessage ?
-      html`<p class="${_errorAddonClass}">${invalidMessage}</p>` :
-      undefined}
+      html`<p class="${_errorAddonClass}">${invalidMessage}</p>` : ''}
     </div>`;
   }
 
@@ -52459,14 +52770,13 @@ window.customElements.define('anypoint-input', AnypointInput);
  * It supports validation for URL values that may contain variables.
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @appliesMixin EventsTargetMixin
  * @appliesMixin ValidatableMixin
  * @memberof ApiElements
  */
 class ApiUrlEditor extends EventsTargetMixin(ValidatableMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: flex;
     }
@@ -52487,7 +52797,7 @@ class ApiUrlEditor extends EventsTargetMixin(ValidatableMixin(LitElement)) {
       value,
       required
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <anypoint-input
       ?nolabelfloat="${noLabelFloat}"
       ?disabled="${disabled}"
@@ -52879,7 +53189,7 @@ class ApiUrlEditor extends EventsTargetMixin(ValidatableMixin(LitElement)) {
       if (name[0] === '+' || name[0] === '#') {
         value = encodeURI(value);
       } else {
-        value = this._wwwFormUrlEncodePiece(value);
+        value = this._wwwFormUrlEncodePiece(value, false);
       }
       const re = this._createUrlReplaceRegex(name);
       url = url.replace(re, value);
@@ -52972,24 +53282,27 @@ class ApiUrlEditor extends EventsTargetMixin(ValidatableMixin(LitElement)) {
       return '';
     }
     const pieces = object.map((item) => {
-      return this._wwwFormUrlEncodePiece(item.name) + '=' +
-        this._wwwFormUrlEncodePiece(item.value);
+      return this._wwwFormUrlEncodePiece(item.name, true) + '=' +
+        this._wwwFormUrlEncodePiece(item.value, true);
     });
     return pieces.join('&');
   }
   /**
-   * @param {*} str A key or value to encode as x-www-form-urlencoded.
+   * @param {String} str A key or value to encode as x-www-form-urlencoded.
+   * @param {Boolean} replacePlus When set it replaces `%20` with `+`.
    * @return {string} .
    */
-  _wwwFormUrlEncodePiece(str) {
+  _wwwFormUrlEncodePiece(str, replacePlus) {
     // Spec says to normalize newlines to \r\n and replace %20 spaces with +.
     // jQuery does this as well, so this is likely to be widely compatible.
     if (!str) {
       return '';
     }
-    return encodeURIComponent(str.toString()
-        .replace(/\r?\n/g, '\r\n'))
-        .replace(/%20/g, '+');
+    let result = encodeURIComponent(str.toString().replace(/\r?\n/g, '\r\n'));
+    if (replacePlus) {
+      result = result.replace(/%20/g, '+');
+    }
+    return result;
   }
   /**
    * Updates URI / query parameters model from user input.
@@ -53308,142 +53621,137 @@ window.customElements.define('api-url-editor', ApiUrlEditor);
  *
  * @mixinFunction
  * @memberof AnypointBasics
+ * @return {Class}
+ * @param {Class} base
  */
-const CheckedElementMixin = dedupingMixin((base) => {
-  /**
-   * @polymer
-   * @mixinClass
-   */
-  class CheckedElementMixin extends ValidatableMixin(base) {
-    static get properties() {
-      return {
-        /**
-         * Gets or sets the state, `true` is checked and `false` is unchecked.
-         */
-        checked: { type: Boolean, reflect: true },
-        /**
-         * If true, the button toggles the active state with each click or press
-         * of the spacebar.
-         */
-        toggles: { type: Boolean },
-        /**
-         * The name of this form element.
-         */
-        name: { type: String },
-        /**
-         * The value of this form control
-         * @type {*}
-         */
-        value: { type: String },
-        /**
-         * Set to true to mark the input as required. If used in a form, a
-         * custom element that uses this mixin should also use
-         * AnypointValidatableMixin and define a custom validation method.
-         * Otherwise, a `required` element will always be considered valid.
-         * It's also strongly recommended to provide a visual style for the element
-         * when its value is invalid.
-         */
-        required: { type: Boolean },
-        /**
-         * Disabled state of the control
-         */
-        disabled: { type: Boolean, reflect: true }
-      };
-    }
+const CheckedElementMixin = (base) => class extends ValidatableMixin(base) {
+  static get properties() {
+    return {
+      /**
+       * Gets or sets the state, `true` is checked and `false` is unchecked.
+       */
+      checked: { type: Boolean, reflect: true },
+      /**
+       * If true, the button toggles the active state with each click or press
+       * of the spacebar.
+       */
+      toggles: { type: Boolean },
+      /**
+       * The name of this form element.
+       */
+      name: { type: String },
+      /**
+       * The value of this form control
+       * @type {*}
+       */
+      value: { type: String },
+      /**
+       * Set to true to mark the input as required. If used in a form, a
+       * custom element that uses this mixin should also use
+       * AnypointValidatableMixin and define a custom validation method.
+       * Otherwise, a `required` element will always be considered valid.
+       * It's also strongly recommended to provide a visual style for the element
+       * when its value is invalid.
+       */
+      required: { type: Boolean },
+      /**
+       * Disabled state of the control
+       */
+      disabled: { type: Boolean, reflect: true }
+    };
+  }
 
-    constructor() {
-      super();
-      this.value = 'on';
-    }
+  constructor() {
+    super();
+    this.value = 'on';
+  }
 
-    get required() {
-      return this._required || false;
-    }
+  get required() {
+    return this._required || false;
+  }
 
-    set required(value) {
-      if (this._setChanged('required', value)) {
-        this._requiredChanged(value);
-      }
-    }
-
-    get value() {
-      return this._value || false;
-    }
-
-    set value(value) {
-      if (this._setChanged('value', value)) {
-        this._valueChanged(value);
-      }
-    }
-
-    get checked() {
-      return this._checked || false;
-    }
-
-    set checked(value) {
-      if (this._setChanged('checked', value)) {
-        this._checkedChanged(value);
-      }
-    }
-
-    _setChanged(prop, value) {
-      const key = `_${prop}`;
-      const old = this[key];
-      if (value === old) {
-        return false;
-      }
-      this[key] = value;
-      if (this.requestUpdate) {
-        this.requestUpdate(prop, old);
-      }
-      return true;
-    }
-    /**
-     * @return {Boolean} false if the element is required and not checked, and true
-     * otherwise.
-     */
-    _getValidity() {
-      return this.disabled || !this.required || this.checked;
-    }
-    /**
-     * Updates the `aria-required` label when `required` is changed.
-     * @param {Boolean} required
-     */
-    _requiredChanged(required) {
-      if (required) {
-        this.setAttribute('aria-required', 'true');
-      } else {
-        this.removeAttribute('aria-required');
-      }
-    }
-    /**
-     * Fire `iron-changed`for compatybility with iron elements, `change` event
-     * for consistency with HTML elements, and `checked-changed` for Polymer.
-     * @param {Boolean} value
-     */
-    _checkedChanged(value) {
-      this.active = value;
-      this.dispatchEvent(new CustomEvent('change'));
-      this.dispatchEvent(new CustomEvent('iron-change'));
-      this.dispatchEvent(new CustomEvent('checked-changed', {
-        composed: true,
-        detail: {
-          value
-        }
-      }));
-    }
-    /**
-     * Reset value to 'on' if it is set to `undefined`.
-     * @param {*} value
-     */
-    _valueChanged(value) {
-      if (value === undefined || value === null) {
-        this.value = 'on';
-      }
+  set required(value) {
+    if (this._setChanged('required', value)) {
+      this._requiredChanged(value);
     }
   }
-  return CheckedElementMixin;
-});
+
+  get value() {
+    return this._value || false;
+  }
+
+  set value(value) {
+    if (this._setChanged('value', value)) {
+      this._valueChanged(value);
+    }
+  }
+
+  get checked() {
+    return this._checked || false;
+  }
+
+  set checked(value) {
+    if (this._setChanged('checked', value)) {
+      this._checkedChanged(value);
+    }
+  }
+
+  _setChanged(prop, value) {
+    const key = `_${prop}`;
+    const old = this[key];
+    if (value === old) {
+      return false;
+    }
+    this[key] = value;
+    if (this.requestUpdate) {
+      this.requestUpdate(prop, old);
+    }
+    return true;
+  }
+  /**
+   * @return {Boolean} false if the element is required and not checked, and true
+   * otherwise.
+   */
+  _getValidity() {
+    return this.disabled || !this.required || this.checked;
+  }
+  /**
+   * Updates the `aria-required` label when `required` is changed.
+   * @param {Boolean} required
+   */
+  _requiredChanged(required) {
+    if (required) {
+      this.setAttribute('aria-required', 'true');
+    } else {
+      this.removeAttribute('aria-required');
+    }
+  }
+  /**
+   * Fire `iron-changed`for compatybility with iron elements, `change` event
+   * for consistency with HTML elements, and `checked-changed` for Polymer.
+   * @param {Boolean} value
+   */
+  _checkedChanged(value) {
+    this.active = value;
+    this.dispatchEvent(new CustomEvent('change'));
+    this.dispatchEvent(new CustomEvent('iron-change'));
+    this.dispatchEvent(new CustomEvent('checked-changed', {
+      composed: true,
+      detail: {
+        value
+      }
+    }));
+  }
+  /**
+   * Reset value to 'on' if it is set to `undefined`.
+   * @param {*} value
+   */
+  _valueChanged(value) {
+    if (value === undefined || value === null) {
+      this.value = 'on';
+    }
+  }
+};
 
 /**
  * `anypoint-checkbox`
@@ -53506,7 +53814,7 @@ const CheckedElementMixin = dedupingMixin((base) => {
  * @memberof AnypointUi
  */
 class AnypointCheckbox extends ButtonStateMixin(ControlStateMixin(CheckedElementMixin(LitElement))) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: inline-flex;
       align-items: center;
@@ -53668,7 +53976,7 @@ class AnypointCheckbox extends ButtonStateMixin(ControlStateMixin(CheckedElement
 
   render() {
     const { checked, invalid, indeterminate } = this;
-    return html`
+    return html`<style>${this.styles}</style>
       <div class="checkboxContainer">
         <div class="checkbox ${this._computeCheckboxClass(checked, invalid)}">
           <div class="checkmark ${this._computeCheckmarkClass(checked, indeterminate)}"></div>
@@ -54161,7 +54469,76 @@ const ApiFormMixin = (base) => class extends base {
   _computeRenderEmptyMessage(allowCustom, model) {
     return !allowCustom && !model;
   }
+  /**
+   * Dispatches `send-analytics` for GA event.
+   * @param {String} category
+   * @param {String} action
+   * @param {String=} label
+   */
+  _gaEvent(category, action, label) {
+    const e = new CustomEvent('send-analytics', {
+     bubbles: true,
+     composed: true,
+     detail: {
+       type: 'event',
+       category,
+       action,
+       label,
+     }
+    });
+    this.dispatchEvent(e);
+  }
 };
+
+var styles$4 = css`
+:host {
+  display: inline-block;
+  position: relative;
+  /* <input> width */
+  min-width: 200px;
+}
+
+:host([isarray]) .content {
+  padding-left: 8px;
+  border-left: 1px var(--raml-type-form-input-array-border-color, rgba(0, 0, 0, 0.14)) solid;
+}
+
+:host(:not([isarray])) .content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.array-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+anypoint-input,
+anypoint-dropdown-menu {
+  flex: 1;
+  width: auto;
+}
+
+anypoint-button .icon {
+  margin-right: 12px;
+}
+
+.nil-option {
+  margin-left: 8px;
+}
+
+.array-label {
+  margin-left: 8px;
+}
+
+.icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}`;
 
 /**
  * An element that renders a form input to edit API type value.
@@ -54181,61 +54558,13 @@ const ApiFormMixin = (base) => class extends base {
  *
  * @customElement
  * @memberof ApiElements
- * @appliesMixin IronValidatableBehavior
- * @polymer
+ * @appliesMixin ValidatableMixin
  * @demo demo/index.html
+ * @extends LitElement
  */
 class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
-  static get styles() {
-    return css`
-    :host {
-      display: inline-block;
-      position: relative;
-      /* <input> width */
-      min-width: 200px;
-    }
-
-    :host([isarray]) .content {
-      padding-left: 8px;
-      border-left: 1px var(--raml-type-form-input-array-border-color, rgba(0, 0, 0, 0.14)) solid;
-    }
-
-    :host(:not([isarray])) .content {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    .array-item {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    anypoint-input,
-    anypoint-dropdown-menu {
-      flex: 1;
-      width: auto;
-    }
-
-    anypoint-button .icon {
-      margin-right: 12px;
-    }
-
-    .nil-option {
-      margin-left: 8px;
-    }
-
-    .array-label {
-      margin-left: 8px;
-    }
-
-    .icon {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-    }`;
+  get styles() {
+    return styles$4;
   }
 
   _enumTemplate() {
@@ -54249,14 +54578,16 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       data-type="enum"
       ?disabled="${readOnly || disabled || _nilEnabled}"
       ?outlined="${outlined}"
-      ?compatibility="${compatibility}">
+      ?compatibility="${compatibility}"
+    >
       <label slot="label">${model.schema.inputLabel}</label>
       <anypoint-listbox
         slot="dropdown-content"
         attrforselected="data-value"
         .selected="${value}"
         ?compatibility="${compatibility}"
-        @selected-changed="${this._listSelectionHandler}">
+        @selected-changed="${this._listSelectionHandler}"
+      >
         ${values.map((item) => html`<anypoint-item data-value="${item}">${item}</anypoint-item>`)}
       </anypoint-listbox>
     </anypoint-dropdown-menu>`;
@@ -54273,14 +54604,16 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       data-type="boolean"
       ?disabled="${readOnly || disabled || _nilEnabled}"
       ?outlined="${outlined}"
-      ?compatibility="${compatibility}">
+      ?compatibility="${compatibility}"
+    >
       <label slot="label">${model.schema.inputLabel}</label>
       <anypoint-listbox
         slot="dropdown-content"
         attrforselected="data-value"
         .selected="${bindValue}"
         ?compatibility="${compatibility}"
-        @selected-changed="${this._listSelectionHandler}">
+        @selected-changed="${this._listSelectionHandler}"
+      >
         <anypoint-item data-value="true">True</anypoint-item>
         <anypoint-item data-value="false">False</anypoint-item>
       </anypoint-listbox>
@@ -54315,9 +54648,10 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
       data-type="input"
       @input="${this._inputHandler}"
       @change="${this._inputChangeHandler}"
-      invalidmessage="${`${name} is invalid. Check documentation.`}">
+      invalidmessage="${`${name} is invalid. Check documentation.`}"
+    >
       <label slot="label">${model.schema.inputLabel}</label>
-      </anypoint-input>`;
+    </anypoint-input>`;
   }
 
   _arrayTemplate() {
@@ -54348,7 +54682,8 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
         data-type="array"
         data-index="${index}"
         @input="${this._arrayValueHandler}"
-        invalidmessage="${`${name} is invalid. Check documentation.`}">
+        invalidmessage="${`${name} is invalid. Check documentation.`}"
+      >
         <label slot="label">${itemLabel}<label>
       </anypoint-input>
       ${index ? html`<anypoint-icon-button
@@ -54380,7 +54715,7 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
 
   render() {
     const { readOnly, disabled, _isEnum, _isBoolean, _isInput, _isArray, _isNillable } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="content">
       ${_isEnum ? this._enumTemplate() : undefined}
       ${_isBoolean ? this._booleanTemplate() : undefined}
@@ -54767,17 +55102,33 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
     } else {
       this.value = e.target.selected;
     }
+    this._notifyInput();
   }
-
+  /**
+   * Handler for `input` event coming from regular input.
+   * @param {Event} e
+   */
   _inputHandler(e) {
     this.value = e.target.value;
+    this._notifyInput();
   }
-
+  /**
+   * Handler for `change` event coming from regular input.
+   * This is a special case for FF where input event won't be dispatched
+   * for number type and when using arrow up/down.
+   *
+   * @param {Event} e
+   */
   _inputChangeHandler(e) {
-    // in FF input event won't fire for number type and when using arrow up/down.
-    this.value = e.target.value;
+    if (e.target.type === 'number') {
+      this.value = e.target.value;
+      this._notifyInput();
+    }
   }
-
+  /**
+   * Handler for input event coming from array items.
+   * @param {Event} e
+   */
   _arrayValueHandler(e) {
     const index = Number(e.target.dataset.index);
     if (index !== index) {
@@ -54787,6 +55138,13 @@ class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
     value[index].value = e.target.value;
     this._arrayValue = [...value];
     this._arrayValueChanged();
+    this._notifyInput();
+  }
+  /**
+   * Dispatches non-bubbling `input` event.
+   */
+  _notifyInput() {
+    this.dispatchEvent(new CustomEvent('input'));
   }
 }
 
@@ -56423,7 +56781,7 @@ Polymer({
  * @appliesMixin ApiFormMixin
  */
 class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -56652,13 +57010,15 @@ class ApiUrlParamsForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
       optionalOpened,
       allowCustom,
       readOnly,
-      disabled
+      disabled,
+      styles
     } = this;
     let { model } = this;
     if (!model) {
       model = [];
     }
     return html`
+    <style>${styles}</style>
     <div class="params-title">
       <slot name="title"></slot>
     </div>
@@ -56875,7 +57235,7 @@ window.customElements.define('api-url-params-form', ApiUrlParamsForm);
  * @appliesMixin EventsTargetMixin
  */
 class ApiUrlParamsEditor extends ValidatableMixin(EventsTargetMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       margin: 8px 12px;
@@ -56907,7 +57267,7 @@ class ApiUrlParamsEditor extends ValidatableMixin(EventsTargetMixin(LitElement))
       _hasUriParameters,
       _hasQueryParameters
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${_hasParameters ? undefined : html`<section class="empty-message">
       <p>This endpoint doesn't declare query or URI parameters.</p>
     </section>`}
@@ -57612,15 +57972,18 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
       return;
     }
     const supported = [];
-    const secPrefix = this.ns.raml.vocabularies.security;
+    const secPrefix = this.ns.aml.vocabularies.security;
     let hasNull = false;
     for (let i = 0, len = secured.length; i < len; i++) {
-      const item = secured[i];
-      if (!this._hasType(item, secPrefix + 'ParametrizedSecurityScheme') &&
-        !this._hasType(item, secPrefix + 'SecurityScheme')) {
+      // TODO temporarily retrieve first item of security:schemes due to AMF 4 model change
+      const item = this._hasType(secured[i], secPrefix.securityRequirement)
+        ? (this._getValueArray(secured[i], secPrefix.schemes) || [])[0]
+        : secured[i];
+      if (!item || (!this._hasType(item, secPrefix.ParametrizedSecurityScheme) &&
+        !this._hasType(item, secPrefix.SecurityScheme))) {
         continue;
       }
-      const shKey = this._getAmfKey(secPrefix + 'scheme');
+      const shKey = this._getAmfKey(secPrefix.scheme);
       let scheme = item[shKey];
       if (!scheme) {
         hasNull = true;
@@ -57629,15 +57992,15 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      const type = this._getValue(scheme, secPrefix + 'type');
+      const type = this._getValue(scheme, secPrefix.type);
       if (!type) {
         hasNull = true;
         continue;
       }
-      let name = this._getValue(scheme, this.ns.schema.displayName);
+      let name = this._getValue(scheme, this.ns.aml.vocabularies.core.displayName);
       if (!name) {
         if (type === 'x-custom') {
-          name = this._getValue(item, secPrefix + 'name');
+          name = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
           if (!name) {
             name = 'Custom authorization';
           }
@@ -57680,10 +58043,16 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
     if (name === type) {
       name = undefined;
     }
-    const secPrefix = this.ns.raml.vocabularies.security;
+    const secPrefix = this.ns.aml.vocabularies.security;
     for (let i = 0, len = model.length; i < len; i++) {
-      const item = model[i];
-      const shKey = this._getAmfKey(secPrefix + 'scheme');
+      // TODO temporarily retrieve first item of security:schemes due to AMF 4 model change
+      const item = this._hasType(model[i], secPrefix.securityRequirement)
+        ? (this._getValueArray(model[i], secPrefix.schemes) || [])[0]
+        : model[i];
+      if (!item) {
+        continue;
+      }
+      const shKey = this._getAmfKey(secPrefix.scheme);
       let scheme = item[shKey];
       if (!scheme) {
         continue;
@@ -57691,7 +58060,7 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      const modelType = this._getValue(scheme, secPrefix + 'type');
+      const modelType = this._getValue(scheme, secPrefix.type);
       if (!modelType) {
         continue;
       }
@@ -57699,10 +58068,11 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
         if (!name) {
           return item;
         }
-        let modelName = this._getValue(scheme, this.ns.schema.displayName);
-        if (!modelName) {
-          modelName = this._getValue(item, secPrefix + 'name');
+        let modelName = this._getValue(scheme, this.ns.aml.vocabularies.core.displayName);
+        if (modelName !== name) {
+          modelName = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
         }
+        // modelName = this._getValue(item, secPrefix.name);
         if (modelName === name) {
           return item;
         }
@@ -57735,6 +58105,9 @@ const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base
       case 'oauth2':
       case 'OAuth 2.0':
         return 'OAuth 2.0';
+      case 'client-certificate':
+      case 'Client certificate':
+        return 'Client certificate';
     }
   }
 };
@@ -57781,10 +58154,6 @@ class AuthMethodBase extends EventsTargetMixin(LitElement) {
        * Enables compatibility with Anypoint components.
        */
       compatibility: { type: Boolean },
-      /**
-       * @deprecated Use `compatibility` instead
-       */
-      legacy: { type: Boolean },
       /**
        * Enables Material Design outlined style
        */
@@ -57844,11 +58213,16 @@ class AuthMethodBase extends EventsTargetMixin(LitElement) {
    * Generates auth data model by calling `validate()` and `getSettings()` functions.
    *
    * @param {String} type Auth form type.
-   * @return {Object} Gnerated data model
+   * @return {Object|undefined} Gnerated data model or undefined when the settings
+   * should be cleared
    */
   _createModel(type) {
+    const settings = this.getSettings();
+    if (!settings) {
+      return;
+    }
     return {
-      settings: this.getSettings(),
+      settings,
       type,
       valid: this.validate()
     };
@@ -57862,7 +58236,7 @@ class AuthMethodBase extends EventsTargetMixin(LitElement) {
   _notifySettingsChange(type) {
     const detail = this._createModel(type);
     const e = new CustomEvent('auth-settings-changed', {
-      detail: detail,
+      detail,
       bubbles: true,
       composed: true
     });
@@ -57953,7 +58327,11 @@ var authStyles = css `
 anypoint-input,
 anypoint-masked-input {
   width: auto;
-  display: block;
+  display: inline-block;
+}
+
+api-property-form-item {
+  margin: -8px 0px;
 }
 
 .edit-icon {
@@ -58003,11 +58381,6 @@ arc-marked {
   margin: 12px 8px;
 }
 
-anypoint-input,
-anypoint-masked-input {
-  margin: 20px 8px;
-}
-
 .icon {
   display: inline-block;
   width: 24px;
@@ -58017,9 +58390,9 @@ anypoint-masked-input {
 `;
 
 class AnypointMaskedInput extends AnypointInput {
-  static get styles() {
+  get styles() {
     return [
-      AnypointInput.styles,
+      super.styles,
       css`
       .icon {
         display: inline-block;
@@ -58077,7 +58450,7 @@ class AnypointMaskedInput extends AnypointInput {
       _visibilityToggleTitle,
       _visibilityToggleLabel
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="suffixes">
       <anypoint-icon-button
         @click="${this.toggleVisibility}"
@@ -58130,12 +58503,19 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodBasic extends AuthMethodBase {
-  static get styles() {
+  get styles() {
     return [
       authStyles,
       css`
       :host {
         display: block;
+      }
+
+      anypoint-input,
+      anypoint-masked-input {
+        display: inline-block;
+        width: calc(100% - 16px);
+        margin: 8px;
       }`
     ];
   }
@@ -58149,7 +58529,7 @@ class AuthMethodBasic extends AuthMethodBase {
       readOnly,
       disabled
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
       <iron-form>
         <form autocomplete="on">
           <anypoint-input
@@ -58431,12 +58811,19 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodDigest extends AuthMethodBase {
-  static get styles() {
+  get styles() {
     return [
       authStyles,
       css`
       :host {
         display: block;
+      }
+
+      anypoint-input,
+      anypoint-masked-input {
+        display: inline-block;
+        width: calc(100% - 16px);
+        margin: 8px;
       }`
     ];
   }
@@ -58451,7 +58838,7 @@ class AuthMethodDigest extends AuthMethodBase {
       disabled,
       fullForm
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <iron-form>
       <form autocomplete="on">
         <anypoint-input
@@ -58463,7 +58850,7 @@ class AuthMethodDigest extends AuthMethodBase {
           autovalidate
           autocomplete="on"
           .outlined="${outlined}"
-          .compatibility="${compatibility}"
+          ?compatibility="${compatibility}"
           .readOnly="${readOnly}"
           .disabled="${disabled}"
           invalidmessage="Username is required">
@@ -58475,7 +58862,7 @@ class AuthMethodDigest extends AuthMethodBase {
           @input="${this._valueHandler}"
           autocomplete="on"
           .outlined="${outlined}"
-          .compatibility="${compatibility}"
+          ?compatibility="${compatibility}"
           .readOnly="${readOnly}"
           .disabled="${disabled}">
           <label slot="label">Password</label>
@@ -58500,7 +58887,7 @@ class AuthMethodDigest extends AuthMethodBase {
             autovalidate
             autocomplete="on"
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             invalidmessage="Realm is required">
@@ -58516,7 +58903,7 @@ class AuthMethodDigest extends AuthMethodBase {
             autovalidate
             autocomplete="on"
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             invalidmessage="Nonce is required">
@@ -58525,7 +58912,7 @@ class AuthMethodDigest extends AuthMethodBase {
 
           <anypoint-dropdown-menu
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
           >
@@ -58535,12 +58922,12 @@ class AuthMethodDigest extends AuthMethodBase {
               .selected="${this.qop}"
               @selected-changed="${this._qopHandler}"
               .outlined="${outlined}"
-              .compatibility="${compatibility}"
+              ?compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
               attrforselected="data-qop">
-              <anypoint-item .compatibility="${compatibility}" data-qop="auth">auth</anypoint-item>
-              <anypoint-item .compatibility="${compatibility}" data-qop="auth-int">auth-int</anypoint-item>
+              <anypoint-item ?compatibility="${compatibility}" data-qop="auth">auth</anypoint-item>
+              <anypoint-item ?compatibility="${compatibility}" data-qop="auth-int">auth-int</anypoint-item>
             </anypoint-listbox>
           </anypoint-dropdown-menu>
 
@@ -58553,7 +58940,7 @@ class AuthMethodDigest extends AuthMethodBase {
             autovalidate
             autocomplete="on"
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             invalidmessage="Nonce count is required">
@@ -58562,7 +58949,7 @@ class AuthMethodDigest extends AuthMethodBase {
 
           <anypoint-dropdown-menu
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
           >
@@ -58572,12 +58959,12 @@ class AuthMethodDigest extends AuthMethodBase {
               .selected="${this.algorithm}"
               @selected-changed="${this._algorithmHandler}"
               .outlined="${outlined}"
-              .compatibility="${compatibility}"
+              ?compatibility="${compatibility}"
               .readOnly="${readOnly}"
               .disabled="${disabled}"
               attrforselected="data-algorithm">
-              <anypoint-item .compatibility="${compatibility}" data-algorithm="MD5">MD5</anypoint-item>
-              <anypoint-item .compatibility="${compatibility}" data-algorithm="MD5-sess">MD5-sess</anypoint-item>
+              <anypoint-item ?compatibility="${compatibility}" data-algorithm="MD5">MD5</anypoint-item>
+              <anypoint-item ?compatibility="${compatibility}" data-algorithm="MD5-sess">MD5-sess</anypoint-item>
             </anypoint-listbox>
           </anypoint-dropdown-menu>
 
@@ -58590,7 +58977,7 @@ class AuthMethodDigest extends AuthMethodBase {
             autovalidate
             autocomplete="on"
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             invalidmessage="Server issued opaque is required">
@@ -58606,7 +58993,7 @@ class AuthMethodDigest extends AuthMethodBase {
             autovalidate
             autocomplete="on"
             .outlined="${outlined}"
-            .compatibility="${compatibility}"
+            ?compatibility="${compatibility}"
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             invalidmessage="Client nounce is required">
@@ -58963,12 +59350,19 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodNtlm extends AuthMethodBase {
-  static get styles() {
+  get styles() {
     return [
       authStyles,
       css`
       :host {
         display: block;
+      }
+
+      anypoint-input,
+      anypoint-masked-input {
+        display: inline-block;
+        width: calc(100% - 16px);
+        margin: 8px;
       }`
     ];
   }
@@ -58983,7 +59377,7 @@ class AuthMethodNtlm extends AuthMethodBase {
       readOnly,
       disabled
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
       <iron-form>
         <form autocomplete="on">
           <anypoint-input
@@ -59520,12 +59914,21 @@ const IronFitBehavior = {
     return (this.horizontalAlign || this.verticalAlign) && this.positionTarget;
   },
 
-  attached: function() {
+  /**
+   * True if the component is RTL.
+   * @private
+   */
+  get _isRTL() {
     // Memoize this to avoid expensive calculations & relayouts.
     // Make sure we do it only once
-    if (typeof this._isRTL === 'undefined') {
-      this._isRTL = window.getComputedStyle(this).direction == 'rtl';
+    if (typeof this._memoizedIsRTL === 'undefined') {
+      this._memoizedIsRTL = window.getComputedStyle(this).direction == 'rtl';
     }
+    return this._memoizedIsRTL;
+  },
+
+  /** @override */
+  attached: function() {
     this.positionTarget = this.positionTarget || this._defaultPositionTarget;
     if (this.autoFitOnAttach) {
       if (window.getComputedStyle(this).display === 'none') {
@@ -59542,6 +59945,7 @@ const IronFitBehavior = {
     }
   },
 
+  /** @override */
   detached: function() {
     if (this.__deferredFit) {
       clearTimeout(this.__deferredFit);
@@ -59987,8 +60391,7 @@ var p$3 = Element.prototype;
 var matches$2 = p$3.matches || p$3.matchesSelector || p$3.mozMatchesSelector ||
     p$3.msMatchesSelector || p$3.oMatchesSelector || p$3.webkitMatchesSelector;
 
-const IronFocusablesHelper = {
-
+class IronFocusablesHelperClass {
   /**
    * Returns a sorted array of tabbable nodes, including the root node.
    * It searches the tabbable nodes in the light and shadow dom of the chidren,
@@ -59996,7 +60399,7 @@ const IronFocusablesHelper = {
    * @param {!Node} node
    * @return {!Array<!HTMLElement>}
    */
-  getTabbableNodes: function(node) {
+  getTabbableNodes(node) {
     var result = [];
     // If there is at least one element with tabindex > 0, we need to sort
     // the final array by tabindex.
@@ -60005,14 +60408,14 @@ const IronFocusablesHelper = {
       return this._sortByTabIndex(result);
     }
     return result;
-  },
+  }
 
   /**
    * Returns if a element is focusable.
    * @param {!HTMLElement} element
    * @return {boolean}
    */
-  isFocusable: function(element) {
+  isFocusable(element) {
     // From http://stackoverflow.com/a/1600194/4228703:
     // There isn't a definite list, it's up to the browser. The only
     // standard we have is DOM Level 2 HTML
@@ -60030,7 +60433,7 @@ const IronFocusablesHelper = {
     // Elements that can be focused even if they have [disabled] attribute.
     return matches$2.call(
         element, 'a[href], area[href], iframe, [tabindex], [contentEditable]');
-  },
+  }
 
   /**
    * Returns if a element is tabbable. To be tabbable, a element must be
@@ -60038,11 +60441,11 @@ const IronFocusablesHelper = {
    * @param {!HTMLElement} element
    * @return {boolean}
    */
-  isTabbable: function(element) {
+  isTabbable(element) {
     return this.isFocusable(element) &&
         matches$2.call(element, ':not([tabindex="-1"])') &&
         this._isVisible(element);
-  },
+  }
 
   /**
    * Returns the normalized element tabindex. If not focusable, returns -1.
@@ -60053,13 +60456,13 @@ const IronFocusablesHelper = {
    * @return {!number}
    * @private
    */
-  _normalizedTabIndex: function(element) {
+  _normalizedTabIndex(element) {
     if (this.isFocusable(element)) {
       var tabIndex = element.getAttribute('tabindex') || 0;
       return Number(tabIndex);
     }
     return -1;
-  },
+  }
 
   /**
    * Searches for nodes that are tabbable and adds them to the `result` array.
@@ -60070,18 +60473,20 @@ const IronFocusablesHelper = {
    * @return {boolean}
    * @private
    */
-  _collectTabbableNodes: function(node, result) {
+  _collectTabbableNodes(node, result) {
     // If not an element or not visible, no need to explore children.
-    if (node.nodeType !== Node.ELEMENT_NODE || !this._isVisible(node)) {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
       return false;
     }
     var element = /** @type {!HTMLElement} */ (node);
+    if (!this._isVisible(element)) {
+      return false;
+    }
     var tabIndex = this._normalizedTabIndex(element);
     var needsSort = tabIndex > 0;
     if (tabIndex >= 0) {
       result.push(element);
     }
-
     // In ShadowDOM v1, tab order is affected by the order of distrubution.
     // E.g. getTabbableNodes(#root) in ShadowDOM v1 should return [#A, #B];
     // in ShadowDOM v0 tab order is not affected by the distrubution order,
@@ -60107,7 +60512,7 @@ const IronFocusablesHelper = {
       needsSort = this._collectTabbableNodes(children[i], result) || needsSort;
     }
     return needsSort;
-  },
+  }
 
   /**
    * Returns false if the element has `visibility: hidden` or `display: none`
@@ -60115,7 +60520,7 @@ const IronFocusablesHelper = {
    * @return {boolean}
    * @private
    */
-  _isVisible: function(element) {
+  _isVisible(element) {
     // Check inline style first to save a re-flow. If looks good, check also
     // computed style.
     var style = element.style;
@@ -60124,7 +60529,7 @@ const IronFocusablesHelper = {
       return (style.visibility !== 'hidden' && style.display !== 'none');
     }
     return false;
-  },
+  }
 
   /**
    * Sorts an array of tabbable elements by tabindex. Returns a new array.
@@ -60132,7 +60537,7 @@ const IronFocusablesHelper = {
    * @return {!Array<!HTMLElement>}
    * @private
    */
-  _sortByTabIndex: function(tabbables) {
+  _sortByTabIndex(tabbables) {
     // Implement a merge sort as Array.prototype.sort does a non-stable sort
     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
     var len = tabbables.length;
@@ -60143,7 +60548,7 @@ const IronFocusablesHelper = {
     var left = this._sortByTabIndex(tabbables.slice(0, pivot));
     var right = this._sortByTabIndex(tabbables.slice(pivot));
     return this._mergeSortByTabIndex(left, right);
-  },
+  }
 
   /**
    * Merge sort iterator, merges the two arrays into one, sorted by tab index.
@@ -60152,7 +60557,7 @@ const IronFocusablesHelper = {
    * @return {!Array<!HTMLElement>}
    * @private
    */
-  _mergeSortByTabIndex: function(left, right) {
+  _mergeSortByTabIndex(left, right) {
     var result = [];
     while ((left.length > 0) && (right.length > 0)) {
       if (this._hasLowerTabOrder(left[0], right[0])) {
@@ -60163,7 +60568,7 @@ const IronFocusablesHelper = {
     }
 
     return result.concat(left, right);
-  },
+  }
 
   /**
    * Returns if element `a` has lower tab order compared to element `b`
@@ -60176,14 +60581,16 @@ const IronFocusablesHelper = {
    * @return {boolean}
    * @private
    */
-  _hasLowerTabOrder: function(a, b) {
+  _hasLowerTabOrder(a, b) {
     // Normalize tabIndexes
     // e.g. in Firefox `<div contenteditable>` has `tabIndex = -1`
     var ati = Math.max(a.tabIndex, 0);
     var bti = Math.max(b.tabIndex, 0);
     return (ati === 0 || bti === 0) ? bti > ati : ati > bti;
   }
-};
+}
+
+const IronFocusablesHelper = new IronFocusablesHelperClass();
 
 /**
 @license
@@ -60212,6 +60619,7 @@ Custom property | Description | Default
 `--iron-overlay-backdrop-opened`           | Mixin applied to `iron-overlay-backdrop` when it is displayed | {}
 */
 Polymer({
+  /** @override */
   _template: html$1`
     <style>
       :host {
@@ -60257,11 +60665,13 @@ Polymer({
     'transitionend': '_onTransitionend',
   },
 
+  /** @override */
   created: function() {
     // Used to cancel previous requestAnimationFrame calls when opened changes.
     this.__openedRaf = null;
   },
 
+  /** @override */
   attached: function() {
     this.opened && this._openedChanged(this.opened);
   },
@@ -60351,46 +60761,42 @@ found at http://polymer.github.io/PATENTS.txt
 */
 
 /**
- * @struct
- * @constructor
- * @private
+ * @package
  */
-const IronOverlayManagerClass = function() {
-  /**
-   * Used to keep track of the opened overlays.
-   * @private {!Array<!Element>}
-   */
-  this._overlays = [];
+class IronOverlayManagerClass {
+  constructor() {
+    /**
+     * Used to keep track of the opened overlays.
+     * @private {!Array<!Element>}
+     */
+    this._overlays = [];
 
-  /**
-   * iframes have a default z-index of 100,
-   * so this default should be at least that.
-   * @private {number}
-   */
-  this._minimumZ = 101;
+    /**
+     * iframes have a default z-index of 100,
+     * so this default should be at least that.
+     * @private {number}
+     */
+    this._minimumZ = 101;
 
-  /**
-   * Memoized backdrop element.
-   * @private {Element|null}
-   */
-  this._backdropElement = null;
+    /**
+     * Memoized backdrop element.
+     * @private {Element|null}
+     */
+    this._backdropElement = null;
 
-  // Enable document-wide tap recognizer.
-  // NOTE: Use useCapture=true to avoid accidentally prevention of the closing
-  // of an overlay via event.stopPropagation(). The only way to prevent
-  // closing of an overlay should be through its APIs.
-  // NOTE: enable tap on <html> to workaround Polymer/polymer#4459
-  // Pass no-op function because MSEdge 15 doesn't handle null as 2nd argument
-  // https://github.com/Microsoft/ChakraCore/issues/3863
-  add(document.documentElement, 'tap', function() {});
-  document.addEventListener('tap', this._onCaptureClick.bind(this), true);
-  document.addEventListener('focus', this._onCaptureFocus.bind(this), true);
-  document.addEventListener('keydown', this._onCaptureKeyDown.bind(this), true);
-};
-
-IronOverlayManagerClass.prototype = {
-
-  constructor: IronOverlayManagerClass,
+    // Enable document-wide tap recognizer.
+    // NOTE: Use useCapture=true to avoid accidentally prevention of the closing
+    // of an overlay via event.stopPropagation(). The only way to prevent
+    // closing of an overlay should be through its APIs.
+    // NOTE: enable tap on <html> to workaround Polymer/polymer#4459
+    // Pass no-op function because MSEdge 15 doesn't handle null as 2nd argument
+    // https://github.com/Microsoft/ChakraCore/issues/3863
+    addListener(document.documentElement, 'tap', function() {});
+    document.addEventListener('tap', this._onCaptureClick.bind(this), true);
+    document.addEventListener('focus', this._onCaptureFocus.bind(this), true);
+    document.addEventListener(
+        'keydown', this._onCaptureKeyDown.bind(this), true);
+  }
 
   /**
    * The shared backdrop element.
@@ -60401,7 +60807,7 @@ IronOverlayManagerClass.prototype = {
       this._backdropElement = document.createElement('iron-overlay-backdrop');
     }
     return this._backdropElement;
-  },
+  }
 
   /**
    * The deepest active element.
@@ -60420,14 +60826,14 @@ IronOverlayManagerClass.prototype = {
       active = dom(active.root).activeElement;
     }
     return active;
-  },
+  }
 
   /**
    * Brings the overlay at the specified index to the front.
    * @param {number} i
    * @private
    */
-  _bringOverlayAtIndexToFront: function(i) {
+  _bringOverlayAtIndexToFront(i) {
     var overlay = this._overlays[i];
     if (!overlay) {
       return;
@@ -60455,27 +60861,27 @@ IronOverlayManagerClass.prototype = {
       i++;
     }
     this._overlays[lastI] = overlay;
-  },
+  }
 
   /**
    * Adds the overlay and updates its z-index if it's opened, or removes it if
    * it's closed. Also updates the backdrop z-index.
    * @param {!Element} overlay
    */
-  addOrRemoveOverlay: function(overlay) {
+  addOrRemoveOverlay(overlay) {
     if (overlay.opened) {
       this.addOverlay(overlay);
     } else {
       this.removeOverlay(overlay);
     }
-  },
+  }
 
   /**
    * Tracks overlays for z-index and focus management.
    * Ensures the last added overlay with always-on-top remains on top.
    * @param {!Element} overlay
    */
-  addOverlay: function(overlay) {
+  addOverlay(overlay) {
     var i = this._overlays.indexOf(overlay);
     if (i >= 0) {
       this._bringOverlayAtIndexToFront(i);
@@ -60505,12 +60911,12 @@ IronOverlayManagerClass.prototype = {
     this._overlays.splice(insertionIndex, 0, overlay);
 
     this.trackBackdrop();
-  },
+  }
 
   /**
    * @param {!Element} overlay
    */
-  removeOverlay: function(overlay) {
+  removeOverlay(overlay) {
     var i = this._overlays.indexOf(overlay);
     if (i === -1) {
       return;
@@ -60518,45 +60924,45 @@ IronOverlayManagerClass.prototype = {
     this._overlays.splice(i, 1);
 
     this.trackBackdrop();
-  },
+  }
 
   /**
    * Returns the current overlay.
    * @return {!Element|undefined}
    */
-  currentOverlay: function() {
+  currentOverlay() {
     var i = this._overlays.length - 1;
     return this._overlays[i];
-  },
+  }
 
   /**
    * Returns the current overlay z-index.
    * @return {number}
    */
-  currentOverlayZ: function() {
+  currentOverlayZ() {
     return this._getZ(this.currentOverlay());
-  },
+  }
 
   /**
    * Ensures that the minimum z-index of new overlays is at least `minimumZ`.
    * This does not effect the z-index of any existing overlays.
    * @param {number} minimumZ
    */
-  ensureMinimumZ: function(minimumZ) {
+  ensureMinimumZ(minimumZ) {
     this._minimumZ = Math.max(this._minimumZ, minimumZ);
-  },
+  }
 
-  focusOverlay: function() {
+  focusOverlay() {
     var current = /** @type {?} */ (this.currentOverlay());
     if (current) {
       current._applyFocus();
     }
-  },
+  }
 
   /**
    * Updates the backdrop z-index.
    */
-  trackBackdrop: function() {
+  trackBackdrop() {
     var overlay = this._overlayWithBackdrop();
     // Avoid creating the backdrop if there is no overlay with backdrop.
     if (!overlay && !this._backdropElement) {
@@ -60568,12 +60974,12 @@ IronOverlayManagerClass.prototype = {
     // in Polymer 2.x, so we ensure element is attached if needed.
     // https://github.com/Polymer/polymer/issues/4526
     this.backdropElement.prepare();
-  },
+  }
 
   /**
    * @return {!Array<!Element>}
    */
-  getBackdrops: function() {
+  getBackdrops() {
     var backdrops = [];
     for (var i = 0; i < this._overlays.length; i++) {
       if (this._overlays[i].withBackdrop) {
@@ -60581,35 +60987,35 @@ IronOverlayManagerClass.prototype = {
       }
     }
     return backdrops;
-  },
+  }
 
   /**
    * Returns the z-index for the backdrop.
    * @return {number}
    */
-  backdropZ: function() {
+  backdropZ() {
     return this._getZ(this._overlayWithBackdrop()) - 1;
-  },
+  }
 
   /**
    * Returns the top opened overlay that has a backdrop.
    * @return {!Element|undefined}
    * @private
    */
-  _overlayWithBackdrop: function() {
+  _overlayWithBackdrop() {
     for (var i = this._overlays.length - 1; i >= 0; i--) {
       if (this._overlays[i].withBackdrop) {
         return this._overlays[i];
       }
     }
-  },
+  }
 
   /**
    * Calculates the minimum z-index for the overlay.
    * @param {Element=} overlay
    * @private
    */
-  _getZ: function(overlay) {
+  _getZ(overlay) {
     var z = this._minimumZ;
     if (overlay) {
       var z1 = Number(
@@ -60621,25 +61027,25 @@ IronOverlayManagerClass.prototype = {
       }
     }
     return z;
-  },
+  }
 
   /**
    * @param {!Element} element
    * @param {number|string} z
    * @private
    */
-  _setZ: function(element, z) {
+  _setZ(element, z) {
     element.style.zIndex = z;
-  },
+  }
 
   /**
    * @param {!Element} overlay
    * @param {number} aboveZ
    * @private
    */
-  _applyOverlayZ: function(overlay, aboveZ) {
+  _applyOverlayZ(overlay, aboveZ) {
     this._setZ(overlay, aboveZ + 2);
-  },
+  }
 
   /**
    * Returns the deepest overlay in the path.
@@ -60648,21 +61054,21 @@ IronOverlayManagerClass.prototype = {
    * @suppress {missingProperties}
    * @private
    */
-  _overlayInPath: function(path) {
+  _overlayInPath(path) {
     path = path || [];
     for (var i = 0; i < path.length; i++) {
       if (path[i]._manager === this) {
         return path[i];
       }
     }
-  },
+  }
 
   /**
    * Ensures the click event is delegated to the right overlay.
    * @param {!Event} event
    * @private
    */
-  _onCaptureClick: function(event) {
+  _onCaptureClick(event) {
     var i = this._overlays.length - 1;
     if (i === -1)
       return;
@@ -60678,26 +61084,26 @@ IronOverlayManagerClass.prototype = {
         break;
       }
     }
-  },
+  }
 
   /**
    * Ensures the focus event is delegated to the right overlay.
    * @param {!Event} event
    * @private
    */
-  _onCaptureFocus: function(event) {
+  _onCaptureFocus(event) {
     var overlay = /** @type {?} */ (this.currentOverlay());
     if (overlay) {
       overlay._onCaptureFocus(event);
     }
-  },
+  }
 
   /**
    * Ensures TAB and ESC keyboard events are delegated to the right overlay.
    * @param {!Event} event
    * @private
    */
-  _onCaptureKeyDown: function(event) {
+  _onCaptureKeyDown(event) {
     var overlay = /** @type {?} */ (this.currentOverlay());
     if (overlay) {
       if (IronA11yKeysBehavior.keyboardEventMatchesKeys(event, 'esc')) {
@@ -60706,7 +61112,7 @@ IronOverlayManagerClass.prototype = {
         overlay._onCaptureTab(event);
       }
     }
-  },
+  }
 
   /**
    * Returns if the overlay1 should be behind overlay2.
@@ -60716,11 +61122,10 @@ IronOverlayManagerClass.prototype = {
    * @suppress {missingProperties}
    * @private
    */
-  _shouldBeBehindOverlay: function(overlay1, overlay2) {
+  _shouldBeBehindOverlay(overlay1, overlay2) {
     return !overlay1.alwaysOnTop && overlay2.alwaysOnTop;
   }
-};
-
+}
 const IronOverlayManager = new IronOverlayManagerClass();
 
 /**
@@ -60763,6 +61168,13 @@ var scrollEvents$1 = [
 ];
 // must be defined for modulizer
 var _boundScrollHandler$1;
+
+/**
+ * The current element that defines the DOM boundaries of the
+ * scroll lock. This is always the most recently locking element.
+ *
+ * @type {!Node|undefined}
+ */
 var currentLockingElement$1;
 
 /**
@@ -60855,7 +61267,7 @@ function _unlockScrollInteractions$1() {
  * outside the locking element when it is already at its scroll boundaries.
  * @param {!Event} event
  * @return {boolean}
- * @private
+ * @package
  */
 function _shouldPreventScrolling$1(event) {
   // Update if root target changed. For touch events, ensure we don't
@@ -60886,11 +61298,12 @@ function _shouldPreventScrolling$1(event) {
  * which is included too if scrollable.
  * @param {!Array<!Node>} nodes
  * @return {!Array<!Node>} scrollables
- * @private
+ * @package
  */
 function _getScrollableNodes$1(nodes) {
   var scrollables = [];
-  var lockingIndex = nodes.indexOf(currentLockingElement$1);
+  var lockingIndex =
+      nodes.indexOf(/** @type {!Node} */ (currentLockingElement$1));
   // Loop from root target to locking element (included).
   for (var i = 0; i <= lockingIndex; i++) {
     // Skip non-Element nodes.
@@ -60917,7 +61330,7 @@ function _getScrollableNodes$1(nodes) {
  * @param {number} deltaX Scroll delta on the x-axis
  * @param {number} deltaY Scroll delta on the y-axis
  * @return {!Node|undefined}
- * @private
+ * @package
  */
 function _getScrollingNode$1(nodes, deltaX, deltaY) {
   // No scroll.
@@ -60954,7 +61367,7 @@ function _getScrollingNode$1(nodes, deltaX, deltaY) {
  * x-axis scroll delta (positive: scroll right, negative: scroll left,
  * 0: no scroll), and the y-axis scroll delta (positive: scroll down,
  * negative: scroll up, 0: no scroll).
- * @private
+ * @package
  */
 function _getScrollInfo$1(event) {
   var info = {deltaX: event.deltaX, deltaY: event.deltaY};
@@ -61178,6 +61591,7 @@ const IronOverlayBehaviorImpl = {
     this._ensureSetup();
   },
 
+  /** @override */
   attached: function() {
     // Call _openedChanged here so that position can be computed correctly.
     if (this.opened) {
@@ -61186,8 +61600,20 @@ const IronOverlayBehaviorImpl = {
     this._observer = dom(this).observeNodes(this._onNodesChange);
   },
 
+  /** @override */
   detached: function() {
-    dom(this).unobserveNodes(this._observer);
+    // TODO(bicknellr): Per spec, checking `this._observer` should never be
+    // necessary because `connectedCallback` and `disconnectedCallback` should
+    // always be called in alternating order. However, the custom elements
+    // polyfill doesn't implement the reactions stack, so this can sometimes
+    // happen, particularly if ShadyDOM is in noPatch mode where the custom
+    // elements polyfill is installed before ShadyDOM. We should investigate
+    // whether or not we can either implement the reactions stack without major
+    // performance implications or patch ShadyDOM's functions to restore the
+    // typical ShadyDOM-then-custom-elements order and remove this workaround.
+    if (this._observer) {
+      dom(this).unobserveNodes(this._observer);
+    }
     this._observer = null;
     for (var cb in this.__rafs) {
       if (this.__rafs[cb] !== null) {
@@ -61416,7 +61842,7 @@ const IronOverlayBehaviorImpl = {
         // button outside the overlay).
         var activeElement = this._manager.deepActiveElement;
         if (activeElement === document.body ||
-            dom(this).deepContains(activeElement)) {
+            composedContains(this, activeElement)) {
           this.__restoreFocusNode.focus();
         }
       }
@@ -61452,7 +61878,7 @@ const IronOverlayBehaviorImpl = {
       event.stopPropagation();
       this._applyFocus();
     } else {
-      this._focusedChild = path[0];
+      this._focusedChild = /** @type {Node} */ (path[0]);
     }
   },
 
@@ -61726,6 +62152,18 @@ const IronOverlayBehaviorImpl = {
     }
   },
 
+};
+
+const composedParent = node =>
+    node.assignedSlot || node.parentNode || node.host;
+
+const composedContains = (ancestor, descendant) => {
+  for (let element = descendant; element; element = composedParent(element)) {
+    if (element === ancestor) {
+      return true;
+    }
+  }
+  return false;
 };
 
 /**
@@ -62102,7 +62540,7 @@ found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
 part of the polymer project is also subject to an additional IP rights grant
 found at http://polymer.github.io/PATENTS.txt
 */
-const template$2 = html$1`
+const template$1 = html$1`
 <custom-style>
   <style is="custom-style">
     html {
@@ -62426,8 +62864,8 @@ const template$2 = html$1`
   </style>
 </custom-style>
 `;
-template$2.setAttribute('style', 'display: none;');
-document.head.appendChild(template$2.content);
+template$1.setAttribute('style', 'display: none;');
+document.head.appendChild(template$1.content);
 
 /**
 @license
@@ -62858,7 +63296,7 @@ part of the polymer project is also subject to an additional IP rights grant
 found at http://polymer.github.io/PATENTS.txt
 */
 
-const template$3 = html$1`
+const template$2 = html$1`
   <style include="paper-spinner-styles"></style>
 
   <div id="spinnerContainer" class-name="[[__computeContainerClasses(active, __coolingDown)]]" on-animationend="__reset" on-webkit-animation-end="__reset">
@@ -62899,7 +63337,7 @@ const template$3 = html$1`
     </div>
   </div>
 `;
-template$3.setAttribute('strip-whitespace', '');
+template$2.setAttribute('strip-whitespace', '');
 
 /**
 Material design: [Progress &
@@ -62940,7 +63378,7 @@ Custom property | Description | Default
 @demo demo/index.html
 */
 Polymer({
-  _template: template$3,
+  _template: template$2,
 
   is: 'paper-spinner',
 
@@ -63437,17 +63875,18 @@ class AnypointAutocomplete extends LitElement {
       noautofocus
       nooverlap
       nocancelonoutsideclick
-      @overlay-closed="${this._closeHandler}">
+      @overlay-closed="${this._closeHandler}"
+    >
       <anypoint-listbox
         aria-label="Use arrows and enter to select list item. Escape to close the list."
         slot="dropdown-content"
         selectable="anypoint-item"
         useariaselected
         @select="${this._selectionHandler}">
-        ${_showLoader ? html`<paper-progress style="width: 100%" indeterminate></paper-progress>` : undefined}
+        ${_showLoader ? html`<paper-progress style="width: 100%" indeterminate></paper-progress>` : ''}
         ${_suggestions.map((item) => html`<anypoint-item ?compatibility="${compatibility}">
           <div>${item.value || item}</div>
-          ${compatibility ? undefined : html`<paper-ripple .noink="${noink}"></paper-ripple>`}
+          ${compatibility ? '' : html`<paper-ripple .noink="${noink}"></paper-ripple>`}
         </anypoint-item>`)}
       </anypoint-listbox>
     </anypoint-dropdown>
@@ -64306,7 +64745,7 @@ console.log(values); // {"scope": []}
 @appliesMixin ControlStateMixin
 */
 class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css `
     :host {
      display: block;
@@ -64428,7 +64867,7 @@ class OAuth2ScopeSelector extends ControlStateMixin(ValidatableMixin(LitElement)
       _inputTarget,
       _invalidMessage
     } = this;
-    return html `
+    return html `<style>${this.styles}</style>
     <div class="container">
       <label class="form-label">Scopes</label>
 
@@ -65003,7 +65442,7 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -65080,7 +65519,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       *[data-grant="client_credentials"] *[data-visible~="client_credentials"],
       *[data-grant="implicit"] *[data-visible~="implicit"],
       *[data-grant="password"] *[data-visible~="password"] {
-        display: block;
+        display: inline-block;
       }
 
       form[is-custom-grant] *[data-visible] {
@@ -65119,6 +65558,23 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
 
        .read-only-param-field.padding {
          padding: 12px;
+       }
+
+       anypoint-input,
+       anypoint-masked-input {
+         display: inline-block;
+         width: calc(100% - 16px);
+         margin: 16px 8px;
+       }
+
+       :host([compatibility]) anypoint-input,
+       :host([compatibility]) anypoint-masked-input {
+         margin-top: 20px;
+         margin-bottom: 20px;
+       }
+
+       :host([compatibility]) api-property-form-item {
+         margin: 0.1px 0;
        }`
     ];
   }
@@ -65830,20 +66286,19 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       return;
     }
     const model = this.amfSettings;
-    const prefix = this.ns.raml.vocabularies.security;
-    if (!this._hasType(model, prefix + 'ParametrizedSecurityScheme')) {
+    if (!this._hasType(model, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
       this._setupOAuthDeliveryMethod();
       this._updateGrantTypes();
       return;
     }
-    const shKey = this._getAmfKey(prefix + 'scheme');
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
     let scheme = model[shKey];
     let type;
     if (scheme) {
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      type = this._getValue(scheme, prefix + 'type');
+      type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
     }
     const isOauth2 = type === 'OAuth 2.0';
     if (!isOauth2) {
@@ -65852,7 +66307,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       return;
     }
     this._setupOAuthDeliveryMethod(scheme);
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.security + 'settings');
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
     let settings = scheme[sKey];
     if (settings instanceof Array) {
       settings = settings[0];
@@ -65889,10 +66344,9 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     if (!info) {
       return result;
     }
-    const http = this.ns.raml.vocabularies.http;
-    const hKey = this._getAmfKey(http + 'header');
-    const pKey = this._getAmfKey(http + 'parameter');
-    const nKey = this._getAmfKey(this.ns.schema.schemaName);
+    const hKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
+    const nKey = this._getAmfKey(this.ns.aml.vocabularies.core.name);
     let header = info[hKey];
     if (header instanceof Array) {
       header = header[0];
@@ -65929,15 +66383,27 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     if (!model) {
       return;
     }
-    const sec = this.ns.raml.vocabularies.security;
-    if (!this._hasType(model, sec + 'OAuth2Settings')) {
+    const sec = this.ns.aml.vocabularies.security;
+    if (!this._hasType(model, sec.OAuth2Settings)) {
       return;
     }
-    this.authorizationUri = this._getValue(model, sec + 'authorizationUri') || '';
-    this.accessTokenUri = this._getValue(model, sec + 'accessTokenUri') || '';
-    this.scopes = this._redSecurityScopes(model[this._getAmfKey(sec + 'scope')]);
-    const apiGrants = this._getValueArray(model, sec + 'authorizationGrant');
+
+    /* TODO this is temporary in order to support AMF 4 model change.
+        We need to fully support all flows later on rather than just the first */
+    let possibleFlowsNode = this._getValueArray(model, sec.flows);
+    if (possibleFlowsNode && possibleFlowsNode instanceof Array) {
+      possibleFlowsNode = possibleFlowsNode[0];
+    } else {
+      possibleFlowsNode = model;
+    }
+
+    this.authorizationUri = this._getValue(possibleFlowsNode, sec.authorizationUri) || '';
+    this.accessTokenUri = this._getValue(possibleFlowsNode, sec.accessTokenUri) || '';
+    this.scopes = this._redSecurityScopes(possibleFlowsNode[this._getAmfKey(sec.scope)]);
+    const apiGrants = this._getValueArray(model, sec.authorizationGrant);
+    // TODO check if this also needs to come from `possibleFlowsNode`
     const annotationKey = this._amfCustomSettingsKey(model);
+    // TODO check if this also needs to come from `possibleFlowsNode`
     const annotation = annotationKey ? model[annotationKey] : undefined;
     const grants = this._applyAnnotationGranst(apiGrants, annotation);
     if (grants && grants instanceof Array && grants.length) {
@@ -65963,7 +66429,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     }
     const result = [];
     for (let i = 0, len = model.length; i < len; i++) {
-      const value = this._getValue(model[i], this.ns.raml.vocabularies.security + 'name');
+      const value = this._getValue(model[i], this.ns.aml.vocabularies.core.name);
       if (!value) {
         continue;
       }
@@ -65978,7 +66444,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    */
   _amfCustomSettingsKey(model) {
     const keys = Object.keys(model);
-    const data = this.ns.raml.vocabularies.data;
+    const data = this.ns.aml.vocabularies.data;
     const settingsKeys = [
       this._getAmfKey(data + 'authorizationSettings'),
       this._getAmfKey(data + 'authorizationGrants'),
@@ -66005,13 +66471,13 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     if (!gransts) {
       gransts = [];
     }
-    const d = this.ns.raml.vocabularies.data;
+    const d = this.ns.aml.vocabularies.data;
     let model = annotation[this._getAmfKey(d + 'authorizationGrants')];
     model = this._ensureArray(model);
     if (!model || !model.length) {
       return gransts;
     }
-    const list = model[0][this._getAmfKey(this.ns.w3.name + '1999/02/22-rdf-syntax-ns#member')];
+    const list = model[0][this._getAmfKey(this.ns.w3.rdfSchema.member)];
     const addedGrants = [];
     list.forEach((item) => {
       const v = this._getValue(item, d + 'value');
@@ -66061,7 +66527,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     if (!annotation) {
       return;
     }
-    const d = this.ns.raml.vocabularies.data;
+    const d = this.ns.aml.vocabularies.data;
     const qpKey = this._getAmfKey(d + 'queryParameters');
     let authSettings = annotation[this._getAmfKey(d + 'authorizationSettings')];
     let tokenSettings = annotation[this._getAmfKey(d + 'accessTokenSettings')];
@@ -66363,13 +66829,14 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
   }
 
   _customValueChanged(e) {
-    const index = Number(e.target.dataset.index);
-    const type = e.target.dataset.type;
+    const { target } = e;
+    const index = Number(target.dataset.index);
+    const type = target.dataset.type;
     /* istanbul ignore if */
     if (index !== index || !type) {
       return;
     }
-    const value = e.target.value;
+    const { value } = target;
     const model = this._modelForCustomType(type);
     model[index].value = value;
     this._settingsChanged();
@@ -66640,7 +67107,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     const secretDisabled = disabled ||
       this._isFieldDisabled(isCustomGrant, grantType, 'client_credentials', 'authorization_code');
     const hasAccessToken = !!accessToken;
-    return html`
+    return html`<style>${this.styles}</style>
     <iron-form data-grant="${grantType}">
       <form autocomplete="on" ?is-custom-grant="${isCustomGrant}">
           ${this._getGrantTypeTemplate()}
@@ -66699,6 +67166,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
           <anypoint-button
             ?disabled="${_authorizing}"
             class="auth-button"
+            ?compatibility="${compatibility}"
             emphasis="medium"
             data-type="refresh-token"
             @click="${this.authorize}">Refresh access token</anypoint-button>
@@ -66709,6 +67177,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       <anypoint-button
         ?disabled="${_authorizing}"
         class="auth-button"
+        ?compatibility="${compatibility}"
         emphasis="medium"
         data-type="get-token"
         @click="${this.authorize}">Request access token</anypoint-button>
@@ -66849,7 +67318,7 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
-  static get styles() {
+  get styles() {
     return [
       authStyles,
       css`
@@ -66867,6 +67336,13 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
 
       .authorize-actions {
         margin-top: 12px;
+      }
+
+      anypoint-input,
+      anypoint-masked-input {
+        display: inline-block;
+        width: calc(100% - 16px);
+        margin: 8px;
       }`
     ];
   }
@@ -66895,7 +67371,7 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
       disabled
     } = this;
     const hasSignatureMethods = !!(signatureMethods && signatureMethods.length);
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="form">
       <iron-form>
         <form autocomplete="on">
@@ -67471,21 +67947,21 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
       this.signatureMethods = this.defaultSignatureMethods;
       return;
     }
-    const prefix = this.ns.raml.vocabularies.security;
-    const shKey = this._getAmfKey(prefix + 'scheme');
+    const prefix = this.ns.aml.vocabularies.security;
+    const shKey = this._getAmfKey(prefix.scheme);
     let scheme = model[shKey];
     let type;
     if (scheme) {
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      type = this._getValue(scheme, prefix + 'type');
+      type = this._getValue(scheme, prefix.type);
     }
     if (type !== 'OAuth 1.0') {
       this.signatureMethods = this.defaultSignatureMethods;
       return;
     }
-    const sKey = this._getAmfKey(this.ns.raml.vocabularies.security + 'settings');
+    const sKey = this._getAmfKey(prefix.settings);
     let settings = scheme[sKey];
     if (settings instanceof Array) {
       settings = settings[0];
@@ -67494,10 +67970,10 @@ class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
       this.signatureMethods = this.defaultSignatureMethods;
       return;
     }
-    this.requestTokenUri = this._getValue(settings, prefix + 'requestTokenUri');
-    this.authorizationUri = this._getValue(settings, prefix + 'authorizationUri');
-    this.accessTokenUri = this._getValue(settings, prefix + 'tokenCredentialsUri');
-    const signaturtes = this._getValueArray(settings, prefix + 'signature');
+    this.requestTokenUri = this._getValue(settings, prefix.requestTokenUri);
+    this.authorizationUri = this._getValue(settings, prefix.authorizationUri);
+    this.accessTokenUri = this._getValue(settings, prefix.tokenCredentialsUri);
+    const signaturtes = this._getValueArray(settings, prefix.signature);
     if (!signaturtes || !signaturtes.length) {
       this.signatureMethods = this.defaultSignatureMethods;
     } else {
@@ -67584,7 +68060,7 @@ the License.
  * @extends AuthMethodBase
  */
 class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -67603,12 +68079,17 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
 
       api-property-form-item {
         flex: 1;
+        margin: 0.1px 0;
       }
 
       .subtitle {
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .docs-container {
+        margin-top: 8px;
       }`
     ];
   }
@@ -67622,36 +68103,34 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
       compatibility,
       documentationOpened
     } = this;
-    return html`
-      <section>
-        ${_schemeName ? html`<div class="scheme-header">
-          <div class="subtitle">
-            <span>Scheme: ${_schemeName}</span>
-            ${_hasSchemeDescription ? html`<anypoint-icon-button
-              class="hint-icon"
-              title="Toggle description"
-              aria-label="Press to toggle schema description"
-              ?outlined="${outlined}"
-              ?compatibility="${compatibility}"
-              @click="${this.toggleSchemeDocumentation}"
-            >
-              <span class="icon">${help}</span>
-            </anypoint-icon-button>` : ''}
-          </div>
-          ${_hasSchemeDescription && documentationOpened ? html`<div class="docs-container">
-            <arc-marked .markdown="${_schemeDescription}" main-docs sanitize>
-              <div slot="markdown-html" class="markdown-body"></div>
-            </arc-marked>
-          </div>` : ''}
+    return html`<style>${this.styles}</style>
+      ${_schemeName ? html`<div class="scheme-header">
+        <div class="subtitle">
+          <span>Scheme: ${_schemeName}</span>
+          ${_hasSchemeDescription ? html`<anypoint-icon-button
+            class="hint-icon"
+            title="Toggle description"
+            aria-label="Press to toggle schema description"
+            ?outlined="${outlined}"
+            ?compatibility="${compatibility}"
+            @click="${this.toggleSchemeDocumentation}"
+          >
+            <span class="icon">${help}</span>
+          </anypoint-icon-button>` : ''}
+        </div>
+        ${_hasSchemeDescription && documentationOpened ? html`<div class="docs-container">
+          <arc-marked .markdown="${_schemeDescription}" main-docs sanitize>
+            <div slot="markdown-html" class="markdown-body"></div>
+          </arc-marked>
         </div>` : ''}
+      </div>` : ''}
 
-        <iron-form>
-          <form autocomplete="on">
-            ${this._getHeadersTemplate()}
-            ${this._getQueryTemplate()}
-          </form>
-        </iron-form>
-      </section>`;
+      <iron-form>
+        <form autocomplete="on">
+          ${this._getHeadersTemplate()}
+          ${this._getQueryTemplate()}
+        </form>
+      </iron-form>`;
   }
 
   static get properties() {
@@ -67761,10 +68240,9 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
       disabled,
       noDocs
     } = this;
-    return html`<section>
+    return html`
     ${items.map((item, index) =>
-    this._formItemTemplate(item, index, outlined, compatibility, readOnly, disabled, noDocs, type))}
-    </section>`;
+    this._formItemTemplate(item, index, outlined, compatibility, readOnly, disabled, noDocs, type))}`;
   }
 
   _formItemTemplate(item, index, outlined, compatibility, readOnly, disabled, noDocs, type) {
@@ -67828,37 +68306,37 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
     const prefix = this.ns.raml.vocabularies.security;
     this._headers = undefined;
     this._queryParameters = undefined;
-    if (!this._hasType(model, this.ns.raml.vocabularies.security + 'ParametrizedSecurityScheme')) {
+    if (!this._hasType(model, prefix.ParametrizedSecurityScheme)) {
       return;
     }
-    const shKey = this._getAmfKey(prefix + 'scheme');
+    const shKey = this._getAmfKey(prefix.scheme);
     let scheme = model[shKey];
     let type;
     if (scheme) {
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      type = this._getValue(scheme, prefix + 'type');
+      type = this._getValue(scheme, prefix.type);
     }
     if (!type || type.indexOf('x-') !== 0) {
       return;
     }
-    const hKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'header');
+    const hKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
     this._createViewModel('header', this._ensureArray(scheme[hKey]));
     const params = this._readParamsProperties(scheme);
     this._createViewModel('parameter', params);
-    this._schemeName = this._getValue(model, prefix + 'name');
-    this._schemeDescription = this._getValue(scheme, this.ns.schema.desc);
+    this._schemeName = this._getValue(model, this.ns.aml.vocabularies.core.name);
+    this._schemeDescription = this._getValue(scheme, this.ns.aml.vocabularies.core.description);
     this._settingsChanged();
   }
 
   _readParamsProperties(scheme) {
-    const pKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'parameter');
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
     let result = this._ensureArray(scheme[pKey]);
     if (result) {
       return result;
     }
-    const qKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'queryString');
+    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
     result = this._ensureArray(scheme[qKey]);
     if (result) {
       result = result[0];
@@ -68050,6 +68528,1498 @@ window.customElements.define('auth-method-custom', AuthMethodCustom);
 
 /**
 @license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
+ * A mixin to be used with elements that consumes lists of client certificates.
+ * It implements event listeners related to certificates data change.
+ *
+ * The mixin does not offer models to work with as the storing implementation
+ * may be different for different platforms.
+ * Use `@advanced-rest-client/arc-models/client-certificate-model.js` as a
+ * default store.
+ * Also, see the model definition to learn about events API for certificates.
+ *
+ * @mixinFunction
+ * @memberof ArcComponents
+ * @param {Class} base
+ * @return {Class}
+ */
+const ClientCertificatesConsumerMixin = (base) => class extends base {
+  static get properties() {
+    return {
+      /**
+       * The list of certificates to render.
+       * @type {Array<Object>}
+       */
+      items: { type: Array },
+      /**
+       * True when loading data from the datastore.
+       */
+      loading: { type: Boolean },
+      /**
+       * Prohibits automated certificates query when the component is initialized.
+       */
+      noAutoQueryCertificates: { type: Boolean },
+    };
+  }
+  /**
+   * @return {Boolean} `true` if `items` is set and has cookies
+   */
+  get hasItems() {
+    const { items } = this;
+    return !!(items && items.length);
+  }
+  /**
+   * A computed flag that determines that the query to the databastore
+   * has been performed and empty result was returned.
+   * This can be true only if not in search.
+   * @return {Boolean}
+   */
+  get dataUnavailable() {
+    const { hasItems, loading } = this;
+    return !loading && !hasItems;
+  }
+
+  constructor() {
+    super();
+    this._dbDestroyHandler = this._dbDestroyHandler.bind(this);
+    this._dataImportHandler = this._dataImportHandler.bind(this);
+    this._certDeleteHandler = this._certDeleteHandler.bind(this);
+    this._certInsertHandler = this._certInsertHandler.bind(this);
+  }
+
+  connectedCallback() {
+    /* istanbul ignore else */
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    window.addEventListener('datastore-destroyed', this._dbDestroyHandler);
+    window.addEventListener('data-imported', this._dataImportHandler);
+    window.addEventListener('client-certificate-delete', this._certDeleteHandler);
+    window.addEventListener('client-certificate-insert', this._certInsertHandler);
+  }
+
+  disconnectedCallback() {
+    /* istanbul ignore else */
+    if (super.disconnectedCallback) {
+      super.disconnectedCallback();
+    }
+    window.removeEventListener('datastore-destroyed', this._dbDestroyHandler);
+    window.removeEventListener('data-imported', this._dataImportHandler);
+    window.removeEventListener('client-certificate-delete', this._certDeleteHandler);
+    window.removeEventListener('client-certificate-insert', this._certInsertHandler);
+  }
+
+  firstUpdated() {
+    const { noAutoQueryCertificates, items } = this;
+    if (!noAutoQueryCertificates && !items) {
+      this.reset();
+    }
+  }
+
+  _dbDestroyHandler(e) {
+    const { datastore } = e.detail;
+    if (datastore !== 'client-certificates') {
+      return;
+    }
+    this.items = undefined;
+  }
+
+  /**
+   * Handler for `data-imported` cutom event.
+   * Refreshes data state.
+   */
+  _dataImportHandler() {
+    this.reset();
+  }
+
+  _certDeleteHandler(e) {
+    if (e.cancelable) {
+      return;
+    }
+    const { id } = e.detail;
+    const items = this.items || [];
+    const index = items.findIndex((i) => i._id === id);
+    if (index === -1) {
+      return;
+    }
+    items.splice(index, 1);
+    this.items = [...items];
+  }
+
+  _certInsertHandler(e) {
+    if (e.cancelable) {
+      return;
+    }
+    const item = e.detail;
+    const items = this.items || [];
+    const index = items.findIndex((i) => i._id === item._id);
+    if (index === -1) {
+      items.push(item);
+    } else {
+      items[index] = item;
+    }
+    this.items = [...items];
+  }
+  /**
+   * Resets current view and requeries for certificates.
+   */
+  reset() {
+    this.loading = false;
+    this.items = undefined;
+    this.queryCertificates();
+  }
+  /**
+   * Handles an exception by sending exception details to GA.
+   * @param {String} message A message to send.
+   */
+  _handleException(message) {
+    const e = new CustomEvent('send-analytics', {
+     bubbles: true,
+     composed: true,
+     detail: {
+       type: 'exception',
+       description: message
+     }
+    });
+    this.dispatchEvent(e);
+  }
+
+  /**
+   * Queries application for list of cookies.
+   * It dispatches `session-cookie-list-all` cuystom event.
+   * @return {Promise} Resolved when cookies are available.
+   */
+  async queryCertificates() {
+    this.loading = true;
+    const e = new CustomEvent('client-certificate-list', {
+      detail: {},
+      cancelable: true,
+      composed: true,
+      bubbles: true
+    });
+    this.dispatchEvent(e);
+    if (!e.defaultPrevented) {
+      this.loading = false;
+      this._handleException('Certificates store not redy.');
+      return;
+    }
+    try {
+      this.items = await e.detail.result;
+    } catch (e) {
+      this.items = undefined;
+      this._handleException(e.message);
+    }
+    this.loading = false;
+  }
+  /**
+   * Performs a delete action of a client certificate.
+   *
+   * @param {String} id An id of the certificate to delete
+   * @return {Promise}
+   */
+  async _delete(id) {
+    const e = new CustomEvent('client-certificate-delete', {
+      detail: {
+        id
+      },
+      cancelable: true,
+      composed: true,
+      bubbles: true
+    });
+    this.dispatchEvent(e);
+    if (!e.defaultPrevented) {
+      this._handleException('Certificates store not redy');
+      return;
+    }
+    try {
+      return await e.detail.result;
+    } catch (e) {
+      this._handleException(e.message);
+    }
+  }
+
+  async _importCert(opts) {
+    if (!opts.name) {
+      opts.name = new Date().toGMTString();
+    }
+    const e = this.dispatchImportCert(opts);
+    return await e.detail.result;
+  }
+  /**
+   * Dispatches `client-certificate-insert` to import a certificate into the application.
+   * @param {Object} value Certificate definition.
+   * @return {CustomEvent} Dispatched event
+   */
+  dispatchImportCert(value) {
+    const e = new CustomEvent('client-certificate-insert', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        value
+      }
+    });
+    this.dispatchEvent(e);
+    return e;
+  }
+};
+
+/**
+ * `anypoint-radio-button`
+ *
+ * Anypoint styled radio button.
+ *
+ * ## Usage
+ *
+ * Install element:
+ *
+ * ```
+ * npm i --save @anypoint-components/anypoint-radio-button
+ * ```
+ *
+ * Import into your app:
+ *
+ * ```html
+ * <script type="module" src="node_modules/@anypoint-components/anypoint-radio-button.js"></script>
+ * ```
+ *
+ * Or into another component
+ *
+ * ```javascript
+ * import '@anypoint-components/anypoint-radio-button.js';
+ * ```
+ *
+ * Use it:
+ *
+ * ```html
+ * <paper-radio-group selectable="anypoint-radio-button">
+ *  <anypoint-radio-button name="a">Apple</anypoint-radio-button>
+ *  <anypoint-radio-button name="b">Banana</anypoint-radio-button>
+ *  <anypoint-radio-button name="c">Orange</anypoint-radio-button>
+ * </paper-radio-group>
+ * ```
+ *
+ * ### Styling
+ *
+ * `<anypoint-radio-button>` provides the following custom properties and mixins for styling:
+ *
+ * Custom property | Description | Default
+ * ----------------|-------------|----------
+ * `--anypoint-radio-button-radio-container` | A mixin applied to the internal radio container | `{}`
+ * `--anypoint-radio-button-unchecked-color` | Border color of unchecked button | `--anypoint-color-aluminum5`
+ * `--anypoint-radio-button-unchecked-background-color` | Unchecked button background color | `transparent`
+ * `--anypoint-radio-button-checked-color` | Checked button selection color | `--anypoint-color-coreBlue3`
+ * `--anypoint-radio-button-checked-inner-background-color` | Checked button inner cicrcle background color | `#fff`
+ * `--anypoint-radio-button-label-spacing` | Spacing between the label and the button | `5px`
+ * `--anypoint-radio-button-label-color` | Label color | `--primary-text-color`
+ * `--anypoint-radio-button-label` | A mixin applied to the internal label | `{}`
+ *
+ * @customElement
+ * @demo demo/index.html
+ * @memberof AnypointComponents
+ */
+class AnypointRadioButton extends CheckedElementMixin(LitElement) {
+  get styles() {
+    return css`
+    :host {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      line-height: 0;
+      white-space: nowrap;
+      cursor: pointer;
+      vertical-align: middle;
+    }
+
+    :host(:focus) {
+      outline: none;
+    }
+
+    :host([disabled]) {
+      cursor: auto;
+      pointer-events: none;
+      color: var(--anypoint-radio-button-disabled-color, #a8a8a8);
+    }
+
+    .radio-container {
+      display: inline-block;
+      position: relative;
+      vertical-align: middle;
+      position: relative;
+      vertical-align: middle;
+      width: 16px;
+      height: 16px;
+      padding: 8px;
+    }
+
+    .radio-container:before {
+      top: 0%;
+      left: 0%;
+      width: 100%;
+      height: 100%;
+      opacity: 0.04;
+      background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-primary));
+      pointer-events: none;
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      transition: transform ease 0.18s;
+      will-change: transform;
+    }
+
+    .radio-container:hover:before,
+    :host(:focus) .radio-container:before {
+      transform: scale(1);
+    }
+
+    :host(:focus) .radio-container:before {
+      opacity: 0.08;
+    }
+
+    .state-container {
+      width: 16px;
+      height: 16px;
+      position: relative;
+    }
+
+    #offRadio, #onRadio {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: block;
+      border-width: 1px;
+      border-color: transparent;
+      border-style: solid;
+      position: absolute;
+    }
+
+    #offRadio {
+      border-color: var(--anypoint-radio-button-unchecked-color, var(--anypoint-color-aluminum5));
+      background-color: var(--anypoint-radio-button-unchecked-background-color, transparent);
+      transition: background-color 0.28s, border-color 0.28s;
+    }
+
+    :host(:hover) #offRadio {
+      border-color: var(--anypoint-radio-button-hover-unchecked-color, var(--anypoint-color-coreBlue2));
+    }
+
+    :host(:active) #offRadio,
+    :host(:focus) #offRadio {
+      border-color: var(--anypoint-radio-button-active-unchecked-color, var(--anypoint-color-coreBlue3));
+    }
+
+    :host([checked]) #offRadio {
+      border-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-coreBlue3));
+      background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-coreBlue3));
+    }
+
+    :host([disabled]) #offRadio {
+      border-color: var(--anypoint-radio-button-unchecked-color, var(--anypoint-color-steel1));
+      opacity: 0.65;
+    }
+
+    :host([disabled][checked]) #offRadio {
+      background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-steel1));
+    }
+
+    #onRadio {
+      background-color: var(--anypoint-radio-button-checked-inner-background-color, #fff);
+      -webkit-transform: scale(0);
+      transform: scale(0);
+      transition: -webkit-transform ease 0.28s;
+      transition: transform ease 0.28s;
+      will-change: transform;
+    }
+
+    :host([checked]) #onRadio {
+      -webkit-transform: scale(0.5);
+      transform: scale(0.5);
+    }
+
+    .radioLabel {
+      line-height: normal;
+      position: relative;
+      display: inline-block;
+      vertical-align: middle;
+      white-space: normal;
+      color: var(--anypoint-radio-button-label-color, var(--primary-text-color));
+    }
+
+    :host-context([dir="rtl"]) .radioLabel {
+      margin-left: 8px;
+    }
+
+    :host([disabled]) .radioLabel {
+      pointer-events: none;
+      color: var(--anypoint-radio-button-disabled-color, #a8a8a8);
+    }
+    `;
+  }
+
+  render() {
+    return html`<style>${this.styles}</style>
+      <div class="radio-container">
+        <div class="state-container">
+          <div id="offRadio"></div>
+          <div id="onRadio"></div>
+        </div>
+      </div>
+      <label class="radioLabel"><slot></slot></label>`;
+  }
+
+  get checked() {
+    return this._checked || false;
+  }
+
+  set checked(value) {
+    if (this._setChanged('checked', value)) {
+      this._updateCheckedAria(value);
+      this._checkedChanged(value);
+    }
+  }
+
+  get disabled() {
+    return this._disabled;
+  }
+
+  set disabled(value) {
+    if (this._setChanged('disabled', value)) {
+      this._disabledChanged(value);
+    }
+  }
+
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (!this.hasAttribute('role')) {
+      this.setAttribute('role', 'radio');
+    }
+    if (!this.hasAttribute('tabindex')) {
+      this.setAttribute('tabindex', '0');
+    }
+    if (this.checked === undefined) {
+      this.checked = false;
+    } else {
+      this._updateCheckedAria(this.checked);
+    }
+    this.addEventListener('keydown', this._keyDownHandler);
+    this.addEventListener('click', this._clickHandler);
+  }
+
+  disconnectedCallback() {
+    if (super.disconnectedCallback) {
+      super.disconnectedCallback();
+    }
+    this.addEventListener('keydown', this._keyDownHandler);
+    this.addEventListener('click', this._clickHandler);
+  }
+
+  _updateCheckedAria(checked) {
+    if (checked === undefined) {
+      checked = false;
+    }
+    this.setAttribute('aria-checked', String(checked));
+  }
+
+  /**
+   * Handler for keyboard down event
+   * @param {KeyboardEvent} e
+   */
+  _keyDownHandler(e) {
+    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13) {
+      this._clickHandler(e);
+      this._asyncClick();
+    } else if (e.code === 'Space' || e.keyCode === 32) {
+      this._clickHandler(e);
+      this._asyncClick();
+      e.preventDefault();
+    }
+  }
+  /**
+   * Handler for pointer click event
+   * @param {MouseEvent} e
+   */
+  _clickHandler() {
+    if (this.disabled) {
+      return;
+    }
+    this.checked = true;
+  }
+  /**
+   * Performs a click operation in next macrotask.
+   */
+  _asyncClick() {
+    if (this.disabled) {
+      return;
+    }
+    setTimeout(() => this.click(), 1);
+  }
+  /**
+   * Handles `disable` property state change and manages `aria-disabled`
+   * and `tabindex` attributes.
+   * @param {Boolean} disabled
+   */
+  _disabledChanged(disabled) {
+    this.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    if (disabled) {
+      // Read the `tabindex` attribute instead of the `tabIndex` property.
+      // The property returns `-1` if there is no `tabindex` attribute.
+      // This distinction is important when restoring the value because
+      // leaving `-1` hides shadow root children from the tab order.
+      this._oldTabIndex = this.getAttribute('tabindex');
+      this.focused = false;
+      this.setAttribute('tabindex', '-1');
+      this.blur();
+    } else if (this._oldTabIndex !== undefined) {
+      if (this._oldTabIndex === null) {
+        this.removeAttribute('tabindex');
+      } else {
+        this.setAttribute('tabindex', this._oldTabIndex);
+      }
+    }
+  }
+}
+
+window.customElements.define('anypoint-radio-button', AnypointRadioButton);
+
+/**
+ * A web component that groups custom radio buttons and handles selection inside
+ * the group.
+ *
+ * Requirements for children:
+ * - must have role="radio" attribute
+ * - must have name attribute
+ * - radio state change must be notified via `change` event.
+ *
+ * Radio buttons with the same name inside their group will have single selection.
+ * This means when selecting a radio button any other currently selected button
+ * will be deselected.
+ *
+ * Also. when initializing the component, only last selected component keeps the
+ * selection.
+ * When new checked radio button is inserted into the group the selection is passed to the newly
+ * arriving element.
+ *
+ * This behavior is consistent with native DOM API.
+ *
+ * The group element exposes `selected` property that holds a reference to
+ * currently selected radio button.
+ *
+ * Example
+ *
+ * ```
+ * <anypoint-radio-group>
+ *  <anypoint-radio-button name="option"></anypoint-radio-button>
+ *  <other-control role="button" name="option" checked></other-control>
+ * </anypoint-radio-group>
+ * ```
+ *
+ * @customElement
+ * @extends HTMLElement
+ */
+class AnypointRadioGroup extends AnypointMenuMixin(LitElement) {
+  createRenderRoot() {
+    return this;
+  }
+  /**
+   * @return {NodeList} List of radio button nodes.
+   */
+  get elements() {
+    return this.querySelectorAll('[role="radio"], input[type="radio"]');
+  }
+
+  constructor() {
+    super();
+    this.multi = false;
+  }
+
+  connectedCallback() {
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    this.style.display = 'inline-block';
+    this.style.verticalAlign = 'middle';
+    this.setAttribute('role', 'radiogroup');
+    this.selectable = '[role=radio],input[type=radio]';
+    this._ensureSingleSelection();
+    if (this.disabled) {
+      this._disabledChanged(this.disabled);
+    }
+  }
+  /**
+   * Function that manages attribute change.
+   * If the changed attribute is `role` with value `radio` then the node is processed
+   * as a button and is added or removed from tollection.
+   * @param {MutationRecord} record A MutationRecord received from MutationObserver
+   * callback.
+   */
+  _processNodeAttributeChange(record) {
+    if (record.attributeName !== 'role') {
+      return;
+    }
+    const target = record.target;
+    if (target === this) {
+      return;
+    }
+    if (target.getAttribute('role') === 'radio') {
+      this._processAddedNodes([target]);
+    } else {
+      this._nodeRemoved(target);
+    }
+  }
+  /**
+   * Tests if given node is a radio button.
+   * @param {Node} node A node to test
+   * @return {Boolean} True if the node has "radio" role or is a button with
+   * "radio" type.
+   */
+  _isRadioButton(node) {
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return false;
+    }
+    if (node.getAttribute('role') === 'radio') {
+      return true;
+    }
+    if (node.localName === 'input' && node.type === 'radio') {
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Adds `change` event listener to detected radio buttons.
+   * A button is considered as a radio button when its `role` is `radio`.
+   *
+   * @param {NodeList} nodes List of nodes to process.
+   */
+  _processAddedNodes(nodes) {
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      if (node === this || !this._isRadioButton(node)) {
+        continue;
+      }
+      node.setAttribute('tabindex', '-1');
+    }
+  }
+  /**
+   * Removes event listenensers and possibly clears `selected` when removing nodes from
+   * light DOM.
+   * @param {NodeList} nodes Nodes to process
+   */
+  _processRemovedNodes(nodes) {
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      if (node === this || !this._isRadioButton(node)) {
+        continue;
+      }
+      this._nodeRemoved(node);
+    }
+  }
+  /**
+   * A function to be called when a node from the light DOM has been removed.
+   * It clears previosly attached listeners and selection if passed node is
+   * currently selected node.
+   * @param {Node} node Removed node
+   */
+  _nodeRemoved(node) {
+    const { selected } = this;
+    if ((selected || selected === 0) && this._valueForItem(node) === selected) {
+      this.selected = undefined;
+    }
+  }
+  /**
+   * Overrides `AnypointMenuMixin._onKeydown`. Adds right / left arrows support.
+   * @param {KeyboardEvent} e
+   */
+  _onKeydown(e) {
+    if (e.key === 'ArrowRight') {
+      this._onDownKey(e);
+      e.stopPropagation();
+    } else if (e.key === 'ArrowLeft') {
+      this._onUpKey(e);
+      e.stopPropagation();
+    } else {
+      super._onKeydown(e);
+    }
+  }
+  /**
+   * Overrides `AnypointSelectableMixin._applySelection` to manage item's checked
+   * state.
+   * @param {Node} item Selected / deselected item.
+   * @param {Boolean} isSelected True if the item is selected
+   */
+  _applySelection(item, isSelected) {
+    super._applySelection(item, isSelected);
+    item.checked = isSelected;
+  }
+  /**
+   * Ensures that the last child element is checked in the group.
+   */
+  _ensureSingleSelection() {
+    const nodes = this._items;
+    let checked = false;
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const currentChecked = nodes[i].checked;
+      if (currentChecked && !checked) {
+        checked = true;
+        if (this.attrForSelected) {
+          const value = this._valueForItem(nodes[i]);
+          this.select(value);
+        } else {
+          this.select(i);
+        }
+      } else if (currentChecked && checked) {
+        this._applySelection(nodes[i], false);
+      }
+    }
+  }
+  /**
+   * Overrides `AnypointSelectableMixin._mutationHandler`.
+   * Processes dynamically added nodes and updates selection if needed.
+   * @param {Array<MutationRecord>} mutationsList A list of changes record
+   */
+  _mutationHandler(mutationsList) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'attributes') {
+        this._processNodeAttributeChange(mutation);
+      } else if (mutation.type === 'childList') {
+        if (mutation.addedNodes && mutation.addedNodes.length) {
+          this._ensureSingleSelection();
+        }
+        if (mutation.removedNodes && mutation.removedNodes.length) {
+          this._processRemovedNodes(mutation.removedNodes);
+        }
+      }
+    }
+    super._mutationHandler(mutationsList);
+  }
+  /**
+   * Overrides `AnypointSelectableMixin._observeItems` to include subtree.
+   * @return {MutationObserver}
+   */
+  _observeItems() {
+    const config = {
+      attributes: true,
+      childList: true,
+      subtree: true
+    };
+    const observer = new MutationObserver(this._mutationHandler);
+    observer.observe(this, config);
+    return observer;
+  }
+  /**
+   * Disables children when disabled state changes
+   * @param {Boolean} disabled
+   */
+  _disabledChanged(disabled) {
+    super._disabledChanged(disabled);
+    this.items.forEach((node) => node.disabled = disabled);
+  }
+}
+window.customElements.define('anypoint-radio-group', AnypointRadioGroup);
+
+/**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
+ * An element to display formatted date and time.
+ *
+ * The `date` propery accepts Date object, Number as a timestamp or string
+ * that will be parsed to the Date object.
+ *
+ * This element uses the `Intl` interface which is available in IE 11+ browsers.
+ *
+ * To format the date use [Intl.DateTimeFormat]
+ * (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat)
+ * inteface options.
+ *
+ * The default value for each date-time component property is undefined,
+ * but if all component properties are undefined, then year, month, and day
+ * are assumed to be "numeric" (per spec).
+ *
+ * ### Example
+ *
+ * ```html
+ * <date-time date="2010-12-10T11:50:45Z" year="numeric" month="narrow" day="numeric"></date-time>
+ * ```
+ *
+ * The element provides accessibility by using the `time` element and setting
+ * the `datetime` attribute on it.
+ *
+ * ### Styling
+ *
+ * `<date-time>` provides the following custom properties and mixins for styling:
+ *
+ * Custom property | Description | Default
+ * ----------------|-------------|----------
+ * `--date-time` | Mixin applied to the element | `{}`
+ *
+ *
+ * @customElement
+ * @demo demo/index.html
+ * @memberof UiElements
+ */
+class DateTime extends HTMLElement {
+  static get observedAttributes() {
+    return [
+      'locales', 'date', 'year', 'month', 'day', 'hour', 'minute', 'second',
+      'weekday', 'time-zone-name', 'era', 'time-zone', 'hour12', 'itemprop'
+    ];
+  }
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._observer = new MutationObserver(() => this._mutationHandler());
+  }
+
+  connectedCallback() {
+    this._observer.observe(this.shadowRoot, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+    this._updateLabel();
+  }
+
+  disconnectedCallback() {
+    this._observer.disconnect();
+  }
+
+  _mutationHandler() {
+    this.setAttribute('aria-label', this.shadowRoot.textContent);
+  }
+
+  /**
+   * A string with a BCP 47 language tag, or an array of such strings.
+   * For the general form and interpretation of the locales argument,
+   * see the Intl page.
+   * The following Unicode extension keys are allowed:
+   * - nu - Numbering system. Possible values include: "arab", "arabext",
+   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
+   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
+   * "tamldec", "telu", "thai", "tibt".
+   * - ca - Calendar. Possible values include: "buddhist", "chinese",
+   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
+   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
+   *
+   * @type {String}
+   */
+  get locales() {
+    return this.getAttribute('locales');
+  }
+  /**
+   * A string with a BCP 47 language tag, or an array of such strings.
+   * For the general form and interpretation of the locales argument,
+   * see the Intl page.
+   * The following Unicode extension keys are allowed:
+   * - nu - Numbering system. Possible values include: "arab", "arabext",
+   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
+   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
+   * "tamldec", "telu", "thai", "tibt".
+   * - ca - Calendar. Possible values include: "buddhist", "chinese",
+   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
+   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
+   *
+   * @param {String} v
+   * @type {String}
+   */
+  set locales(v) {
+    this.setAttribute('locales', v);
+  }
+  /**
+   * The representation of the year.
+   * Possible values are "numeric", "2-digit".
+   */
+  get year() {
+    return this.getAttribute('year');
+  }
+  /**
+   * The representation of the year.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set year(v) {
+    this.setAttribute('year', v);
+  }
+  /**
+   * The representation of the month.
+   * Possible values are "numeric", "2-digit", "narrow", "short", "long".
+   */
+  get month() {
+    return this.getAttribute('month');
+  }
+  /**
+   * The representation of the month.
+   * @param {String} v Possible values are "numeric", "2-digit", "narrow", "short", "long".
+   */
+  set month(v) {
+    this.setAttribute('month', v);
+  }
+  /**
+   * The representation of the day.
+   * Possible values are "numeric", "2-digit".
+   */
+  get day() {
+    return this.getAttribute('day');
+  }
+  /**
+   * The representation of the day.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set day(v) {
+    this.setAttribute('day', v);
+  }
+  /**
+   * The representation of the hour.
+   * Possible values are "numeric", "2-digit".
+   */
+  get hour() {
+    return this.getAttribute('hour');
+  }
+  /**
+   * The representation of the hour.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set hour(v) {
+    this.setAttribute('hour', v);
+  }
+  /**
+   * The representation of the minute.
+   * Possible values are "numeric", "2-digit".
+   */
+  get minute() {
+    return this.getAttribute('minute');
+  }
+  /**
+   * The representation of the minute.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set minute(v) {
+    this.setAttribute('minute', v);
+  }
+  /**
+   * The representation of the second.
+   * Possible values are "numeric", "2-digit".
+   */
+  get second() {
+    return this.getAttribute('second');
+  }
+  /**
+   * The representation of the second.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set second(v) {
+    this.setAttribute('second', v);
+  }
+  /**
+   * The representation of the weekday.
+   * Possible values are "narrow", "short", "long".
+   */
+  get weekday() {
+    return this.getAttribute('weekday');
+  }
+  /**
+   * The representation of the weekday.
+   * @param {String} v Possible values are "narrow", "short", "long".
+   */
+  set weekday(v) {
+    this.setAttribute('weekday', v);
+  }
+  /**
+   * The representation of the time zone name.
+   *
+   * Possible values are "short", "long".
+   */
+  get timeZoneName() {
+    return this.getAttribute('time-zone-name');
+  }
+  /**
+   * The representation of the time zone name.
+   *
+   * @param {String} v Possible values are "short", "long".
+   */
+  set timeZoneName(v) {
+    this.setAttribute('time-zone-name', v);
+  }
+  /**
+   * The time zone to use. The only value implementations must recognize
+   * is "UTC"; the default is the runtime's default time zone.
+   * Implementations may also recognize the time zone names of the IANA
+   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
+   * "America/New_York".
+   */
+  get timeZone() {
+    return this.getAttribute('time-zone');
+  }
+  /**
+   * The time zone to use. The only value implementations must recognize
+   * is "UTC"; the default is the runtime's default time zone.
+   * Implementations may also recognize the time zone names of the IANA
+   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
+   * "America/New_York".
+   * @param {String} v
+   */
+  set timeZone(v) {
+    this.setAttribute('time-zone', v);
+  }
+  /**
+   * The representation of the era.
+   *
+   * Possible values are "narrow", "short", "long".
+   */
+  get era() {
+    return this.getAttribute('era');
+  }
+  /**
+   * The representation of the era.
+   *
+   * @param {String} v Possible values are "narrow", "short", "long".
+   */
+  set era(v) {
+    this.setAttribute('era', v);
+  }
+  /**
+   * Whether to use 12-hour time (as opposed to 24-hour time).
+   * Possible values are `true` and `false`; the default is locale
+   * dependent.
+   *
+   * @type {Boolean}
+   */
+  get hour12() {
+    if (!this.hasAttribute('hour12') && !this.__hour12set) {
+      return null;
+    }
+    return this.hasAttribute('hour12');
+  }
+  /**
+   * Whether to use 12-hour time (as opposed to 24-hour time).
+   * Possible values are `true` and `false`; the default is locale
+   * dependent.
+   *
+   * @param {Boolean} v
+   */
+  set hour12(v) {
+    this.__hour12set = true;
+    if (v) {
+      this.setAttribute('hour12', '');
+    } else {
+      this.removeAttribute('hour12');
+    }
+  }
+  /**
+   * A date object to render.
+   * It can be a `Date` object, number representing a timestamp
+   * or valid date string. The argument is parsed by `Date` constructor
+   * to produce the value.
+   *
+   * @type {Date|String|number}
+   */
+  get date() {
+    if (this.__date) {
+      return this.__date;
+    }
+    return this.getAttribute('date');
+  }
+  /**
+   * A date object to render.
+   * It can be a `Date` object, number representing a timestamp
+   * or valid date string. The argument is parsed by `Date` constructor
+   * to produce the value.
+   *
+   * @param {Date|String|number} v The date to render
+   */
+  set date(v) {
+    this.__date = v;
+    if (typeof v === 'string') {
+      this.setAttribute('date', v);
+    } else {
+      this._updateLabel();
+    }
+  }
+
+  get itemprop() {
+    return this._getTimeNode().getAttribute('itemprop');
+  }
+
+  set itemprop(value) {
+    const old = this.itemprop;
+    if (old === value) {
+      return;
+    }
+    if (old && value === null) {
+      // This setter moves attribute from this element to "<time>" elsement.
+      // When the attribute is removed from this then it becomes null.
+      return;
+    }
+    const node = this._getTimeNode();
+    if (value) {
+      node.setAttribute('itemprop', value);
+      this.removeAttribute('itemprop');
+    } else {
+      node.removeAttribute('itemprop');
+    }
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'itemprop') {
+      this[name] = newValue;
+      return;
+    }
+    this._updateLabel();
+  }
+  /**
+   * Parses input `date` to a Date object.
+   * @param {String|Number|Date} date A date to parse
+   * @return {Date}
+   */
+  _getParsableDate(date) {
+    if (!date) {
+      date = new Date();
+    } else if (typeof date === 'string') {
+      try {
+        date = new Date(date);
+        const _test = date.getDate();
+        if (_test !== _test) {
+          date = new Date();
+        }
+      } catch (e) {
+        date = new Date();
+      }
+    } else if (!isNaN(date)) {
+      date = new Date(date);
+    } else if (!(date instanceof Date)) {
+      date = new Date();
+    }
+    return date;
+  }
+
+  _getIntlOptions() {
+    const options = {};
+    if (this.year) {
+      options.year = this.year;
+    }
+    if (this.month) {
+      options.month = this.month;
+    }
+    if (this.day) {
+      options.day = this.day;
+    }
+    if (this.hour) {
+      options.hour = this.hour;
+    }
+    if (this.minute) {
+      options.minute = this.minute;
+    }
+    if (this.second) {
+      options.second = this.second;
+    }
+    if (this.weekday) {
+      options.weekday = this.weekday;
+    }
+    if (this.era) {
+      options.era = this.era;
+    }
+    if (this.timeZoneName) {
+      options.timeZoneName = this.timeZoneName;
+    }
+    if (this.timeZone) {
+      options.timeZone = this.timeZone;
+    }
+    if (this.hour12 !== undefined) {
+      options.hour12 = this.hour12;
+    }
+    return options;
+  }
+  /**
+   * @return {Element} A reference to a `<time>` element that is in the shadow DOM of this element.
+   */
+  _getTimeNode() {
+    let node = this.shadowRoot.querySelector('time');
+    if (!node) {
+      node = document.createElement('time');
+      this.shadowRoot.appendChild(node);
+    }
+    return node;
+  }
+
+  _updateLabel() {
+    if (!this.parentElement) {
+      return;
+    }
+    const date = this._getParsableDate(this.date);
+    const node = this._getTimeNode();
+    node.setAttribute('datetime', date.toISOString());
+    /* istanbul ignore if */
+    if (typeof Intl === 'undefined') {
+      node.innerText = date.toString();
+      return;
+    }
+    let locales;
+    if (this.locales) {
+      locales = this.locales;
+    }
+    const options = this._getIntlOptions();
+    const value = new Intl.DateTimeFormat(locales, options).format(date);
+    node.innerText = value;
+  }
+}
+window.customElements.define('date-time', DateTime);
+
+/**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
+ * The `<auth-method-certificate>` element renders a form with installed
+ * in the application client certificates.
+ * The user can select a certificate from the list. Produced settings contains
+ * the ID of selected certificate.
+ * The application should handle this information by it's own.
+ *
+ * ### Example
+ *
+ * ```html
+ * <auth-method-certificate selected="DATA STORE ID"></auth-method-certificate>
+ * ```
+ *
+ * This example will produce a form with prefilled username and passowrd with
+ * value "test".
+ *
+ * @customElement
+ * @memberof UiElements
+ * @demo demo/basic.html
+ * @extends AuthMethodBase
+ */
+class AuthMethodCertificate extends ClientCertificatesConsumerMixin(AuthMethodBase) {
+  get styles() {
+    return [
+      authStyles,
+      css`
+      :host {
+        display: block;
+      }
+
+      .button-content {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .cert-meta {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .cert-type-ico {
+        color: var(--accent-color);
+        text-transform: uppercase;
+        margin-right: 8px;
+      }
+
+      anypoint-radio-button {
+        width: 100%;
+        margin: 8px 0;
+        align-items: flex-start;
+      }
+
+      .default {
+        align-items: center;
+      }
+
+      .name {
+        font-size: 1rem;
+        font-weight: 400;
+        margin-bottom: 8px;
+        margin-top: 7px;
+      }
+
+      .created {
+        font-size: 0.85rem;
+        color: var(--auth-method-certificate-second-line-color, initial);
+        font-weight: 200;
+      }
+
+      .list {
+        overflow: auto;
+        max-height: 400px;
+      }`
+    ];
+  }
+
+  render() {
+    const {
+      compatibility,
+      items,
+      selected
+    } = this;
+    if (!items || !items.length) {
+      return html`<p class="empty-screen">There are no certificates installed in the application.</p>`;
+    }
+    return html`<style>${this.styles}</style>
+    <div class="form-title">Select a certificate</div>
+    <div class="list">
+      <anypoint-radio-group
+        ?compatibility="${compatibility}"
+        attrForSelected="data-id"
+        fallbackSelection="none"
+        .selected="${selected}"
+        @selected-changed="${this._selectedHandler}"
+      >
+        <anypoint-radio-button
+          data-id="none"
+          ?compatibility="${compatibility}"
+          class="default"
+        >None</anypoint-radio-button>
+        ${items.map((item) => html`<anypoint-radio-button
+          data-id="${item._id}"
+          ?compatibility="${compatibility}"
+        >
+          <div class="cert-meta">
+            <span class="name">${item.name}</span>
+            <span class="created">Added:
+              <date-time
+                .date="${item.created}"
+                year="numeric"
+                month="numeric"
+                day="numeric"
+                hour="numeric"
+                minute="numeric"
+              ></date-time>
+            </span>
+          </div>
+        </anypoint-radio-button>`)}
+      </anypoint-radio-group>
+    </div>
+    `;
+  }
+
+  static get properties() {
+    return {
+      /**
+       * The id of selected certificate.
+       */
+      selected: { type: String },
+    };
+  }
+
+  constructor() {
+    super();
+    this.type = 'client-certificate';
+    this._onAuthSettings = this._onAuthSettings.bind(this);
+  }
+
+  _attachListeners(node) {
+    node.addEventListener('auth-settings-changed', this._onAuthSettings);
+  }
+
+  _detachListeners(node) {
+    node.removeEventListener('auth-settings-changed', this._onAuthSettings);
+  }
+  /**
+   * Resets state of the form.
+   */
+  reset() {
+    super.reset();
+    this.selected = '';
+  }
+  /**
+   * Validates the form.
+   *
+   * @return {Boolean} Validation result.
+   */
+  validate() {
+    return true;
+  }
+  /**
+   * Creates a settings object with user provided data.
+   *
+   * @return {Object} User provided data
+   */
+  getSettings() {
+    const { selected } = this;
+    if (!selected || selected === 'none') {
+      return;
+    }
+    return {
+      id: this.selected
+    };
+  }
+  /**
+   * Restores settings from stored value.
+   *
+   * @param {Object} settings Object returned by `_getSettings()`
+   */
+  restore(settings) {
+    this.selected = settings.id;
+  }
+  /**
+   * Handler to the `auth-settings-changed` event (fired by all auth panels).
+   * If the event was fired by other element with the same method ttype
+   * then the form will be updated to incomming values.
+   * This helps to sync changes between elements in the same app.
+   *
+   * @param {Event} e
+   */
+  _onAuthSettings(e) {
+    if (this._getEventTarget(e) === this || e.detail.type !== 'client-certificate') {
+      return;
+    }
+    this.restore(e.detail.settings);
+  }
+
+  _selectedHandler(e) {
+    const { value } = e.detail;
+    this.selected = value;
+    this._settingsChanged();
+  }
+  /**
+   * Fired when the any of the auth method settings has changed.
+   * This event will be fired quite frequently - each time anything in the text field changed.
+   * With one exception. This event will not be fired if the validation of the form didn't passed.
+   *
+   * @event auth-settings-changed
+   * @param {Object} settings Current settings containing hash, password
+   * and username.
+   * @param {String} type The authorization type - basic
+   * @param {Boolean} valid True if the form has been validated.
+   */
+}
+window.customElements.define('auth-method-certificate', AuthMethodCertificate);
+
+/**
+@license
 Copyright 2019 The Advanced REST client authors <arc@mulesoft.com>
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -68074,7 +70044,7 @@ the License.
  * @demo demo/amf-meta.html RAML or OAS data from AMF model and IronMeta
  */
 class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       display: block;
@@ -68141,9 +70111,9 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       // Current request body. Passed to digest method.
       requestBody: { type: String },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean, reflect: true },
+      compatibility: { type: Boolean, reflect: true },
       /**
        * Enables Material Design outlined style
        */
@@ -68220,6 +70190,9 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
     }, {
       'type': 'OAuth 1.0',
       'name': 'OAuth 1.0'
+    }, {
+      'type': 'client-certificate',
+      'name': 'Client certificate'
     }];
   }
   /**
@@ -68270,6 +70243,9 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
    * @param {Number} oldValue
    */
   _selectedChanged(selected, oldValue) {
+    if (oldValue) {
+      this.settings = {};
+    }
     this._ensureAuthHeaderRemoved(oldValue);
     this._notifySettings();
   }
@@ -68357,6 +70333,10 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
           break;
         case 'digest':
           name = 'Digest Authentication';
+          key = name;
+          break;
+        case 'client-certificate':
+          name = 'Client certificate';
           key = name;
           break;
         case 'oauth1':
@@ -68450,7 +70430,11 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       if (isBlank) {
         valid = true;
       } else if (settings) {
-        valid = settings.valid || false;
+        if (type === 'client-certificate') {
+          valid = true;
+        } else {
+          valid = settings.valid || false;
+        }
       } else if (this.authVaid) {
         valid = true;
       }
@@ -68484,6 +70468,9 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
    * @param {Object} settings Current settings.
    */
   _processPanelSettings(settings) {
+    if (!settings) {
+      return;
+    }
     switch (settings.type) {
       case 'oauth2': this._handleOauth2Settings(settings); break;
       case 'digest': this._handleDigestSettings(settings); break;
@@ -68620,7 +70607,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
   _selectorTemplate() {
     const {
       outlined,
-      legacy,
+      compatibility,
       readOnly,
       disabled,
       selected
@@ -68633,7 +70620,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       ?hidden="${isSingle}"
       name="selected"
       .outlined="${outlined}"
-      .legacy="${legacy}"
+      .compatibility="${compatibility}"
       .readOnly="${readOnly}"
       .disabled="${disabled}"
     >
@@ -68643,10 +70630,10 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
         .selected="${selected}"
         @selected-changed="${this._selectionHandler}"
         .outlined="${outlined}"
-        .legacy="${legacy}"
+        .compatibility="${compatibility}"
         .readOnly="${readOnly}"
         .disabled="${disabled}">
-        ${items.map((item) => html`<anypoint-item .legacy="${legacy}">${item.name}</anypoint-item>`)}
+        ${items.map((item) => html`<anypoint-item .compatibility="${compatibility}">${item.name}</anypoint-item>`)}
       </anypoint-listbox>
     </anypoint-dropdown-menu>`;
   }
@@ -68662,6 +70649,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       case 'Basic Authentication': return this._basicTemplate();
       case 'Digest Authentication': return this._digestTemplate();
       case 'ntlm': return this._ntlmTemplate();
+      case 'client-certificate': return this._clientCertificateTemplate();
       case 'Pass Through': return this._passThroughTemplate();
       case 'OAuth 2.0': return this._oauth2Template(item.type, item.name);
       case 'OAuth 1.0': return this._oauth1Template(item.type, item.name);
@@ -68674,7 +70662,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined
     } = this;
 
@@ -68683,7 +70671,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .readOnly="${readOnly}"
       .disabled="${disabled}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
     ></auth-method-basic>`;
   }
 
@@ -68692,7 +70680,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       narrow,
       requestUrl,
@@ -68706,7 +70694,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .disabled="${disabled}"
       ?narrow="${narrow}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
       .requestUrl="${requestUrl}"
       .httpMethod="${httpMethod}"
       .requestBody="${requestBody}"
@@ -68718,7 +70706,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined
     } = this;
 
@@ -68727,8 +70715,26 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .readOnly="${readOnly}"
       .disabled="${disabled}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
     ></auth-method-ntlm>`;
+  }
+
+  _clientCertificateTemplate() {
+    const {
+      eventsTarget,
+      readOnly,
+      disabled,
+      compatibility,
+      outlined
+    } = this;
+
+    return html`<auth-method-certificate
+      .eventsTarget="${eventsTarget}"
+      .readOnly="${readOnly}"
+      .disabled="${disabled}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+    ></auth-method-certificate>`;
   }
 
   _oauth2Template(type, name) {
@@ -68736,7 +70742,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       noDocs,
       redirectUri,
@@ -68750,7 +70756,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .readOnly="${readOnly}"
       .disabled="${disabled}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
       .noDocs="${noDocs}"
       .redirectUri="${redirectUri}"
       .amf="${amf}"
@@ -68763,7 +70769,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       noDocs,
       redirectUri,
@@ -68777,7 +70783,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .readOnly="${readOnly}"
       .disabled="${disabled}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
       .noDocs="${noDocs}"
       .redirectUri="${redirectUri}"
       .amf="${amf}"
@@ -68794,7 +70800,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       eventsTarget,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       noDocs,
       redirectUri,
@@ -68806,7 +70812,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
       .readOnly="${readOnly}"
       .disabled="${disabled}"
       ?outlined="${outlined}"
-      ?legacy="${legacy}"
+      ?compatibility="${compatibility}"
       .noDocs="${noDocs}"
       .redirectUri="${redirectUri}"
       .amf="${amf}"
@@ -68820,7 +70826,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
 
   render() {
     const { authMethods } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="auth-container">
       ${authMethods && authMethods.length ?
         html`
@@ -68876,6 +70882,7 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
    * @param {String} value Header new value
    */
 }
+
 window.customElements.define('authorization-panel', AuthorizationPanel);
 
 /**
@@ -69255,7 +71262,7 @@ window.customElements.define('arc-definitions', ArcDefinitions);
  * @memberOf ApiComponents
  */
 class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -69371,7 +71378,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
               .source="${_nameSuggestions}"
               ?compatibility="${compatibility}"
               @selected="${this._onHeaderNameSelected}"
-              @opened-changed="${this._nameSuggestOpenHandler}"></anypoint-autocomplete>` : undefined}
+              @opened-changed="${this._nameSuggestOpenHandler}"></anypoint-autocomplete>` : ''}
         </div>
         <div class="value-field">
           <api-property-form-item
@@ -69394,7 +71401,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
           @click="${this.toggleDocs}"
         >
           <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
+        </anypoint-icon-button>` : ''}
         <slot name="suffix"></slot>
       </div>
     </div>`;
@@ -69430,7 +71437,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
           ?compatibility="${compatibility}"
         >
           <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
+        </anypoint-icon-button>` : ''}
       <slot name="suffix"></slot>
     </div>`;
   }
@@ -69446,7 +71453,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
     } = this;
     const model = this.model || { schema: {} };
     const hasAutocomplete = this._renderAutocomplete(_valueInput, _valueSuggestions);
-    return html`
+    return html`<style>${this.styles}</style>
     ${isCustom ? this._customTemplate() : this._modelTemplate()}
 
     ${!noDocs && docsOpened && model.description ?
@@ -69462,7 +71469,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
       verticaloffset="-10"
       .positionTarget="${_valueInput}"
       .target="${_valueInput}"
-      .source="${_valueSuggestions}"></anypoint-autocomplete>` : undefined}
+      .source="${_valueSuggestions}"></anypoint-autocomplete>` : ''}
     `;
   }
 
@@ -69592,6 +71599,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
    */
   toggleDocs() {
     this.docsOpened = !this.docsOpened;
+    this._gaEvent('Headers form', 'Toggle docs ' + this.docsOpened);
   }
 
   /**
@@ -69670,7 +71678,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
     selector += this.isCustom ? 'custom' : 'typed';
     selector += '"]';
     const input = this.shadowRoot.querySelector(selector);
-    return input.validate();
+    return (input && input.validate) ? input.validate() : true;
   }
   /**
    * Updates value suggestions for custom values.
@@ -69813,6 +71821,25 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
       node.focus();
     }
   }
+
+  /**
+   * Dispatches `send-analytics` for GA event.
+   * @param {String} category
+   * @param {String} action
+   * @param {String=} label
+   */
+  _gaEvent(category, action) {
+    const e = new CustomEvent('send-analytics', {
+     bubbles: true,
+     composed: true,
+     detail: {
+       type: 'event',
+       category,
+       action,
+     }
+    });
+    this.dispatchEvent(e);
+  }
 }
 
 window.customElements.define('api-headers-form-item', ApiHeadersFormItem);
@@ -69827,7 +71854,7 @@ window.customElements.define('api-headers-form-item', ApiHeadersFormItem);
  * @memberOf ApiComponents
  */
 class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return [
       formStyles,
       css`:host {
@@ -69875,9 +71902,10 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
       optionalOpened
     } = this;
     const model = this.model || [];
-    return html`<arc-definitions></arc-definitions>
+    return html`<style>${this.styles}</style>
+    <arc-definitions></arc-definitions>
 
-    ${renderEmptyMessage ? html`<p class="empty-info">Headers are not defined for this endpoint</p>` : undefined}
+    ${renderEmptyMessage ? html`<p class="empty-info">Headers are not defined for this endpoint</p>` : ''}
 
     <iron-form>
       <form enctype="application/json">
@@ -69886,8 +71914,9 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
             class="toggle-checkbox"
             .checked="${optionalOpened}"
             @checked-changed="${this._optionalHanlder}"
-            title="Shows or hides optional parameters">Show optional headers</anypoint-checkbox>
-        </div>` : undefined}
+            title="Shows or hides optional parameters"
+          >Show optional headers</anypoint-checkbox>
+        </div>` : ''}
         ${model.map((item, index) => html`
         <div class="form-item" ?data-optional="${this.computeIsOptional(hasOptional, item)}">
           ${allowDisableParams ? html`
@@ -69899,7 +71928,7 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
             title="Enable or disable this header"
             ?disabled="${readOnly}"
             ?outlined="${outlined}"
-            ?compatibility="${compatibility}"></anypoint-checkbox>` : undefined}
+            ?compatibility="${compatibility}"></anypoint-checkbox>` : ''}
           <api-headers-form-item
             data-index="${index}"
             .name="${item.name}"
@@ -69945,7 +71974,7 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
         <span class="icon action-icon">${addCircleOutline}</span>
         Add header
       </anypoint-button>
-    </div>` : undefined}
+    </div>` : ''}
 `;
   }
 
@@ -70110,6 +72139,7 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
     }
     this.addCustom('header');
     setTimeout(() => this.focusLast());
+    this._gaEvent('Headers form', 'Add custom');
   }
   /**
    * Focuses on last form item.
@@ -70250,9 +72280,11 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
     if (index !== index) {
       return;
     }
-    this.model[index].schema.enabled = e.target.checked;
+    const { checked } = e.target;
+    this.model[index].schema.enabled = checked;
     // this.model = [...this.model];
     this._updateValue(this.autoValidate);
+    this._gaEvent('Headers form', 'Toggle enabled ' + checked);
   }
 
   _nameChangeHandler(e) {
@@ -70284,6 +72316,12 @@ class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
 
   _optionalHanlder(e) {
     this.optionalOpened = e.detail.value;
+    this._gaEvent('Headers form', 'Toggle optional');
+  }
+
+  _removeCustom(e) {
+    super._removeCustom(e);
+    this._gaEvent('Headers form', 'Remove custom');
   }
 }
 
@@ -70612,6 +72650,7 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {
   position: relative;
   overflow: hidden;
   height: inherit;
+  max-height: inherit;
 }
 
 .CodeMirror-scroll {
@@ -70623,6 +72662,7 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {
   margin-right: -30px;
   padding-bottom: 30px;
   height: 100%;
+  max-height: inherit;
   outline: none;
   /* Prevent dragging from highlighting the element */
   position: relative;
@@ -70926,7 +72966,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * @appliesMixin ValidatableMixin
  */
 class CodeMirrorElement extends ValidatableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       cmStyles,
       css`:host {
@@ -70937,6 +72977,7 @@ class CodeMirrorElement extends ValidatableMixin(LitElement) {
 
       .wrapper {
         height: inherit;
+        max-height: inherit;
       }
 
       .content {
@@ -70960,7 +73001,7 @@ class CodeMirrorElement extends ValidatableMixin(LitElement) {
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="wrapper"></div>
     <div class="invalid-message">
       <slot name="invalid"></slot>
@@ -71518,7 +73559,7 @@ window.customElements.define('code-mirror', CodeMirrorElement);
  * @demo demo/index.html
  */
 class CodeMirrorHintContainer extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
     :host {
       box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
@@ -71529,7 +73570,7 @@ class CodeMirrorHintContainer extends LitElement {
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="container">
       <slot></slot>
     </div>`;
@@ -72018,7 +74059,9 @@ function getHints(editor) {
 }
 
 /* global CodeMirror */
-CodeMirror.registerHelper('hint', 'http-headers', getHints);
+if (window.CodeMirror) {
+  CodeMirror.registerHelper('hint', 'http-headers', getHints);
+}
 
 /**
  * An addon for CodeMirror 5.x to support syntax highlighting for HTTP headers.
@@ -72068,528 +74111,547 @@ function addon() {
 }
 
 /* global CodeMirror */
-
-CodeMirror.defineMode('http-headers', addon);
-CodeMirror.defineMIME('message/http-headers', 'http-headers');
-
-/* global CodeMirror */
-
-const HINT_ELEMENT_CLASS = 'CodeMirror-hint';
-const ACTIVE_HINT_ELEMENT_CLASS = 'selected';
-
-const defaultOptions = {
-  hint: CodeMirror.hint.auto,
-  completeSingle: true,
-  alignWithWord: true,
-  closeCharacters: /[\s()\\[\\]{};:>,]/,
-  closeOnUnfocus: true,
-  completeOnSingleClick: false,
-  container: null,
-  customKeys: null,
-  extraKeys: null
-};
-
-function Completion(cm, options) {
-  this.cm = cm;
-  this.options = this.buildOptions(options);
-  this.widget = null;
-  this.debounce = 0;
-  this.tick = 0;
-  this.startPos = this.cm.getCursor();
-  this.startLen = this.cm.getLine(this.startPos.line).length;
-
-  const self = this;
-  cm.on('cursorActivity', this.activityFunc = function() {
-    self.cursorActivity();
-  });
+if (window.CodeMirror) {
+  CodeMirror.defineMode('http-headers', addon);
+  CodeMirror.defineMIME('message/http-headers', 'http-headers');
 }
-function getText(completion) {
-  if (typeof completion === 'string') {
-    return completion;
-  } else {
-    return completion.text;
-  }
-}
-function buildKeyMap(completion, handle) {
-  const baseMap = {
-    Up: function() {
-      handle.moveFocus(-1);
-    },
-    Down: function() {
-      handle.moveFocus(1);
-    },
-    PageUp: function() {
-      handle.moveFocus(-handle.menuSize() + 1, true);
-    },
-    PageDown: function() {
-      handle.moveFocus(handle.menuSize() - 1, true);
-    },
-    Home: function() {
-      handle.setFocus(0);
-    },
-    End: function() {
-      handle.setFocus(handle.length - 1);
-    },
-    Enter: handle.pick,
-    Tab: handle.pick,
-    Esc: handle.close
+
+// This is to prevent errors
+/* eslint-disable no-inner-declarations, no-prototype-builtins */
+
+const CodeMirror$1 = window.CodeMirror || undefined;
+if (CodeMirror$1) {
+  const HINT_ELEMENT_CLASS = 'CodeMirror-hint';
+  const ACTIVE_HINT_ELEMENT_CLASS = 'selected';
+
+  const defaultOptions = {
+    hint: CodeMirror$1.hint.auto,
+    completeSingle: true,
+    alignWithWord: true,
+    closeCharacters: /[\s()\\[\\]{};:>,]/,
+    closeOnUnfocus: true,
+    completeOnSingleClick: false,
+    container: null,
+    customKeys: null,
+    extraKeys: null
   };
-  const custom = completion.options.customKeys;
-  const ourMap = custom ? {} : baseMap;
 
-  function addBinding(key, val) {
-    let bound;
-    if (typeof val !== 'string') {
-      bound = function(cm) {
-        return val(cm, handle);
-      };
-      // This mechanism is deprecated
-    } else if (baseMap.hasOwnProperty(val)) {
-      bound = baseMap[val];
+  function Completion(cm, options) {
+    this.cm = cm;
+    this.options = this.buildOptions(options);
+    this.widget = null;
+    this.debounce = 0;
+    this.tick = 0;
+    this.startPos = this.cm.getCursor();
+    this.startLen = this.cm.getLine(this.startPos.line).length;
+
+    const self = this;
+    cm.on('cursorActivity', this.activityFunc = function() {
+      self.cursorActivity();
+    });
+  }
+  function getText(completion) {
+    if (typeof completion === 'string') {
+      return completion;
     } else {
-      bound = val;
-    }
-    ourMap[key] = bound;
-  }
-  if (custom) {
-    Object.keys(custom).forEach((key) => {
-      addBinding(key, custom[key]);
-    });
-  }
-  const extra = completion.options.extraKeys;
-  if (extra) {
-    Object.keys(extra).forEach((key) => {
-      addBinding(key, extra[key]);
-    });
-  }
-  return ourMap;
-}
-
-function getHintElement(hintsElement, el) {
-  while (el && el !== hintsElement) {
-    if (el.nodeName.toUpperCase() === 'ANYPOINT-ITEM' && el.parentNode === hintsElement) {
-      return el;
-    }
-    el = el.parentNode;
-  }
-}
-function Widget(completion, data) {
-  this.completion = completion;
-  this.data = data;
-  this.picked = false;
-  const widget = this;
-  const cm = completion.cm;
-
-  const hints = this.hints = document.createElement('code-mirror-hint-container');
-  hints.slot = 'hints';
-  hints.className = 'CodeMirror-hints';
-  this.selectedHint = data.selectedHint || 0;
-  const container = document.createElement('anypoint-listbox');
-  container.selected = 0;
-  hints.appendChild(container);
-
-  const completions = data.list;
-  for (let i = 0; i < completions.length; ++i) {
-    const elt = container.appendChild(document.createElement('anypoint-item'));
-    const cur = completions[i];
-    let className = HINT_ELEMENT_CLASS + (i !== this.selectedHint ? '' : ' ' +
-      ACTIVE_HINT_ELEMENT_CLASS);
-    if (cur.className !== null) {
-      className = cur.className ? cur.className + ' ' + className : className;
-    }
-    elt.className = className;
-    if (cur.render) {
-      cur.render(elt, data, cur);
-    } else {
-      elt.appendChild(document.createTextNode(cur.displayText || getText(cur)));
-    }
-    elt.hintId = i;
-  }
-  if (hints.children[0].children[0].nodeName === 'DIV') {
-    this._indexOffset = 1;
-  } else {
-    this._indexOffset = 0;
-  }
-  let pos = cm.cursorCoords(completion.options.alignWithWord ? data.from : null, 'local');
-  let left = pos.left;
-  let top = pos.bottom;
-  let below = true;
-  hints.style.left = left + 'px';
-  hints.style.top = top + 'px';
-  // If we're at the edge of the screen, then we want the menu to appear on the left of the
-  // cursor.
-  const winW = window.innerWidth || Math.max(document.body.offsetWidth,
-      document.documentElement.offsetWidth);
-  const winH = window.innerHeight || Math.max(document.body.offsetHeight,
-      document.documentElement.offsetHeight);
-  (completion.options.container || document.body).appendChild(hints);
-  let box = hints.getBoundingClientRect();
-  const overlapY = box.bottom - winH;
-  if (overlapY > 0) {
-    const height = box.bottom - box.top;
-    const curTop = pos.top - (pos.bottom - box.top);
-    if (curTop - height > 0) { // Fits above cursor
-      hints.style.top = (top = pos.top - height) + 'px';
-      below = false;
-    } else if (height > winH) {
-      hints.style.height = (winH - 5) + 'px';
-      hints.style.top = (top = pos.bottom - box.top) + 'px';
-      const cursor = cm.getCursor();
-      if (data.from.ch !== cursor.ch) {
-        pos = cm.cursorCoords(cursor);
-        hints.style.left = (left = pos.left) + 'px';
-        box = hints.getBoundingClientRect();
-      }
+      return completion.text;
     }
   }
-  let overlapX = box.right - winW;
-  if (overlapX > 0) {
-    if (box.right - box.left > winW) {
-      hints.style.width = (winW - 5) + 'px';
-      overlapX -= (box.right - box.left) - winW;
-    }
-    hints.style.left = (left = pos.left - overlapX) + 'px';
-  }
-
-  cm.addKeyMap(this.keyMap = buildKeyMap(completion, {
-    moveFocus: function(n, avoidWrap) {
-      widget.changeActive(widget.selectedHint + n, avoidWrap);
-    },
-    setFocus: function(n) {
-      widget.changeActive(n);
-    },
-    menuSize: function() {
-      return widget.screenAmount();
-    },
-    length: completions.length,
-    close: function() {
-      completion.close();
-    },
-    pick: function() {
-      widget.pick();
-    },
-    data: data
-  }));
-
-  if (completion.options.closeOnUnfocus) {
-    let closingOnBlur;
-    cm.on('blur', this.onBlur = function() {
-      closingOnBlur = setTimeout(function() {
-        completion.close();
-      }, 100);
-    });
-    cm.on('focus', this.onFocus = function() {
-      clearTimeout(closingOnBlur);
-    });
-  }
-
-  const startScroll = cm.getScrollInfo();
-  cm.on('scroll', this.onScroll = function() {
-    const curScroll = cm.getScrollInfo();
-    const editor = cm.getWrapperElement().getBoundingClientRect();
-    const newTop = top + startScroll.top - curScroll.top;
-    let point = newTop -
-      (window.pageYOffset || (document.documentElement || document.body).scrollTop);
-    if (!below) {
-      point += hints.offsetHeight;
-    }
-    if (point <= editor.top || point >= editor.bottom) {
-      return completion.close();
-    }
-    hints.style.top = newTop + 'px';
-    hints.style.left = (left + startScroll.left - curScroll.left) + 'px';
-  });
-
-  CodeMirror.on(container, 'click', function(e) {
-    const t = getHintElement(hints.children[0], e.target || e.srcElement);
-    if (t && t.hintId !== undefined) {
-      widget.changeActive(t.hintId);
-      widget.pick();
-    }
-  });
-
-  CodeMirror.on(hints, 'mousedown', function() {
-    setTimeout(function() {
-      cm.focus();
-    }, 20);
-  });
-
-  CodeMirror.signal(data, 'select', completions[0], hints.children[0].firstChild);
-  return true;
-}
-
-Widget.prototype = {
-  close: function() {
-    if (this.completion.widget !== this) {
-      return;
-    }
-    this.completion.widget = null;
-    this.hints.parentNode.removeChild(this.hints);
-    this.completion.cm.removeKeyMap(this.keyMap);
-
-    const cm = this.completion.cm;
-    if (this.completion.options.closeOnUnfocus) {
-      cm.off('blur', this.onBlur);
-      cm.off('focus', this.onFocus);
-    }
-    cm.off('scroll', this.onScroll);
-  },
-
-  disable: function() {
-    this.completion.cm.removeKeyMap(this.keyMap);
-    const widget = this;
-    this.keyMap = {
-      Enter: function() {
-        widget.picked = true;
-      }
+  function buildKeyMap(completion, handle) {
+    const baseMap = {
+      Up: function() {
+        handle.moveFocus(-1);
+      },
+      Down: function() {
+        handle.moveFocus(1);
+      },
+      PageUp: function() {
+        handle.moveFocus(-handle.menuSize() + 1, true);
+      },
+      PageDown: function() {
+        handle.moveFocus(handle.menuSize() - 1, true);
+      },
+      Home: function() {
+        handle.setFocus(0);
+      },
+      End: function() {
+        handle.setFocus(handle.length - 1);
+      },
+      Enter: handle.pick,
+      Tab: handle.pick,
+      Esc: handle.close
     };
-    this.completion.cm.addKeyMap(this.keyMap);
-  },
+    const custom = completion.options.customKeys;
+    const ourMap = custom ? {} : baseMap;
 
-  pick: function() {
-    this.completion.pick(this.data, this.selectedHint);
-  },
-
-  changeActive: function(i, avoidWrap) {
-    // i += this._indexOffset;
-    if (i >= this.data.list.length) {
-      i = avoidWrap ? this.data.list.length - 1 : 0;
-    } else if (i < 0) {
-      i = avoidWrap ? 0 : this.data.list.length - 1;
-    }
-    if (this.selectedHint === i) {
-      return;
-    }
-    let selectedHint = this.selectedHint + this._indexOffset;
-    let node = this.hints.children[0].children[selectedHint];
-    node.classList.remove(ACTIVE_HINT_ELEMENT_CLASS);
-    selectedHint = i + this._indexOffset;
-    this.selectedHint = i;
-    node = this.hints.children[0].children[selectedHint];
-    node.classList.add(ACTIVE_HINT_ELEMENT_CLASS);
-    if (node.offsetTop < this.hints.scrollTop) {
-      this.hints.scrollTop = node.offsetTop - 3;
-    } else if (node.offsetTop + node.offsetHeight > this.hints.scrollTop +
-      this.hints.clientHeight) {
-      this.hints.scrollTop = node.offsetTop + node.offsetHeight - this.hints.clientHeight + 3;
-    }
-    CodeMirror.signal(this.data, 'select', this.data.list[selectedHint], node);
-  },
-
-  screenAmount: function() {
-    return Math.floor(this.hints.clientHeight /
-      this.hints.children[0].children[0].offsetHeight) || 1;
-  }
-};
-// This is the old interface, kept around for now to stay
-// backwards-compatible.
-CodeMirror.showHint = function(cm, getHints, options) {
-  if (!getHints) {
-    return cm.showHint(options);
-  }
-  if (options && options.async) {
-    getHints.async = true;
-  }
-  const newOpts = {
-    hint: getHints
-  };
-  if (options) {
-    Object.keys(options).forEach((prop) => {
-      newOpts[prop] = options[prop];
-    });
-  }
-  return cm.showHint(newOpts);
-};
-
-
-function ShowHintFn(options) {
-  // We want a single cursor position.
-  if (this.listSelections().length > 1 || this.somethingSelected()) {
-    return;
-  }
-
-  if (this.state.completionActive) {
-    this.state.completionActive.close();
-  }
-  const completion = this.state.completionActive = new Completion(this, options);
-  if (!completion.options.hint) {
-    return;
-  }
-
-  CodeMirror.signal(this, 'startCompletion', this);
-  completion.update(true);
-}
-
-CodeMirror.defineExtension('showHint', ShowHintFn);
-
-const raf = window.requestAnimationFrame || function(fn) {
-  return setTimeout(fn, 1000 / 60);
-};
-const caf = window.cancelAnimationFrame || clearTimeout;
-
-Completion.prototype = {
-  close: function() {
-    if (!this.active()) {
-      return;
-    }
-    this.cm.state.completionActive = null;
-    this.tick = null;
-    this.cm.off('cursorActivity', this.activityFunc);
-
-    if (this.widget && this.data) {
-      CodeMirror.signal(this.data, 'close');
-    }
-    if (this.widget) {
-      this.widget.close();
-    }
-    CodeMirror.signal(this.cm, 'endCompletion', this.cm);
-  },
-
-  active: function() {
-    return this.cm.state.completionActive === this;
-  },
-
-  pick: function(data, i) {
-    const completion = data.list[i];
-    if (completion.hint) {
-      completion.hint(this.cm, data, completion);
-    } else {
-      this.cm.replaceRange(getText(completion), completion.from || data.from,
-          completion.to || data.to, 'complete');
-    }
-    CodeMirror.signal(data, 'pick', completion);
-    this.close();
-  },
-
-  cursorActivity: function() {
-    if (this.debounce) {
-      caf(this.debounce);
-      this.debounce = 0;
-    }
-
-    const pos = this.cm.getCursor();
-    const line = this.cm.getLine(pos.line);
-    if (pos.line !== this.startPos.line ||
-      line.length - pos.ch !== this.startLen - this.startPos.ch ||
-      pos.ch < this.startPos.ch || this.cm.somethingSelected() ||
-      (pos.ch && this.options.closeCharacters.test(line.charAt(pos.ch - 1)))) {
-      this.close();
-    } else {
-      const self = this;
-      this.debounce = raf(function() {
-        self.update();
-      });
-      if (this.widget) {
-        this.widget.disable();
-      }
-    }
-  },
-
-  update: function(first) {
-    if (this.tick === null) {
-      return;
-    }
-    if (this.data) {
-      CodeMirror.signal(this.data, 'update');
-    }
-    if (!this.options.hint.async) {
-      this.finishUpdate(this.options.hint(this.cm, this.options), first);
-    } else {
-      const myTick = ++this.tick;
-      const self = this;
-      this.options.hint(this.cm, function(data) {
-        if (self.tick === myTick) {
-          self.finishUpdate(data, first);
-        }
-      }, this.options);
-    }
-  },
-
-  finishUpdate: function(data, first) {
-    this.data = data;
-
-    const picked = (this.widget && this.widget.picked) || (first && this.options.completeSingle);
-    if (this.widget) {
-      this.widget.close();
-    }
-    if (data && data.list.length) {
-      if (picked && data.list.length === 1) {
-        this.pick(data, 0);
+    function addBinding(key, val) {
+      let bound;
+      if (typeof val !== 'string') {
+        bound = function(cm) {
+          return val(cm, handle);
+        };
+        // This mechanism is deprecated
+      } else if (baseMap.hasOwnProperty(val)) {
+        bound = baseMap[val];
       } else {
-        this.widget = new Widget(this, data);
-        CodeMirror.signal(data, 'shown');
+        bound = val;
       }
+      ourMap[key] = bound;
     }
-  },
-
-  buildOptions: function(options) {
-    const editor = this.cm.options.hintOptions;
-    const out = {};
-    Object.keys(defaultOptions).forEach((prop) => {
-      out[prop] = defaultOptions[prop];
-    });
-    if (editor) {
-      for (const prop in editor) {
-        if (editor[prop] !== undefined) {
-          out[prop] = editor[prop];
-        }
-      }
-    }
-    if (options) {
-      for (const prop in options) {
-        if (options[prop] !== undefined) {
-          out[prop] = options[prop];
-        }
-      }
-    }
-    return out;
-  }
-};
-
-CodeMirror.registerHelper('hint', 'auto', function(cm, options) {
-  const helpers = cm.getHelpers(cm.getCursor(), 'hint');
-  let words;
-  if (helpers.length) {
-    for (let i = 0; i < helpers.length; i++) {
-      const cur = helpers[i](cm, options);
-      if (cur && cur.list.length) {
-        return cur;
-      }
-    }
-  } else if ((words = cm.getHelper(cm.getCursor(), 'hintWords'))) {
-    if (words) {
-      return CodeMirror.hint.fromList(cm, {
-        words: words
+    if (custom) {
+      Object.keys(custom).forEach((key) => {
+        addBinding(key, custom[key]);
       });
     }
-  } else if (CodeMirror.hint.anyword) {
-    return CodeMirror.hint.anyword(cm, options);
+    const extra = completion.options.extraKeys;
+    if (extra) {
+      Object.keys(extra).forEach((key) => {
+        addBinding(key, extra[key]);
+      });
+    }
+    return ourMap;
   }
-});
 
-CodeMirror.registerHelper('hint', 'fromList', function(cm, options) {
-  const cur = cm.getCursor();
-  const token = cm.getTokenAt(cur);
-  const found = [];
-  for (let i = 0; i < options.words.length; i++) {
-    const word = options.words[i];
-    if (word.slice(0, token.string.length) === token.string) {
-      found.push(word);
+  function getHintElement(hintsElement, el) {
+    while (el && el !== hintsElement) {
+      if (el.nodeName.toUpperCase() === 'ANYPOINT-ITEM' && el.parentNode === hintsElement) {
+        return el;
+      }
+      el = el.parentNode;
     }
   }
+  function Widget(completion, data) {
+    this.completion = completion;
+    this.data = data;
+    this.picked = false;
+    const widget = this;
+    const cm = completion.cm;
 
-  if (found.length) {
-    return {
-      list: found,
-      from: CodeMirror.Pos(cur.line, token.start),
-      to: CodeMirror.Pos(cur.line, token.end)
-    };
+    const hints = this.hints = document.createElement('code-mirror-hint-container');
+    hints.slot = 'hints';
+    hints.className = 'CodeMirror-hints';
+    this.selectedHint = data.selectedHint || 0;
+    const container = document.createElement('anypoint-listbox');
+    container.selected = 0;
+    hints.appendChild(container);
+
+    const completions = data.list;
+    for (let i = 0; i < completions.length; ++i) {
+      const elt = container.appendChild(document.createElement('anypoint-item'));
+      const cur = completions[i];
+      let className = HINT_ELEMENT_CLASS + (i !== this.selectedHint ? '' : ' ' +
+        ACTIVE_HINT_ELEMENT_CLASS);
+      if (cur.className !== null) {
+        className = cur.className ? cur.className + ' ' + className : className;
+      }
+      elt.className = className;
+      if (cur.render) {
+        cur.render(elt, data, cur);
+      } else {
+        elt.appendChild(document.createTextNode(cur.displayText || getText(cur)));
+      }
+      elt.hintId = i;
+    }
+    if (hints.children[0].children[0].nodeName === 'DIV') {
+      this._indexOffset = 1;
+    } else {
+      this._indexOffset = 0;
+    }
+    let pos = cm.cursorCoords(completion.options.alignWithWord ? data.from : null, 'local');
+    let left = pos.left;
+    let top = pos.bottom;
+    let below = true;
+    hints.style.left = left + 'px';
+    hints.style.top = top + 'px';
+    // If we're at the edge of the screen, then we want the menu to appear on the left of the
+    // cursor.
+    const winW = window.innerWidth || Math.max(document.body.offsetWidth,
+        document.documentElement.offsetWidth);
+    const winH = window.innerHeight || Math.max(document.body.offsetHeight,
+        document.documentElement.offsetHeight);
+    (completion.options.container || document.body).appendChild(hints);
+    let box = hints.getBoundingClientRect();
+    const overlapY = box.bottom - winH;
+    if (overlapY > 0) {
+      const height = box.bottom - box.top;
+      const curTop = pos.top - (pos.bottom - box.top);
+      if (curTop - height > 0) { // Fits above cursor
+        hints.style.top = (top = pos.top - height) + 'px';
+        below = false;
+      } else if (height > winH) {
+        hints.style.height = (winH - 5) + 'px';
+        hints.style.top = (top = pos.bottom - box.top) + 'px';
+        const cursor = cm.getCursor();
+        if (data.from.ch !== cursor.ch) {
+          pos = cm.cursorCoords(cursor);
+          hints.style.left = (left = pos.left) + 'px';
+          box = hints.getBoundingClientRect();
+        }
+      }
+    }
+    let overlapX = box.right - winW;
+    if (overlapX > 0) {
+      if (box.right - box.left > winW) {
+        hints.style.width = (winW - 5) + 'px';
+        overlapX -= (box.right - box.left) - winW;
+      }
+      hints.style.left = (left = pos.left - overlapX) + 'px';
+    }
+
+    cm.addKeyMap(this.keyMap = buildKeyMap(completion, {
+      moveFocus: function(n, avoidWrap) {
+        widget.changeActive(widget.selectedHint + n, avoidWrap);
+      },
+      setFocus: function(n) {
+        widget.changeActive(n);
+      },
+      menuSize: function() {
+        return widget.screenAmount();
+      },
+      length: completions.length,
+      close: function() {
+        completion.close();
+      },
+      pick: function() {
+        widget.pick();
+      },
+      data: data
+    }));
+
+    if (completion.options.closeOnUnfocus) {
+      let closingOnBlur;
+      cm.on('blur', this.onBlur = function() {
+        closingOnBlur = setTimeout(function() {
+          completion.close();
+        }, 100);
+      });
+      cm.on('focus', this.onFocus = function() {
+        clearTimeout(closingOnBlur);
+      });
+    }
+
+    const startScroll = cm.getScrollInfo();
+    cm.on('scroll', this.onScroll = function() {
+      const curScroll = cm.getScrollInfo();
+      const editor = cm.getWrapperElement().getBoundingClientRect();
+      const newTop = top + startScroll.top - curScroll.top;
+      let point = newTop -
+        (window.pageYOffset || (document.documentElement || document.body).scrollTop);
+      if (!below) {
+        point += hints.offsetHeight;
+      }
+      if (point <= editor.top || point >= editor.bottom) {
+        return completion.close();
+      }
+      hints.style.top = newTop + 'px';
+      hints.style.left = (left + startScroll.left - curScroll.left) + 'px';
+    });
+
+    CodeMirror$1.on(container, 'click', function(e) {
+      const t = getHintElement(hints.children[0], e.target || e.srcElement);
+      if (t && t.hintId !== undefined) {
+        widget.changeActive(t.hintId);
+        widget.pick();
+      }
+    });
+
+    CodeMirror$1.on(hints, 'mousedown', function() {
+      setTimeout(function() {
+        cm.focus();
+      }, 20);
+    });
+
+    CodeMirror$1.signal(data, 'select', completions[0], hints.children[0].firstChild);
+    return true;
   }
-});
 
-CodeMirror.commands.autocomplete = CodeMirror.showHint;
+  Widget.prototype = {
+    close: function() {
+      if (this.completion.widget !== this) {
+        return;
+      }
+      this.completion.widget = null;
+      this.hints.parentNode.removeChild(this.hints);
+      this.completion.cm.removeKeyMap(this.keyMap);
 
-CodeMirror.defineOption('hintOptions', null);
+      const cm = this.completion.cm;
+      if (this.completion.options.closeOnUnfocus) {
+        cm.off('blur', this.onBlur);
+        cm.off('focus', this.onFocus);
+      }
+      cm.off('scroll', this.onScroll);
+    },
+
+    disable: function() {
+      this.completion.cm.removeKeyMap(this.keyMap);
+      const widget = this;
+      this.keyMap = {
+        Enter: function() {
+          widget.picked = true;
+        }
+      };
+      this.completion.cm.addKeyMap(this.keyMap);
+    },
+
+    pick: function() {
+      this.completion.pick(this.data, this.selectedHint);
+    },
+
+    changeActive: function(i, avoidWrap) {
+      // i += this._indexOffset;
+      if (i >= this.data.list.length) {
+        i = avoidWrap ? this.data.list.length - 1 : 0;
+      } else if (i < 0) {
+        i = avoidWrap ? 0 : this.data.list.length - 1;
+      }
+      if (this.selectedHint === i) {
+        return;
+      }
+      let selectedHint = this.selectedHint + this._indexOffset;
+      let node = this.hints.children[0].children[selectedHint];
+      node.classList.remove(ACTIVE_HINT_ELEMENT_CLASS);
+      selectedHint = i + this._indexOffset;
+      this.selectedHint = i;
+      node = this.hints.children[0].children[selectedHint];
+      node.classList.add(ACTIVE_HINT_ELEMENT_CLASS);
+      if (node.offsetTop < this.hints.scrollTop) {
+        this.hints.scrollTop = node.offsetTop - 3;
+      } else if (node.offsetTop + node.offsetHeight > this.hints.scrollTop +
+        this.hints.clientHeight) {
+        this.hints.scrollTop = node.offsetTop + node.offsetHeight - this.hints.clientHeight + 3;
+      }
+      CodeMirror$1.signal(this.data, 'select', this.data.list[selectedHint], node);
+    },
+
+    screenAmount: function() {
+      return Math.floor(this.hints.clientHeight /
+        this.hints.children[0].children[0].offsetHeight) || 1;
+    }
+  };
+  // This is the old interface, kept around for now to stay
+  // backwards-compatible.
+  CodeMirror$1.showHint = function(cm, getHints, options) {
+    if (!getHints) {
+      return cm.showHint(options);
+    }
+    if (options && options.async) {
+      getHints.async = true;
+    }
+    const newOpts = {
+      hint: getHints
+    };
+    if (options) {
+      Object.keys(options).forEach((prop) => {
+        newOpts[prop] = options[prop];
+      });
+    }
+    return cm.showHint(newOpts);
+  };
+
+
+  function ShowHintFn(options) {
+    // We want a single cursor position.
+    if (this.listSelections().length > 1 || this.somethingSelected()) {
+      return;
+    }
+
+    if (this.state.completionActive) {
+      this.state.completionActive.close();
+    }
+    const completion = this.state.completionActive = new Completion(this, options);
+    if (!completion.options.hint) {
+      return;
+    }
+
+    CodeMirror$1.signal(this, 'startCompletion', this);
+    completion.update(true);
+  }
+
+  CodeMirror$1.defineExtension('showHint', ShowHintFn);
+
+  const raf = window.requestAnimationFrame || function(fn) {
+    return setTimeout(fn, 1000 / 60);
+  };
+  const caf = window.cancelAnimationFrame || clearTimeout;
+
+  Completion.prototype = {
+    close: function() {
+      if (!this.active()) {
+        return;
+      }
+      this.cm.state.completionActive = null;
+      this.tick = null;
+      this.cm.off('cursorActivity', this.activityFunc);
+
+      if (this.widget && this.data) {
+        CodeMirror$1.signal(this.data, 'close');
+      }
+      if (this.widget) {
+        this.widget.close();
+      }
+      CodeMirror$1.signal(this.cm, 'endCompletion', this.cm);
+    },
+
+    active: function() {
+      return this.cm.state.completionActive === this;
+    },
+
+    pick: function(data, i) {
+      const completion = data.list[i];
+      if (completion.hint) {
+        completion.hint(this.cm, data, completion);
+      } else {
+        this.cm.replaceRange(getText(completion), completion.from || data.from,
+            completion.to || data.to, 'complete');
+      }
+      CodeMirror$1.signal(data, 'pick', completion);
+      this.close();
+    },
+
+    cursorActivity: function() {
+      if (this.debounce) {
+        caf(this.debounce);
+        this.debounce = 0;
+      }
+
+      const pos = this.cm.getCursor();
+      const line = this.cm.getLine(pos.line);
+      if (pos.line !== this.startPos.line ||
+        line.length - pos.ch !== this.startLen - this.startPos.ch ||
+        pos.ch < this.startPos.ch || this.cm.somethingSelected() ||
+        (pos.ch && this.options.closeCharacters.test(line.charAt(pos.ch - 1)))) {
+        this.close();
+      } else {
+        const self = this;
+        this.debounce = raf(function() {
+          self.update();
+        });
+        if (this.widget) {
+          this.widget.disable();
+        }
+      }
+    },
+
+    update: function(first) {
+      if (this.tick === null) {
+        return;
+      }
+      if (this.data) {
+        CodeMirror$1.signal(this.data, 'update');
+      }
+      if (!this.options.hint.async) {
+        this.finishUpdate(this.options.hint(this.cm, this.options), first);
+      } else {
+        const myTick = ++this.tick;
+        const self = this;
+        this.options.hint(this.cm, function(data) {
+          if (self.tick === myTick) {
+            self.finishUpdate(data, first);
+          }
+        }, this.options);
+      }
+    },
+
+    finishUpdate: function(data, first) {
+      this.data = data;
+
+      const picked = (this.widget && this.widget.picked) || (first && this.options.completeSingle);
+      if (this.widget) {
+        this.widget.close();
+      }
+      if (data && data.list.length) {
+        if (picked && data.list.length === 1) {
+          this.pick(data, 0);
+        } else {
+          this.widget = new Widget(this, data);
+          CodeMirror$1.signal(data, 'shown');
+        }
+      }
+    },
+
+    buildOptions: function(options) {
+      const editor = this.cm.options.hintOptions;
+      const out = {};
+      Object.keys(defaultOptions).forEach((prop) => {
+        out[prop] = defaultOptions[prop];
+      });
+      if (editor) {
+        for (const prop in editor) {
+          if (editor[prop] !== undefined) {
+            out[prop] = editor[prop];
+          }
+        }
+      }
+      if (options) {
+        for (const prop in options) {
+          if (options[prop] !== undefined) {
+            out[prop] = options[prop];
+          }
+        }
+      }
+      return out;
+    }
+  };
+
+  CodeMirror$1.registerHelper('hint', 'auto', function(cm, options) {
+    const helpers = cm.getHelpers(cm.getCursor(), 'hint');
+    let words;
+    if (helpers.length) {
+      for (let i = 0; i < helpers.length; i++) {
+        const cur = helpers[i](cm, options);
+        if (cur && cur.list.length) {
+          return cur;
+        }
+      }
+    } else if ((words = cm.getHelper(cm.getCursor(), 'hintWords'))) {
+      if (words) {
+        return CodeMirror$1.hint.fromList(cm, {
+          words: words
+        });
+      }
+    } else if (CodeMirror$1.hint.anyword) {
+      return CodeMirror$1.hint.anyword(cm, options);
+    }
+  });
+
+  CodeMirror$1.registerHelper('hint', 'fromList', function(cm, options) {
+    const cur = cm.getCursor();
+    const token = cm.getTokenAt(cur);
+    const found = [];
+    for (let i = 0; i < options.words.length; i++) {
+      const word = options.words[i];
+      if (word.slice(0, token.string.length) === token.string) {
+        found.push(word);
+      }
+    }
+
+    if (found.length) {
+      return {
+        list: found,
+        from: CodeMirror$1.Pos(cur.line, token.start),
+        to: CodeMirror$1.Pos(cur.line, token.end)
+      };
+    }
+  });
+
+  CodeMirror$1.commands.autocomplete = CodeMirror$1.showHint;
+
+  CodeMirror$1.defineOption('hintOptions', null);
+}
+
+/**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
 
 const contentTypeRe = /^[\t\r]*content-type[\t\r]*:[\t\r]*([^\n]*)$/gim;
 /**
@@ -72664,7 +74726,7 @@ class ApiHeadersEditor extends
     ValidatableMixin(ApiFormMixin(EventsTargetMixin(
       HeadersParserMixin(AmfHelperMixin(LitElement))))) {
 
-  static get styles() {
+  get styles() {
     return [
       formStyles,
       css`
@@ -72689,11 +74751,11 @@ class ApiHeadersEditor extends
       allowHideOptional,
       readOnly,
       outlined,
-      legacy,
+      compatibility,
       value,
       noSourceEditor
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware @api-changed="${this._apiHandler}" .scope="${aware}"></raml-aware>` : undefined}
     <api-view-model-transformer
       @view-model-changed="${this._viewModelHandler}"
@@ -72735,7 +74797,7 @@ class ApiHeadersEditor extends
             ?nodocs="${noDocs}"
             ?readonly="${readOnly}"
             ?outlined="${outlined}"
-            ?legacy="${legacy}"
+            ?compatibility="${compatibility}"
             @value-changed="${this._editorValueChanged}"
             @invalid-changed="${this._formEditorInvalidHandler}"
             @model-changed="${this._formEditorModelHandler}"
@@ -72798,9 +74860,9 @@ class ApiHeadersEditor extends
        */
       autoValidate: { type: Boolean },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean },
+      compatibility: { type: Boolean },
       /**
        * Enables Material Design outlined style
        */
@@ -73895,7 +75957,7 @@ the License.
  * @memberof UiElements
  */
 class FormDataEditorItem extends LitElement {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -74047,7 +76109,7 @@ class FormDataEditorItem extends LitElement {
     const hasDocs = this._computeHasDocumentation(noDocs, model);
     const renderDocs = !noDocs && hasDocs && !!docsOpened;
 
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="form-item${narrow ? ' narrow' : ''}">
       ${isCustom ? this._customTemplate() : this._modelTemplate(model, hasDocs, noDocs)}
     </div>
@@ -74283,7 +76345,7 @@ the License.
  * @memberof UiElements
  */
 class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(LitElement))) {
-  static get styles() {
+  get styles() {
     return [
       formStyles,
       css`:host {
@@ -74301,10 +76363,15 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
       }
 
       .option-pane {
+        flex-wrap: wrap;
         margin: 8px 0;
         display: flex;
         flex-direction: row;
         align-items: center;
+      }
+
+      .option-pane > * {
+        margin-bottom: 0.30em;
       }
 
       .icon {
@@ -74375,14 +76442,15 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
       optionalOpened,
       allowCustom,
       readOnly,
-      disabled
+      disabled,
+      compatibility
     } = this;
     let { model } = this;
     if (!model) {
       model = [];
     }
     const encButtonsEmphasis = allowCustom ? 'low' : 'medium';
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="option-pane">
       ${allowCustom ? html`<div class="add-action">
         <anypoint-button
@@ -74392,6 +76460,7 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
           title="Add new parameter"
           aria-label="Press to create a new parameter"
           ?disabled="${readOnly || disabled}"
+          ?compatibility="${compatibility}"
         >
           <span class="icon action-icon">${addCircleOutline}</span>
           Add parameter
@@ -74403,6 +76472,7 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         aria-label="Press to encode form values"
         emphasis="${encButtonsEmphasis}"
         @click="${this._encodePaylod}"
+        ?compatibility="${compatibility}"
         ?disabled="${readOnly || disabled}">
         Encode payload
       </anypoint-button>
@@ -74412,6 +76482,7 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         aria-label="Press to decode form values"
         emphasis="${encButtonsEmphasis}"
         @click="${this._decodePaylod}"
+        ?compatibility="${compatibility}"
         ?disabled="${readOnly || disabled}">
         Decode payload
       </anypoint-button>
@@ -74445,6 +76516,7 @@ class FormDataEditor extends PayloadParserMixin(ValidatableMixin(ApiFormMixin(Li
         title="Add new parameter"
         aria-label="Press to create a new parameter"
         ?disabled="${readOnly || disabled}"
+        ?compatibility="${compatibility}"
       >
         <span class="icon action-icon">${addCircleOutline}</span>
         Add next
@@ -74883,10 +76955,28 @@ var codemirror = createCommonjsModule(function (module, exports) {
     }
   }
 
-  var Delayed = function() {this.id = null;};
+  var Delayed = function() {
+    this.id = null;
+    this.f = null;
+    this.time = 0;
+    this.handler = bind(this.onTimeout, this);
+  };
+  Delayed.prototype.onTimeout = function (self) {
+    self.id = 0;
+    if (self.time <= +new Date) {
+      self.f();
+    } else {
+      setTimeout(self.handler, self.time - +new Date);
+    }
+  };
   Delayed.prototype.set = function (ms, f) {
-    clearTimeout(this.id);
-    this.id = setTimeout(f, ms);
+    this.f = f;
+    var time = +new Date + ms;
+    if (!this.id || time < this.time) {
+      clearTimeout(this.id);
+      this.id = setTimeout(this.handler, ms);
+      this.time = time;
+    }
   };
 
   function indexOf(array, elt) {
@@ -75177,14 +77267,15 @@ var codemirror = createCommonjsModule(function (module, exports) {
           for (++i$7; i$7 < len && countsAsLeft.test(types[i$7]); ++i$7) {}
           order.push(new BidiSpan(0, start, i$7));
         } else {
-          var pos = i$7, at = order.length;
+          var pos = i$7, at = order.length, isRTL = direction == "rtl" ? 1 : 0;
           for (++i$7; i$7 < len && types[i$7] != "L"; ++i$7) {}
           for (var j$2 = pos; j$2 < i$7;) {
             if (countsAsNum.test(types[j$2])) {
-              if (pos < j$2) { order.splice(at, 0, new BidiSpan(1, pos, j$2)); }
+              if (pos < j$2) { order.splice(at, 0, new BidiSpan(1, pos, j$2)); at += isRTL; }
               var nstart = j$2;
               for (++j$2; j$2 < i$7 && countsAsNum.test(types[j$2]); ++j$2) {}
               order.splice(at, 0, new BidiSpan(2, nstart, j$2));
+              at += isRTL;
               pos = j$2;
             } else { ++j$2; }
           }
@@ -75228,8 +77319,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
     } else if (emitter.attachEvent) {
       emitter.attachEvent("on" + type, f);
     } else {
-      var map$$1 = emitter._handlers || (emitter._handlers = {});
-      map$$1[type] = (map$$1[type] || noHandlers).concat(f);
+      var map = emitter._handlers || (emitter._handlers = {});
+      map[type] = (map[type] || noHandlers).concat(f);
     }
   };
 
@@ -75243,11 +77334,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
     } else if (emitter.detachEvent) {
       emitter.detachEvent("on" + type, f);
     } else {
-      var map$$1 = emitter._handlers, arr = map$$1 && map$$1[type];
+      var map = emitter._handlers, arr = map && map[type];
       if (arr) {
         var index = indexOf(arr, f);
         if (index > -1)
-          { map$$1[type] = arr.slice(0, index).concat(arr.slice(index + 1)); }
+          { map[type] = arr.slice(0, index).concat(arr.slice(index + 1)); }
       }
     }
   }
@@ -75375,11 +77466,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
     try { return te.selectionStart != te.selectionEnd }
     catch(e) { return false }
   } : function (te) {
-    var range$$1;
-    try {range$$1 = te.ownerDocument.selection.createRange();}
+    var range;
+    try {range = te.ownerDocument.selection.createRange();}
     catch(e) {}
-    if (!range$$1 || range$$1.parentElement() != te) { return false }
-    return range$$1.compareEndPoints("StartToEnd", range$$1) != 0
+    if (!range || range.parentElement() != te) { return false }
+    return range.compareEndPoints("StartToEnd", range) != 0
   };
 
   var hasCopyEvent = (function () {
@@ -75527,10 +77618,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
     return this.pos > start
   };
   StringStream.prototype.eatSpace = function () {
-      var this$1 = this;
-
     var start = this.pos;
-    while (/[\s\u00a0]/.test(this.string.charAt(this.pos))) { ++this$1.pos; }
+    while (/[\s\u00a0]/.test(this.string.charAt(this.pos))) { ++this.pos; }
     return this.pos > start
   };
   StringStream.prototype.skipToEnd = function () {this.pos = this.string.length;};
@@ -75726,11 +77815,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
   };
 
   Context.prototype.baseToken = function (n) {
-      var this$1 = this;
-
     if (!this.baseTokens) { return null }
     while (this.baseTokens[this.baseTokenPos] <= n)
-      { this$1.baseTokenPos += 2; }
+      { this.baseTokenPos += 2; }
     var type = this.baseTokens[this.baseTokenPos + 1];
     return {type: type && type.replace(/( |^)overlay .*/, ""),
             size: this.baseTokens[this.baseTokenPos] - n}
@@ -76219,8 +78306,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // Test whether there exists a collapsed span that partially
   // overlaps (covers the start or end, but not both) of a new span.
   // Such overlap is not allowed.
-  function conflictingCollapsedRange(doc, lineNo$$1, from, to, marker) {
-    var line = getLine(doc, lineNo$$1);
+  function conflictingCollapsedRange(doc, lineNo, from, to, marker) {
+    var line = getLine(doc, lineNo);
     var sps = sawCollapsedSpans && line.markedSpans;
     if (sps) { for (var i = 0; i < sps.length; ++i) {
       var sp = sps[i];
@@ -76901,10 +78988,10 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   function updateLineWidgets(cm, lineView, dims) {
     if (lineView.alignable) { lineView.alignable = null; }
+    var isWidget = classTest("CodeMirror-linewidget");
     for (var node = lineView.node.firstChild, next = (void 0); node; node = next) {
       next = node.nextSibling;
-      if (node.className == "CodeMirror-linewidget")
-        { lineView.node.removeChild(node); }
+      if (isWidget.test(node.className)) { lineView.node.removeChild(node); }
     }
     insertLineWidgets(cm, lineView, dims);
   }
@@ -76934,7 +79021,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     if (!line.widgets) { return }
     var wrap = ensureLineWrapped(lineView);
     for (var i = 0, ws = line.widgets; i < ws.length; ++i) {
-      var widget = ws[i], node = elt("div", [widget.node], "CodeMirror-linewidget");
+      var widget = ws[i], node = elt("div", [widget.node], "CodeMirror-linewidget" + (widget.className ? " " + widget.className : ""));
       if (!widget.handleMouseEvents) { node.setAttribute("cm-ignore-events", "true"); }
       positionLineWidget(widget, node, lineView, dims);
       cm.display.input.setUneditable(node);
@@ -77122,36 +79209,36 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   var nullRect = {left: 0, right: 0, top: 0, bottom: 0};
 
-  function nodeAndOffsetInLineMap(map$$1, ch, bias) {
+  function nodeAndOffsetInLineMap(map, ch, bias) {
     var node, start, end, collapse, mStart, mEnd;
     // First, search the line map for the text node corresponding to,
     // or closest to, the target character.
-    for (var i = 0; i < map$$1.length; i += 3) {
-      mStart = map$$1[i];
-      mEnd = map$$1[i + 1];
+    for (var i = 0; i < map.length; i += 3) {
+      mStart = map[i];
+      mEnd = map[i + 1];
       if (ch < mStart) {
         start = 0; end = 1;
         collapse = "left";
       } else if (ch < mEnd) {
         start = ch - mStart;
         end = start + 1;
-      } else if (i == map$$1.length - 3 || ch == mEnd && map$$1[i + 3] > ch) {
+      } else if (i == map.length - 3 || ch == mEnd && map[i + 3] > ch) {
         end = mEnd - mStart;
         start = end - 1;
         if (ch >= mEnd) { collapse = "right"; }
       }
       if (start != null) {
-        node = map$$1[i + 2];
+        node = map[i + 2];
         if (mStart == mEnd && bias == (node.insertLeft ? "left" : "right"))
           { collapse = bias; }
         if (bias == "left" && start == 0)
-          { while (i && map$$1[i - 2] == map$$1[i - 3] && map$$1[i - 1].insertLeft) {
-            node = map$$1[(i -= 3) + 2];
+          { while (i && map[i - 2] == map[i - 3] && map[i - 1].insertLeft) {
+            node = map[(i -= 3) + 2];
             collapse = "left";
           } }
         if (bias == "right" && start == mEnd - mStart)
-          { while (i < map$$1.length - 3 && map$$1[i + 3] == map$$1[i + 4] && !map$$1[i + 5].insertLeft) {
-            node = map$$1[(i += 3) + 2];
+          { while (i < map.length - 3 && map[i + 3] == map[i + 4] && !map[i + 5].insertLeft) {
+            node = map[(i += 3) + 2];
             collapse = "right";
           } }
         break
@@ -77434,13 +79521,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
     return box.bottom <= y ? false : box.top > y ? true : (left ? box.left : box.right) > x
   }
 
-  function coordsCharInner(cm, lineObj, lineNo$$1, x, y) {
+  function coordsCharInner(cm, lineObj, lineNo, x, y) {
     // Move y into line-local coordinate space
     y -= heightAtLine(lineObj);
     var preparedMeasure = prepareMeasureForLine(cm, lineObj);
     // When directly calling `measureCharPrepared`, we have to adjust
     // for the widgets at this line.
-    var widgetHeight$$1 = widgetTopHeight(lineObj);
+    var widgetHeight = widgetTopHeight(lineObj);
     var begin = 0, end = lineObj.text.length, ltr = true;
 
     var order = getOrder(lineObj, cm.doc.direction);
@@ -77448,7 +79535,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     // which bidi section the coordinates fall into.
     if (order) {
       var part = (cm.options.lineWrapping ? coordsBidiPartWrapped : coordsBidiPart)
-                   (cm, lineObj, lineNo$$1, preparedMeasure, order, x, y);
+                   (cm, lineObj, lineNo, preparedMeasure, order, x, y);
       ltr = part.level != 1;
       // The awkward -1 offsets are needed because findFirst (called
       // on these below) will treat its first bound as inclusive,
@@ -77464,7 +79551,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var chAround = null, boxAround = null;
     var ch = findFirst(function (ch) {
       var box = measureCharPrepared(cm, preparedMeasure, ch);
-      box.top += widgetHeight$$1; box.bottom += widgetHeight$$1;
+      box.top += widgetHeight; box.bottom += widgetHeight;
       if (!boxIsAfter(box, x, y, false)) { return false }
       if (box.top <= y && box.left <= x) {
         chAround = ch;
@@ -77488,27 +79575,27 @@ var codemirror = createCommonjsModule(function (module, exports) {
       // left of the character and compare it's vertical position to the
       // coordinates
       sticky = ch == 0 ? "after" : ch == lineObj.text.length ? "before" :
-        (measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + widgetHeight$$1 <= y) == ltr ?
+        (measureCharPrepared(cm, preparedMeasure, ch - (ltr ? 1 : 0)).bottom + widgetHeight <= y) == ltr ?
         "after" : "before";
       // Now get accurate coordinates for this place, in order to get a
       // base X position
-      var coords = cursorCoords(cm, Pos(lineNo$$1, ch, sticky), "line", lineObj, preparedMeasure);
+      var coords = cursorCoords(cm, Pos(lineNo, ch, sticky), "line", lineObj, preparedMeasure);
       baseX = coords.left;
       outside = y < coords.top ? -1 : y >= coords.bottom ? 1 : 0;
     }
 
     ch = skipExtendingChars(lineObj.text, ch, 1);
-    return PosWithInfo(lineNo$$1, ch, sticky, outside, x - baseX)
+    return PosWithInfo(lineNo, ch, sticky, outside, x - baseX)
   }
 
-  function coordsBidiPart(cm, lineObj, lineNo$$1, preparedMeasure, order, x, y) {
+  function coordsBidiPart(cm, lineObj, lineNo, preparedMeasure, order, x, y) {
     // Bidi parts are sorted left-to-right, and in a non-line-wrapping
     // situation, we can take this ordering to correspond to the visual
     // ordering. This finds the first part whose end is after the given
     // coordinates.
     var index = findFirst(function (i) {
       var part = order[i], ltr = part.level != 1;
-      return boxIsAfter(cursorCoords(cm, Pos(lineNo$$1, ltr ? part.to : part.from, ltr ? "before" : "after"),
+      return boxIsAfter(cursorCoords(cm, Pos(lineNo, ltr ? part.to : part.from, ltr ? "before" : "after"),
                                      "line", lineObj, preparedMeasure), x, y, true)
     }, 0, order.length - 1);
     var part = order[index];
@@ -77517,7 +79604,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     // that start, move one part back.
     if (index > 0) {
       var ltr = part.level != 1;
-      var start = cursorCoords(cm, Pos(lineNo$$1, ltr ? part.from : part.to, ltr ? "after" : "before"),
+      var start = cursorCoords(cm, Pos(lineNo, ltr ? part.from : part.to, ltr ? "after" : "before"),
                                "line", lineObj, preparedMeasure);
       if (boxIsAfter(start, x, y, true) && start.top > y)
         { part = order[index - 1]; }
@@ -77657,7 +79744,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     try { x = e.clientX - space.left; y = e.clientY - space.top; }
     catch (e) { return null }
     var coords = coordsChar(cm, x, y), line;
-    if (forRect && coords.xRel == 1 && (line = getLine(cm.doc, coords.line).text).length == coords.ch) {
+    if (forRect && coords.xRel > 0 && (line = getLine(cm.doc, coords.line).text).length == coords.ch) {
       var colDiff = countColumn(line, line.length, cm.options.tabSize) - line.length;
       coords = Pos(coords.line, Math.max(0, Math.round((x - paddingH(cm.display).left) / charWidth(cm.display)) - colDiff));
     }
@@ -77838,13 +79925,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
     for (var i = 0; i < doc.sel.ranges.length; i++) {
       if (!primary && i == doc.sel.primIndex) { continue }
-      var range$$1 = doc.sel.ranges[i];
-      if (range$$1.from().line >= cm.display.viewTo || range$$1.to().line < cm.display.viewFrom) { continue }
-      var collapsed = range$$1.empty();
+      var range = doc.sel.ranges[i];
+      if (range.from().line >= cm.display.viewTo || range.to().line < cm.display.viewFrom) { continue }
+      var collapsed = range.empty();
       if (collapsed || cm.options.showCursorWhenSelecting)
-        { drawSelectionCursor(cm, range$$1.head, curFragment); }
+        { drawSelectionCursor(cm, range.head, curFragment); }
       if (!collapsed)
-        { drawSelectionRange(cm, range$$1, selFragment); }
+        { drawSelectionRange(cm, range, selFragment); }
     }
     return result
   }
@@ -77871,7 +79958,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
   function cmpCoords(a, b) { return a.top - b.top || a.left - b.left }
 
   // Draws the given range as a highlighted selection
-  function drawSelectionRange(cm, range$$1, output) {
+  function drawSelectionRange(cm, range, output) {
     var display = cm.display, doc = cm.doc;
     var fragment = document.createDocumentFragment();
     var padding = paddingH(cm.display), leftSide = padding.left;
@@ -77940,7 +80027,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
       return {start: start, end: end}
     }
 
-    var sFrom = range$$1.from(), sTo = range$$1.to();
+    var sFrom = range.from(), sTo = range.to();
     if (sFrom.line == sTo.line) {
       drawForLine(sFrom.line, sFrom.ch, sTo.ch);
     } else {
@@ -78207,9 +80294,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
     if (y != null) { cm.curOp.scrollTop = y; }
   }
 
-  function scrollToRange(cm, range$$1) {
+  function scrollToRange(cm, range) {
     resolveScrollToPos(cm);
-    cm.curOp.scrollToPos = range$$1;
+    cm.curOp.scrollToPos = range;
   }
 
   // When an operation has its scrollToPos property set, and another
@@ -78217,11 +80304,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // 'simulates' scrolling that position into view in a cheap way, so
   // that the effect of intermediate scroll commands is not ignored.
   function resolveScrollToPos(cm) {
-    var range$$1 = cm.curOp.scrollToPos;
-    if (range$$1) {
+    var range = cm.curOp.scrollToPos;
+    if (range) {
       cm.curOp.scrollToPos = null;
-      var from = estimateCoords(cm, range$$1.from), to = estimateCoords(cm, range$$1.to);
-      scrollToCoordsRange(cm, from, to, range$$1.margin);
+      var from = estimateCoords(cm, range.from), to = estimateCoords(cm, range.to);
+      scrollToCoordsRange(cm, from, to, range.margin);
     }
   }
 
@@ -78246,7 +80333,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
   }
 
   function setScrollTop(cm, val, forceScroll) {
-    val = Math.min(cm.display.scroller.scrollHeight - cm.display.scroller.clientHeight, val);
+    val = Math.max(0, Math.min(cm.display.scroller.scrollHeight - cm.display.scroller.clientHeight, val));
     if (cm.display.scroller.scrollTop == val && !forceScroll) { return }
     cm.doc.scrollTop = val;
     cm.display.scrollbars.setScrollTop(val);
@@ -78256,7 +80343,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // Sync scroller and scrollbar, ensure the gutter elements are
   // aligned.
   function setScrollLeft(cm, val, isScroller, forceScroll) {
-    val = Math.min(val, cm.display.scroller.scrollWidth - cm.display.scroller.clientWidth);
+    val = Math.max(0, Math.min(val, cm.display.scroller.scrollWidth - cm.display.scroller.clientWidth));
     if ((isScroller ? val == cm.doc.scrollLeft : Math.abs(cm.doc.scrollLeft - val) < 2) && !forceScroll) { return }
     cm.doc.scrollLeft = val;
     alignHorizontally(cm);
@@ -78368,9 +80455,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
       // (when the bar is hidden). If it is still visible, we keep
       // it enabled, if it's hidden, we disable pointer events.
       var box = bar.getBoundingClientRect();
-      var elt$$1 = type == "vert" ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2)
+      var elt = type == "vert" ? document.elementFromPoint(box.right - 1, (box.top + box.bottom) / 2)
           : document.elementFromPoint((box.right + box.left) / 2, box.bottom - 1);
-      if (elt$$1 != bar) { bar.style.pointerEvents = "none"; }
+      if (elt != bar) { bar.style.pointerEvents = "none"; }
       else { delay.set(1000, maybeDisable); }
     }
     delay.set(1000, maybeDisable);
@@ -78710,10 +80797,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
       { this.events.push(arguments); }
   };
   DisplayUpdate.prototype.finish = function () {
-      var this$1 = this;
-
     for (var i = 0; i < this.events.length; i++)
-      { signal.apply(null, this$1.events[i]); }
+      { signal.apply(null, this.events[i]); }
   };
 
   function maybeClipScrollbars(cm) {
@@ -78748,11 +80833,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
     if (!snapshot || !snapshot.activeElt || snapshot.activeElt == activeElt()) { return }
     snapshot.activeElt.focus();
     if (snapshot.anchorNode && contains(document.body, snapshot.anchorNode) && contains(document.body, snapshot.focusNode)) {
-      var sel = window.getSelection(), range$$1 = document.createRange();
-      range$$1.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
-      range$$1.collapse(false);
+      var sel = window.getSelection(), range = document.createRange();
+      range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
+      range.collapse(false);
       sel.removeAllRanges();
-      sel.addRange(range$$1);
+      sel.addRange(range);
       sel.extend(snapshot.focusNode, snapshot.focusOffset);
     }
   }
@@ -79245,40 +81330,32 @@ var codemirror = createCommonjsModule(function (module, exports) {
   Selection.prototype.primary = function () { return this.ranges[this.primIndex] };
 
   Selection.prototype.equals = function (other) {
-      var this$1 = this;
-
     if (other == this) { return true }
     if (other.primIndex != this.primIndex || other.ranges.length != this.ranges.length) { return false }
     for (var i = 0; i < this.ranges.length; i++) {
-      var here = this$1.ranges[i], there = other.ranges[i];
+      var here = this.ranges[i], there = other.ranges[i];
       if (!equalCursorPos(here.anchor, there.anchor) || !equalCursorPos(here.head, there.head)) { return false }
     }
     return true
   };
 
   Selection.prototype.deepCopy = function () {
-      var this$1 = this;
-
     var out = [];
     for (var i = 0; i < this.ranges.length; i++)
-      { out[i] = new Range(copyPos(this$1.ranges[i].anchor), copyPos(this$1.ranges[i].head)); }
+      { out[i] = new Range(copyPos(this.ranges[i].anchor), copyPos(this.ranges[i].head)); }
     return new Selection(out, this.primIndex)
   };
 
   Selection.prototype.somethingSelected = function () {
-      var this$1 = this;
-
     for (var i = 0; i < this.ranges.length; i++)
-      { if (!this$1.ranges[i].empty()) { return true } }
+      { if (!this.ranges[i].empty()) { return true } }
     return false
   };
 
   Selection.prototype.contains = function (pos, end) {
-      var this$1 = this;
-
     if (!end) { end = pos; }
     for (var i = 0; i < this.ranges.length; i++) {
-      var range = this$1.ranges[i];
+      var range = this.ranges[i];
       if (cmp(end, range.from()) >= 0 && cmp(pos, range.to()) <= 0)
         { return i }
     }
@@ -79404,16 +81481,16 @@ var codemirror = createCommonjsModule(function (module, exports) {
   }
 
   // Perform a change on the document data structure.
-  function updateDoc(doc, change, markedSpans, estimateHeight$$1) {
+  function updateDoc(doc, change, markedSpans, estimateHeight) {
     function spansFor(n) {return markedSpans ? markedSpans[n] : null}
     function update(line, text, spans) {
-      updateLine(line, text, spans, estimateHeight$$1);
+      updateLine(line, text, spans, estimateHeight);
       signalLater(line, "change", line, change);
     }
     function linesFor(start, end) {
       var result = [];
       for (var i = start; i < end; ++i)
-        { result.push(new Line(text[i], spansFor(i), estimateHeight$$1)); }
+        { result.push(new Line(text[i], spansFor(i), estimateHeight)); }
       return result
     }
 
@@ -79437,7 +81514,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
         update(firstLine, firstLine.text.slice(0, from.ch) + lastText + firstLine.text.slice(to.ch), lastSpans);
       } else {
         var added$1 = linesFor(1, text.length - 1);
-        added$1.push(new Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight$$1));
+        added$1.push(new Line(lastText + firstLine.text.slice(to.ch), lastSpans, estimateHeight));
         update(firstLine, firstLine.text.slice(0, from.ch) + text[0], spansFor(0));
         doc.insert(from.line + 1, added$1);
       }
@@ -79774,11 +81851,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var obj = {
       ranges: sel.ranges,
       update: function(ranges) {
-        var this$1 = this;
-
         this.ranges = [];
         for (var i = 0; i < ranges.length; i++)
-          { this$1.ranges[i] = new Range(clipPos(doc, ranges[i].anchor),
+          { this.ranges[i] = new Range(clipPos(doc, ranges[i].anchor),
                                      clipPos(doc, ranges[i].head)); }
       },
       origin: options && options.origin
@@ -80265,13 +82340,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // See also http://marijnhaverbeke.nl/blog/codemirror-line-tree.html
 
   function LeafChunk(lines) {
-    var this$1 = this;
-
     this.lines = lines;
     this.parent = null;
     var height = 0;
     for (var i = 0; i < lines.length; ++i) {
-      lines[i].parent = this$1;
+      lines[i].parent = this;
       height += lines[i].height;
     }
     this.height = height;
@@ -80282,11 +82355,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
     // Remove the n lines at offset 'at'.
     removeInner: function(at, n) {
-      var this$1 = this;
-
       for (var i = at, e = at + n; i < e; ++i) {
-        var line = this$1.lines[i];
-        this$1.height -= line.height;
+        var line = this.lines[i];
+        this.height -= line.height;
         cleanUpLine(line);
         signalLater(line, "delete");
       }
@@ -80301,31 +82372,25 @@ var codemirror = createCommonjsModule(function (module, exports) {
     // Insert the given array of lines at offset 'at', count them as
     // having the given height.
     insertInner: function(at, lines, height) {
-      var this$1 = this;
-
       this.height += height;
       this.lines = this.lines.slice(0, at).concat(lines).concat(this.lines.slice(at));
-      for (var i = 0; i < lines.length; ++i) { lines[i].parent = this$1; }
+      for (var i = 0; i < lines.length; ++i) { lines[i].parent = this; }
     },
 
     // Used to iterate over a part of the tree.
     iterN: function(at, n, op) {
-      var this$1 = this;
-
       for (var e = at + n; at < e; ++at)
-        { if (op(this$1.lines[at])) { return true } }
+        { if (op(this.lines[at])) { return true } }
     }
   };
 
   function BranchChunk(children) {
-    var this$1 = this;
-
     this.children = children;
     var size = 0, height = 0;
     for (var i = 0; i < children.length; ++i) {
       var ch = children[i];
       size += ch.chunkSize(); height += ch.height;
-      ch.parent = this$1;
+      ch.parent = this;
     }
     this.size = size;
     this.height = height;
@@ -80336,16 +82401,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
     chunkSize: function() { return this.size },
 
     removeInner: function(at, n) {
-      var this$1 = this;
-
       this.size -= n;
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this$1.children[i], sz = child.chunkSize();
+        var child = this.children[i], sz = child.chunkSize();
         if (at < sz) {
           var rm = Math.min(n, sz - at), oldHeight = child.height;
           child.removeInner(at, rm);
-          this$1.height -= oldHeight - child.height;
-          if (sz == rm) { this$1.children.splice(i--, 1); child.parent = null; }
+          this.height -= oldHeight - child.height;
+          if (sz == rm) { this.children.splice(i--, 1); child.parent = null; }
           if ((n -= rm) == 0) { break }
           at = 0;
         } else { at -= sz; }
@@ -80362,18 +82425,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
     },
 
     collapse: function(lines) {
-      var this$1 = this;
-
-      for (var i = 0; i < this.children.length; ++i) { this$1.children[i].collapse(lines); }
+      for (var i = 0; i < this.children.length; ++i) { this.children[i].collapse(lines); }
     },
 
     insertInner: function(at, lines, height) {
-      var this$1 = this;
-
       this.size += lines.length;
       this.height += height;
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this$1.children[i], sz = child.chunkSize();
+        var child = this.children[i], sz = child.chunkSize();
         if (at <= sz) {
           child.insertInner(at, lines, height);
           if (child.lines && child.lines.length > 50) {
@@ -80383,11 +82442,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
             for (var pos = remaining; pos < child.lines.length;) {
               var leaf = new LeafChunk(child.lines.slice(pos, pos += 25));
               child.height -= leaf.height;
-              this$1.children.splice(++i, 0, leaf);
-              leaf.parent = this$1;
+              this.children.splice(++i, 0, leaf);
+              leaf.parent = this;
             }
             child.lines = child.lines.slice(0, remaining);
-            this$1.maybeSpill();
+            this.maybeSpill();
           }
           break
         }
@@ -80419,10 +82478,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
     },
 
     iterN: function(at, n, op) {
-      var this$1 = this;
-
       for (var i = 0; i < this.children.length; ++i) {
-        var child = this$1.children[i], sz = child.chunkSize();
+        var child = this.children[i], sz = child.chunkSize();
         if (at < sz) {
           var used = Math.min(n, sz - at);
           if (child.iterN(at, used, op)) { return true }
@@ -80436,20 +82493,16 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // Line widgets are block elements displayed above or below a line.
 
   var LineWidget = function(doc, node, options) {
-    var this$1 = this;
-
     if (options) { for (var opt in options) { if (options.hasOwnProperty(opt))
-      { this$1[opt] = options[opt]; } } }
+      { this[opt] = options[opt]; } } }
     this.doc = doc;
     this.node = node;
   };
 
   LineWidget.prototype.clear = function () {
-      var this$1 = this;
-
     var cm = this.doc.cm, ws = this.line.widgets, line = this.line, no = lineNo(line);
     if (no == null || !ws) { return }
-    for (var i = 0; i < ws.length; ++i) { if (ws[i] == this$1) { ws.splice(i--, 1); } }
+    for (var i = 0; i < ws.length; ++i) { if (ws[i] == this) { ws.splice(i--, 1); } }
     if (!ws.length) { line.widgets = null; }
     var height = widgetHeight(this);
     updateLineHeight(line, Math.max(0, line.height - height));
@@ -80532,8 +82585,6 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   // Clear the marker.
   TextMarker.prototype.clear = function () {
-      var this$1 = this;
-
     if (this.explicitlyCleared) { return }
     var cm = this.doc.cm, withOp = cm && !cm.curOp;
     if (withOp) { startOperation(cm); }
@@ -80543,19 +82594,19 @@ var codemirror = createCommonjsModule(function (module, exports) {
     }
     var min = null, max = null;
     for (var i = 0; i < this.lines.length; ++i) {
-      var line = this$1.lines[i];
-      var span = getMarkedSpanFor(line.markedSpans, this$1);
-      if (cm && !this$1.collapsed) { regLineChange(cm, lineNo(line), "text"); }
+      var line = this.lines[i];
+      var span = getMarkedSpanFor(line.markedSpans, this);
+      if (cm && !this.collapsed) { regLineChange(cm, lineNo(line), "text"); }
       else if (cm) {
         if (span.to != null) { max = lineNo(line); }
         if (span.from != null) { min = lineNo(line); }
       }
       line.markedSpans = removeMarkedSpan(line.markedSpans, span);
-      if (span.from == null && this$1.collapsed && !lineIsHidden(this$1.doc, line) && cm)
+      if (span.from == null && this.collapsed && !lineIsHidden(this.doc, line) && cm)
         { updateLineHeight(line, textHeight(cm.display)); }
     }
     if (cm && this.collapsed && !cm.options.lineWrapping) { for (var i$1 = 0; i$1 < this.lines.length; ++i$1) {
-      var visual = visualLine(this$1.lines[i$1]), len = lineLength(visual);
+      var visual = visualLine(this.lines[i$1]), len = lineLength(visual);
       if (len > cm.display.maxLineLength) {
         cm.display.maxLine = visual;
         cm.display.maxLineLength = len;
@@ -80581,13 +82632,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // Pos objects returned contain a line object, rather than a line
   // number (used to prevent looking up the same line twice).
   TextMarker.prototype.find = function (side, lineObj) {
-      var this$1 = this;
-
     if (side == null && this.type == "bookmark") { side = 1; }
     var from, to;
     for (var i = 0; i < this.lines.length; ++i) {
-      var line = this$1.lines[i];
-      var span = getMarkedSpanFor(line.markedSpans, this$1);
+      var line = this.lines[i];
+      var span = getMarkedSpanFor(line.markedSpans, this);
       if (span.from != null) {
         from = Pos(lineObj ? line : lineNo(line), span.from);
         if (side == -1) { return from }
@@ -80721,21 +82770,17 @@ var codemirror = createCommonjsModule(function (module, exports) {
   // implemented as a meta-marker-object controlling multiple normal
   // markers.
   var SharedTextMarker = function(markers, primary) {
-    var this$1 = this;
-
     this.markers = markers;
     this.primary = primary;
     for (var i = 0; i < markers.length; ++i)
-      { markers[i].parent = this$1; }
+      { markers[i].parent = this; }
   };
 
   SharedTextMarker.prototype.clear = function () {
-      var this$1 = this;
-
     if (this.explicitlyCleared) { return }
     this.explicitlyCleared = true;
     for (var i = 0; i < this.markers.length; ++i)
-      { this$1.markers[i].clear(); }
+      { this.markers[i].clear(); }
     signalLater(this, "clear");
   };
 
@@ -80878,11 +82923,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
     clipPos: function(pos) {return clipPos(this, pos)},
 
     getCursor: function(start) {
-      var range$$1 = this.sel.primary(), pos;
-      if (start == null || start == "head") { pos = range$$1.head; }
-      else if (start == "anchor") { pos = range$$1.anchor; }
-      else if (start == "end" || start == "to" || start === false) { pos = range$$1.to(); }
-      else { pos = range$$1.from(); }
+      var range = this.sel.primary(), pos;
+      if (start == null || start == "head") { pos = range.head; }
+      else if (start == "anchor") { pos = range.anchor; }
+      else if (start == "end" || start == "to" || start === false) { pos = range.to(); }
+      else { pos = range.from(); }
       return pos
     },
     listSelections: function() { return this.sel.ranges },
@@ -80905,13 +82950,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
       extendSelections(this, clipPosArray(this, heads), options);
     }),
     setSelections: docMethodOp(function(ranges, primary, options) {
-      var this$1 = this;
-
       if (!ranges.length) { return }
       var out = [];
       for (var i = 0; i < ranges.length; i++)
-        { out[i] = new Range(clipPos(this$1, ranges[i].anchor),
-                           clipPos(this$1, ranges[i].head)); }
+        { out[i] = new Range(clipPos(this, ranges[i].anchor),
+                           clipPos(this, ranges[i].head)); }
       if (primary == null) { primary = Math.min(ranges.length - 1, this.sel.primIndex); }
       setSelection(this, normalizeSelection(this.cm, out, primary), options);
     }),
@@ -80922,23 +82965,19 @@ var codemirror = createCommonjsModule(function (module, exports) {
     }),
 
     getSelection: function(lineSep) {
-      var this$1 = this;
-
       var ranges = this.sel.ranges, lines;
       for (var i = 0; i < ranges.length; i++) {
-        var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
+        var sel = getBetween(this, ranges[i].from(), ranges[i].to());
         lines = lines ? lines.concat(sel) : sel;
       }
       if (lineSep === false) { return lines }
       else { return lines.join(lineSep || this.lineSeparator()) }
     },
     getSelections: function(lineSep) {
-      var this$1 = this;
-
       var parts = [], ranges = this.sel.ranges;
       for (var i = 0; i < ranges.length; i++) {
-        var sel = getBetween(this$1, ranges[i].from(), ranges[i].to());
-        if (lineSep !== false) { sel = sel.join(lineSep || this$1.lineSeparator()); }
+        var sel = getBetween(this, ranges[i].from(), ranges[i].to());
+        if (lineSep !== false) { sel = sel.join(lineSep || this.lineSeparator()); }
         parts[i] = sel;
       }
       return parts
@@ -80950,16 +82989,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
       this.replaceSelections(dup, collapse, origin || "+input");
     },
     replaceSelections: docMethodOp(function(code, collapse, origin) {
-      var this$1 = this;
-
       var changes = [], sel = this.sel;
       for (var i = 0; i < sel.ranges.length; i++) {
-        var range$$1 = sel.ranges[i];
-        changes[i] = {from: range$$1.from(), to: range$$1.to(), text: this$1.splitLines(code[i]), origin: origin};
+        var range = sel.ranges[i];
+        changes[i] = {from: range.from(), to: range.to(), text: this.splitLines(code[i]), origin: origin};
       }
       var newSel = collapse && collapse != "end" && computeReplacedSel(this, changes, collapse);
       for (var i$1 = changes.length - 1; i$1 >= 0; i$1--)
-        { makeChange(this$1, changes[i$1]); }
+        { makeChange(this, changes[i$1]); }
       if (newSel) { setSelectionReplaceHistory(this, newSel); }
       else if (this.cm) { ensureCursorVisible(this.cm); }
     }),
@@ -80977,7 +83014,12 @@ var codemirror = createCommonjsModule(function (module, exports) {
       for (var i$1 = 0; i$1 < hist.undone.length; i$1++) { if (!hist.undone[i$1].ranges) { ++undone; } }
       return {undo: done, redo: undone}
     },
-    clearHistory: function() {this.history = new History(this.history.maxGeneration);},
+    clearHistory: function() {
+      var this$1 = this;
+
+      this.history = new History(this.history.maxGeneration);
+      linkedDocs(this, function (doc) { return doc.history = this$1.history; }, true);
+    },
 
     markClean: function() {
       this.cleanGeneration = this.changeGeneration(true);
@@ -81098,18 +83140,18 @@ var codemirror = createCommonjsModule(function (module, exports) {
     },
     findMarks: function(from, to, filter) {
       from = clipPos(this, from); to = clipPos(this, to);
-      var found = [], lineNo$$1 = from.line;
+      var found = [], lineNo = from.line;
       this.iter(from.line, to.line + 1, function (line) {
         var spans = line.markedSpans;
         if (spans) { for (var i = 0; i < spans.length; i++) {
           var span = spans[i];
-          if (!(span.to != null && lineNo$$1 == from.line && from.ch >= span.to ||
-                span.from == null && lineNo$$1 != from.line ||
-                span.from != null && lineNo$$1 == to.line && span.from >= to.ch) &&
+          if (!(span.to != null && lineNo == from.line && from.ch >= span.to ||
+                span.from == null && lineNo != from.line ||
+                span.from != null && lineNo == to.line && span.from >= to.ch) &&
               (!filter || filter(span.marker)))
             { found.push(span.marker.parent || span.marker); }
         } }
-        ++lineNo$$1;
+        ++lineNo;
       });
       return found
     },
@@ -81124,14 +83166,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
     },
 
     posFromIndex: function(off) {
-      var ch, lineNo$$1 = this.first, sepSize = this.lineSeparator().length;
+      var ch, lineNo = this.first, sepSize = this.lineSeparator().length;
       this.iter(function (line) {
         var sz = line.text.length + sepSize;
         if (sz > off) { ch = off; return true }
         off -= sz;
-        ++lineNo$$1;
+        ++lineNo;
       });
-      return clipPos(this, Pos(lineNo$$1, ch))
+      return clipPos(this, Pos(lineNo, ch))
     },
     indexFromPos: function (coords) {
       coords = clipPos(this, coords);
@@ -81170,15 +83212,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
       return copy
     },
     unlinkDoc: function(other) {
-      var this$1 = this;
-
       if (other instanceof CodeMirror) { other = other.doc; }
       if (this.linked) { for (var i = 0; i < this.linked.length; ++i) {
-        var link = this$1.linked[i];
+        var link = this.linked[i];
         if (link.doc != other) { continue }
-        this$1.linked.splice(i, 1);
-        other.unlinkDoc(this$1);
-        detachSharedMarkers(findSharedMarkers(this$1));
+        this.linked.splice(i, 1);
+        other.unlinkDoc(this);
+        detachSharedMarkers(findSharedMarkers(this));
         break
       } }
       // If the histories were shared, split them again
@@ -81230,28 +83270,39 @@ var codemirror = createCommonjsModule(function (module, exports) {
     // and insert it.
     if (files && files.length && window.FileReader && window.File) {
       var n = files.length, text = Array(n), read = 0;
-      var loadFile = function (file, i) {
-        if (cm.options.allowDropFileTypes &&
-            indexOf(cm.options.allowDropFileTypes, file.type) == -1)
-          { return }
-
-        var reader = new FileReader;
-        reader.onload = operation(cm, function () {
-          var content = reader.result;
-          if (/[\x00-\x08\x0e-\x1f]{2}/.test(content)) { content = ""; }
-          text[i] = content;
-          if (++read == n) {
+      var markAsReadAndPasteIfAllFilesAreRead = function () {
+        if (++read == n) {
+          operation(cm, function () {
             pos = clipPos(cm.doc, pos);
             var change = {from: pos, to: pos,
-                          text: cm.doc.splitLines(text.join(cm.doc.lineSeparator())),
+                          text: cm.doc.splitLines(
+                              text.filter(function (t) { return t != null; }).join(cm.doc.lineSeparator())),
                           origin: "paste"};
             makeChange(cm.doc, change);
-            setSelectionReplaceHistory(cm.doc, simpleSelection(pos, changeEnd(change)));
+            setSelectionReplaceHistory(cm.doc, simpleSelection(clipPos(cm.doc, pos), clipPos(cm.doc, changeEnd(change))));
+          })();
+        }
+      };
+      var readTextFromFile = function (file, i) {
+        if (cm.options.allowDropFileTypes &&
+            indexOf(cm.options.allowDropFileTypes, file.type) == -1) {
+          markAsReadAndPasteIfAllFilesAreRead();
+          return
+        }
+        var reader = new FileReader;
+        reader.onerror = function () { return markAsReadAndPasteIfAllFilesAreRead(); };
+        reader.onload = function () {
+          var content = reader.result;
+          if (/[\x00-\x08\x0e-\x1f]{2}/.test(content)) {
+            markAsReadAndPasteIfAllFilesAreRead();
+            return
           }
-        });
+          text[i] = content;
+          markAsReadAndPasteIfAllFilesAreRead();
+        };
         reader.readAsText(file);
       };
-      for (var i = 0; i < n; ++i) { loadFile(files[i], i); }
+      for (var i = 0; i < files.length; i++) { readTextFromFile(files[i], i); }
     } else { // Normal drop
       // Don't do a replace if the drop happened inside of the selected text.
       if (cm.state.draggingText && cm.doc.sel.contains(pos) > -1) {
@@ -81476,18 +83527,18 @@ var codemirror = createCommonjsModule(function (module, exports) {
     return keymap
   }
 
-  function lookupKey(key, map$$1, handle, context) {
-    map$$1 = getKeyMap(map$$1);
-    var found = map$$1.call ? map$$1.call(key, context) : map$$1[key];
+  function lookupKey(key, map, handle, context) {
+    map = getKeyMap(map);
+    var found = map.call ? map.call(key, context) : map[key];
     if (found === false) { return "nothing" }
     if (found === "...") { return "multi" }
     if (found != null && handle(found)) { return "handled" }
 
-    if (map$$1.fallthrough) {
-      if (Object.prototype.toString.call(map$$1.fallthrough) != "[object Array]")
-        { return lookupKey(key, map$$1.fallthrough, handle, context) }
-      for (var i = 0; i < map$$1.fallthrough.length; i++) {
-        var result = lookupKey(key, map$$1.fallthrough[i], handle, context);
+    if (map.fallthrough) {
+      if (Object.prototype.toString.call(map.fallthrough) != "[object Array]")
+        { return lookupKey(key, map.fallthrough, handle, context) }
+      for (var i = 0; i < map.fallthrough.length; i++) {
+        var result = lookupKey(key, map.fallthrough[i], handle, context);
         if (result) { return result }
       }
     }
@@ -81561,6 +83612,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   function endOfLine(visually, cm, lineObj, lineNo, dir) {
     if (visually) {
+      if (cm.doc.direction == "rtl") { dir = -dir; }
       var order = getOrder(lineObj, cm.doc.direction);
       if (order) {
         var part = dir < 0 ? lst(order) : order[0];
@@ -81815,7 +83867,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var line = getLine(cm.doc, start.line);
     var order = getOrder(line, cm.doc.direction);
     if (!order || order[0].level == 0) {
-      var firstNonWS = Math.max(0, line.text.search(/\S/));
+      var firstNonWS = Math.max(start.ch, line.text.search(/\S/));
       var inWS = pos.line == start.line && pos.ch <= firstNonWS && pos.ch;
       return Pos(start.line, inWS ? 0 : firstNonWS, start.sticky)
     }
@@ -81931,6 +83983,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
       if (!handled && code == 88 && !hasCopyEvent && (mac ? e.metaKey : e.ctrlKey))
         { cm.replaceSelection("", null, "cut"); }
     }
+    if (gecko && !mac && !handled && code == 46 && e.shiftKey && !e.ctrlKey && document.execCommand)
+      { document.execCommand("cut"); }
 
     // Turn mouse into crosshair when Alt is held on Mac.
     if (code == 18 && !/\bCodeMirror-crosshair\b/.test(cm.display.lineDiv.className))
@@ -82162,11 +84216,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
       start = posFromMouse(cm, event, true, true);
       ourIndex = -1;
     } else {
-      var range$$1 = rangeForUnit(cm, start, behavior.unit);
+      var range = rangeForUnit(cm, start, behavior.unit);
       if (behavior.extend)
-        { ourRange = extendRange(ourRange, range$$1.anchor, range$$1.head, behavior.extend); }
+        { ourRange = extendRange(ourRange, range.anchor, range.head, behavior.extend); }
       else
-        { ourRange = range$$1; }
+        { ourRange = range; }
     }
 
     if (!behavior.addNew) {
@@ -82209,14 +84263,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
         cm.scrollIntoView(pos);
       } else {
         var oldRange = ourRange;
-        var range$$1 = rangeForUnit(cm, pos, behavior.unit);
+        var range = rangeForUnit(cm, pos, behavior.unit);
         var anchor = oldRange.anchor, head;
-        if (cmp(range$$1.anchor, anchor) > 0) {
-          head = range$$1.head;
-          anchor = minPos(oldRange.from(), range$$1.anchor);
+        if (cmp(range.anchor, anchor) > 0) {
+          head = range.head;
+          anchor = minPos(oldRange.from(), range.anchor);
         } else {
-          head = range$$1.anchor;
-          anchor = maxPos(oldRange.to(), range$$1.head);
+          head = range.anchor;
+          anchor = maxPos(oldRange.to(), range.head);
         }
         var ranges$1 = startSel.ranges.slice(0);
         ranges$1[ourIndex] = bidiSimplify(cm, new Range(clipPos(doc, anchor), head));
@@ -82278,17 +84332,17 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   // Used when mouse-selecting to adjust the anchor to the proper side
   // of a bidi jump depending on the visual position of the head.
-  function bidiSimplify(cm, range$$1) {
-    var anchor = range$$1.anchor;
-    var head = range$$1.head;
+  function bidiSimplify(cm, range) {
+    var anchor = range.anchor;
+    var head = range.head;
     var anchorLine = getLine(cm.doc, anchor.line);
-    if (cmp(anchor, head) == 0 && anchor.sticky == head.sticky) { return range$$1 }
+    if (cmp(anchor, head) == 0 && anchor.sticky == head.sticky) { return range }
     var order = getOrder(anchorLine);
-    if (!order) { return range$$1 }
+    if (!order) { return range }
     var index = getBidiPartAt(order, anchor.ch, anchor.sticky), part = order[index];
-    if (part.from != anchor.ch && part.to != anchor.ch) { return range$$1 }
+    if (part.from != anchor.ch && part.to != anchor.ch) { return range }
     var boundary = index + ((part.from == anchor.ch) == (part.level != 1) ? 0 : 1);
-    if (boundary == 0 || boundary == order.length) { return range$$1 }
+    if (boundary == 0 || boundary == order.length) { return range }
 
     // Compute the relative visual position of the head compared to the
     // anchor (<0 is to the left, >0 to the right)
@@ -82307,7 +84361,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var usePart = order[boundary + (leftSide ? -1 : 0)];
     var from = leftSide == (usePart.level == 1);
     var ch = from ? usePart.from : usePart.to, sticky = from ? "after" : "before";
-    return anchor.ch == ch && anchor.sticky == sticky ? range$$1 : new Range(new Pos(anchor.line, ch, sticky), head)
+    return anchor.ch == ch && anchor.sticky == sticky ? range : new Range(new Pos(anchor.line, ch, sticky), head)
   }
 
 
@@ -82599,10 +84653,10 @@ var codemirror = createCommonjsModule(function (module, exports) {
       { onBlur(this); }
 
     for (var opt in optionHandlers) { if (optionHandlers.hasOwnProperty(opt))
-      { optionHandlers[opt](this$1, options[opt], Init); } }
+      { optionHandlers[opt](this, options[opt], Init); } }
     maybeUpdateLineNumberWidth(this);
     if (options.finishInit) { options.finishInit(this); }
-    for (var i = 0; i < initHooks.length; ++i) { initHooks[i](this$1); }
+    for (var i = 0; i < initHooks.length; ++i) { initHooks[i](this); }
     endOperation(this);
     // Suppress optimizelegibility in Webkit, since it breaks text
     // measuring on line wrapping boundaries.
@@ -82636,6 +84690,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
     // which point we can't mess with it anymore. Context menu is
     // handled in onMouseDown for these browsers.
     on(d.scroller, "contextmenu", function (e) { return onContextMenu(cm, e); });
+    on(d.input.getField(), "contextmenu", function (e) {
+      if (!d.scroller.contains(e.target)) { onContextMenu(cm, e); }
+    });
 
     // Used to suppress mouse event handling when a touch happens
     var touchFinished, prevTouch = {end: 0};
@@ -82824,9 +84881,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var updateInput = cm.curOp.updateInput;
     // Normal behavior is to insert the new text into every selection
     for (var i$1 = sel.ranges.length - 1; i$1 >= 0; i$1--) {
-      var range$$1 = sel.ranges[i$1];
-      var from = range$$1.from(), to = range$$1.to();
-      if (range$$1.empty()) {
+      var range = sel.ranges[i$1];
+      var from = range.from(), to = range.to();
+      if (range.empty()) {
         if (deleted && deleted > 0) // Handle deletion
           { from = Pos(from.line, from.ch - deleted); }
         else if (cm.state.overwrite && !paste) // Handle overwrite
@@ -82864,21 +84921,21 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var sel = cm.doc.sel;
 
     for (var i = sel.ranges.length - 1; i >= 0; i--) {
-      var range$$1 = sel.ranges[i];
-      if (range$$1.head.ch > 100 || (i && sel.ranges[i - 1].head.line == range$$1.head.line)) { continue }
-      var mode = cm.getModeAt(range$$1.head);
+      var range = sel.ranges[i];
+      if (range.head.ch > 100 || (i && sel.ranges[i - 1].head.line == range.head.line)) { continue }
+      var mode = cm.getModeAt(range.head);
       var indented = false;
       if (mode.electricChars) {
         for (var j = 0; j < mode.electricChars.length; j++)
           { if (inserted.indexOf(mode.electricChars.charAt(j)) > -1) {
-            indented = indentLine(cm, range$$1.head.line, "smart");
+            indented = indentLine(cm, range.head.line, "smart");
             break
           } }
       } else if (mode.electricInput) {
-        if (mode.electricInput.test(getLine(cm.doc, range$$1.head.line).text.slice(0, range$$1.head.ch)))
-          { indented = indentLine(cm, range$$1.head.line, "smart"); }
+        if (mode.electricInput.test(getLine(cm.doc, range.head.line).text.slice(0, range.head.ch)))
+          { indented = indentLine(cm, range.head.line, "smart"); }
       }
-      if (indented) { signalLater(cm, "electricInput", cm, range$$1.head.line); }
+      if (indented) { signalLater(cm, "electricInput", cm, range.head.line); }
     }
   }
 
@@ -82943,13 +85000,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
       getOption: function(option) {return this.options[option]},
       getDoc: function() {return this.doc},
 
-      addKeyMap: function(map$$1, bottom) {
-        this.state.keyMaps[bottom ? "push" : "unshift"](getKeyMap(map$$1));
+      addKeyMap: function(map, bottom) {
+        this.state.keyMaps[bottom ? "push" : "unshift"](getKeyMap(map));
       },
-      removeKeyMap: function(map$$1) {
+      removeKeyMap: function(map) {
         var maps = this.state.keyMaps;
         for (var i = 0; i < maps.length; ++i)
-          { if (maps[i] == map$$1 || maps[i].name == map$$1) {
+          { if (maps[i] == map || maps[i].name == map) {
             maps.splice(i, 1);
             return true
           } }
@@ -82966,15 +85023,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
         regChange(this);
       }),
       removeOverlay: methodOp(function(spec) {
-        var this$1 = this;
-
         var overlays = this.state.overlays;
         for (var i = 0; i < overlays.length; ++i) {
           var cur = overlays[i].modeSpec;
           if (cur == spec || typeof spec == "string" && cur.name == spec) {
             overlays.splice(i, 1);
-            this$1.state.modeGen++;
-            regChange(this$1);
+            this.state.modeGen++;
+            regChange(this);
             return
           }
         }
@@ -82988,24 +85043,22 @@ var codemirror = createCommonjsModule(function (module, exports) {
         if (isLine(this.doc, n)) { indentLine(this, n, dir, aggressive); }
       }),
       indentSelection: methodOp(function(how) {
-        var this$1 = this;
-
         var ranges = this.doc.sel.ranges, end = -1;
         for (var i = 0; i < ranges.length; i++) {
-          var range$$1 = ranges[i];
-          if (!range$$1.empty()) {
-            var from = range$$1.from(), to = range$$1.to();
+          var range = ranges[i];
+          if (!range.empty()) {
+            var from = range.from(), to = range.to();
             var start = Math.max(end, from.line);
-            end = Math.min(this$1.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
+            end = Math.min(this.lastLine(), to.line - (to.ch ? 0 : 1)) + 1;
             for (var j = start; j < end; ++j)
-              { indentLine(this$1, j, how); }
-            var newRanges = this$1.doc.sel.ranges;
+              { indentLine(this, j, how); }
+            var newRanges = this.doc.sel.ranges;
             if (from.ch == 0 && ranges.length == newRanges.length && newRanges[i].from().ch > 0)
-              { replaceOneSelection(this$1.doc, i, new Range(from, newRanges[i].to()), sel_dontScroll); }
-          } else if (range$$1.head.line > end) {
-            indentLine(this$1, range$$1.head.line, how, true);
-            end = range$$1.head.line;
-            if (i == this$1.doc.sel.primIndex) { ensureCursorVisible(this$1); }
+              { replaceOneSelection(this.doc, i, new Range(from, newRanges[i].to()), sel_dontScroll); }
+          } else if (range.head.line > end) {
+            indentLine(this, range.head.line, how, true);
+            end = range.head.line;
+            if (i == this.doc.sel.primIndex) { ensureCursorVisible(this); }
           }
         }
       }),
@@ -83047,8 +85100,6 @@ var codemirror = createCommonjsModule(function (module, exports) {
       },
 
       getHelpers: function(pos, type) {
-        var this$1 = this;
-
         var found = [];
         if (!helpers.hasOwnProperty(type)) { return found }
         var help = helpers[type], mode = this.getModeAt(pos);
@@ -83066,7 +85117,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
         }
         for (var i$1 = 0; i$1 < help._global.length; i$1++) {
           var cur = help._global[i$1];
-          if (cur.pred(mode, this$1) && indexOf(found, cur.val) == -1)
+          if (cur.pred(mode, this) && indexOf(found, cur.val) == -1)
             { found.push(cur.val); }
         }
         return found
@@ -83079,10 +85130,10 @@ var codemirror = createCommonjsModule(function (module, exports) {
       },
 
       cursorCoords: function(start, mode) {
-        var pos, range$$1 = this.doc.sel.primary();
-        if (start == null) { pos = range$$1.head; }
+        var pos, range = this.doc.sel.primary();
+        if (start == null) { pos = range.head; }
         else if (typeof start == "object") { pos = clipPos(this.doc, start); }
-        else { pos = start ? range$$1.from() : range$$1.to(); }
+        else { pos = start ? range.from() : range.to(); }
         return cursorCoords(this, pos, mode || "page")
       },
 
@@ -83166,13 +85217,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
       triggerElectric: methodOp(function(text) { triggerElectric(this, text); }),
 
       findPosH: function(from, amount, unit, visually) {
-        var this$1 = this;
-
         var dir = 1;
         if (amount < 0) { dir = -1; amount = -amount; }
         var cur = clipPos(this.doc, from);
         for (var i = 0; i < amount; ++i) {
-          cur = findPosH(this$1.doc, cur, dir, unit, visually);
+          cur = findPosH(this.doc, cur, dir, unit, visually);
           if (cur.hitSide) { break }
         }
         return cur
@@ -83181,11 +85230,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
       moveH: methodOp(function(dir, unit) {
         var this$1 = this;
 
-        this.extendSelectionsBy(function (range$$1) {
-          if (this$1.display.shift || this$1.doc.extend || range$$1.empty())
-            { return findPosH(this$1.doc, range$$1.head, dir, unit, this$1.options.rtlMoveVisually) }
+        this.extendSelectionsBy(function (range) {
+          if (this$1.display.shift || this$1.doc.extend || range.empty())
+            { return findPosH(this$1.doc, range.head, dir, unit, this$1.options.rtlMoveVisually) }
           else
-            { return dir < 0 ? range$$1.from() : range$$1.to() }
+            { return dir < 0 ? range.from() : range.to() }
         }, sel_move);
       }),
 
@@ -83194,23 +85243,21 @@ var codemirror = createCommonjsModule(function (module, exports) {
         if (sel.somethingSelected())
           { doc.replaceSelection("", null, "+delete"); }
         else
-          { deleteNearSelection(this, function (range$$1) {
-            var other = findPosH(doc, range$$1.head, dir, unit, false);
-            return dir < 0 ? {from: other, to: range$$1.head} : {from: range$$1.head, to: other}
+          { deleteNearSelection(this, function (range) {
+            var other = findPosH(doc, range.head, dir, unit, false);
+            return dir < 0 ? {from: other, to: range.head} : {from: range.head, to: other}
           }); }
       }),
 
       findPosV: function(from, amount, unit, goalColumn) {
-        var this$1 = this;
-
         var dir = 1, x = goalColumn;
         if (amount < 0) { dir = -1; amount = -amount; }
         var cur = clipPos(this.doc, from);
         for (var i = 0; i < amount; ++i) {
-          var coords = cursorCoords(this$1, cur, "div");
+          var coords = cursorCoords(this, cur, "div");
           if (x == null) { x = coords.left; }
           else { coords.left = x; }
-          cur = findPosV(this$1, coords, dir, unit);
+          cur = findPosV(this, coords, dir, unit);
           if (cur.hitSide) { break }
         }
         return cur
@@ -83221,14 +85268,14 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
         var doc = this.doc, goals = [];
         var collapse = !this.display.shift && !doc.extend && doc.sel.somethingSelected();
-        doc.extendSelectionsBy(function (range$$1) {
+        doc.extendSelectionsBy(function (range) {
           if (collapse)
-            { return dir < 0 ? range$$1.from() : range$$1.to() }
-          var headPos = cursorCoords(this$1, range$$1.head, "div");
-          if (range$$1.goalColumn != null) { headPos.left = range$$1.goalColumn; }
+            { return dir < 0 ? range.from() : range.to() }
+          var headPos = cursorCoords(this$1, range.head, "div");
+          if (range.goalColumn != null) { headPos.left = range.goalColumn; }
           goals.push(headPos.left);
           var pos = findPosV(this$1, headPos, dir, unit);
-          if (unit == "page" && range$$1 == doc.sel.primary())
+          if (unit == "page" && range == doc.sel.primary())
             { addToScrollTop(this$1, charCoords(this$1, pos, "div").top - headPos.top); }
           return pos
         }, sel_move);
@@ -83275,22 +85322,22 @@ var codemirror = createCommonjsModule(function (module, exports) {
                 clientHeight: displayHeight(this), clientWidth: displayWidth(this)}
       },
 
-      scrollIntoView: methodOp(function(range$$1, margin) {
-        if (range$$1 == null) {
-          range$$1 = {from: this.doc.sel.primary().head, to: null};
+      scrollIntoView: methodOp(function(range, margin) {
+        if (range == null) {
+          range = {from: this.doc.sel.primary().head, to: null};
           if (margin == null) { margin = this.options.cursorScrollMargin; }
-        } else if (typeof range$$1 == "number") {
-          range$$1 = {from: Pos(range$$1, 0), to: null};
-        } else if (range$$1.from == null) {
-          range$$1 = {from: range$$1, to: null};
+        } else if (typeof range == "number") {
+          range = {from: Pos(range, 0), to: null};
+        } else if (range.from == null) {
+          range = {from: range, to: null};
         }
-        if (!range$$1.to) { range$$1.to = range$$1.from; }
-        range$$1.margin = margin || 0;
+        if (!range.to) { range.to = range.from; }
+        range.margin = margin || 0;
 
-        if (range$$1.from.line != null) {
-          scrollToRange(this, range$$1);
+        if (range.from.line != null) {
+          scrollToRange(this, range);
         } else {
-          scrollToCoordsRange(this, range$$1.from, range$$1.to, range$$1.margin);
+          scrollToCoordsRange(this, range.from, range.to, range.margin);
         }
       }),
 
@@ -83301,11 +85348,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
         if (width != null) { this.display.wrapper.style.width = interpret(width); }
         if (height != null) { this.display.wrapper.style.height = interpret(height); }
         if (this.options.lineWrapping) { clearLineMeasurementCache(this); }
-        var lineNo$$1 = this.display.viewFrom;
-        this.doc.iter(lineNo$$1, this.display.viewTo, function (line) {
+        var lineNo = this.display.viewFrom;
+        this.doc.iter(lineNo, this.display.viewTo, function (line) {
           if (line.widgets) { for (var i = 0; i < line.widgets.length; i++)
-            { if (line.widgets[i].noHScroll) { regLineChange(this$1, lineNo$$1, "widget"); break } } }
-          ++lineNo$$1;
+            { if (line.widgets[i].noHScroll) { regLineChange(this$1, lineNo, "widget"); break } } }
+          ++lineNo;
         });
         this.curOp.forceUpdate = true;
         signal(this, "refresh", this);
@@ -83376,8 +85423,9 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var oldPos = pos;
     var origDir = dir;
     var lineObj = getLine(doc, pos.line);
+    var lineDir = visually && doc.direction == "rtl" ? -dir : dir;
     function findNextLine() {
-      var l = pos.line + dir;
+      var l = pos.line + lineDir;
       if (l < doc.first || l >= doc.first + doc.size) { return false }
       pos = new Pos(l, pos.ch, pos.sticky);
       return lineObj = getLine(doc, l)
@@ -83391,7 +85439,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
       }
       if (next == null) {
         if (!boundToLine && findNextLine())
-          { pos = endOfLine(visually, doc.cm, lineObj, pos.line, dir); }
+          { pos = endOfLine(visually, doc.cm, lineObj, pos.line, lineDir); }
         else
           { return false }
       } else {
@@ -83576,8 +85624,8 @@ var codemirror = createCommonjsModule(function (module, exports) {
     var end = to.line < cm.display.viewTo && posToDOM(cm, to);
     if (!end) {
       var measure = view[view.length - 1].measure;
-      var map$$1 = measure.maps ? measure.maps[measure.maps.length - 1] : measure.map;
-      end = {node: map$$1[map$$1.length - 1], offset: map$$1[map$$1.length - 2] - map$$1[map$$1.length - 3]};
+      var map = measure.maps ? measure.maps[measure.maps.length - 1] : measure.map;
+      end = {node: map[map.length - 1], offset: map[map.length - 2] - map[map.length - 3]};
     }
 
     if (!start || !end) {
@@ -83866,11 +85914,11 @@ var codemirror = createCommonjsModule(function (module, exports) {
           addText(cmText);
           return
         }
-        var markerID = node.getAttribute("cm-marker"), range$$1;
+        var markerID = node.getAttribute("cm-marker"), range;
         if (markerID) {
           var found = cm.findMarks(Pos(fromLine, 0), Pos(toLine + 1, 0), recognizeMarker(+markerID));
-          if (found.length && (range$$1 = found[0].find(0)))
-            { addText(getBetween(cm.doc, range$$1.from, range$$1.to).join(lineSep)); }
+          if (found.length && (range = found[0].find(0)))
+            { addText(getBetween(cm.doc, range.from, range.to).join(lineSep)); }
           return
         }
         if (node.getAttribute("contenteditable") == "false") { return }
@@ -83938,13 +85986,13 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
     function find(textNode, topNode, offset) {
       for (var i = -1; i < (maps ? maps.length : 0); i++) {
-        var map$$1 = i < 0 ? measure.map : maps[i];
-        for (var j = 0; j < map$$1.length; j += 3) {
-          var curNode = map$$1[j + 2];
+        var map = i < 0 ? measure.map : maps[i];
+        for (var j = 0; j < map.length; j += 3) {
+          var curNode = map[j + 2];
           if (curNode == textNode || curNode == topNode) {
             var line = lineNo(i < 0 ? lineView.line : lineView.rest[i]);
-            var ch = map$$1[j] + offset;
-            if (offset < 0 || curNode != textNode) { ch = map$$1[j + (offset ? 1 : 0)]; }
+            var ch = map[j] + offset;
+            if (offset < 0 || curNode != textNode) { ch = map[j + (offset ? 1 : 0)]; }
             return Pos(line, ch)
           }
         }
@@ -84468,7 +86516,7 @@ var codemirror = createCommonjsModule(function (module, exports) {
 
   addLegacyProps(CodeMirror);
 
-  CodeMirror.version = "5.49.0";
+  CodeMirror.version = "5.52.0";
 
   return CodeMirror;
 
@@ -84484,11 +86532,14 @@ var lint = createCommonjsModule(function (module, exports) {
 })(function(CodeMirror) {
   var GUTTER_ID = "CodeMirror-lint-markers";
 
-  function showTooltip(e, content) {
+  function showTooltip(cm, e, content) {
     var tt = document.createElement("div");
-    tt.className = "CodeMirror-lint-tooltip";
+    tt.className = "CodeMirror-lint-tooltip cm-s-" + cm.options.theme;
     tt.appendChild(content.cloneNode(true));
-    document.body.appendChild(tt);
+    if (cm.state.lint.options.selfContain)
+      cm.getWrapperElement().appendChild(tt);
+    else
+      document.body.appendChild(tt);
 
     function position(e) {
       if (!tt.parentNode) return CodeMirror.off(document, "mousemove", position);
@@ -84510,8 +86561,8 @@ var lint = createCommonjsModule(function (module, exports) {
     setTimeout(function() { rm(tt); }, 600);
   }
 
-  function showTooltipFor(e, content, node) {
-    var tooltip = showTooltip(e, content);
+  function showTooltipFor(cm, e, content, node) {
+    var tooltip = showTooltip(cm, e, content);
     function hide() {
       CodeMirror.off(node, "mouseout", hide);
       if (tooltip) { hideTooltip(tooltip); tooltip = null; }
@@ -84550,7 +86601,7 @@ var lint = createCommonjsModule(function (module, exports) {
     state.marked.length = 0;
   }
 
-  function makeMarker(labels, severity, multiple, tooltips) {
+  function makeMarker(cm, labels, severity, multiple, tooltips) {
     var marker = document.createElement("div"), inner = marker;
     marker.className = "CodeMirror-lint-marker-" + severity;
     if (multiple) {
@@ -84559,7 +86610,7 @@ var lint = createCommonjsModule(function (module, exports) {
     }
 
     if (tooltips != false) CodeMirror.on(inner, "mouseover", function(e) {
-      showTooltipFor(e, labels, inner);
+      showTooltipFor(cm, e, labels, inner);
     });
 
     return marker;
@@ -84585,9 +86636,9 @@ var lint = createCommonjsModule(function (module, exports) {
     var tip = document.createElement("div");
     tip.className = "CodeMirror-lint-message-" + severity;
     if (typeof ann.messageHTML != 'undefined') {
-        tip.innerHTML = ann.messageHTML;
+      tip.innerHTML = ann.messageHTML;
     } else {
-        tip.appendChild(document.createTextNode(ann.message));
+      tip.appendChild(document.createTextNode(ann.message));
     }
     return tip;
   }
@@ -84658,7 +86709,7 @@ var lint = createCommonjsModule(function (module, exports) {
       }
 
       if (state.hasGutter)
-        cm.setGutterMarker(line, GUTTER_ID, makeMarker(tipLabel, maxSeverity, anns.length > 1,
+        cm.setGutterMarker(line, GUTTER_ID, makeMarker(cm, tipLabel, maxSeverity, anns.length > 1,
                                                        state.options.tooltips));
     }
     if (options.onUpdateLinting) options.onUpdateLinting(annotationsNotSorted, annotations, cm);
@@ -84671,14 +86722,14 @@ var lint = createCommonjsModule(function (module, exports) {
     state.timeout = setTimeout(function(){startLinting(cm);}, state.options.delay || 500);
   }
 
-  function popupTooltips(annotations, e) {
+  function popupTooltips(cm, annotations, e) {
     var target = e.target || e.srcElement;
     var tooltip = document.createDocumentFragment();
     for (var i = 0; i < annotations.length; i++) {
       var ann = annotations[i];
       tooltip.appendChild(annotationTooltip(ann));
     }
-    showTooltipFor(e, tooltip, target);
+    showTooltipFor(cm, e, tooltip, target);
   }
 
   function onMouseOver(cm, e) {
@@ -84692,7 +86743,7 @@ var lint = createCommonjsModule(function (module, exports) {
       var ann = spans[i].__annotation;
       if (ann) annotations.push(ann);
     }
-    if (annotations.length) popupTooltips(annotations, e);
+    if (annotations.length) popupTooltips(cm, annotations, e);
   }
 
   CodeMirror.defineOption("lint", false, function(cm, val, old) {
@@ -84847,7 +86898,7 @@ the License.
  * @appliesMixin PayloadParserMixin
  */
 class RawPayloadEditor extends ArcResizableMixin(PayloadParserMixin(EventsTargetMixin(LitElement))) {
-  static get styles() {
+  get styles() {
     return [
       linterStyles,
       css`:host {
@@ -84860,37 +86911,54 @@ class RawPayloadEditor extends ArcResizableMixin(PayloadParserMixin(EventsTarget
 
       *[hidden] {
         display: none !important;
-      }`
+      }
+
+      code-mirror {
+        height: auto;
+        max-height: 300px;
+      }
+
+      anypoint-button,
+      .action-buttons ::slotted(anypoint-button) {
+        white-space: nowrap;
+      }
+      `
     ];
   }
 
   render() {
-    const { _encodeEnabled, _isJson, lineNumbers } = this;
-    return html`
+    const { _encodeEnabled, _isJson, lineNumbers, compatibility } = this;
+    return html`<style>${this.styles}</style>
     <div class="action-buttons">
       ${_encodeEnabled ? html`
         <anypoint-button
           data-action="encode"
           @click="${this.encodeValue}"
           emphasis="medium"
-          title="Encodes payload to x-www-form-urlencoded data">Encode payload</anypoint-button>
+          title="Encodes payload to x-www-form-urlencoded data"
+          ?compatibility="${compatibility}"
+        >Encode payload</anypoint-button>
         <anypoint-button
           data-action="decode"
           @click="${this.decodeValue}"
           emphasis="medium"
-          title="Decodes payload to human readable form">Decode payload</anypoint-button>
+          title="Decodes payload to human readable form"
+          ?compatibility="${compatibility}"
+        >Decode payload</anypoint-button>
       ` : undefined}
       ${_isJson ? html`
         <anypoint-button
           data-action="format-json"
           emphasis="medium"
           @click="${this.formatValue}"
-          title="Formats JSON input.">Format JSON</anypoint-button>
+          title="Formats JSON input."
+        ?compatibility="${compatibility}">Format JSON</anypoint-button>
         <anypoint-button
           data-action="minify-json"
           @click="${this.minifyValue}"
           emphasis="medium"
-          title="Removed whitespaces from the input">Minify JSON</anypoint-button>
+          title="Removed whitespaces from the input"
+        ?compatibility="${compatibility}">Minify JSON</anypoint-button>
       ` : undefined}
       <slot name="content-action"></slot>
     </div>
@@ -84898,7 +86966,8 @@ class RawPayloadEditor extends ArcResizableMixin(PayloadParserMixin(EventsTarget
       mode="application/json"
       @value-changed="${this._editorValueChanged}"
       gutters='["CodeMirror-lint-markers"]'
-      .lineNumbers="${lineNumbers}"></code-mirror>
+      ?lineNumbers="${lineNumbers}"
+    ></code-mirror>
     <paper-toast id="invalidJsonToast">JSON value is invalid. Cannot parse value.</paper-toast>`;
   }
 
@@ -84913,6 +86982,10 @@ class RawPayloadEditor extends ArcResizableMixin(PayloadParserMixin(EventsTarget
        * @type {Object}
        */
       lineNumbers: { type: Boolean },
+      /**
+       * Enables compatibility mode with Anypoint platform.
+       */
+      compatibility: { type: Boolean },
       /**
        * Content-Type header value. Determines current code mirror mode.
        */
@@ -85509,6 +87582,163 @@ class MultipartPayloadTransformer extends LitElement {
 }
 window.customElements.define('multipart-payload-transformer', MultipartPayloadTransformer);
 
+/**
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+const template$3 = html$1`
+<dom-module id="prism-theme-default">
+  <template>
+    <style>
+    /**
+    * prism.js default theme for JavaScript, CSS and HTML
+    * Based on dabblet (http://dabblet.com)
+    * @author Lea Verou
+    */
+    code[class*="language-"],
+    pre[class*="language-"] {
+    color: black;
+    background: none;
+    text-shadow: 0 1px white;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    text-align: left;
+    white-space: pre;
+    word-spacing: normal;
+    word-break: normal;
+    word-wrap: normal;
+    line-height: 1.5;
+
+    -moz-tab-size: 4;
+    -o-tab-size: 4;
+    tab-size: 4;
+
+    -webkit-hyphens: none;
+    -moz-hyphens: none;
+    -ms-hyphens: none;
+    hyphens: none;
+    }
+
+    pre[class*="language-"]::-moz-selection, pre[class*="language-"] ::-moz-selection,
+    code[class*="language-"]::-moz-selection, code[class*="language-"] ::-moz-selection {
+    text-shadow: none;
+    background: #b3d4fc;
+    }
+
+    pre[class*="language-"]::selection, pre[class*="language-"] ::selection,
+    code[class*="language-"]::selection, code[class*="language-"] ::selection {
+    text-shadow: none;
+    background: #b3d4fc;
+    }
+
+    @media print {
+    code[class*="language-"],
+    pre[class*="language-"] {
+      text-shadow: none;
+    }
+    }
+
+    /* Code blocks */
+    pre[class*="language-"] {
+    padding: 1em;
+    margin: .5em 0;
+    overflow: auto;
+    }
+
+    :not(pre) > code[class*="language-"],
+    pre[class*="language-"] {
+    background: #f5f2f0;
+    }
+
+    /* Inline code */
+    :not(pre) > code[class*="language-"] {
+    padding: .1em;
+    border-radius: .3em;
+    white-space: normal;
+    }
+
+    .token.comment,
+    .token.prolog,
+    .token.doctype,
+    .token.cdata {
+    color: slategray;
+    }
+
+    .token.punctuation {
+    color: #999;
+    }
+
+    .namespace {
+    opacity: .7;
+    }
+
+    .token.property,
+    .token.tag,
+    .token.boolean,
+    .token.number,
+    .token.constant,
+    .token.symbol,
+    .token.deleted {
+    color: #905;
+    }
+
+    .token.selector,
+    .token.attr-name,
+    .token.string,
+    .token.char,
+    .token.builtin,
+    .token.inserted {
+    color: #690;
+    }
+
+    .token.operator,
+    .token.entity,
+    .token.url,
+    .language-css .token.string,
+    .style .token.string {
+    color: #a67f59;
+    background: hsla(0, 0%, 100%, .5);
+    }
+
+    .token.atrule,
+    .token.attr-value,
+    .token.keyword {
+    color: #07a;
+    }
+
+    .token.function {
+    color: #DD4A68;
+    }
+
+    .token.regex,
+    .token.important,
+    .token.variable {
+    color: #e90;
+    }
+
+    .token.important,
+    .token.bold {
+    font-weight: bold;
+    }
+    .token.italic {
+    font-style: italic;
+    }
+
+    .token.entity {
+    cursor: help;
+    }
+    </style>
+  </template>
+</dom-module>`;
+
+document.head.appendChild(template$3.content);
+
 (function (Prism) {
 	Prism.languages.http = {
 		'request-line': {
@@ -85574,12 +87804,10 @@ window.customElements.define('multipart-payload-transformer', MultipartPayloadTr
 			options = options || {};
 
 			var pattern = suffixTypes[contentType] ? getSuffixPattern(contentType) : contentType;
-			options[contentType] = {
+			options[contentType.replace(/\//g, '-')] = {
 				pattern: RegExp('(content-type:\\s*' + pattern + '[\\s\\S]*?)(?:\\r?\\n|\\r){2}[\\s\\S]*', 'i'),
 				lookbehind: true,
-				inside: {
-					rest: httpLanguages[contentType]
-				}
+				inside: httpLanguages[contentType]
 			};
 		}
 	}
@@ -85614,7 +87842,7 @@ the License.
  * @appliesMixin ValidatableMixin
  */
 class MultipartTextFormItem extends ValidatableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -85729,7 +87957,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
       outlined,
     } = this;
     const model = this.model || { schema: {} };
-    return html`
+    return html`<style>${this.styles}</style>
     ${this._mimeSeelctorTemplate()}
     <div class="value-row">
       <div class="inputs">
@@ -85894,7 +88122,7 @@ the License.
  * @appliesMixin ValidatableMixin
  */
 class MultipartFileFormItem extends ValidatableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       formStyles,
@@ -85985,7 +88213,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
       outlined
     } = this;
     const model = this.model || { };
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="inputs">
       <anypoint-input
         class="name-field"
@@ -86222,9 +88450,9 @@ try {
  * @memberof ApiComponents
  */
 class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return [
-      styles$1,
+      styles$3,
       formStyles,
       css`:host {
         display: block;
@@ -86375,7 +88603,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
       disabled,
     } = this;
 
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="editor-actions">
       <anypoint-button
         part="content-action-button, code-content-action-button"
@@ -87037,7 +89265,7 @@ the License.
  * @memberof UiElements
  */
 class FilesPayloadEditor extends ValidatableMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       padding: 12px 0;
@@ -87083,9 +89311,15 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
   }
 
   render() {
-    const { hasFile, fileSize, fileName } = this;
-    return html`<div class="selector">
-      <anypoint-button emphasis="high" @click="${this._selectFile}" class="file-trigger">Choose a file</anypoint-button>
+    const { hasFile, fileSize, fileName, compatibility } = this;
+    return html`<style>${this.styles}</style>
+    <div class="selector">
+      <anypoint-button
+        emphasis="high"
+        @click="${this._selectFile}"
+        class="file-trigger"
+        ?compatibility="${compatibility}"
+      >Choose a file</anypoint-button>
       ${hasFile ? html`
         <span class="files-counter-message">1 file selected, ${fileSize} bytes</span>` : undefined}
     </div>
@@ -87098,6 +89332,7 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
           class="action-icon delete-icon"
           title="Clear file"
           @click="${this.removeFile}"
+          ?compatibility="${compatibility}"
         >
           <span class="icon">${removeCircleOutline}</span>
         </anypoint-icon-button>
@@ -87125,7 +89360,11 @@ class FilesPayloadEditor extends ValidatableMixin(LitElement) {
        *
        * @type {Blob}
        */
-      value: { }
+      value: { },
+      /**
+       * Enables compatibility with Anypoint styling
+       */
+      compatibility: { type: Boolean },
     };
   }
   /**
@@ -87421,7 +89660,7 @@ the License.
  * @appliesMixin EventsTargetMixin
  */
 class ContentTypeSelector extends EventsTargetMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: inline-block;
@@ -87429,7 +89668,7 @@ class ContentTypeSelector extends EventsTargetMixin(LitElement) {
         height: 56px;
       }
 
-      :host([legacy]),
+      :host([compatibility]),
       :host([nolabelfloat]) {
         height: 40px;
       }
@@ -87441,16 +89680,16 @@ class ContentTypeSelector extends EventsTargetMixin(LitElement) {
   }
 
   render() {
-    const { readOnly, disabled, legacy, outlined, noLabelFloat } = this;
-    return html`
+    const { readOnly, disabled, compatibility, outlined, noLabelFloat } = this;
+    return html`<style>${this.styles}</style>
       <anypoint-dropdown-menu
         ?noLabelFloat="${noLabelFloat}"
         aria-label="Select request body content type"
         aria-expanded="false"
-        .outlined="${outlined}"
-        .legacy="${legacy}"
-        .readOnly="${readOnly}"
-        .disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
         @opened-changed="${this._handleDropdownOpened}"
       >
         <label slot="label">Body content type</label>
@@ -87458,26 +89697,27 @@ class ContentTypeSelector extends EventsTargetMixin(LitElement) {
           slot="dropdown-content"
           @iron-select="${this._contentTypeSelected}"
           .selected="${this.selected}"
-          .disabled="${disabled}"
+          ?disabled="${disabled}"
+          ?compatibility="${compatibility}"
           selectable="[data-type]"
         >
-          <anypoint-item .legacy="${legacy}" data-type="application/json">application/json</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="application/xml">application/xml</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="application/atom+xml">application/atom+xml</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="multipart/form-data">multipart/form-data</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="multipart/alternative">multipart/alternative</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="multipart/mixed">multipart/mixed</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="application/x-www-form-urlencoded"
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/json">application/json</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/xml">application/xml</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/atom+xml">application/atom+xml</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="multipart/form-data">multipart/form-data</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="multipart/alternative">multipart/alternative</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="multipart/mixed">multipart/mixed</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/x-www-form-urlencoded"
             >application/x-www-form-urlencoded</anypoint-item
           >
-          <anypoint-item .legacy="${legacy}" data-type="application/base64">application/base64</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="application/octet-stream"
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/base64">application/base64</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/octet-stream"
             >application/octet-stream</anypoint-item
           >
-          <anypoint-item .legacy="${legacy}" data-type="text/plain">text/plain</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="text/css">text/css</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="text/html">text/html</anypoint-item>
-          <anypoint-item .legacy="${legacy}" data-type="application/javascript">application/javascript</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="text/plain">text/plain</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="text/css">text/css</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="text/html">text/html</anypoint-item>
+          <anypoint-item ?compatibility="${compatibility}" data-type="application/javascript">application/javascript</anypoint-item>
           <slot name="item"></slot>
         </anypoint-listbox>
       </anypoint-dropdown-menu>
@@ -87499,9 +89739,9 @@ class ContentTypeSelector extends EventsTargetMixin(LitElement) {
        */
       noLabelFloat: { type: Boolean, reflect: true },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean, reflect: true },
+      compatibility: { type: Boolean, reflect: true },
       /**
        * Enables Material Design outlined style
        */
@@ -87678,6 +89918,7 @@ class ContentTypeSelector extends EventsTargetMixin(LitElement) {
    * @param {String} value New value of the content type.
    */
 }
+
 window.customElements.define('content-type-selector', ContentTypeSelector);
 
 /**
@@ -87699,7 +89940,6 @@ the License.
  * This mixin's only purpose is to keep AMF support separated from the
  * body editor code so it's clearer to read it.
  *
- * @polymer
  * @mixinFunction
  * @memberof ApiElements
  * @appliesMixin AmfHelperMixin
@@ -87834,23 +90074,23 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
    */
   _ensurePayloadModel(model) {
     if (model instanceof Array) {
-      if (this._hasType(model[0], this.ns.raml.vocabularies.http + 'Payload')) {
+      if (this._hasType(model[0], this.ns.aml.vocabularies.apiContract.Payload)) {
         return model;
       }
       model = model[0];
     }
-    if (!this._hasType(model, this.ns.w3.hydra.core + 'Operation')) {
+    if (!this._hasType(model, this.ns.aml.vocabularies.apiContract.Operation)) {
       return;
     }
-    const opKey = this._getAmfKey(this.ns.w3.hydra.core + 'expects');
+    const opKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.expects);
     model = model[opKey];
     if (model instanceof Array) {
       model = model[0];
     }
-    if (!this._hasType(model, this.ns.raml.vocabularies.http + 'Request')) {
+    if (!this._hasType(model, this.ns.aml.vocabularies.apiContract.Request)) {
       return;
     }
-    const pKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'payload');
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.payload);
     return this._ensureArray(model[pKey]);
   }
 
@@ -87861,8 +90101,7 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
    */
   _updateAmfMediaTypes(model) {
     this._mimeTypes = undefined;
-    const ns = this.ns.raml.vocabularies;
-    const key = ns.http + 'mediaType';
+    const key = this.ns.aml.vocabularies.core.mediaType;
     const mediaTypes = model.map((item) => this._getValue(item, key));
     this._mimeTypes = mediaTypes;
     this._singleMimeType = mediaTypes && mediaTypes.length === 1;
@@ -87883,16 +90122,15 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
     if (!types || !types[0]) {
       return;
     }
-    const ns = this.ns.raml.vocabularies;
     // Types corresponds to model array in order.
-    const schemaKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const schemaKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let shape = model[0][schemaKey];
     if (shape instanceof Array) {
       shape = shape[0];
     }
     // this.contentType = undefined;
     let ct;
-    if (this._hasType(shape, ns.shapes + 'FileShape')) {
+    if (this._hasType(shape, this.ns.aml.vocabularies.shapes.FileShape)) {
       this.fileAccept = types;
       ct = 'application/octet-stream';
     } else {
@@ -87919,7 +90157,7 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
   }
 
   _schemaForMedia(mediaType) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'mediaType');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.core.mediaType);
     for (let i = 0, len = this._effectiveModel.length; i < len; i++) {
       const payload = this._effectiveModel[i];
       let itemMedia = payload[key];
@@ -87933,7 +90171,7 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
         itemMedia = itemMedia['@value'];
       }
       if (itemMedia === mediaType) {
-        const sKey = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+        const sKey = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
         let schema = payload[sKey];
         if (schema instanceof Array) {
           schema = schema[0];
@@ -87972,10 +90210,10 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
     }
     let data;
     this._resolve(schema);
-    if (this._hasType(schema, this.ns.raml.vocabularies.shapes + 'UnionShape')) {
+    if (this._hasType(schema, this.ns.aml.vocabularies.shapes.UnionShape)) {
       data = this._getUnionObjectProperties(schema);
-    } else if (this._hasType(schema, this.ns.w3.shacl.name + 'NodeShape')) {
-      const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    } else if (this._hasType(schema, this.ns.w3.shacl.NodeShape)) {
+      const pKey = this._getAmfKey(this.ns.w3.shacl.property);
       data = this._ensureArray(schema[pKey]);
     }
     if (!data) {
@@ -87996,19 +90234,19 @@ const ApiBodyEditorAmfOverlay = (base) => class extends AmfHelperMixin(base) {
    * @return {Array<Object>|undefined} Properies of first object, if any.
    */
   _getUnionObjectProperties(schema) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.shapes + 'anyOf');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.anyOf);
     const list = this._ensureArray(schema[key]);
     if (!list) {
       return;
     }
-    const pKey = this._getAmfKey(this.ns.w3.shacl.name + 'property');
+    const pKey = this._getAmfKey(this.ns.w3.shacl.property);
     for (let i = 0, len = list.length; i < len; i++) {
       let item = list[i];
       if (item instanceof Array) {
         item = item[0];
       }
       this._resolve(item);
-      if (this._hasType(item, this.ns.w3.shacl.name + 'NodeShape')) {
+      if (this._hasType(item, this.ns.w3.shacl.NodeShape)) {
         item = this._resolve(item);
         const data = this._ensureArray(item[pKey]);
         if (data) {
@@ -88089,7 +90327,7 @@ the License.
  * @appliesMixin ApiBodyEditorAmfOverlay
  */
 class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return [
       formStyles,
       css`:host {
@@ -88132,7 +90370,7 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       _effectiveModel,
       value
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <api-view-model-transformer .amf="${amf}"></api-view-model-transformer>
     <api-example-generator .amf="${amf}"></api-example-generator>
     ${aware ? html`<raml-aware .api-changed="${this._modelHandler}" .scope="${aware}"></raml-aware>` : ''}
@@ -88203,9 +90441,9 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
        */
       narrow: { type: Boolean },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean },
+      compatibility: { type: Boolean },
       /**
        * Enables Material Design outlined style
        */
@@ -88316,25 +90554,27 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       contentType,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
     } = this;
     if (!_singleMimeType) {
       const item = this._mimeTypes || [];
       return html`<anypoint-dropdown-menu
         class="amf-types"
-        .outlined="${outlined}"
-        .legacy="${legacy}"
-        .readOnly="${readOnly}"
-        .disabled="${disabled}">
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}">
         <label slot="label">Body content type</label>
         <anypoint-listbox
           slot="dropdown-content"
           attrforselected="data-mime"
           .selected="${contentType}"
-          .disabled="${disabled}"
+          ?disabled="${disabled}"
+          ?compatibility="${compatibility}"
           @selected-changed="${this._typeSelectedChanged}">
-          ${item.map((item) => html`<anypoint-item .legacy="${legacy}" data-mime="${item}">${item}</anypoint-item>`)}
+          ${item.map((item) => html`<anypoint-item
+            .compatibility="${compatibility}" data-mime="${item}">${item}</anypoint-item>`)}
         </anypoint-listbox>
       </anypoint-dropdown-menu>`;
     }
@@ -88352,45 +90592,49 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       noFile,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined
     } = this;
     return html`<content-type-selector
       .contentType="${contentType}"
       .eventsTarget="${eventsTarget}"
-      .outlined="${outlined}"
-      .legacy="${legacy}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}">
-        <anypoint-item .legacy="${legacy}" data-type="application/octet-stream">Any file data</anypoint-item>
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+    >
+        <anypoint-item
+          ?compatibility="${compatibility}"
+          data-type="application/octet-stream"
+        >Any file data</anypoint-item>
       </content-type-selector>
       ${!_editorSelectorHidden ? html`<anypoint-dropdown-menu
         class="type"
-        .outlined="${outlined}"
-        .legacy="${legacy}"
-        .readOnly="${readOnly}"
-        .disabled="${disabled}">
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}">
         <label slot="label">Editor view</label>
         <anypoint-listbox
           slot="dropdown-content"
           .selected="${selected}"
-          .disabled="${disabled}"
+          ?disabled="${disabled}"
           @selected-changed="${this._typeSelectionHandler}">
           <anypoint-item
             data-source="raw"
-            .legacy="${legacy}"
+            ?compatibility="${compatibility}"
             ?hidden="${noTextInput}">Raw input</anypoint-item>
           <anypoint-item
             data-source="urlencode"
-            .legacy="${legacy}"
+            ?compatibility="${compatibility}"
             ?hidden="${noFormData}">Form data (www-url-form-encoded)</anypoint-item>
           <anypoint-item
             data-source="multipart"
-            .legacy="${legacy}"
+            ?compatibility="${compatibility}"
             ?hidden="${noMultipart}">Multipart form data (multipart/form-data)</anypoint-item>
           <anypoint-item
             data-source="file"
-            .legacy="${legacy}"
+            ?compatibility="${compatibility}"
             ?hidden="${noFile}">Single file</anypoint-item>
         </anypoint-listbox>
       </anypoint-dropdown-menu>` : ''}
@@ -88414,17 +90658,12 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
   _createRawPanel() {
     const {
       eventsTarget,
-      allowDisableParams,
-      allowCustom,
-      allowHideOptional,
       contentType,
-      narrow,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       value,
-      noDocs,
       lineNumbers
     } = this;
     return html`<raw-payload-editor
@@ -88432,17 +90671,12 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       data-bodypanel
       .contentType="${contentType}"
       .value="${value}"
-      .allowDisableParams="${allowDisableParams}"
-      .allowCustom="${allowCustom}"
-      .allowHideOptional="${allowHideOptional}"
-      .noDocs="${noDocs}"
       .eventsTarget="${eventsTarget}"
-      .narrow="${narrow}"
-      .outlined="${outlined}"
-      .legacy="${legacy}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      .lineNumbers="${lineNumbers}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+      ?lineNumbers="${lineNumbers}"
       @value-changed="${this._panelValueChanged}"
     >
     <anypoint-button
@@ -88451,6 +90685,7 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       data-action="copy"
       emphasis="low"
       slot="content-action"
+      ?compatibility="${compatibility}"
       @click="${this._copyToClipboard}"
       aria-label="Press to copy payload to clipboard"
       title="Copy payload to clipboard"
@@ -88472,35 +90707,37 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       narrow,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       value,
       noDocs,
       _panelModel
     } = this;
     return html`<form-data-editor
-    data-type="urlencode"
-    data-bodypanel
-    .value="${value}"
-    .model="${_panelModel}"
-    .allowDisableParams="${allowDisableParams}"
-    .allowCustom="${allowCustom}"
-    .allowHideOptional="${allowHideOptional}"
-    .noDocs="${noDocs}"
-    .eventsTarget="${eventsTarget}"
-    .narrow="${narrow}"
-    .contentType="${contentType}"
-    .outlined="${outlined}"
-    .legacy="${legacy}"
-    .readOnly="${readOnly}"
-    .disabled="${disabled}"
-    @value-changed="${this._panelValueChanged}">
+      data-type="urlencode"
+      data-bodypanel
+      .value="${value}"
+      .model="${_panelModel}"
+      .eventsTarget="${eventsTarget}"
+      .contentType="${contentType}"
+      ?allowDisableParams="${allowDisableParams}"
+      ?allowCustom="${allowCustom}"
+      ?allowHideOptional="${allowHideOptional}"
+      ?noDocs="${noDocs}"
+      ?narrow="${narrow}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+      @value-changed="${this._panelValueChanged}"
+    >
       <anypoint-button
         part="content-action-button, code-content-action-button"
         class="action-button"
         data-action="copy"
         emphasis="low"
         slot="content-action"
+        ?compatibility="${compatibility}"
         @click="${this._copyToClipboard}"
         aria-label="Press to copy payload to clipboard"
         title="Copy payload to clipboard"
@@ -88521,22 +90758,24 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       narrow,
       value,
       noDocs,
+      compatibility,
       _panelModel
     } = this;
     return html`<files-payload-editor
-    data-type="file"
-    data-bodypanel
-    .value="${value}"
-    .allowDisableParams="${allowDisableParams}"
-    .allowCustom="${allowCustom}"
-    .allowHideOptional="${allowHideOptional}"
-    .noDocs="${noDocs}"
-    .eventsTarget="${eventsTarget}"
-    .narrow="${narrow}"
-    .contentType="${contentType}"
-    .model="${_panelModel}"
-    @value-changed="${this._panelValueChanged}">
-    </files-payload-editor>`;
+      data-type="file"
+      data-bodypanel
+      .value="${value}"
+      ?allowDisableParams="${allowDisableParams}"
+      ?allowCustom="${allowCustom}"
+      ?allowHideOptional="${allowHideOptional}"
+      ?noDocs="${noDocs}"
+      ?compatibility="${compatibility}"
+      .eventsTarget="${eventsTarget}"
+      ?narrow="${narrow}"
+      .contentType="${contentType}"
+      .model="${_panelModel}"
+      @value-changed="${this._panelValueChanged}"
+    ></files-payload-editor>`;
   }
   /**
    * Creates instance of Multipart body panel.
@@ -88552,30 +90791,30 @@ class ApiBodyEditor extends ApiBodyEditorAmfOverlay(EventsTargetMixin(LitElement
       narrow,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       value,
       noDocs,
       _panelModel
     } = this;
     return html`<multipart-payload-editor
-    data-type="formdata"
-    data-bodypanel
-    .value="${value}"
-    .allowDisableParams="${allowDisableParams}"
-    .allowCustom="${allowCustom}"
-    .allowHideOptional="${allowHideOptional}"
-    .noDocs="${noDocs}"
-    .eventsTarget="${eventsTarget}"
-    .narrow="${narrow}"
-    .contentType="${contentType}"
-    .outlined="${outlined}"
-    .legacy="${legacy}"
-    .readOnly="${readOnly}"
-    .disabled="${disabled}"
-    .model="${_panelModel}"
-    @value-changed="${this._panelValueChanged}">
-    </multipart-payload-editor>`;
+      data-type="formdata"
+      data-bodypanel
+      .value="${value}"
+      .eventsTarget="${eventsTarget}"
+      .contentType="${contentType}"
+      .model="${_panelModel}"
+      ?allowDisableParams="${allowDisableParams}"
+      ?allowCustom="${allowCustom}"
+      ?allowHideOptional="${allowHideOptional}"
+      ?noDocs="${noDocs}"
+      ?narrow="${narrow}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+      @value-changed="${this._panelValueChanged}"
+    ></multipart-payload-editor>`;
   }
   /**
    * Handler for content type changed event.
@@ -89013,6 +91252,19 @@ the License.
 window.customElements.define('uuid-generator', UuidGenerator);
 
 /**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
  * `api-request-editor`
  *
  * @customElement
@@ -89022,96 +91274,6 @@ window.customElements.define('uuid-generator', UuidGenerator);
  * @memberof ApiElements
  */
 class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
-  static get styles() {
-    return [
-      formStyles,
-      css`:host {
-        display: block;
-      }
-
-      .content {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .content > * {
-        margin: 0;
-      }
-
-      [hidden] {
-        display: none !important;
-      }
-
-      .panel-warning {
-        width: 16px;
-        height: 16px;
-        margin-left: 4px;
-        color: var(--error-color, #FF7043);
-      }
-
-      .invalid-info {
-        color: var(--error-color);
-        margin-left: 12px;
-      }
-
-      paper-spinner {
-        margin-right: 8px;
-      }
-
-      .action-bar {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        margin-top: 8px;
-      }
-
-      .url-editor {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      api-url-editor {
-        flex: 1;
-      }
-
-      .section-title {
-        margin: 0.83em 8px;
-        letter-spacing: 0.1rem;
-        font-size: 20px;
-        font-weight: 200;
-      }
-
-      .editor-section {
-        margin: 8px 0;
-      }
-
-      api-body-editor,
-      api-headers-editor,
-      api-url-params-editor,
-      authorization-panel {
-        margin: 0;
-        padding: 0;
-      }
-
-      :host([legacy]) .section-title {
-        font-size: 18px;
-        font-weight: 400;
-        letter-spacing: initial;
-      }
-
-      :host([narrow]) .content {
-        display: flex;
-        flex-direction: columns;
-      }
-
-      :host([narrow]) api-url-editor {
-        width: auto;
-      }`
-    ];
-  }
-
   static get properties() {
     return {
       /**
@@ -89185,9 +91347,9 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
        */
       version: { type: String },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean, reflect: true },
+      compatibility: { type: Boolean, reflect: true },
       /**
        * Enables Material Design outlined style
        */
@@ -89319,6 +91481,101 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     };
   }
 
+  get styles() {
+    return [
+      formStyles,
+      css`:host {
+        display: block;
+      }
+
+      .content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .content > * {
+        margin: 0;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .panel-warning {
+        width: 16px;
+        height: 16px;
+        margin-left: 4px;
+        color: var(--error-color, #FF7043);
+      }
+
+      .invalid-info {
+        color: var(--error-color);
+        margin-left: 12px;
+      }
+
+      paper-spinner {
+        margin-right: 8px;
+      }
+
+      .action-bar {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 8px;
+      }
+
+      .url-editor {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      api-url-editor {
+        flex: 1;
+      }
+
+      .send-button {
+        white-space: nowrap;
+      }
+
+      .section-title {
+        margin: 0.83em 8px;
+        letter-spacing: 0.1rem;
+        font-size: 20px;
+        font-weight: 200;
+      }
+
+      .editor-section {
+        margin: 8px 0;
+      }
+
+      api-body-editor,
+      api-headers-editor,
+      api-url-params-editor,
+      authorization-panel {
+        margin: 0;
+        padding: 0;
+      }
+
+      :host([compatibility]) .section-title {
+        font-size: 18px;
+        font-weight: 400;
+        letter-spacing: initial;
+      }
+
+      :host([narrow]) .content {
+        display: flex;
+        flex-direction: columns;
+      }
+
+      :host([narrow]) api-url-editor {
+        width: auto;
+      }`
+    ];
+  }
+
   get selected() {
     return this._selected;
   }
@@ -89406,6 +91663,14 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
   get requestId() {
     return this._requestId;
   }
+
+  /**
+   * @return {ApiUrlDataModel|null} A reference to `api-url-data-model`
+   * if exists in shadow DOM.
+   */
+  get apiUrlDataModel() {
+    return this.shadowRoot.querySelector('api-url-data-model');
+  }
   /**
    * @constructor
    */
@@ -89428,9 +91693,14 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     node.removeEventListener('oauth2-redirect-uri-changed', this._authRedirectChangedHandler);
   }
   /**
-   * Overrides `AmfHelperMixin.__amfChanged`
+   * Overrides `AmfHelperMixin.__amfChanged`.
+   * It updates selection and clears cache in the model generator, per APIC-229
    */
   __amfChanged() {
+    const modelGenerator = this.apiUrlDataModel;
+    if (modelGenerator && modelGenerator.clearCache) {
+      modelGenerator.clearCache();
+    }
     this._selectedChanged();
   }
   /**
@@ -89498,7 +91768,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     this._paramsInvalid = false;
     this._authSettings = undefined;
     this._authMethod = undefined;
-    const method = this._httpMethod = this._getValue(model, this.ns.w3.hydra.core + 'method');
+    const method = this._httpMethod = this._getValue(model, this.ns.aml.vocabularies.apiContract.method);
     this._isPayloadRequest = this._computeIsPayloadRequest(method);
     this._securedBy = this._computeSecuredBy(model);
     this._apiHeaders = this. _computeHeaders(model);
@@ -89513,11 +91783,11 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     if (model instanceof Array) {
       model = model[0];
     }
-    if (this._hasType(model, this.ns.raml.vocabularies.document + 'Document')) {
+    if (this._hasType(model, this.ns.aml.vocabularies.document.Document)) {
       const webApi = this._computeWebApi(model);
       return this._computeMethodModel(webApi, selected);
     }
-    const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const methods = this._ensureArray(model[key]);
     if (!methods) {
       return;
@@ -89538,7 +91808,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     if (!model) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.security + 'security');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.security.security);
     let data = model[key];
     if (data && !(data instanceof Array)) {
       data = [data];
@@ -89559,7 +91829,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     if (!expects) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'header');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
     let headers = expects[key];
     if (headers && !(headers instanceof Array)) {
       headers = [headers];
@@ -89581,7 +91851,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     if (!expects) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'payload');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.payload);
     let payload = expects[key];
     if (payload && !(payload instanceof Array)) {
       payload = [payload];
@@ -89701,11 +91971,13 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       method: (this._httpMethod || 'get').toUpperCase(),
       url: this._url,
       headers: this._headers || '',
-      payload: this._payload,
       queryModel: this._queryModel,
       pathModel: this._pathModel,
       headersModel: this.shadowRoot.querySelector('api-headers-editor').viewModel
     };
+    if (['GET', 'HEAD'].indexOf(result.method) === -1) {
+      result.payload = this._payload;
+    }
     if (this._authMethod && this._authSettings) {
       result.auth = this._authSettings;
       result.authType = this._authMethod;
@@ -89877,7 +92149,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       allowHideOptional,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
       invalid,
 
@@ -89894,7 +92166,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       _sendLabel,
       _hideParamsEditor
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
@@ -89927,7 +92199,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
           .readOnly="${readOnly}"
           .disabled="${disabled}"
           ?outlined="${outlined}"
-          ?legacy="${legacy}"
+          ?compatibility="${compatibility}"
         ></api-url-editor>
       </div>
 
@@ -89944,7 +92216,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
           .readOnly="${readOnly}"
           .disabled="${disabled}"
           ?outlined="${outlined}"
-          ?legacy="${legacy}"
+          ?compatibility="${compatibility}"
         ></api-url-params-editor>
       </div>
 
@@ -89963,7 +92235,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
           .readOnly="${readOnly}"
           .disabled="${disabled}"
           ?outlined="${outlined}"
-          ?legacy="${legacy}"
+          ?compatibility="${compatibility}"
           ?allowcustom="${allowCustom}"
           ?allowDisableParams="${allowDisableParams}"
           ?allowHideOptional="${allowHideOptional}"
@@ -89983,7 +92255,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             ?outlined="${outlined}"
-            ?legacy="${legacy}"
+            ?compatibility="${compatibility}"
             .contentType="${_contentType}"
             ?allowcustom="${allowCustom}"
             ?allowDisableParams="${allowDisableParams}"
@@ -90003,7 +92275,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
             .readOnly="${readOnly}"
             .disabled="${disabled}"
             ?outlined="${outlined}"
-            ?legacy="${legacy}"
+            ?compatibility="${compatibility}"
             @invalid-changed="${this._authInvalidChanged}"
           ></authorization-panel>
       </div>` : undefined}
@@ -90013,12 +92285,12 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
           html`<anypoint-button
             class="send-button abort"
             emphasis="high"
-            ?legacy="${legacy}"
+            ?compatibility="${compatibility}"
             @click="${this._abortRequest}">Abort</anypoint-button>` :
           html`<anypoint-button
             class="send-button"
             emphasis="high"
-            ?legacy="${legacy}"
+            ?compatibility="${compatibility}"
             @click="${this._sendHandler}">${_sendLabel}</anypoint-button>`}
         ${invalid ? html`<span class="invalid-info">Fill in required parameters</span>` : ''}
         <paper-spinner alt="Loading request" .active="${_loadingRequest}"></paper-spinner>
@@ -90090,6 +92362,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
    * @param {String} value New value of request URL
    */
 }
+
 window.customElements.define('api-request-editor', ApiRequestEditor);
 
 /**
@@ -90165,463 +92438,6 @@ const ResponseStatusMixin = (base) => class extends base {
 
 /**
 @license
-Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * An element to display formatted date and time.
- *
- * The `date` propery accepts Date object, Number as a timestamp or string
- * that will be parsed to the Date object.
- *
- * This element uses the `Intl` interface which is available in IE 11+ browsers.
- *
- * To format the date use [Intl.DateTimeFormat]
- * (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat)
- * inteface options.
- *
- * The default value for each date-time component property is undefined,
- * but if all component properties are undefined, then year, month, and day
- * are assumed to be "numeric" (per spec).
- *
- * ### Example
- *
- * ```html
- * <date-time date="2010-12-10T11:50:45Z" year="numeric" month="narrow" day="numeric"></date-time>
- * ```
- *
- * The element provides accessibility by using the `time` element and setting
- * the `datetime` attribute on it.
- *
- * ### Styling
- *
- * `<date-time>` provides the following custom properties and mixins for styling:
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--date-time` | Mixin applied to the element | `{}`
- *
- *
- * @customElement
- * @demo demo/index.html
- * @memberof UiElements
- */
-class DateTime extends HTMLElement {
-  static get observedAttributes() {
-    return [
-      'locales', 'date', 'year', 'month', 'day', 'hour', 'minute', 'second',
-      'weekday', 'time-zone-name', 'era', 'time-zone', 'hour12', 'itemprop'
-    ];
-  }
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this._observer = new MutationObserver(() => this._mutationHandler());
-  }
-
-  connectedCallback() {
-    this._observer.observe(this.shadowRoot, {
-      childList: true,
-      characterData: true,
-      subtree: true
-    });
-    this._updateLabel();
-  }
-
-  disconnectedCallback() {
-    this._observer.disconnect();
-  }
-
-  _mutationHandler() {
-    this.setAttribute('aria-label', this.shadowRoot.textContent);
-  }
-
-  /**
-   * A string with a BCP 47 language tag, or an array of such strings.
-   * For the general form and interpretation of the locales argument,
-   * see the Intl page.
-   * The following Unicode extension keys are allowed:
-   * - nu - Numbering system. Possible values include: "arab", "arabext",
-   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
-   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
-   * "tamldec", "telu", "thai", "tibt".
-   * - ca - Calendar. Possible values include: "buddhist", "chinese",
-   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
-   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
-   *
-   * @type {String}
-   */
-  get locales() {
-    return this.getAttribute('locales');
-  }
-  /**
-   * A string with a BCP 47 language tag, or an array of such strings.
-   * For the general form and interpretation of the locales argument,
-   * see the Intl page.
-   * The following Unicode extension keys are allowed:
-   * - nu - Numbering system. Possible values include: "arab", "arabext",
-   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
-   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
-   * "tamldec", "telu", "thai", "tibt".
-   * - ca - Calendar. Possible values include: "buddhist", "chinese",
-   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
-   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
-   *
-   * @param {String} v
-   * @type {String}
-   */
-  set locales(v) {
-    this.setAttribute('locales', v);
-  }
-  /**
-   * The representation of the year.
-   * Possible values are "numeric", "2-digit".
-   */
-  get year() {
-    return this.getAttribute('year');
-  }
-  /**
-   * The representation of the year.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set year(v) {
-    this.setAttribute('year', v);
-  }
-  /**
-   * The representation of the month.
-   * Possible values are "numeric", "2-digit", "narrow", "short", "long".
-   */
-  get month() {
-    return this.getAttribute('month');
-  }
-  /**
-   * The representation of the month.
-   * @param {String} v Possible values are "numeric", "2-digit", "narrow", "short", "long".
-   */
-  set month(v) {
-    this.setAttribute('month', v);
-  }
-  /**
-   * The representation of the day.
-   * Possible values are "numeric", "2-digit".
-   */
-  get day() {
-    return this.getAttribute('day');
-  }
-  /**
-   * The representation of the day.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set day(v) {
-    this.setAttribute('day', v);
-  }
-  /**
-   * The representation of the hour.
-   * Possible values are "numeric", "2-digit".
-   */
-  get hour() {
-    return this.getAttribute('hour');
-  }
-  /**
-   * The representation of the hour.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set hour(v) {
-    this.setAttribute('hour', v);
-  }
-  /**
-   * The representation of the minute.
-   * Possible values are "numeric", "2-digit".
-   */
-  get minute() {
-    return this.getAttribute('minute');
-  }
-  /**
-   * The representation of the minute.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set minute(v) {
-    this.setAttribute('minute', v);
-  }
-  /**
-   * The representation of the second.
-   * Possible values are "numeric", "2-digit".
-   */
-  get second() {
-    return this.getAttribute('second');
-  }
-  /**
-   * The representation of the second.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set second(v) {
-    this.setAttribute('second', v);
-  }
-  /**
-   * The representation of the weekday.
-   * Possible values are "narrow", "short", "long".
-   */
-  get weekday() {
-    return this.getAttribute('weekday');
-  }
-  /**
-   * The representation of the weekday.
-   * @param {String} v Possible values are "narrow", "short", "long".
-   */
-  set weekday(v) {
-    this.setAttribute('weekday', v);
-  }
-  /**
-   * The representation of the time zone name.
-   *
-   * Possible values are "short", "long".
-   */
-  get timeZoneName() {
-    return this.getAttribute('time-zone-name');
-  }
-  /**
-   * The representation of the time zone name.
-   *
-   * @param {String} v Possible values are "short", "long".
-   */
-  set timeZoneName(v) {
-    this.setAttribute('time-zone-name', v);
-  }
-  /**
-   * The time zone to use. The only value implementations must recognize
-   * is "UTC"; the default is the runtime's default time zone.
-   * Implementations may also recognize the time zone names of the IANA
-   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
-   * "America/New_York".
-   */
-  get timeZone() {
-    return this.getAttribute('time-zone');
-  }
-  /**
-   * The time zone to use. The only value implementations must recognize
-   * is "UTC"; the default is the runtime's default time zone.
-   * Implementations may also recognize the time zone names of the IANA
-   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
-   * "America/New_York".
-   * @param {String} v
-   */
-  set timeZone(v) {
-    this.setAttribute('time-zone', v);
-  }
-  /**
-   * The representation of the era.
-   *
-   * Possible values are "narrow", "short", "long".
-   */
-  get era() {
-    return this.getAttribute('era');
-  }
-  /**
-   * The representation of the era.
-   *
-   * @param {String} v Possible values are "narrow", "short", "long".
-   */
-  set era(v) {
-    this.setAttribute('era', v);
-  }
-  /**
-   * Whether to use 12-hour time (as opposed to 24-hour time).
-   * Possible values are `true` and `false`; the default is locale
-   * dependent.
-   *
-   * @type {Boolean}
-   */
-  get hour12() {
-    if (!this.hasAttribute('hour12') && !this.__hour12set) {
-      return null;
-    }
-    return this.hasAttribute('hour12');
-  }
-  /**
-   * Whether to use 12-hour time (as opposed to 24-hour time).
-   * Possible values are `true` and `false`; the default is locale
-   * dependent.
-   *
-   * @param {Boolean} v
-   */
-  set hour12(v) {
-    this.__hour12set = true;
-    if (v) {
-      this.setAttribute('hour12', '');
-    } else {
-      this.removeAttribute('hour12');
-    }
-  }
-  /**
-   * A date object to render.
-   * It can be a `Date` object, number representing a timestamp
-   * or valid date string. The argument is parsed by `Date` constructor
-   * to produce the value.
-   *
-   * @type {Date|String|number}
-   */
-  get date() {
-    if (this.__date) {
-      return this.__date;
-    }
-    return this.getAttribute('date');
-  }
-  /**
-   * A date object to render.
-   * It can be a `Date` object, number representing a timestamp
-   * or valid date string. The argument is parsed by `Date` constructor
-   * to produce the value.
-   *
-   * @param {Date|String|number} v The date to render
-   */
-  set date(v) {
-    this.__date = v;
-    if (typeof v === 'string') {
-      this.setAttribute('date', v);
-    } else {
-      this._updateLabel();
-    }
-  }
-
-  get itemprop() {
-    return this._getTimeNode().getAttribute('itemprop');
-  }
-
-  set itemprop(value) {
-    const old = this.itemprop;
-    if (old === value) {
-      return;
-    }
-    if (old && value === null) {
-      // This setter moves attribute from this element to "<time>" elsement.
-      // When the attribute is removed from this then it becomes null.
-      return;
-    }
-    const node = this._getTimeNode();
-    if (value) {
-      node.setAttribute('itemprop', value);
-      this.removeAttribute('itemprop');
-    } else {
-      node.removeAttribute('itemprop');
-    }
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === 'itemprop') {
-      this[name] = newValue;
-      return;
-    }
-    this._updateLabel();
-  }
-  /**
-   * Parses input `date` to a Date object.
-   * @param {String|Number|Date} date A date to parse
-   * @return {Date}
-   */
-  _getParsableDate(date) {
-    if (!date) {
-      date = new Date();
-    } else if (typeof date === 'string') {
-      try {
-        date = new Date(date);
-        const _test = date.getDate();
-        if (_test !== _test) {
-          date = new Date();
-        }
-      } catch (e) {
-        date = new Date();
-      }
-    } else if (!isNaN(date)) {
-      date = new Date(date);
-    } else if (!(date instanceof Date)) {
-      date = new Date();
-    }
-    return date;
-  }
-
-  _getIntlOptions() {
-    const options = {};
-    if (this.year) {
-      options.year = this.year;
-    }
-    if (this.month) {
-      options.month = this.month;
-    }
-    if (this.day) {
-      options.day = this.day;
-    }
-    if (this.hour) {
-      options.hour = this.hour;
-    }
-    if (this.minute) {
-      options.minute = this.minute;
-    }
-    if (this.second) {
-      options.second = this.second;
-    }
-    if (this.weekday) {
-      options.weekday = this.weekday;
-    }
-    if (this.era) {
-      options.era = this.era;
-    }
-    if (this.timeZoneName) {
-      options.timeZoneName = this.timeZoneName;
-    }
-    if (this.timeZone) {
-      options.timeZone = this.timeZone;
-    }
-    if (this.hour12 !== undefined) {
-      options.hour12 = this.hour12;
-    }
-    return options;
-  }
-  /**
-   * @return {Element} A reference to a `<time>` element that is in the shadow DOM of this element.
-   */
-  _getTimeNode() {
-    let node = this.shadowRoot.querySelector('time');
-    if (!node) {
-      node = document.createElement('time');
-      this.shadowRoot.appendChild(node);
-    }
-    return node;
-  }
-
-  _updateLabel() {
-    if (!this.parentElement) {
-      return;
-    }
-    const date = this._getParsableDate(this.date);
-    const node = this._getTimeNode();
-    node.setAttribute('datetime', date.toISOString());
-    /* istanbul ignore if */
-    if (typeof Intl === 'undefined') {
-      node.innerText = date.toString();
-      return;
-    }
-    let locales;
-    if (this.locales) {
-      locales = this.locales;
-    }
-    const options = this._getIntlOptions();
-    const value = new Intl.DateTimeFormat(locales, options).format(date);
-    node.innerText = value;
-  }
-}
-window.customElements.define('date-time', DateTime);
-
-/**
-@license
 Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -90683,7 +92499,7 @@ the License.
  * @memberof UiElements
  */
 class RequestTimings extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: block;
@@ -90789,6 +92605,9 @@ class RequestTimings extends LitElement {
     const receive2ProgressValue = this._computeSum(receiveProgressValue, receive);
 
     return html`
+      <style>
+        ${this.styles}
+      </style>
       ${hasStartTime
         ? html`
             <div class="row" data-type="start-time">
@@ -90805,7 +92624,7 @@ class RequestTimings extends LitElement {
               ></date-time>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasBlockedTime
         ? html`
             <div class="row" data-type="block-time">
@@ -90822,7 +92641,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(blocked)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasDnsTime
         ? html`
             <div class="row" data-type="dns-time">
@@ -90839,7 +92658,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(dns)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasConnectTime
         ? html`
             <div class="row" data-type="ttc-time">
@@ -90856,7 +92675,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(connect)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasSslTime
         ? html`
             <div class="row" data-type="ssl-time">
@@ -90873,7 +92692,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(ssl)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasSendTime
         ? html`
             <div class="row" data-type="send-time">
@@ -90890,7 +92709,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(send)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasWaitTime
         ? html`
             <div class="row" data-type="ttfb-time">
@@ -90907,7 +92726,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(wait)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       ${hasReceiveTime
         ? html`
             <div class="row" data-type="receive-time">
@@ -90924,7 +92743,7 @@ class RequestTimings extends LitElement {
               <span class="timing-value">${this._round(receive)} ms</span>
             </div>
           `
-        : undefined}
+        : ''}
       <div class="row is-total">
         <span class="timing-value total">${this._round(fullTime)} ms</span>
       </div>
@@ -91129,7 +92948,7 @@ the License.
  * @memberof UiElements
  */
 class RequestTimingsPanel extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: block;
@@ -91194,7 +93013,7 @@ class RequestTimingsPanel extends LitElement {
     const hasRedirects = !!(redirectTimings && redirectTimings.length);
     const requestTotalTime = this._computeRequestTime(redirectTimings, timings);
 
-    return html`
+    return html`<style>${this.styles}</style>
       ${hasRedirects
         ? html`
             <section class="redirects">
@@ -91349,13 +93168,12 @@ the License.
  * `--arc-link` | Mixin applied to a link | `{}`
  *
  * @customElement
- * @polymer
  * @demo demo/index.html
  * @appliesMixin HeadersParserMixin
  * @memberof UiElements
  */
 class HeadersListView extends HeadersParserMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       font-size: var(--arc-font-body1-font-size);
@@ -91405,8 +93223,8 @@ class HeadersListView extends HeadersParserMixin(LitElement) {
   render() {
     const { _headersList } = this;
     const hasList = !!(_headersList && _headersList.length);
-    return html`
-    ${hasList ? this._listTemplate(_headersList) : undefined}`;
+    return html`<style>${this.styles}</style>
+    ${hasList ? this._listTemplate(_headersList) : ''}`;
   }
 
   static get properties() {
@@ -91514,7 +93332,7 @@ the License.
  * @memberof UiElements
  */
 class HttpSourceMessageView extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       overflow: auto;
       display: block;
@@ -91544,7 +93362,7 @@ class HttpSourceMessageView extends LitElement {
 
   render() {
     const { opened, message, compatibility, toggleIcon } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div
       class="title"
       @click="${this.toggle}"
@@ -91715,7 +93533,7 @@ the License.
  * @appliesMixin ResponseStatusMixin
  */
 class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       statusStypes,
       css`.status-label {
@@ -91760,7 +93578,7 @@ class ResponseRedirectsPanel extends ResponseStatusMixin(LitElement) {
   render() {
     const { redirects, narrow } = this;
     const hasRedirects = !!(redirects && redirects.length);
-    return html`
+    return html`<style>${this.styles}</style>
     ${hasRedirects ?
       redirects.map((item, index) =>
         html`<div class="status-row">
@@ -92069,7 +93887,7 @@ class StatusMessage {
  * @appliesMixin ResponseStatusMixin
  */
 class ResponseStatusView extends ResponseStatusMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       statusStypes,
       css`:host {
@@ -92202,16 +94020,16 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
     }
     const isError = !!responseError;
 
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="status-row">
       <div class="status-value status">
       ${isError ?
         html`<span class="error status-code-value">0</span>
-        ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : undefined}
+        ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : ''}
         <p class="response-error-label">Error in the response.</p>` :
         html`<div class="status-info text">
           <span class="${this._computeStatusClass(statusCode)}">${statusCode} ${statusMessage}</span>
-          ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : undefined}
+          ${loadingTime ? html`<span class="response-time">${this._roundTime(loadingTime)} ms</span>` : ''}
         </div>
         <div class="status-details">
           <anypoint-button
@@ -92230,9 +94048,9 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
 
     <iron-collapse .opened="${opened}">
       ${requestUrl ? html`<div class="status-url">
-        ${requestMethod ? html`<span class="http-method">${requestMethod}</span>` : undefined}
+        ${requestMethod ? html`<span class="http-method">${requestMethod}</span>` : ''}
         <span class="request-url">${requestUrl}</span>
-      </div>` : undefined}
+      </div>` : ''}
 
       <anypoint-tabs
         .selected="${selectedTab}"
@@ -92248,7 +94066,7 @@ class ResponseStatusView extends ResponseStatusMixin(LitElement) {
           <span>Request headers</span>
           <span class="${this._computeBageClass(requestHeaders)}">${this._computeHeadersLength(requestHeaders)}</span>
         </anypoint-tab>
-        ${isXhr ? undefined : html`<anypoint-tab ?compatibility="${compatibility}">
+        ${isXhr ? '' : html`<anypoint-tab ?compatibility="${compatibility}">
           <span>Redirects</span>
           <span class="${this._computeBageClass(redirects.length)}">${redirects.length}</span>
         </anypoint-tab>
@@ -92695,7 +94513,7 @@ the License.
  * @memberof UiElements
  */
 class ResponseErrorView extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
       :host {
         display: flex;
@@ -93239,7 +95057,7 @@ class ResponseErrorView extends LitElement {
 
   render() {
     const { detailsPage, message } = this;
-    return html`
+    return html`<style>${this.styles}</style>
       <div class="message-wrapper">
         <div class="error-icon">${sentimentVeryDissatisfied}</div>
         <div class="error-desc">
@@ -93469,7 +95287,7 @@ the License.
  * @appliesMixin PayloadParserMixin
  */
 class ResponseRawViewer extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       overflow: overlay;
@@ -93521,7 +95339,7 @@ class ResponseRawViewer extends LitElement {
       wrapText
     } = this;
     const tabIndex = wrapText ? '-1' : '0';
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="${_actionsPanelClass}">
       <slot name="content-action"></slot>
     </div>
@@ -93590,7 +95408,7 @@ the License.
 */
 /* eslint-disable max-len */
 class JsMaxNumberError extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: inline-block;
       vertical-align: text-bottom;
@@ -93643,7 +95461,7 @@ class JsMaxNumberError extends LitElement {
 
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
     <div
       class="content"
       @click="${this.toggle}"
@@ -93714,7 +95532,7 @@ class JsMaxNumberError extends LitElement {
 }
 window.customElements.define('js-max-number-error', JsMaxNumberError);
 
-const SafeHtmlUtils$1 = {
+const SafeHtmlUtils$2 = {
   AMP_RE: new RegExp(/&/g),
   GT_RE: new RegExp(/>/g),
   LT_RE: new RegExp(/</g),
@@ -93722,19 +95540,19 @@ const SafeHtmlUtils$1 = {
   QUOT_RE: new RegExp(/"/g),
   htmlEscape: function(s) {
     if (s.indexOf('&') !== -1) {
-      s = s.replace(SafeHtmlUtils$1.AMP_RE, '&amp;');
+      s = s.replace(SafeHtmlUtils$2.AMP_RE, '&amp;');
     }
     if (s.indexOf('<') !== -1) {
-      s = s.replace(SafeHtmlUtils$1.LT_RE, '&lt;');
+      s = s.replace(SafeHtmlUtils$2.LT_RE, '&lt;');
     }
     if (s.indexOf('>') !== -1) {
-      s = s.replace(SafeHtmlUtils$1.GT_RE, '&gt;');
+      s = s.replace(SafeHtmlUtils$2.GT_RE, '&gt;');
     }
     if (s.indexOf('"') !== -1) {
-      s = s.replace(SafeHtmlUtils$1.QUOT_RE, '&quot;');
+      s = s.replace(SafeHtmlUtils$2.QUOT_RE, '&quot;');
     }
     if (s.indexOf('\'') !== -1) {
-      s = s.replace(SafeHtmlUtils$1.SQUOT_RE, '&#39;');
+      s = s.replace(SafeHtmlUtils$2.SQUOT_RE, '&#39;');
     }
     return s;
   }
@@ -93862,7 +95680,7 @@ class JsonParser {
     let result = '';
     let value = str || '';
     if (value !== null && value !== undefined) {
-      value = SafeHtmlUtils$1.htmlEscape(value);
+      value = SafeHtmlUtils$2.htmlEscape(value);
       if (value.slice(0, 1) === '/' || value.substr(0, 4) === 'http') {
         value = '<a class="' + this.cssPrefix + '" title="Click to insert into URL field" ' +
           'response-anchor add-root-url href="' + value + '">' + value + '</a>';
@@ -94032,7 +95850,7 @@ the License.
  * @demo demo/index.html
  */
 class JsonViewer extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       font-family: var(--arc-font-code-family, monospace);
@@ -94181,7 +95999,8 @@ class JsonViewer extends LitElement {
   render() {
     const { working, isError, json } = this;
     const showOutput = this._computeShowOutput(working, isError, json);
-    return html`<paper-spinner .active="${working}"></paper-spinner>
+    return html`<style>${this.styles}</style>
+    <paper-spinner .active="${working}"></paper-spinner>
     ${isError ? html`<div class="error">
       <p>There was an error parsing JSON data</p>
     </div>` : undefined}
@@ -94455,9 +96274,9 @@ class JsonViewer extends LitElement {
 }
 window.customElements.define('json-viewer', JsonViewer);
 
-Prism.languages.json={property:{pattern:/"(?:\\.|[^\\"\r\n])*"(?=\s*:)/,greedy:!0},string:{pattern:/"(?:\\.|[^\\"\r\n])*"(?!\s*:)/,greedy:!0},comment:/\/\/.*|\/\*[\s\S]*?(?:\*\/|$)/,number:/-?\d+\.?\d*(e[+-]?\d+)?/i,punctuation:/[{}[\],]/,operator:/:/,boolean:/\b(?:true|false)\b/,null:{pattern:/\bnull\b/,alias:"keyword"}};
+Prism.languages.json={property:{pattern:/"(?:\\.|[^\\"\r\n])*"(?=\s*:)/,greedy:!0},string:{pattern:/"(?:\\.|[^\\"\r\n])*"(?!\s*:)/,greedy:!0},comment:/\/\/.*|\/\*[\s\S]*?(?:\*\/|$)/,number:/-?\d+\.?\d*(?:e[+-]?\d+)?/i,punctuation:/[{}[\],]/,operator:/:/,boolean:/\b(?:true|false)\b/,null:{pattern:/\bnull\b/,alias:"keyword"}};
 
-!function(d){function n(n,e){return n=n.replace(/<inner>/g,"(?:\\\\.|[^\\\\\\n\r]|(?:\r?\n|\r)(?!\r?\n|\r))"),e&&(n=n+"|"+n.replace(/_/g,"\\*")),RegExp("((?:^|[^\\\\])(?:\\\\{2})*)(?:"+n+")")}var e="(?:\\\\.|``.+?``|`[^`\r\\n]+`|[^\\\\|\r\\n`])+",t="\\|?__(?:\\|__)+\\|?(?:(?:\r?\n|\r)|$)".replace(/__/g,e),a="\\|?[ \t]*:?-{3,}:?[ \t]*(?:\\|[ \t]*:?-{3,}:?[ \t]*)+\\|?(?:\r?\n|\r)";d.languages.markdown=d.languages.extend("markup",{}),d.languages.insertBefore("markdown","prolog",{blockquote:{pattern:/^>(?:[\t ]*>)*/m,alias:"punctuation"},table:{pattern:RegExp("^"+t+a+"(?:"+t+")*","m"),inside:{"table-data-rows":{pattern:RegExp("^("+t+a+")(?:"+t+")*$"),lookbehind:!0,inside:{"table-data":{pattern:RegExp(e),inside:d.languages.markdown},punctuation:/\|/}},"table-line":{pattern:RegExp("^("+t+")"+a+"$"),lookbehind:!0,inside:{punctuation:/\||:?-{3,}:?/}},"table-header-row":{pattern:RegExp("^"+t+"$"),inside:{"table-header":{pattern:RegExp(e),alias:"important",inside:d.languages.markdown},punctuation:/\|/}}}},code:[{pattern:/(^[ \t]*(?:\r?\n|\r))(?: {4}|\t).+(?:(?:\r?\n|\r)(?: {4}|\t).+)*/m,lookbehind:!0,alias:"keyword"},{pattern:/``.+?``|`[^`\r\n]+`/,alias:"keyword"},{pattern:/^```[\s\S]*?^```$/m,greedy:!0,inside:{"code-block":{pattern:/^(```.*(?:\r?\n|\r))[\s\S]+?(?=(?:\r?\n|\r)^```$)/m,lookbehind:!0},"code-language":{pattern:/^(```).+/,lookbehind:!0},punctuation:/```/}}],title:[{pattern:/\S.*(?:\r?\n|\r)(?:==+|--+)(?=[ \t]*$)/m,alias:"important",inside:{punctuation:/==+$|--+$/}},{pattern:/(^\s*)#+.+/m,lookbehind:!0,alias:"important",inside:{punctuation:/^#+|#+$/}}],hr:{pattern:/(^\s*)([*-])(?:[\t ]*\2){2,}(?=\s*$)/m,lookbehind:!0,alias:"punctuation"},list:{pattern:/(^\s*)(?:[*+-]|\d+\.)(?=[\t ].)/m,lookbehind:!0,alias:"punctuation"},"url-reference":{pattern:/!?\[[^\]]+\]:[\t ]+(?:\S+|<(?:\\.|[^>\\])+>)(?:[\t ]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\)))?/,inside:{variable:{pattern:/^(!?\[)[^\]]+/,lookbehind:!0},string:/(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\))$/,punctuation:/^[\[\]!:]|[<>]/},alias:"url"},bold:{pattern:n("__(?:(?!_)<inner>|_(?:(?!_)<inner>)+_)+__",!0),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^..)[\s\S]+(?=..$)/,lookbehind:!0,inside:{}},punctuation:/\*\*|__/}},italic:{pattern:n("_(?:(?!_)<inner>|__(?:(?!_)<inner>)+__)+_",!0),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^.)[\s\S]+(?=.$)/,lookbehind:!0,inside:{}},punctuation:/[*_]/}},strike:{pattern:n("(~~?)(?:(?!~)<inner>)+?\\2",!1),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^~~?)[\s\S]+(?=\1$)/,lookbehind:!0,inside:{}},punctuation:/~~?/}},url:{pattern:n('!?\\[(?:(?!\\])<inner>)+\\](?:\\([^\\s)]+(?:[\t ]+"(?:\\\\.|[^"\\\\])*")?\\)| ?\\[(?:(?!\\])<inner>)+\\])',!1),lookbehind:!0,greedy:!0,inside:{variable:{pattern:/(\[)[^\]]+(?=\]$)/,lookbehind:!0},content:{pattern:/(^!?\[)[^\]]+(?=\])/,lookbehind:!0,inside:{}},string:{pattern:/"(?:\\.|[^"\\])*"(?=\)$)/}}}}),["url","bold","italic","strike"].forEach(function(e){["url","bold","italic","strike"].forEach(function(n){e!==n&&(d.languages.markdown[e].inside.content.inside[n]=d.languages.markdown[n]);});}),d.hooks.add("after-tokenize",function(n){"markdown"!==n.language&&"md"!==n.language||!function n(e){if(e&&"string"!=typeof e)for(var t=0,a=e.length;t<a;t++){var i=e[t];if("code"===i.type){var r=i.content[1],o=i.content[3];if(r&&o&&"code-language"===r.type&&"code-block"===o.type&&"string"==typeof r.content){var l="language-"+r.content.trim().split(/\s+/)[0].toLowerCase();o.alias?"string"==typeof o.alias?o.alias=[o.alias,l]:o.alias.push(l):o.alias=[l];}}else n(i.content);}}(n.tokens);}),d.hooks.add("wrap",function(n){if("code-block"===n.type){for(var e="",t=0,a=n.classes.length;t<a;t++){var i=n.classes[t],r=/language-(.+)/.exec(i);if(r){e=r[1];break}}var o=d.languages[e];if(o){var l=n.content.replace(/&lt;/g,"<").replace(/&amp;/g,"&");n.content=d.highlight(l,o,e);}else if(e&&"none"!==e&&d.plugins.autoloader){var s="md-"+(new Date).valueOf()+"-"+Math.floor(1e16*Math.random());n.attributes.id=s,d.plugins.autoloader.loadLanguages(e,function(){var n=document.getElementById(s);n&&(n.innerHTML=d.highlight(n.textContent,d.languages[e],e));});}}}),d.languages.md=d.languages.markdown;}(Prism);
+!function(d){function n(n,e){return n=n.replace(/<inner>/g,"(?:\\\\.|[^\\\\\\n\r]|(?:\r?\n|\r)(?!\r?\n|\r))"),e&&(n=n+"|"+n.replace(/_/g,"\\*")),RegExp("((?:^|[^\\\\])(?:\\\\{2})*)(?:"+n+")")}var e="(?:\\\\.|``.+?``|`[^`\r\\n]+`|[^\\\\|\r\\n`])+",t="\\|?__(?:\\|__)+\\|?(?:(?:\r?\n|\r)|$)".replace(/__/g,e),a="\\|?[ \t]*:?-{3,}:?[ \t]*(?:\\|[ \t]*:?-{3,}:?[ \t]*)+\\|?(?:\r?\n|\r)";d.languages.markdown=d.languages.extend("markup",{}),d.languages.insertBefore("markdown","prolog",{blockquote:{pattern:/^>(?:[\t ]*>)*/m,alias:"punctuation"},table:{pattern:RegExp("^"+t+a+"(?:"+t+")*","m"),inside:{"table-data-rows":{pattern:RegExp("^("+t+a+")(?:"+t+")*$"),lookbehind:!0,inside:{"table-data":{pattern:RegExp(e),inside:d.languages.markdown},punctuation:/\|/}},"table-line":{pattern:RegExp("^("+t+")"+a+"$"),lookbehind:!0,inside:{punctuation:/\||:?-{3,}:?/}},"table-header-row":{pattern:RegExp("^"+t+"$"),inside:{"table-header":{pattern:RegExp(e),alias:"important",inside:d.languages.markdown},punctuation:/\|/}}}},code:[{pattern:/(^[ \t]*(?:\r?\n|\r))(?: {4}|\t).+(?:(?:\r?\n|\r)(?: {4}|\t).+)*/m,lookbehind:!0,alias:"keyword"},{pattern:/``.+?``|`[^`\r\n]+`/,alias:"keyword"},{pattern:/^```[\s\S]*?^```$/m,greedy:!0,inside:{"code-block":{pattern:/^(```.*(?:\r?\n|\r))[\s\S]+?(?=(?:\r?\n|\r)^```$)/m,lookbehind:!0},"code-language":{pattern:/^(```).+/,lookbehind:!0},punctuation:/```/}}],title:[{pattern:/\S.*(?:\r?\n|\r)(?:==+|--+)(?=[ \t]*$)/m,alias:"important",inside:{punctuation:/==+$|--+$/}},{pattern:/(^\s*)#+.+/m,lookbehind:!0,alias:"important",inside:{punctuation:/^#+|#+$/}}],hr:{pattern:/(^\s*)([*-])(?:[\t ]*\2){2,}(?=\s*$)/m,lookbehind:!0,alias:"punctuation"},list:{pattern:/(^\s*)(?:[*+-]|\d+\.)(?=[\t ].)/m,lookbehind:!0,alias:"punctuation"},"url-reference":{pattern:/!?\[[^\]]+\]:[\t ]+(?:\S+|<(?:\\.|[^>\\])+>)(?:[\t ]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\)))?/,inside:{variable:{pattern:/^(!?\[)[^\]]+/,lookbehind:!0},string:/(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\))$/,punctuation:/^[\[\]!:]|[<>]/},alias:"url"},bold:{pattern:n("__(?:(?!_)<inner>|_(?:(?!_)<inner>)+_)+__",!0),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^..)[\s\S]+(?=..$)/,lookbehind:!0,inside:{}},punctuation:/\*\*|__/}},italic:{pattern:n("_(?:(?!_)<inner>|__(?:(?!_)<inner>)+__)+_",!0),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^.)[\s\S]+(?=.$)/,lookbehind:!0,inside:{}},punctuation:/[*_]/}},strike:{pattern:n("(~~?)(?:(?!~)<inner>)+?\\2",!1),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^~~?)[\s\S]+(?=\1$)/,lookbehind:!0,inside:{}},punctuation:/~~?/}},url:{pattern:n('!?\\[(?:(?!\\])<inner>)+\\](?:\\([^\\s)]+(?:[\t ]+"(?:\\\\.|[^"\\\\])*")?\\)| ?\\[(?:(?!\\])<inner>)+\\])',!1),lookbehind:!0,greedy:!0,inside:{variable:{pattern:/(\[)[^\]]+(?=\]$)/,lookbehind:!0},content:{pattern:/(^!?\[)[^\]]+(?=\])/,lookbehind:!0,inside:{}},string:{pattern:/"(?:\\.|[^"\\])*"(?=\)$)/}}}}),["url","bold","italic","strike"].forEach(function(e){["url","bold","italic","strike"].forEach(function(n){e!==n&&(d.languages.markdown[e].inside.content.inside[n]=d.languages.markdown[n]);});}),d.hooks.add("after-tokenize",function(n){"markdown"!==n.language&&"md"!==n.language||!function n(e){if(e&&"string"!=typeof e)for(var t=0,a=e.length;t<a;t++){var i=e[t];if("code"===i.type){var r=i.content[1],o=i.content[3];if(r&&o&&"code-language"===r.type&&"code-block"===o.type&&"string"==typeof r.content){var l=r.content.replace(/\b#/g,"sharp").replace(/\b\+\+/g,"pp"),s="language-"+(l=(/[a-z][\w-]*/i.exec(l)||[""])[0].toLowerCase());o.alias?"string"==typeof o.alias?o.alias=[o.alias,s]:o.alias.push(s):o.alias=[s];}}else n(i.content);}}(n.tokens);}),d.hooks.add("wrap",function(n){if("code-block"===n.type){for(var e="",t=0,a=n.classes.length;t<a;t++){var i=n.classes[t],r=/language-(.+)/.exec(i);if(r){e=r[1];break}}var o=d.languages[e];if(o){var l=n.content.replace(/&lt;/g,"<").replace(/&amp;/g,"&");n.content=d.highlight(l,o,e);}else if(e&&"none"!==e&&d.plugins.autoloader){var s="md-"+(new Date).valueOf()+"-"+Math.floor(1e16*Math.random());n.attributes.id=s,d.plugins.autoloader.loadLanguages(e,function(){var n=document.getElementById(s);n&&(n.innerHTML=d.highlight(n.textContent,d.languages[e],e));});}}}),d.languages.md=d.languages.markdown;}(Prism);
 
 Prism.languages.yaml={scalar:{pattern:/([\-:]\s*(?:![^\s]+)?[ \t]*[|>])[ \t]*(?:((?:\r?\n|\r)[ \t]+)[^\r\n]+(?:\2[^\r\n]+)*)/,lookbehind:!0,alias:"string"},comment:/#.*/,key:{pattern:/(\s*(?:^|[:\-,[{\r\n?])[ \t]*(?:![^\s]+)?[ \t]*)[^\r\n{[\]},#\s]+?(?=\s*:\s)/,lookbehind:!0,alias:"atrule"},directive:{pattern:/(^[ \t]*)%.+/m,lookbehind:!0,alias:"important"},datetime:{pattern:/([:\-,[{]\s*(?:![^\s]+)?[ \t]*)(?:\d{4}-\d\d?-\d\d?(?:[tT]|[ \t]+)\d\d?:\d{2}:\d{2}(?:\.\d*)?[ \t]*(?:Z|[-+]\d\d?(?::\d{2})?)?|\d{4}-\d{2}-\d{2}|\d\d?:\d{2}(?::\d{2}(?:\.\d*)?)?)(?=[ \t]*(?:$|,|]|}))/m,lookbehind:!0,alias:"number"},boolean:{pattern:/([:\-,[{]\s*(?:![^\s]+)?[ \t]*)(?:true|false)[ \t]*(?=$|,|]|})/im,lookbehind:!0,alias:"important"},null:{pattern:/([:\-,[{]\s*(?:![^\s]+)?[ \t]*)(?:null|~)[ \t]*(?=$|,|]|})/im,lookbehind:!0,alias:"important"},string:{pattern:/([:\-,[{]\s*(?:![^\s]+)?[ \t]*)("|')(?:(?!\2)[^\\\r\n]|\\.)*\2(?=[ \t]*(?:$|,|]|}|\s*#))/m,lookbehind:!0,greedy:!0},number:{pattern:/([:\-,[{]\s*(?:![^\s]+)?[ \t]*)[+-]?(?:0x[\da-f]+|0o[0-7]+|(?:\d+\.?\d*|\.?\d+)(?:e[+-]?\d+)?|\.inf|\.nan)[ \t]*(?=$|,|]|})/im,lookbehind:!0},tag:/![^\s]+/,important:/[&*][\w]+/,punctuation:/---|[:[\]{}\-,|>?]|\.\.\./},Prism.languages.yml=Prism.languages.yaml;
 
@@ -94599,7 +96418,7 @@ the License.
  * @memberof UiElements
  */
 class PrismHighlight extends LitElement {
-  static get styles() {
+   get styles() {
     return css`
       :host {
         display: block;
@@ -94618,12 +96437,12 @@ class PrismHighlight extends LitElement {
         color: inherit;
       }
 
-      ${styles$1}
+      ${styles$3}
     `;
   }
 
   render() {
-    return html`
+    return html`<style>${this.styles}</style>
       <pre class="parsed-content">
       <code id="output" class="language-" @click="${this._handleLinks}"></code>
     </pre>
@@ -94906,7 +96725,7 @@ the License.
  * @memberof UiElements
  */
 class ResponseHighlighter extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }
@@ -94937,7 +96756,7 @@ class ResponseHighlighter extends LitElement {
       responseText,
       lang
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <div class="${this._actionsPanelClass}">
       <slot name="content-action"></slot>
     </div>
@@ -95044,7 +96863,7 @@ if (typeof chrome !== 'undefined' && chrome.i18n) {
  * @memberof UiElements
  */
 class ResponseBodyView extends LitElement {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
       position: relative;
@@ -95067,10 +96886,16 @@ class ResponseBodyView extends LitElement {
     .content-actions {
       display: flex;
       flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
       margin-bottom: 8px;
     }
 
+    .action-button {
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+    
     .download-link {
       text-decoration: none;
       color: inherit;
@@ -95112,7 +96937,6 @@ class ResponseBodyView extends LitElement {
       case 3: return html`<json-table .json="${content}" ?compatibility="${this.compatibility}"></json-table>`;
       case 4: return this._imageTemplate();
       case 5: return this._pdfTemplate();
-      default:
     }
   }
 
@@ -95172,7 +96996,7 @@ class ResponseBodyView extends LitElement {
       _isJson
     } = this;
     const content = _raw && this._getRawContent(_raw);
-    return html `
+    return html `<style>${this.styles}</style>
     ${contentType && content ? html`<div class="content-actions">
       <anypoint-button
         part="content-action-button, code-content-action-button"
@@ -95879,7 +97703,7 @@ the License.
  * @memberof UiElements
  */
 class ResponseView extends LitElement {
-  static get styles() {
+  get styles() {
     return css`
     :host { display: block; }
 
@@ -95928,7 +97752,7 @@ class ResponseView extends LitElement {
       compatibility,
       narrow
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     <response-status-view
       .statusCode="${statusCode}"
       .statusMessage="${statusMessage}"
@@ -96235,6 +98059,19 @@ class ResponseView extends LitElement {
 }
 window.customElements.define('response-view', ResponseView);
 
+/**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
 /* eslint-disable max-len */
 /**
  * Request editor and response view panels in a single element.
@@ -96304,7 +98141,7 @@ window.customElements.define('response-view', ResponseView);
  * @memberof ApiElements
  */
 class ApiRequestPanel extends EventsTargetMixin(HeadersParserMixin(LitElement)) {
-  static get styles() {
+  get styles() {
     return css`
     :host { display: block; }
     response-view {
@@ -96336,14 +98173,14 @@ class ApiRequestPanel extends EventsTargetMixin(HeadersParserMixin(LitElement)) 
       version,
       readOnly,
       disabled,
-      legacy,
+      compatibility,
       outlined,
 
       _hasResponse
     } = this;
 
 
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
@@ -96353,20 +98190,20 @@ class ApiRequestPanel extends EventsTargetMixin(HeadersParserMixin(LitElement)) 
       .redirectUri="${redirectUri}"
       .selected="${selected}"
       .amf="${amf}"
-      .noUrlEditor="${noUrlEditor}"
+      ?noUrlEditor="${noUrlEditor}"
       .baseUri="${baseUri}"
-      .noDocs="${noDocs}"
+      ?noDocs="${noDocs}"
       .eventsTarget="${eventsTarget}"
-      .allowHideOptional="${allowHideOptional}"
-      .allowDisableParams="${allowDisableParams}"
-      .allowCustom="${allowCustom}"
+      ?allowHideOptional="${allowHideOptional}"
+      ?allowDisableParams="${allowDisableParams}"
+      ?allowCustom="${allowCustom}"
       .server="${server}"
       .protocols="${protocols}"
       .version="${version}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      .outlined="${outlined}"
-      .legacy="${legacy}"></api-request-editor>
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"></api-request-editor>
     ${_hasResponse ? html`<response-view
       .request="${this.request}"
       .response="${this.response}"
@@ -96378,7 +98215,7 @@ class ApiRequestPanel extends EventsTargetMixin(HeadersParserMixin(LitElement)) 
       .redirectTimings="${this.redirectsTiming}"
       .responseTimings="${this.timing}"
       .sentHttpMessage="${this.sourceMessage}"
-      .legacy="${legacy}"></response-view>` : ''}
+      .compatibility="${compatibility}"></response-view>` : ''}
     `;
   }
 
@@ -96428,9 +98265,9 @@ class ApiRequestPanel extends EventsTargetMixin(HeadersParserMixin(LitElement)) 
        */
       narrow: { type: Boolean, reflect: true },
       /**
-       * Enables Anypoint legacy styling
+       * Enables compatibility with Anypoint styling
        */
-      legacy: { type: Boolean, reflect: true },
+      compatibility: { type: Boolean, reflect: true },
       /**
        * Enables Material Design outlined style
        */
@@ -96932,7 +98769,7 @@ window.customElements.define('api-request-panel', ApiRequestPanel);
  * @appliesMixin AmfHelperMixin
  */
 class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       labelStyles,
@@ -97294,10 +99131,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
        */
       redirectUri: { type: String },
       /**
-       * @deprecated Use `compatibility` instead
-       */
-      legacy: { type: Boolean },
-      /**
        * Enables compatibility with Anypoint components.
        */
       compatibility: { type: Boolean },
@@ -97483,7 +99316,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String} Endpoint name.
    */
   _computeEndpointName(endpoint) {
-    const name = this._getValue(endpoint, this.ns.schema.schemaName);
+    const name = this._getValue(endpoint, this.ns.aml.vocabularies.core.name);
     // if (!name) {
     //   name = this._computePath(endpoint);
     // }
@@ -97496,7 +99329,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String}
    */
   _computePath(endpoint) {
-    return this._getValue(endpoint, this.ns.raml.vocabularies.http + 'path');
+    return this._getValue(endpoint, this.ns.aml.vocabularies.apiContract.path);
   }
   /**
    * Computes `extendsTypes`
@@ -97505,7 +99338,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>|undefined}
    */
   _computeExtendsTypes(shape) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.document + 'extends');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.document.extends);
     return shape && this._ensureArray(shape[key]);
   }
   /**
@@ -97519,7 +99352,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     return types.find((item) =>
-      this._hasType(item, this.ns.raml.vocabularies.document + 'ParametrizedResourceType'));
+      this._hasType(item, this.ns.aml.vocabularies.apiContract.ParametrizedResourceType));
   }
   /**
    * Computes vaolue for `parentTypeName`
@@ -97528,7 +99361,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeParentTypeName(type) {
-    return this._getValue(type, this.ns.schema.schemaName);
+    return this._getValue(type, this.ns.aml.vocabularies.core.name);
   }
   /**
    * Computes value for `traits` property
@@ -97541,7 +99374,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     const data = types.filter((item) =>
-      this._hasType(item, this.ns.raml.vocabularies.document + 'ParametrizedTrait'));
+      this._hasType(item, this.ns.aml.vocabularies.apiContract.ParametrizedTrait));
     return data.length ? data : undefined;
   }
   /**
@@ -97554,7 +99387,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (!traits || !traits.length) {
       return;
     }
-    const names = traits.map((trait) => this._getValue(trait, this.ns.schema.schemaName));
+    const names = traits.map((trait) => this._getValue(trait, this.ns.aml.vocabularies.core.name));
     if (names.length === 2) {
       return names.join(' and ');
     }
@@ -97600,7 +99433,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (!endpoint) {
       return;
     }
-    const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const ops = this._ensureArray(endpoint[key]);
     if (!ops || !ops.length) {
       return;
@@ -97614,9 +99447,9 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     const result = [];
     for (let i = 0, len = ops.length; i < len; i++) {
       const op = ops[i];
-      const method = this._getValue(op, this.ns.w3.hydra.core + 'method');
-      const name = this._getValue(op, this.ns.schema.schemaName);
-      const desc = this._getValue(op, this.ns.schema.desc);
+      const method = this._getValue(op, this.ns.aml.vocabularies.apiContract.method);
+      const name = this._getValue(op, this.ns.aml.vocabularies.core.name);
+      const desc = this._getValue(op, this.ns.aml.vocabularies.core.description);
       result[result.length] = {
         method,
         name,
@@ -97850,7 +99683,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (headers && headers.length) {
       result = '';
       headers.forEach((item) => {
-        const name = this._getValue(item, this.ns.schema.schemaName);
+        const name = this._getValue(item, this.ns.aml.vocabularies.core.name);
         const value = this._computePropertyValue(item) || '';
         result += `${name}: ${value}\n`;
       });
@@ -97866,7 +99699,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (payload && payload instanceof Array) {
       payload = payload[0];
     }
-    if (this._hasType(payload, this.ns.w3.hydra.core + 'Operation')) {
+    if (this._hasType(payload, this.ns.aml.vocabularies.apiContract.Operation)) {
       const expects = this._computeExpects(payload);
       payload = this._computePayload(expects);
     }
@@ -97877,7 +99710,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
 
-    let mt = this._getValue(payload, this.ns.raml.vocabularies.http + 'mediaType');
+    let mt = this._getValue(payload, this.ns.aml.vocabularies.core.mediaType);
     if (!mt) {
       mt = 'application/json';
     }
@@ -97895,7 +99728,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computePropertyValue(item) {
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'schema');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = item && item[key];
     if (!schema) {
       return;
@@ -97903,15 +99736,15 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (schema instanceof Array) {
       schema = schema[0];
     }
-    let value = this._getValue(item, this.ns.w3.shacl.name + 'defaultValue');
+    let value = this._getValue(item, this.ns.w3.shacl.defaultValue);
     if (!value) {
-      const examplesKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'examples');
+      const examplesKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.examples);
       let example = item[examplesKey];
       if (example) {
         if (example instanceof Array) {
           example = example[0];
         }
-        value = this._getValue(item, this.ns.raml.vocabularies.document + 'value');
+        value = this._getValue(item, this.ns.aml.vocabularies.document.value);
       }
     }
     return value;
@@ -97924,7 +99757,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} HTTP method name
    */
   _computeHttpMethod(method) {
-    let name = this._getValue(method, this.ns.w3.hydra.core + 'method');
+    let name = this._getValue(method, this.ns.aml.vocabularies.apiContract.method);
     if (name) {
       name = name.toUpperCase();
     }
@@ -97992,19 +99825,17 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   render() {
     const {
       aware,
-      hasCustomProperties,
-      endpoint,
       hasOperations,
       description
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
     ${this._getTitleTemplate()}
     ${this._getUrlTemplate()}
     ${this._getExtensionsTemplate()}
-    ${hasCustomProperties ? html`<api-annotation-document .shape="${endpoint}"></api-annotation-document>` : ''}
+    ${this._annotationTemplate()}
     ${this._getDescriptionTemplate(description)}
     <div class="heading2 table-title" role="heading" aria-level="2">Methods</div>
     ${hasOperations ?
@@ -98013,9 +99844,20 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     ${this._getNavigationTemplate()}`;
   }
 
+  _annotationTemplate() {
+    if (!this.hasCustomProperties) {
+      return '';
+    }
+    const { endpoint, amf } = this;
+    return html`<api-annotation-document
+      .amf="${amf}"
+      .shape="${endpoint}"
+    ></api-annotation-document>`
+  }
+
   _getDescriptionTemplate(description) {
     if (!description) {
-      return html``;
+      return '';
     }
     return html`<arc-marked .markdown="${description}" sanitize>
       <div slot="markdown-html" class="markdown-body"></div>
@@ -98025,7 +99867,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   _getTitleTemplate() {
     const { endpointName } = this;
     if (!endpointName) {
-      return html``;
+      return '';
     }
     return html`
     <div role="heading" aria-level="1" class="title">${endpointName}</div>
@@ -98034,7 +99876,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
 
   _getUrlTemplate() {
     if (this.inlineMethods) {
-      return html``;
+      return '';
     }
     const { endpointUri, endpointName } = this;
     return html`<section class="url-area" ?extra-margin="${!endpointName}">
@@ -98046,7 +99888,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     const { parentTypeName, traits } = this;
     const hasTraits = !!(traits && traits.length);
     if (!hasTraits && !parentTypeName) {
-      return html``;
+      return '';
     }
     const traitsLabel = hasTraits && this._computeTraitNames(traits);
     return html`<section class="extensions">
@@ -98066,7 +99908,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   _getInlineMethodsTemplate() {
     const { operations } = this;
     if (!operations || !operations.length) {
-      return;
+      return '';
     }
     return html`<section class="methods">
       ${operations.map((item, index) => this._inlineMethodTemplate(item, index, operations))}
@@ -98100,7 +99942,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       <div class="try-it-column">
         ${this._getRequestPanelTemplate(item, index)}
         ${this._getSnippetsTemplate(item, index)}
-
       </div>
     </div>`;
   }
@@ -98129,12 +99970,12 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
         <api-request-panel
           .amf="${this.amf}"
           .selected="${item['@id']}"
-          .narrow="${this.narrow}"
-          .noUrlEditor="${this.noUrlEditor}"
+          ?narrow="${this.narrow}"
+          ?noUrlEditor="${this.noUrlEditor}"
           .baseUri="${this.baseUri}"
           .redirectUri="${this.redirectUri}"
-          .legacy="${this.compatibility}"
-          .outlined="${this.outlined}"
+          ?compatibility="${this.compatibility}"
+          ?outlined="${this.outlined}"
           nodocs></api-request-panel>
       </iron-collapse>
     </section>`;
@@ -98170,7 +100011,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   _getMethodsListTemplate() {
     const { operations } = this;
     if (!operations || !operations.length) {
-      return;
+      return '';
     }
     return html`<section class="methods">
       ${operations.map((item) => html`<div class="method">
@@ -98188,7 +100029,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   _getNavigationTemplate() {
     const { next, previous, noNavigation } = this;
     if (!next && !previous || noNavigation) {
-      return;
+      return '';
     }
     const { compatibility } = this;
     return html`<section class="bottom-nav">
@@ -98215,6 +100056,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
    * @param {String} type
    */
 }
+
 window.customElements.define('api-endpoint-documentation', ApiEndpointDocumentation);
 
 /**
@@ -98228,7 +100070,7 @@ window.customElements.define('api-endpoint-documentation', ApiEndpointDocumentat
  * @appliesMixin AmfHelperMixin
  */
 class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css `:host {
@@ -98268,22 +100110,23 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
       graph,
       headerLevel
     } = this;
-    return html `
+    return html `<style>${this.styles}</style>
     ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" scope="${aware}"></raml-aware>` : undefined}
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" scope="${aware}"></raml-aware>` : ''}
 
     ${typeTitle ? html`<div class="title" role="heading" aria-level="${headerLevel}">${typeTitle}</div>` : ''}
     ${hasCustomProperties ?
-      html`<api-annotation-document .amf="${amf}" .shape="${type}"></api-annotation-document>` : undefined}
+      html`<api-annotation-document .amf="${amf}" .shape="${type}"></api-annotation-document>` : ''}
 
     ${this.description ? html`<arc-marked .markdown="${this.description}" sanitize>
       <div slot="markdown-html" class="markdown-html" part="markdown-html"></div>
-    </arc-marked>` : undefined}
+    </arc-marked>` : ''}
 
     ${isSchema ?
       html`<api-schema-document
-        .shape="${type}"
         .amf="${amf}"
+        .mediaType="${mediaType}"
+        .shape="${type}"
         ?compatibility="${compatibility}"></api-schema-document>` :
       html`<api-type-document
         .amf="${amf}"
@@ -98432,9 +100275,9 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
     if (!shape) {
       return;
     }
-    let name = this._getValue(shape, this.ns.schema.schemaName);
+    let name = this._getValue(shape, this.ns.aml.vocabularies.core.name);
     if (!name) {
-      name = this._getValue(shape, this.ns.w3.shacl.name + 'name');
+      name = this._getValue(shape, this.ns.w3.shacl.name);
     }
     return name;
   }
@@ -98445,7 +100288,7 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeDescription(shape) {
-    return shape && this._getValue(shape, this.ns.schema.desc);
+    return shape && this._getValue(shape, this.ns.aml.vocabularies.core.description);
   }
   /**
    * Computes value for `isSchema` property.
@@ -98457,7 +100300,7 @@ class ApiTypeDocumentation extends AmfHelperMixin(LitElement) {
     if (!shape) {
       return;
     }
-    return this._hasType(shape, this.ns.w3.shacl.name + 'SchemaShape');
+    return this._hasType(shape, this.ns.aml.vocabularies.shapes.SchemaShape);
   }
 }
 window.customElements.define('api-type-documentation', ApiTypeDocumentation);
@@ -98475,7 +100318,7 @@ window.customElements.define('api-type-documentation', ApiTypeDocumentation);
  * @appliesMixin AmfHelperMixin
  */
 class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       css`:host {
@@ -98499,7 +100342,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
   render() {
     const { _title: title, _content: content } = this;
     const hasTitle = !!title;
-    return html`
+    return html`<style>${this.styles}</style>
     <div id="preview">
       ${hasTitle ? html`<h1>${title}</h1>` : undefined}
       <arc-marked .markdown="${content}" sanitize @click="${this._clickHandler}">
@@ -98549,8 +100392,8 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
    * @param {Object} shape Value of the `shape` attrribute
    */
   _shapeChanged(shape) {
-    this._title = this._getValue(shape, this.ns.schema.title);
-    this._content = this._getValue(shape, this.ns.schema.desc);
+    this._title = this._getValue(shape, this.ns.aml.vocabularies.core.title);
+    this._content = this._getValue(shape, this.ns.aml.vocabularies.core.description);
   }
   /**
    * At current state there's no way to tell where to navigate when relative
@@ -98598,7 +100441,7 @@ window.customElements.define('api-documentation-document', ApiDocumentationDocum
  * @appliesMixin AmfHelperMixin
  */
 class ApiSummary extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return [
       markdownStyles,
       labelStyles,
@@ -98831,10 +100674,12 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
             class="app-link link-padding provider-email"
             href="mailto:${_providerEmail}">${_providerEmail}</a>` : ''}
       </p>
-      ${_providerUrl ? html`
+      ${_providerUrl ? html([`
         <p class="inline-description">
-          <a href="${_providerUrl}" target="_blank" class="app-link provider-url">${_providerUrl}</a>
-        </p>` : ''}
+          ${this._sanitizeHTML(
+            `<a href="${_providerUrl}" target="_blank" class="app-link provider-url">${_providerUrl}</a>`,
+          )}
+        </p>`]) : ''}
     </section>`;
   }
 
@@ -98843,13 +100688,15 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     if (!_licenseUrl || !_licenseName) {
       return '';
     }
-    return html`
+    return html([`
     <section role="region" aria-labelledby="licenseLabel" class="docs-section">
       <label class="section" id="licenseLabel">License</label>
       <p class="inline-description">
-        <a href="${_licenseUrl}" target="_blank" class="app-link">${_licenseName}</a>
+        ${this._sanitizeHTML(
+          `<a href="${_licenseUrl}" target="_blank" class="app-link">${_licenseName}</a>`,
+        )}
       </p>
-    </section>`;
+    </section>`]);
   }
 
   _termsOfServiceTemplate() {
@@ -98930,9 +100777,19 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     `;
   }
 
+  _sanitizeHTML(HTML) {
+    const result = purify.sanitize(HTML, { ADD_ATTR: ['target'] });
+
+    if (typeof result === 'string') {
+      return result;
+    }
+
+    return result.toString();
+  }
+
   render() {
     const { aware } = this;
-    return html`
+    return html`<style>${this.styles}</style>
       ${aware ?
         html`<raml-aware @api-changed="${this._apiHandler}" .scope="${aware}"></raml-aware>` :
         ''}
@@ -99074,7 +100931,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
    * @return {String|undefined} Description if defined.
    */
   _computeApiTitle(shape) {
-    return this._getValue(shape, this.ns.schema.schemaName);
+    return this._getValue(shape, this.ns.aml.vocabularies.core.name);
   }
   /**
    * Computes value for `version` property
@@ -99082,7 +100939,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeVersion(webApi) {
-    return this._getValue(webApi, this.ns.schema.name + 'version');
+    return this._getValue(webApi, this.ns.aml.vocabularies.core.version);
   }
   /**
    * Computes API's URI based on `amf` and `baseUri` property.
@@ -99109,7 +100966,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     if (!webApi) {
       return;
     }
-    const key = this._getAmfKey(this.ns.schema.name + 'provider');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.core.provider);
     let data = this._ensureArray(webApi[key]);
     if (!data) {
       return;
@@ -99122,17 +100979,17 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
   }
 
   _computeName(provider) {
-    return this._getValue(provider, this.ns.schema.schemaName);
+    return this._getValue(provider, this.ns.aml.vocabularies.core.name);
   }
 
   _computeEmail(provider) {
-    return this._getValue(provider, this.ns.schema.name + 'email');
+    return this._getValue(provider, this.ns.aml.vocabularies.core.email);
   }
 
   _computeUrl(provider) {
-    let value = this._getValue(provider, this.ns.schema.name + 'url');
+    let value = this._getValue(provider, this.ns.aml.vocabularies.core.url);
     if (!value && provider) {
-      const key = this._getAmfKey(this.ns.schema.name + 'url');
+      const key = this._getAmfKey(this.ns.aml.vocabularies.core.url);
       const data = provider[key];
       if (data) {
         value = data instanceof Array ? data[0]['@id'] : data['@id'];
@@ -99142,11 +100999,11 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
   }
 
   _computeToS(webApi) {
-    return this._getValue(webApi, this.ns.schema.name + 'termsOfService');
+    return this._getValue(webApi, this.ns.aml.vocabularies.core.termsOfService);
   }
 
   _computeLicense(webApi) {
-    const key = this._getAmfKey(this.ns.schema.name + 'license');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.core.license);
     const data = webApi && webApi[key];
     if (!data) {
       return;
@@ -99162,15 +101019,15 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     if (!webApi) {
       return;
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'endpoint');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.endpoint);
     const endpoints = this._ensureArray(webApi[key]);
     if (!endpoints || !endpoints.length) {
       return;
     }
     return endpoints.map((item) => {
       const result = {
-        name: this._getValue(item, this.ns.schema.schemaName),
-        path: this._getValue(item, this.ns.raml.vocabularies.http + 'path'),
+        name: this._getValue(item, this.ns.aml.vocabularies.core.name),
+        path: this._getValue(item, this.ns.aml.vocabularies.apiContract.path),
         id: item['@id'],
         ops: this._endpointOperations(item)
       };
@@ -99183,7 +101040,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
    * @return {Array<Object>|unbdefined}
    */
   _endpointOperations(endpoint) {
-    const key = this._getAmfKey(this.ns.w3.hydra.core + 'supportedOperation');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const so = this._ensureArray(endpoint[key]);
     if (!so || !so.length) {
       return;
@@ -99191,7 +101048,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     return so.map((item) => {
       return {
         id: item['@id'],
-        method: this._getValue(item, this.ns.w3.hydra.core + 'method')
+        method: this._getValue(item, this.ns.aml.vocabularies.apiContract.method)
       };
     });
   }
@@ -99284,7 +101141,7 @@ window.customElements.define('api-summary', ApiSummary);
  * @appliesMixin AmfHelperMixin
  */
 class ApiDocumentation extends AmfHelperMixin(LitElement) {
-  static get styles() {
+  get styles() {
     return css`:host {
       display: block;
     }`;
@@ -99294,7 +101151,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     const {
       aware
     } = this;
-    return html`
+    return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
@@ -99614,7 +101471,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (amf instanceof Array) {
       amf = amf[0];
     }
-    if (this._hasType(amf, this.ns.raml.vocabularies.document + 'Document')) {
+    if (this._hasType(amf, this.ns.aml.vocabularies.document.Document)) {
       this.__processApiSpecSelection(amf);
       return;
     }
@@ -99642,12 +101499,12 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       this._processSecurityParial(amf);
       return;
     }
-    if (this._isTypePartialModel(amf)) {
-      this._processTypeParial(amf);
-      return;
-    }
     if (this._isEndpointPartialModel(amf)) {
       this._processEndpointParial(amf);
+      return;
+    }
+    if (this._isTypePartialModel(amf)) {
+      this._processTypeParial(amf);
       return;
     }
   }
@@ -99748,7 +101605,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       const references = this._computeReferences(model);
       if (references && references.length) {
         for (let i = 0, len = references.length; i < len; i++) {
-          if (!this._hasType(references[i], this.ns.raml.vocabularies.document + 'Module')) {
+          if (!this._hasType(references[i], this.ns.aml.vocabularies.document.Module)) {
             continue;
           }
           result = this._computeReferenceSecurity(references[i], selected);
@@ -99933,9 +101790,9 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (!item) {
       return;
     }
-    let name = this._getValue(item, this.ns.schema.schemaName);
+    let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
     if (!name) {
-      name = this._getValue(item, this.ns.raml.vocabularies.http + 'path');
+      name = this._getValue(item, this.ns.aml.vocabularies.apiContract.path);
     }
     return {
       id: item['@id'],
@@ -99955,14 +101812,14 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (!model || !selected) {
       return;
     }
-    if (this._hasType(model, this.ns.raml.vocabularies.http + 'EndPoint')) {
+    if (this._hasType(model, this.ns.aml.vocabularies.apiContract.EndPoint)) {
       return;
     }
     const webApi = this._computeWebApi(model);
     if (!webApi) {
       return;
     }
-    const ekey = this._getAmfKey(this.ns.raml.vocabularies.http + 'endpoint');
+    const ekey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.endpoint);
     const endpoints = this._ensureArray(webApi[ekey]);
     if (!endpoints) {
       return;
@@ -99975,7 +101832,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       if (!lookupMethods) {
         continue;
       }
-      const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       const methods = this._ensureArray(endpoint[key]);
       if (!methods) {
         continue;
@@ -100000,14 +101857,14 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (!model || !selected) {
       return;
     }
-    if (this._hasType(model, this.ns.raml.vocabularies.http + 'EndPoint')) {
+    if (this._hasType(model, this.ns.aml.vocabularies.apiContract.EndPoint)) {
       return;
     }
     const webApi = this._computeWebApi(model);
     if (!webApi) {
       return;
     }
-    const ekey = this._getAmfKey(this.ns.raml.vocabularies.http + 'endpoint');
+    const ekey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.endpoint);
     const endpoints = this._ensureArray(webApi[ekey]);
     if (!endpoints) {
       return;
@@ -100020,7 +101877,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
       if (!lookupMethods) {
         continue;
       }
-      const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       const methods = this._ensureArray(endpoint[key]);
       if (!methods) {
         continue;
@@ -100043,9 +101900,9 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (!item) {
       return;
     }
-    let name = this._getValue(item, this.ns.schema.schemaName);
+    let name = this._getValue(item, this.ns.aml.vocabularies.core.name);
     if (!name) {
-      name = this._getValue(item, this.ns.w3.hydra.core + 'method');
+      name = this._getValue(item, this.ns.aml.vocabularies.apiContract.method);
     }
     return {
       id: item['@id'],
@@ -100063,8 +101920,8 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
    */
   _computeMethodPrevious(model, selected) {
     let methods;
-    if (this._hasType(model, this.ns.raml.vocabularies.http + 'EndPoint')) {
-      const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    if (this._hasType(model, this.ns.aml.vocabularies.apiContract.EndPoint)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       methods = this._ensureArray(model[key]);
     } else {
       const webApi = this._computeWebApi(model);
@@ -100090,8 +101947,8 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
    */
   _computeMethodNext(model, selected) {
     let methods;
-    if (this._hasType(model, this.ns.raml.vocabularies.http + 'EndPoint')) {
-      const key = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    if (this._hasType(model, this.ns.aml.vocabularies.apiContract.EndPoint)) {
+      const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
       methods = this._ensureArray(model[key]);
     } else {
       const webApi = this._computeWebApi(model);
@@ -100113,7 +101970,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
    * @return {Object|undefined} Method model.
    */
   _computeMethodPartialEndpoint(api, selected) {
-    const opKey = this._getAmfKey(this.ns.w3.hydra.supportedOperation);
+    const opKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.supportedOperation);
     const ops = this._ensureArray(api[opKey]);
     if (!ops) {
       return;
@@ -100140,7 +101997,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (!model['@type']) {
       return;
     }
-    const moduleKey = this._getAmfKey(this.ns.raml.vocabularies.document + 'Module');
+    const moduleKey = this._getAmfKey(this.ns.aml.vocabularies.document.Module);
     return moduleKey === model['@type'][0];
   }
   /**
@@ -100184,7 +102041,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.document + 'DataType');
+    return this._hasType(model, this.ns.aml.vocabularies.shapes.DataTypeFragment);
   }
 
   _isTypePartialModel(model) {
@@ -100192,7 +102049,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.document + 'DomainElement');
+    return this._hasType(model, this.ns.aml.vocabularies.document.DomainElement);
   }
 
   _isSecurityFragment(model) {
@@ -100200,7 +102057,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.document + 'SecuritySchemeFragment');
+    return this._hasType(model, this.ns.aml.vocabularies.security.SecuritySchemeFragment);
   }
 
   _isSecurityPartialModel(model) {
@@ -100208,7 +102065,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.security + 'SecurityScheme');
+    return this._hasType(model, this.ns.aml.vocabularies.security.SecurityScheme);
   }
 
   _isDocumentationFragment(model) {
@@ -100216,7 +102073,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.document + 'UserDocumentation');
+    return this._hasType(model, this.ns.aml.vocabularies.apiContract.UserDocumentationFragment);
   }
 
   _isDocumentationPartialModel(model) {
@@ -100224,7 +102081,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.schema.creativeWork);
+    return this._hasType(model, this.ns.aml.vocabularies.core.CreativeWork);
   }
 
   _isEndpointPartialModel(model) {
@@ -100232,7 +102089,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (model instanceof Array) {
       model = model[0];
     }
-    return this._hasType(model, this.ns.raml.vocabularies.http + 'EndPoint');
+    return this._hasType(model, this.ns.aml.vocabularies.apiContract.EndPoint);
   }
   /**
    * Computes API's media types when requesting type documentation view.
@@ -100253,7 +102110,7 @@ class ApiDocumentation extends AmfHelperMixin(LitElement) {
     if (webApi instanceof Array) {
       webApi = webApi[0];
     }
-    const key = this._getAmfKey(this.ns.raml.vocabularies.http + 'accepts');
+    const key = this._getAmfKey(this.ns.aml.vocabularies.apiContract.accepts);
     const value = this._ensureArray(webApi[key]);
     if (value) {
       return value.map((item) => item['@value']);
