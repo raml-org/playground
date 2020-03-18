@@ -61,18 +61,20 @@ export class ViewModel extends CommonViewModel {
     const parsingApiFn = () => {
       if (this.editorSection() === 'raml') {
         const toParse = ramlEditor.getValue()
-        this.ramlParser.parseStringAsync(toParse).then((parsed: amf.model.document.Document) => {
-          this.selectedModel(parsed)
-          const oldErrors = this.errors()
-          try {
-            this.doValidate()
-          } catch (e) {
+        this.ramlParser.parseStringAsync(toParse)
+          .then((parsed: amf.model.document.Document) => {
+            this.selectedModel(parsed)
+            const oldErrors = this.errors()
+            try {
+              this.doValidate()
+            } catch (e) {
+              console.error(`Exception parsing API: ${e}`)
+              this.errors(oldErrors)
+            }
+          })
+          .catch((e) => {
             console.error(`Exception parsing API: ${e}`)
-            this.errors(oldErrors)
-          }
-        }).catch((e) => {
-          console.error(`Exception parsing API: ${e}`)
-        })
+          })
       }
     }
 
@@ -91,8 +93,10 @@ export class ViewModel extends CommonViewModel {
       }
     }
 
-    this.editorSection.subscribe((section) => this.onEditorSectionChange(section))
-    this.validationSection.subscribe((section) => this.onValidationSectionChange(section))
+    this.editorSection.subscribe(
+      (section) => this.onEditorSectionChange(section))
+    this.validationSection.subscribe(
+      (section) => this.onValidationSectionChange(section))
 
     this.init()
       .then(() => parsingProfileFn(parsingApiFn))
@@ -175,41 +179,47 @@ export class ViewModel extends CommonViewModel {
   public doValidate () {
     const model = this.selectedModel()
     if (model != null) {
-      this.ramlParser.reportValidation((this.profileName || 'RAML 1.0'), 'RAML').then((report) => {
-        var violations = report.results.filter((result) => {
-          return result.level === 'Violation'
-        })
-
-        const editorModel = this.ramlEditor.getModel()
-        const monacoErrors = report.results.map((result) => this.buildMonacoErro(result))
-        globalThis.monaco.editor.setModelMarkers(editorModel, editorModel.id, monacoErrors)
-
-        this.errors(violations)
-        this.errorsMapShape = this.errors()
-          .map(e => {
-            return e.validationId.split('#').pop()
+      this.ramlParser.reportValidation((this.profileName || 'RAML 1.0'), 'RAML')
+        .then((report) => {
+          var violations = report.results.filter((result) => {
+            return result.level === 'Violation'
           })
-          .reduce((a, s) => { a[s] = true; return a }, {})
-        globalThis.resizeFn()
-      }).catch((e) => {
-        console.error(`Error validating API: ${e}`)
-      })
+
+          const editorModel = this.ramlEditor.getModel()
+          const monacoErrors = report.results.map((result) => this.buildMonacoErro(result))
+          globalThis.monaco.editor.setModelMarkers(editorModel, editorModel.id, monacoErrors)
+
+          this.errors(violations)
+          this.errorsMapShape = this.errors()
+            .map(e => {
+              return e.validationId.split('#').pop()
+            })
+            .reduce((a, s) => { a[s] = true; return a }, {})
+          globalThis.resizeFn()
+        })
+        .catch((e) => {
+          console.error(`Error validating API: ${e}`)
+        })
     }
   }
 
   private onEditorSectionChange (section: string) {
     if (this.selectedModel() !== null) {
       if (section === 'raml') {
-        amf.Core.generator('RAML 1.0', 'application/yaml').generateString(this.selectedModel())
-          .then((generated) => {
-            this.ramlEditor.setModel(createModel(generated, 'yaml'))
-          })
+        amf.Core.generator('RAML 1.0', 'application/yaml')
+          .generateString(this.selectedModel())
+            .then((generated) => {
+              this.ramlEditor.setModel(createModel(generated, 'yaml'))
+            })
       } else if (section === 'api-model') {
-        amf.AMF.amfGraphGenerator().generateString(this.selectedModel(), new amf.render.RenderOptions().withCompactUris)
-          .then((generated) => {
-            const json = JSON.parse(generated)
-            this.ramlEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
-          })
+        amf.AMF.amfGraphGenerator().generateString(
+          this.selectedModel(),
+          new amf.render.RenderOptions().withCompactUris)
+            .then((generated) => {
+              const json = JSON.parse(generated)
+              this.ramlEditor.setModel(
+                createModel(JSON.stringify(json, null, 2), 'json'))
+            })
       }
       globalThis.resizeFn()
     }
@@ -222,7 +232,8 @@ export class ViewModel extends CommonViewModel {
       this.customValidation = this.profileEditor.getValue()
       const shapes = amf.AMF.emitShapesGraph(this.profileName)
       const json = JSON.parse(shapes)
-      this.profileEditor.setModel(createModel(JSON.stringify(json, null, 2), 'json'))
+      this.profileEditor.setModel(
+        createModel(JSON.stringify(json, null, 2), 'json'))
     }
   }
 

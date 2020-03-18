@@ -20,7 +20,8 @@ export class ViewModel extends CommonViewModel {
         .then((parsedModel) => {
           this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
-          this.unresRamlEditor.setModel(this.createModel(this.model.raw, 'raml'))
+          this.unresRamlEditor.setModel(
+            this.createModel(this.model.raw, 'raml'))
           return this.updateEditorsModels()
         })
         .catch((err) => {

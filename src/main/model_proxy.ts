@@ -6,7 +6,8 @@ import { WebApiParser as wap } from 'webapi-parser'
 export type ModelLevel = 'document' | 'domain';
 
 /**
- * A proxy class to interact with the clojure code containing the logic to interact with a API Model
+ * A proxy class to interact with the clojure code containing the logic
+ * to interact with a API Model
  */
 export class ModelProxy {
   // holders for the generated strings
@@ -95,9 +96,15 @@ export class ModelProxy {
     this.toAPIModelProcessed(level, true, true, options, cb)
   }
 
-  toAPIModelProcessed (level: ModelLevel, compacted: boolean, stringify: boolean, options: any, cb) {
+  toAPIModelProcessed (
+      level: ModelLevel,
+      compacted: boolean,
+      stringify: boolean,
+      options: any, cb) {
     try {
-      const liftedModel = (level === 'document') ? this.model : wap.raml10.resolve(this.model)
+      const liftedModel = (level === 'document')
+        ? this.model
+        : wap.raml10.resolve(this.model)
       wap.amfGraph.generateString(liftedModel)
         .then((res) => {
           const parsed = JSON.parse(res)[0]
@@ -159,8 +166,8 @@ export class ModelProxy {
       return this
     } else {
       const unit = this.transitiveReferences().filter((ref) => {
-        return ref.location === location ||
-                  ref.location === location.substring(0, location.length - 1)
+        return ref.location === location
+          || ref.location === location.substring(0, location.length - 1)
       })[0]
       return new ModelProxy(unit, this.sourceType)
     }
@@ -171,7 +178,9 @@ export class ModelProxy {
   transitiveReferences (): any[] {
     if (this._transitiveRefs == null) {
       const refsAcc = {}
-      this.model.references().forEach((ref) => { refsAcc[ref.location] = ref })
+      this.model.references().forEach((ref) => {
+        refsAcc[ref.location] = ref
+      })
       var pending: any[] = this.model.references()
       while (pending.length > 0) {
         const next: any = pending.pop()

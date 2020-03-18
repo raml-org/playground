@@ -5,7 +5,9 @@ export type ModelType = 'raml' | 'oas';
 
 export class PlaygroundWindow {
   static functions: string[] = [
-    'existsFile', 'parseModelFile', 'generateString'
+    'existsFile',
+    'parseModelFile',
+    'generateString'
   ];
 
   existsFile (fileName, cb) {

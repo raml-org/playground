@@ -79,7 +79,8 @@ export class PlaygroundGraph {
         cells.forEach(c => acc[c.id] = true)
 
         const finalCells = cells.filter(c => {
-          return (c.attributes.source == null) || (acc[c.attributes.source.id] && acc[c.attributes.target.id])
+          return (c.attributes.source == null)
+            || (acc[c.attributes.source.id] && acc[c.attributes.target.id])
         })
         // const finalCells = cells;
         if (joint.layout != null) {
@@ -106,11 +107,15 @@ export class PlaygroundGraph {
         }
 
         const widths = finalCells.map(c => {
-          return c.attributes.position ? (c.attributes.position.x + c.attributes.size.width) : 0
+          return c.attributes.position
+            ? (c.attributes.position.x + c.attributes.size.width)
+            : 0
         }).sort(sorter)
 
         const heights = finalCells.map(c => {
-          return c.attributes.position ? (c.attributes.position.y + c.attributes.size.height) : 0
+          return c.attributes.position
+            ? (c.attributes.position.y + c.attributes.size.height)
+            : 0
         }).sort(sorter)
 
         const maxX = widths[0]
@@ -124,7 +129,6 @@ export class PlaygroundGraph {
           graphContainer.innerHTML = ''
 
           const minWidth = graphContainer.clientWidth
-          // let minHeight = graphContainer.clientHeight;
           const minHeight = window.innerHeight - 300
 
           const options = {
@@ -216,7 +220,9 @@ export class PlaygroundGraph {
       const encodes = element.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
-        this.processDomainElement(element.id, encodes.domain ? encodes.domain.root : undefined)
+        this.processDomainElement(
+          element.id,
+          encodes.domain ? encodes.domain.root : undefined)
       } else if (this.level === 'document') {
         this.makeNode(encodes, 'domain', encodes)
         this.makeLink(element.id, encodes.id, 'encodes')
@@ -252,7 +258,9 @@ export class PlaygroundGraph {
       const encodes = document.encodes
       const encoded = encodes.domain ? encodes.domain.root : undefined
       if (encoded && this.level === 'domain') {
-        this.processDomainElement(document.id, encodes.domain ? encodes.domain.root : undefined)
+        this.processDomainElement(
+          document.id,
+          encodes.domain ? encodes.domain.root : undefined)
       } else {
         this.makeNode(encodes, 'domain', encodes)
         this.makeLink(document.id, encodes.id, 'encodes')
@@ -281,7 +289,10 @@ export class PlaygroundGraph {
           break
         }
         case 'Operation': {
-          this.makeNode({ id: element.id, label: (element as Operation).method }, 'domain', element)
+          this.makeNode({
+            id: element.id,
+            label: (element as Operation).method
+          }, 'domain', element)
           this.makeLink(parentId, element.id, 'supportedOperation');
           ((element as Operation).requests || []).forEach(request => {
             this.processDomainElement(element.id, request)
@@ -292,7 +303,10 @@ export class PlaygroundGraph {
           break
         }
         case 'Response': {
-          this.makeNode({ id: element.id, label: (element as Response).status }, 'domain', element)
+          this.makeNode({
+            id: element.id,
+            label: (element as Response).status
+          }, 'domain', element)
           this.makeLink(parentId, element.id, 'returns');
           ((element as Response).payloads || []).forEach(payload => {
             this.processDomainElement(element.id, payload)
@@ -300,7 +314,10 @@ export class PlaygroundGraph {
           break
         }
         case 'Request': {
-          this.makeNode({ id: element.id, label: 'request' }, 'domain', element)
+          this.makeNode({
+            id: element.id,
+            label: 'request'
+          }, 'domain', element)
           this.makeLink(parentId, element.id, 'expects');
           ((element as Request).payloads || []).forEach(payload => {
             this.processDomainElement(element.id, payload)
@@ -308,7 +325,10 @@ export class PlaygroundGraph {
           break
         }
         case 'Payload': {
-          this.makeNode({ id: element.id, label: (element as Payload).mediaType || '*/*' }, 'domain', element)
+          this.makeNode({
+            id: element.id,
+            label: (element as Payload).mediaType || '*/*'
+          }, 'domain', element)
           this.makeLink(parentId, element.id, 'payload')
           this.processDomainElement(element.id, (element as Payload).schema)
           break
@@ -321,7 +341,10 @@ export class PlaygroundGraph {
         case 'Include': {
           this.makeNode(element, 'relationship', element)
           this.makeLink(parentId, element.id, 'include')
-          this.makeLink(element.id, (element as IncludeRelationship).target, 'includes')
+          this.makeLink(
+            element.id,
+            (element as IncludeRelationship).target,
+            'includes')
           break
         }
         default: {
@@ -352,7 +375,9 @@ export class PlaygroundGraph {
         attrs: {
           rect: {
             fill: COLORS[kind],
-            stroke: node.id === this.selectedId ? SELECTED_STROKE_COLOR : NODE_TEXT_COLOR,
+            stroke: node.id === this.selectedId
+              ? SELECTED_STROKE_COLOR
+              : NODE_TEXT_COLOR,
             'stroke-width': node.id === this.selectedId ? '3' : '1'
           },
           text: {

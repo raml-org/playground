@@ -78,7 +78,18 @@ export function has_type (node, type) {
 }
 
 // Model Classes
-export type DomainElementKind = 'APIDocumentation' | 'EndPoint' | 'Operation' | 'Response' | 'Request' | 'Payload' | 'DomainElement' | 'Shape' | 'Include' | 'Extends' | 'DomainPropertySchema' | 'Trait';
+export type DomainElementKind = 'APIDocumentation'
+  | 'EndPoint'
+  | 'Operation'
+  | 'Response'
+  | 'Request'
+  | 'Payload'
+  | 'DomainElement'
+  | 'Shape'
+  | 'Include'
+  | 'Extends'
+  | 'DomainPropertySchema'
+  | 'Trait';
 
 export interface DomainModelElement {
     id: string;
@@ -199,7 +210,8 @@ export class DomainModel {
     private buildAPIDocumentation (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
       const label = this.extractLabel(encoded, 'WebAPI')
-      const endpoints = extract_links(encoded, ENDPOINT).map(elm => this.buildEndPoint(elm))
+      const endpoints = extract_links(encoded, ENDPOINT)
+        .map(elm => this.buildEndPoint(elm))
       const element = new APIDocumentation(encoded, encoded['@id'], label, endpoints)
       this.elements[element.id] = element
       return element
@@ -209,7 +221,8 @@ export class DomainModel {
       if (encoded == null || encoded['@id'] == null) { return undefined }
       const path = extract_value(encoded, PATH)
       const label = this.extractLabel(encoded, 'EndPoint')
-      const operations = extract_links(encoded, SUPPORTED_OPERATION).map(elm => this.buildOperation(elm))
+      const operations = extract_links(encoded, SUPPORTED_OPERATION)
+        .map(elm => this.buildOperation(elm))
       const element = new EndPoint(encoded, encoded['@id'], path, label, operations)
       this.elements[element.id] = element
       return element
@@ -219,9 +232,12 @@ export class DomainModel {
       if (encoded == null || encoded['@id'] == null) { return undefined }
       const method = extract_value(encoded, METHOD)
       const label = this.extractLabel(encoded, 'Operation')
-      const requests = extract_links(encoded, EXPECTS).map(elm => this.buildRequest(elm))
-      const responses = extract_links(encoded, RETURNS).map(elm => this.buildResponse(elm))
-      const element = new Operation(encoded, encoded['@id'], label, method, requests, responses)
+      const requests = extract_links(encoded, EXPECTS)
+        .map(elm => this.buildRequest(elm))
+      const responses = extract_links(encoded, RETURNS)
+        .map(elm => this.buildResponse(elm))
+      const element = new Operation(
+        encoded, encoded['@id'], label, method, requests, responses)
       this.elements[element.id] = element
       return element
     }
@@ -229,7 +245,8 @@ export class DomainModel {
     private buildResponse (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
       const status = extract_value(encoded, STATUS_CODE)
-      const payloads = extract_links(encoded, RESPONSE_PAYLOAD).map(elm => this.buildPayload(elm))
+      const payloads = extract_links(encoded, RESPONSE_PAYLOAD)
+        .map(elm => this.buildPayload(elm))
       const label = this.extractLabel(encoded, 'Response')
       const element = new Response(encoded, encoded['@id'], label, status, payloads)
       this.elements[element.id] = element
@@ -238,7 +255,8 @@ export class DomainModel {
 
     private buildRequest (encoded: any): DomainElement {
       if (encoded == null || encoded['@id'] == null) { return undefined }
-      const payloads = extract_links(encoded, RESPONSE_PAYLOAD).map(elm => this.buildPayload(elm))
+      const payloads = extract_links(encoded, RESPONSE_PAYLOAD)
+        .map(elm => this.buildPayload(elm))
       const label = this.extractLabel(encoded, 'Request')
       const element = new Request(encoded, encoded['@id'], label, payloads)
       this.elements[element.id] = element
@@ -272,7 +290,8 @@ export class DomainModel {
       const label = this.extractLabel(encoded, 'Property Shape')
       const domain = extract_link(encoded, DOMAIN)
       const range = extract_link(encoded, RANGE)
-      const element = new DomainPropertySchema(encoded, encoded['@id'], domain, range, label)
+      const element = new DomainPropertySchema(
+        encoded, encoded['@id'], domain, range, label)
       this.elements[element.id] = element
       return element
     }
@@ -286,6 +305,9 @@ export class DomainModel {
     }
 
     private extractLabel (encoded: any, defaultName: string) {
-      return extract_value(encoded, NAME) || extract_value(encoded, LABEL) || extract_value(encoded, SHACL_NAME) || defaultName
+      return extract_value(encoded, NAME)
+        || extract_value(encoded, LABEL)
+        || extract_value(encoded, SHACL_NAME)
+        || defaultName
     }
 }

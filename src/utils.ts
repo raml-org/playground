@@ -20,7 +20,9 @@ export function absoluteURL (url): string {
 
 export function nestedLabel (parent: any, child: any): string {
   const uri = child['@id']
-  const label = extract_value(child, NAME) || extract_value(child, LABEL) || extract_value(child, SHACL_NAME)
+  const label = extract_value(child, NAME)
+    || extract_value(child, LABEL)
+    || extract_value(child, SHACL_NAME)
   if (label != null) {
     return label
   } else {

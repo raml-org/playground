@@ -11,8 +11,9 @@ export abstract class CommonViewModel {
   // The global 'level' for the active document
   public documentLevel: ModelLevel = 'document';
 
-  // The model used to show the spec text in the editor, this can change as different
-  // parts of the global model are selected and we need to show different spec texts
+  // The model used to show the spec text in the editor, this can change
+  // as different parts of the global model are selected and we need to
+  // show different spec texts
   public model?: ModelProxy = undefined;
 
   public loadModal: LoadModal = new LoadModal();

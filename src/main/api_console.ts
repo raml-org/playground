@@ -31,13 +31,22 @@ export class ApiConsole {
 
   /* Collects elements ranges info. */
   collectElementsRanges (wapModel: any) {
-    const creds = [
-      { type: 'http://www.w3.org/ns/shacl#NodeShape', selectedType: 'type' },
-      { type: 'http://a.ml/vocabularies/apiContract#EndPoint', selectedType: 'endpoint' },
-      { type: 'http://a.ml/vocabularies/apiContract#Operation', selectedType: 'method' },
-      { type: 'http://a.ml/vocabularies/security#SecurityScheme', selectedType: 'security' },
-      { type: 'http://a.ml/vocabularies/core#CreativeWork', selectedType: 'documentation' }
-    ]
+    const creds = [{
+      type: 'http://www.w3.org/ns/shacl#NodeShape',
+      selectedType: 'type'
+    }, {
+      type: 'http://a.ml/vocabularies/apiContract#EndPoint',
+      selectedType: 'endpoint'
+    }, {
+      type: 'http://a.ml/vocabularies/apiContract#Operation',
+      selectedType: 'method'
+    }, {
+      type: 'http://a.ml/vocabularies/security#SecurityScheme',
+      selectedType: 'security'
+    }, {
+      type: 'http://a.ml/vocabularies/core#CreativeWork',
+      selectedType: 'documentation
+    }]
     this.elsRanges = []
     creds.forEach(cred => {
       wapModel.findByType(cred.type)

@@ -30,9 +30,13 @@ export class ViewModel extends CommonViewModel {
           this.lastParsedSection('raml')
           this.loadedRamlUrl = evt.location
           this.model = new ModelProxy(parsedModel, 'raml')
-          this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
-            this.ramlEditor.setModel(this.createModel(string, 'raml'))
-          })
+          this.model.toRaml(
+            this.documentLevel,
+            this.generationOptions(),
+            (err, string) => {
+              this.ramlEditor.setModel(this.createModel(string, 'raml'))
+            }
+          )
           this.updateEditorsModels()
         })
         .catch((err) => {
@@ -85,25 +89,33 @@ export class ViewModel extends CommonViewModel {
     // Update RAML editor with existing model
     // Generate model for OAS editor
     if (this.lastParsedSection() === 'raml') {
-      this.model.toOas(this.documentLevel, this.generationOptions(), (err, string) => {
-        if (err !== null) {
-          console.error(`Failed to generate OAS: ${err}`)
-        } else {
-          this.oasEditor.setModel(this.createModel(string, 'raml'))
+      this.model.toOas(
+        this.documentLevel,
+        this.generationOptions(),
+        (err, string) => {
+          if (err !== null) {
+            console.error(`Failed to generate OAS: ${err}`)
+          } else {
+            this.oasEditor.setModel(this.createModel(string, 'raml'))
+          }
         }
-      })
+      )
     }
 
     // Update OAS editor with existing model
     // Generate model for RAML editor
     if (this.lastParsedSection() === 'oas') {
-      this.model.toRaml(this.documentLevel, this.generationOptions(), (err, string) => {
-        if (err !== null) {
-          console.error(`Failed to generate RAML: ${err}`)
-        } else {
-          this.ramlEditor.setModel(this.createModel(string, 'raml'))
+      this.model.toRaml(
+        this.documentLevel,
+        this.generationOptions(),
+        (err, string) => {
+          if (err !== null) {
+            console.error(`Failed to generate RAML: ${err}`)
+          } else {
+            this.ramlEditor.setModel(this.createModel(string, 'raml'))
+          }
         }
-      })
+      )
     }
   }
 }

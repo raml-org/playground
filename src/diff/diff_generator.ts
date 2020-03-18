@@ -70,8 +70,16 @@ export class NodeDiff {
       }
       return { kind: 'uri', value: uri, change: change }
     } else {
-      const [value, datatype] = component.substring(1).substring(0, component.length - 2).split(':')
-      return { kind: 'literal', value: value, datatype: (datatype === 'undefined' ? null : datatype), change: change }
+      const [value, datatype] = component
+        .substring(1)
+        .substring(0, component.length - 2)
+        .split(':')
+      return {
+        kind: 'literal',
+        value: value,
+        datatype: (datatype === 'undefined' ? null : datatype),
+        change: change
+      }
     }
   }
 
@@ -132,7 +140,8 @@ export class NodeDiff {
   }
 
   public classLabel (): string {
-    return ((this.nodeClass || 'DomainElement').split('#')[1] || '').replace('>', '')
+    return ((this.nodeClass || 'DomainElement').split('#')[1] || '')
+      .replace('>', '')
   }
 
   public hashLabel (): string {
@@ -153,13 +162,6 @@ export class NodeDiff {
 
   public idLabel (): string {
     const suffix = (this.id || '').split('#')[1] || '/'
-    /*
-      if (suffix.length > 23) {
-          return "..." + suffix.substring(suffix.length - 20);
-      } else {
-          return suffix;
-      }
-      */
     return suffix
   }
 }
@@ -220,28 +222,32 @@ export class DiffGenerator {
 
     // update counts
     this.nodesAdded.forEach(diff => {
-      this.assertionsAdded = this.assertionsAdded + diff.assertionsAdded.length
+      this.assertionsAdded += diff.assertionsAdded.length
     })
     this.nodesRemoved.forEach(diff => {
-      this.assertionsRemoved = this.assertionsRemoved + diff.assertionsRemoved.length
+      this.assertionsRemoved += diff.assertionsRemoved.length
     })
     this.nodesNotChanged.forEach(diff => {
-      this.assertionsAdded = this.assertionsAdded + diff.assertionsAdded.length
-      this.assertionsRemoved = this.assertionsRemoved + diff.assertionsRemoved.length
-      this.assertionsNotChanged = this.assertionsNotChanged + diff.assertionsNotChanged.length
+      this.assertionsAdded += diff.assertionsAdded.length
+      this.assertionsRemoved += diff.assertionsRemoved.length
+      this.assertionsNotChanged += diff.assertionsNotChanged.length
     })
   }
 
   public isClass (assertion: string): boolean {
+    const typeId = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
     return (
-      assertion.indexOf('http://www.w3.org/1999/02/22-rdf-syntax-ns#type') > -1 &&
+      assertion.indexOf(typeId) > -1 &&
           assertion.indexOf('DomainElement') === -1 &&
           assertion.indexOf('Unit') === -1
     )
   }
 
   public isName (assertion: string): boolean {
-    return assertion.indexOf('http://a.ml/vocabularies/core#name') > -1 || assertion.indexOf('http://a.ml/vocabularies/http#path') > -1
+    const nameId = 'http://a.ml/vocabularies/core#name'
+    const pathId = 'http://a.ml/vocabularies/http#path'
+    return assertion.indexOf(nameId) > -1
+      || assertion.indexOf(pathId) > -1
   }
 
   public predicate (assertion: string): string {
@@ -251,7 +257,10 @@ export class DiffGenerator {
 
   public value (assertion: string): string {
     let object = assertion.split(TRIPLE_SEPARATOR)[2]
-    return object.substring(1).substring(0, object.length - 2).split(':')[0]
+    return object
+      .substring(1)
+      .substring(0, object.length - 2)
+      .split(':')[0]
   }
 
   private processNewHash (id: string, hash: HashGenerator): NodeDiff {

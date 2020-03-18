@@ -133,7 +133,6 @@ gulp.task('serveResolution', gulp.series(
   )
 ))
 
-
 /* Bundle all the demos */
 gulp.task('bundleAll', gulp.series(
   'css',
@@ -144,6 +143,5 @@ gulp.task('bundleAll', gulp.series(
   'bundleLearnRaml',
   'bundleResolution'
 ))
-
 
 gulp.task('serve', gulp.series('serveLearnRaml'))

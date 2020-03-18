@@ -72,20 +72,22 @@ export class UnitModel {
       if (modelLevel == 'document' || ref == this.model.location()) {
         const reference = this.model.nestedModel(ref)
         return (resolve, reject) => {
-          reference.toAPIModelProcessed(modelLevel, false, false, { 'source-maps?': true }, (err, jsonld: any) => {
-            if (err != null) {
-              reject(err)
-            } else {
-              if (this.isDocument(jsonld)) {
-                this.parseDocument(jsonld, acc)
-              } else if (this.isFragment(jsonld)) {
-                this.parseFragment(jsonld, acc)
-              } else if (this.isModule(jsonld)) {
-                this.parseModule(jsonld, acc)
+          reference.toAPIModelProcessed(
+            modelLevel, false, false, { 'source-maps?': true },
+            (err, jsonld: any) => {
+              if (err != null) {
+                reject(err)
+              } else {
+                if (this.isDocument(jsonld)) {
+                  this.parseDocument(jsonld, acc)
+                } else if (this.isFragment(jsonld)) {
+                  this.parseFragment(jsonld, acc)
+                } else if (this.isModule(jsonld)) {
+                  this.parseModule(jsonld, acc)
+                }
+                resolve(undefined)
               }
-              resolve(undefined)
-            }
-          })
+            })
         }
       } else {
         return null
@@ -122,37 +124,44 @@ export class UnitModel {
 
   parseDocument (doc: any, acc) {
     const docId = absoluteURL(doc['@id'])
-    const declares = (doc['http://a.ml/vocabularies/document#declares'] || []).map((declaration) => {
-      return new DocumentDeclaration(
-        absoluteURL(declaration['@id']),
-        declaration,
-        nestedLabel(doc, declaration),
-        (declaration['@type'] || [])[0],
-        this.extractTag('is-trait-tag', declaration)
-      )
-    })
+    const declares = (doc['http://a.ml/vocabularies/document#declares'] || [])
+      .map((declaration) => {
+        return new DocumentDeclaration(
+          absoluteURL(declaration['@id']),
+          declaration,
+          nestedLabel(doc, declaration),
+          (declaration['@type'] || [])[0],
+          this.extractTag('is-trait-tag', declaration)
+        )
+      })
     const references = this.extractReferences(doc)
-    acc.documents.push(new Document(docId, label(docId), references, declares, this.extractEncodedElement(doc)))
+    acc.documents.push(new Document(
+      docId, label(docId), references, declares,
+      this.extractEncodedElement(doc)))
   }
 
   parseFragment (doc: any, acc) {
     const references = this.extractReferences(doc)
     const encoded = this.extractEncodedElement(doc)
     const encodedLabel = extract_value(encoded, NAME) || extract_value(encoded, LABEL)
-    acc.fragments.push(new Fragment(absoluteURL(doc['@id']), encodedLabel || label(absoluteURL(doc['@id'])), references, encoded))
+    acc.fragments.push(new Fragment(
+      absoluteURL(doc['@id']),
+      encodedLabel || label(absoluteURL(doc['@id'])),
+      references, encoded))
   }
 
   parseModule (doc: any, acc) {
     const docId = absoluteURL(doc['@id'])
-    const declares = (doc['http://a.ml/vocabularies/document#declares'] || []).map((declaration) => {
-      return new DocumentDeclaration(
-        absoluteURL(declaration['@id']),
-        declaration,
-        nestedLabel(doc, declaration),
-        (declaration['@type'] || [])[0],
-        this.extractTag('is-trait-tag', declaration)
-      )
-    })
+    const declares = (doc['http://a.ml/vocabularies/document#declares'] || [])
+      .map((declaration) => {
+        return new DocumentDeclaration(
+          absoluteURL(declaration['@id']),
+          declaration,
+          nestedLabel(doc, declaration),
+          (declaration['@type'] || [])[0],
+          this.extractTag('is-trait-tag', declaration)
+        )
+      })
     const references = this.extractReferences(doc)
     acc.modules.push(new Module(docId, label(docId), references, declares))
   }
@@ -187,7 +196,9 @@ export class UnitModel {
     try {
       const sources = (node['http://a.ml/vocabularies/document#source'] || [])
       const tagFound = this
-        .flatten(sources.map(source => source['http://a.ml/vocabularies/document#tag'] || []), true)
+        .flatten(sources.map(source => {
+          return source['http://a.ml/vocabularies/document#tag'] || []
+        }), true)
         .filter(tag => {
           return tag['http://a.ml/vocabularies/document#tagId'][0]['@value'] === tagId
         })[0]
@@ -204,8 +215,14 @@ export class UnitModel {
   extractEncodedElement (node: any) {
     const encoded = (node['http://a.ml/vocabularies/document#encodes'] || [])[0]
     if (encoded != null) {
-      const isAbstract = encoded['@type'].find(t => t === 'http://a.ml/vocabularies/document#AbstractDomainElement')
-      return new DomainElement(absoluteURL(encoded['@id']), encoded, nestedLabel(node, encoded), encoded['@type'][0], isAbstract)
+      const isAbstract = encoded['@type']
+        .find(t => t === 'http://a.ml/vocabularies/document#AbstractDomainElement')
+      return new DomainElement(
+        absoluteURL(encoded['@id']),
+        encoded,
+        nestedLabel(node, encoded),
+        encoded['@type'][0],
+        isAbstract)
     } else {
       return undefined
     }
