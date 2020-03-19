@@ -11,6 +11,7 @@ git clone git@github.com:raml-org/playground.git docs
 cd docs
 git checkout gh-pages
 cd ..
+npm install -g gulp-cli
 npm install
 gulp bundleAll
 ```
