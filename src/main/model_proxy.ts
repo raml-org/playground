@@ -118,19 +118,20 @@ export class ModelProxy {
               core: 'http://a.ml/vocabularies/core#',
               xsd: 'http://www.w3.org/2001/XMLSchema#'
             }
-            jsonld.compact(parsed, context, (err, compacted) => {
-              if (err != null) {
+            return jsonld.compact(parsed, context)
+              .then(compacted => {
+                this.apiModelString = JSON.stringify(compacted, null, 2)
+                if (stringify) {
+                  cb(null, this.apiModelString)
+                } else {
+                  cb(null, compacted)
+                }
+              })
+              .catch(err => {
                 console.error(`ERROR COMPACTING: ${err}`)
                 console.error(JSON.stringify(parsed, null, 2))
-              }
-              const finalJson = (err == null) ? compacted : parsed
-              this.apiModelString = JSON.stringify(finalJson, null, 2)
-              if (stringify) {
-                cb(err, this.apiModelString)
-              } else {
-                cb(err, finalJson)
-              }
-            })
+                cb(err, parsed)
+              })
           } else {
             this.apiModelString = JSON.stringify(parsed, null, 2)
             if (stringify) {

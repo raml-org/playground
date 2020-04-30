@@ -18,7 +18,7 @@
     "graphlib": "^2.1.8",
     "jointjs": "^3.1.1",
     "js-sha1": "^0.6.0",
-    "jsonld": "^1.8.0",
+    "jsonld": "^3.1.0",
     "knockout": "^3.5.1",
     "monaco-editor": "^0.20.0",
     "node-gyp": "^6.1.0",

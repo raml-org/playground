@@ -107,18 +107,9 @@ export class ViewModel extends CommonViewModel {
     wap.raml10.parse(editor.getValue(), this.loadedRamlUrl)
       .then(model => wap.raml10.resolve(model))
       .then(model => wap.amfGraph.generateString(model))
-      .then(text => {
-        jsonld.flatten(JSON.parse(text), (e, flattened) => {
-          if (e !== null) {
-            console.error(`Error processing JSON-LD: ${e.toString()}`)
-            return
-          }
-          cb(new HashGenerator(flattened as any[]))
-        })
-      })
-      .catch(e => {
-        console.error(`Error generating hash: ${e.toString()}`)
-      })
+      .then(text => jsonld.flatten(JSON.parse(text)))
+      .then(flattened => cb(new HashGenerator(flattened as any[])))
+      .catch(e => console.error(`Error generating hash: ${e.toString()}`))
   }
 
   public getMainModel (): any {
