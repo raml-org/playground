@@ -7,26 +7,13 @@
                 <span class="nav-logo-img">
                     <img src='./images/ramlLogo.svg'>
                 </span>
-                <span style="margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Playground</span>
             </div>
         </div>
         <div class="navbar-start navbar-menu">
-
-        </div>
-        <div class="navbar-end navbar-menu">
-            <span class="navbar-item">
-                <a class="button" data-bind="click: loadModal.show.bind(loadModal)">
-                    <span class="icon">
-                        <i class="fas fa-folder-open"></i>
-                    </span>
-                    <span>Load RAML File</span>
-                </a>
-            </span>
-        </div>
-        <div class="navbar-item">
-            <div class="dropdown is-right">
-              <select name="raml-demo" class="raml-demo-select"
-                      data-bind="event: { change: switchDemo }">
+            <div class="dropdown is-right navbar-item">
+              <select name="raml-demo" class="raml-demo-select button"
+                      data-bind="event: { change: switchDemo }"
+                      style="padding-right: 30px;">
                   <option value="learn_raml.html">Example: Learn RAML</option>
                   <option value="raml_oas.html">Example: RAML + OAS</option>
                   <option value="visualization.html">Example: Visualization</option>
@@ -35,6 +22,18 @@
                   <option value="diff.html">Example: Diff</option>
               </select>
             </div>
+            <div class="navbar-item">
+                <a class="button" data-bind="click: loadModal.show.bind(loadModal)">
+                    <span class="icon">
+                        <i class="fas fa-folder-open"></i>
+                    </span>
+                    <span>Load RAML File</span>
+                </a>
+            </div>
+        </div>
+        <div class="navbar-end navbar-menu">
+        </div>
+        <div class="navbar-item">
             <a href="https://github.com/raml-org/playground/tree/master/src/custom_validation"
                title="Source code"
                target="_blank"
