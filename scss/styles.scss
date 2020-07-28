@@ -129,6 +129,11 @@ header{
       vertical-align: top;
     }
   }
+  .navbar-item.dropdown {
+    border-right-color: #dbdbdb;
+    border-right-width: 1px;
+    border-right-style: solid;
+  }
 }
 
 .raml-editor{
