@@ -52092,14 +52092,10 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       server: { type: Object },
       /**
        * API base URI parameters defined in AMF api model
-       *
-       * @type {Array|undefined}
        */
       serverVariables: { type: Array },
       /**
        * Endpoint's path parameters.
-       *
-       * @type {Array|undefined}
        */
       endpointVariables: { type: Array },
       /**
@@ -52173,14 +52169,10 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       renderSecurity: { type: Boolean },
       /**
        * List of traits and resource types, if any.
-       *
-       * @type {Array<Object>}
        */
       extendsTypes: { type: Array },
       /**
        * List of traits appied to this endpoint
-       *
-       * @type {Array<Object>}
        */
       traits: { type: Array },
       /**
@@ -52260,8 +52252,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._baseUri = value;
-    const { server, apiVersion: version, endpoint, ignoreBaseUri: ignoreBase } = this;
-    this.endpointUri = this._computeUri(endpoint, { version, server, ignoreBase, baseUri: value });
+    this._processServerInfo();
   }
 
   get ignoreBaseUri() {
@@ -52275,8 +52266,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._ignoreBaseUri = value;
-    const { server, apiVersion: version, endpoint, baseUri } = this;
-    this.endpointUri = this._computeUri(endpoint, { version, server, baseUri, ignoreBase: value });
+    this._processServerInfo();
   }
 
   get expects() {
@@ -52292,6 +52282,21 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     this._expects = value;
     this.requestUpdate('expects', old);
     this._expectsChanged(value);
+  }
+
+  get server() {
+    return this._server;
+  }
+
+  set server(value) {
+    const old = this._server;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._server = value;
+    this.requestUpdate('server', old);
+    this._processServerInfo();
   }
 
   get _titleHidden() {
@@ -52340,16 +52345,9 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
   _processModelChange() {
     this.__amfProcessingDebouncer = false;
     const { amf } = this;
-    const version = this.apiVersion = this._computeApiVersion(amf);
-    const server = this.server = this._computeServer(amf);
-
-    const { endpoint, ignoreBaseUri: ignoreBase, baseUri } = this;
-    this.endpointUri = this._computeUri(endpoint, { version, server, ignoreBase, baseUri });
-
-    const serverVariables = this.serverVariables = this._computeServerVariables(server);
-    const hasPathParameters = this.hasPathParameters =
-      this._computeHasPathParameters(serverVariables, this.endpointVariables);
-    this.hasParameters = hasPathParameters || !(this.queryParameters && this.queryParameters.length);
+    this.apiVersion = this._computeApiVersion(amf);
+    this.server = this._computeServer(amf);
+    this._processServerInfo();
   }
 
   _processMethodChange() {
@@ -52370,9 +52368,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
 
   _processEndpointChange() {
     this.__endpointProcessingDebouncer = false;
-    const { endpoint, ignoreBaseUri: ignoreBase, baseUri, apiVersion: version, server } = this;
-    this.endpointUri = this._computeUri(endpoint, { version, server, ignoreBase, baseUri });
-    this._processEndpointVariables();
+    this._processServerInfo();
   }
 
   _expectsChanged(expects) {
@@ -52391,6 +52387,28 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
       this._computeHasPathParameters(this.serverVariables, endpointVariables);
     this.hasParameters = hasPathParameters || !!(this.queryParameters && this.queryParameters.length);
   }
+
+  /**
+   * Updates value for endpoint URI, server and path variables.
+   */
+  _processServerInfo() {
+    this.endpointUri = this._computeEndpointUri();
+    const serverVariables = this.serverVariables = this._computeServerVariables(this.server);
+    const hasPathParameters = this.hasPathParameters =
+      this._computeHasPathParameters(serverVariables, this.endpointVariables);
+    this.hasParameters = hasPathParameters || !(this.queryParameters && this.queryParameters.length);
+    this._processEndpointVariables();
+  }
+
+  /**
+   * Computes value of endpoint URI.
+   * @return {String}
+   */
+  _computeEndpointUri() {
+    const { server, baseUri, apiVersion: version, endpoint } = this;
+    return this._computeUri(endpoint, { server, baseUri, version });
+  }
+
   /**
    * Computes list of query parameters to be rendered in the query parameters table.
    *
@@ -53499,76 +53517,500 @@ const ifDefined = directive((value) => (part) => {
     previousValues.set(part, value);
 });
 
+/** @typedef {import('./UrlValueParser').UrlValueParserOptions} UrlValueParserOptions */
+
 /**
-Common styles for API forms.
-
-Custom property | Description | Default
-----------------|-------------|----------
-`--api-form-action-button-color` | Color of the action button in the form. Action buttons should perform form's primary actions like "submit" or "add new". Use `--api-form-action-icon-*` for icons related styling | `--secondary-button-color` or `--accent-color`
-`--api-form-action-button-background-color` | Similar to `--api-form-action-button-color` but it's background color | `--secondary-button-background`
-`--api-form-action-button-hover-color` | Color of the action button in the form when hovering. | `--secondary-button-color` or `--accent-color`
-`--api-form-action-button-hover-background-color` | Similar to `--api-form-action-button-hover-color` but it's background color | `--secondary-button-background`
-`--hint-trigger-color` | Color of the form action icon button to dispay documentation for the item. | `rgba(0, 0, 0, 0.74)`
-`--hint-trigger-hover-color` | Color of the form action icon button to dispay documentation for the item when hovered | `rgba(0, 0, 0, 0.74)`
-`--api-form-action-icon-color` | Color of any other than documentation icon button in form row | `--icon-button-color` or `rgba(0, 0, 0, 0.74)`
-`--api-form-action-icon-hover-color` | Color of any other than documentation icon button in form row when hovering | `--accent-color` or `rgba(0, 0, 0, 0.88)`
-`--inline-documentation-background-color` | Background color of the documentation element. | `#FFF3E0`
-`--inline-documentation-color` | Color of the documentation element | `rgba(0, 0, 0, 0.87)`
-`--inline-documentation-font-size` | Font size of the documentaiton element | `13px`
-*/
-
-var apiFormStyles = css`
-  .form-item {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+ * Implements logic for parsing URL string.
+ */
+class UrlValueParser {
+  /**
+   * @constructor
+   * @param {UrlValueParserOptions=} opts
+   */
+  constructor(opts) {
+    this.__data = {};
+    this.opts = opts;
   }
 
-  :host([narrow]) .form-item,
-  .narrow .form-item {
-    display: block;
+  /**
+   * @return {Object} Class options.
+   */
+  get opts() {
+    return this.__data.opts;
   }
 
-  .form-item[data-optional] {
-    display: none;
+  /**
+   * Sets parser options.
+   * Unknown options are ignored.
+   *
+   * @param {Object} opts Options to pass.
+   * - queryDelimiter {String} a query string delimiter.
+   */
+  set opts(opts) {
+    const options = opts || {};
+    this.__data.opts = {
+      queryDelimiter: options.queryDelimiter || '&'
+    };
   }
 
-  :host([optionalopened]) [data-optional] {
-    display: flex;
-    flex-direction: row;
-  }
-  /* styling form inline markdown */
-  arc-marked {
-    background-color: var(--inline-documentation-background-color, #fff3e0);
-    padding: 4px;
-    /* Default inputs margin */
-    margin: 0 8px;
-  }
-  /* wrapped for arc-marked */
-  .docs {
-    font-size: var(--arc-font-body1-font-size);
-    font-weight: var(--arc-font-body1-font-weight);
-    line-height: var(--arc-font-body1-line-height);
-    color: var(--inline-documentation-color, rgba(0, 0, 0, 0.87));
-    margin-right: 40px;
+  /**
+   * Returns protocol value in format `protocol` + ':'
+   *
+   * @param {String} value URL to parse.
+   * @return {String|undefined} Value of the protocol or undefined if
+   * value not set
+   */
+  _parseProtocol(value) {
+    if (!value) {
+      return undefined;
+    }
+    const delimIndex = value.indexOf('://');
+    if (delimIndex !== -1) {
+      return value.substr(0, delimIndex + 1);
+    }
+    return undefined;
   }
 
-  .markdown-body * {
-    font-size: var(--inline-documentation-font-size, 13px) !important;
+  /**
+   * Gets a host value from the url.
+   * It reads the whole authority value of given `value`. It doesn't parses it
+   * to host, port and
+   * credentials parts. For URL panel it's enough.
+   *
+   * @param {String} value The URL to parse
+   * @return {String|undefined} Value of the host or undefined.
+   */
+  _parseHost(value) {
+    if (!value) {
+      return undefined;
+    }
+    let result = value;
+    const delimIndex = result.indexOf('://');
+    if (delimIndex !== -1) {
+      result = result.substr(delimIndex + 3);
+    }
+    if (!result) {
+      return undefined;
+    }
+    // We don't need specifics here (username, password, port)
+    const host = result.split('/')[0];
+    return host;
   }
 
-  .markdown-body p:first-child {
-    margin-top: 0;
-    padding-top: 0;
+  /**
+   * Parses the path part of the URL.
+   *
+   * @param {string} value URL value
+   * @return {string|undefined} Path part of the URL
+   */
+  _parsePath(value) {
+    if (!value) {
+      return undefined;
+    }
+    let result = value;
+    const isBasePath = result[0] === '/';
+    if (!isBasePath) {
+      const index = result.indexOf('://');
+      if (index !== -1) {
+        result = result.substr(index + 3);
+      }
+    }
+    let index = result.indexOf('?');
+    if (index !== -1) {
+      result = result.substr(0, index);
+    }
+    index = result.indexOf('#');
+    if (index !== -1) {
+      result = result.substr(0, index);
+    }
+    const lastIsSlash = result[result.length - 1] === '/';
+    const parts = result.split('/').filter((part) => !!part);
+    if (!isBasePath) {
+      parts.shift();
+    }
+    let path = `/${  parts.join('/')}`;
+    if (lastIsSlash && parts.length > 1) {
+      path += '/';
+    }
+    return path;
   }
 
-  .markdown-body p:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
+  /**
+   * Returns query parameters string (without the '?' sign) as a whole.
+   *
+   * @param {string} value The URL to parse
+   * @return {string|undefined} Value of the search string or undefined.
+   */
+  _parseSearch(value) {
+    if (!value) {
+      return undefined;
+    }
+    let index = value.indexOf('?');
+    if (index === -1) {
+      return undefined;
+    }
+    const result = value.substr(index + 1);
+    index = result.indexOf('#');
+    if (index === -1) {
+      return result;
+    }
+    return result.substr(0, index);
   }
-`;
 
-// Left for compatibility
+  /**
+   * Reads a value of the anchor (or hash) parameter without the `#` sign.
+   *
+   * @param {string} value The URL to parse
+   * @return {string|undefined} Value of the anchor (hash) or undefined.
+   */
+  _parseAnchor(value) {
+    if (!value) {
+      return undefined;
+    }
+    const index = value.indexOf('#');
+    if (index === -1) {
+      return undefined;
+    }
+    return value.substr(index + 1);
+  }
+
+  /**
+   * Returns an array of items where each item is an array where first
+   * item is param name and second is it's value. Both always strings.
+   *
+   * @param {string=} search Parsed search parameter
+   * @return {Array} Always returns an array.
+   */
+  _parseSearchParams(search) {
+    const result = [];
+    if (!search) {
+      return result;
+    }
+    const parts = search.split(this.opts.queryDelimiter);
+    parts.forEach((item) => {
+      const _part = ['', ''];
+      const _params = item.split('=');
+      let _name = _params.shift();
+      if (!_name && _name !== '') {
+        return;
+      }
+      _name = _name.trim();
+      const _value = _params.join('=').trim();
+      _part[0] = _name;
+      _part[1] = _value;
+      result.push(_part);
+    });
+    return result;
+  }
+}
+
+/** @typedef {import('./UrlValueParser').UrlValueParserOptions} UrlValueParserOptions */
+
+/**
+ * A class to parse URL string.
+ */
+class UrlParser extends UrlValueParser {
+  /**
+   * @constructor
+   * @param {String} value URL value
+   * @param {UrlValueParserOptions=} opts
+   */
+  constructor(value, opts) {
+    super(opts);
+    this.value = value;
+  }
+
+  /**
+   * Returns protocol value in format `protocol` + ':'
+   *
+   * @return {String|undefined} Value of the protocol or undefined if
+   * value not set
+   */
+  get protocol() {
+    return this.__data.protocol;
+  }
+
+  /**
+   * Sets value of the `protocol`
+   *
+   * @param {String} value Protocol value.
+   */
+  set protocol(value) {
+    this.__data.protocol = value;
+  }
+
+  /**
+   * It reads the authority part of the URL value. It doesn't parses it
+   * to host, port and credentials parts.
+   *
+   * @return {String|undefined} Value of the host or undefined if
+   * value not set
+   */
+  get host() {
+    return this.__data.host;
+  }
+
+  /**
+   * Sets value of the `host`
+   *
+   * @param {String} value Host value.
+   */
+  set host(value) {
+    this.__data.host = value;
+  }
+
+  /**
+   * Returns path part of the URL.
+   *
+   * @return {String|undefined} Value of the path or undefined if
+   * value not set
+   */
+  get path() {
+    return this.__data.path || '/';
+  }
+
+  /**
+   * Sets value of the `path`
+   *
+   * @param {String} value Path value.
+   */
+  set path(value) {
+    this.__data.path = value;
+  }
+
+  /**
+   * Returns anchor part of the URL.
+   *
+   * @return {String|undefined} Value of the anchor or undefined if
+   * value not set
+   */
+  get anchor() {
+    return this.__data.anchor;
+  }
+
+  /**
+   * Sets value of the `anchor`
+   *
+   * @param {String} value Anchor value.
+   */
+  set anchor(value) {
+    this.__data.anchor = value;
+  }
+
+  /**
+   * Returns search part of the URL.
+   *
+   * @return {String|undefined} Value of the search or undefined if
+   * value not set
+   */
+  get search() {
+    return this.__data.search;
+  }
+
+  /**
+   * Sets value of the `search`
+   *
+   * @param {String} value Search value.
+   */
+  set search(value) {
+    this.__data.search = value;
+  }
+
+  /**
+   * The URL value. It is the same as calling `toStirng()`.
+   *
+   * @return {String} URL value for current configuration.
+   */
+  get value() {
+    return this.toString();
+  }
+
+  /**
+   * Sets value of the URL.
+   * It parses the url and sets properties.
+   *
+   * @param {string} value URL value.
+   */
+  set value(value) {
+    this.protocol = this._parseProtocol(value);
+    this.host = this._parseHost(value);
+    this.path = this._parsePath(value);
+    this.anchor = this._parseAnchor(value);
+    this.search = this._parseSearch(value);
+  }
+
+  /**
+   * Returns an array of search params.
+   *
+   * @return {Array<string[]>} List of search params. Each item contains an
+   * array when first item is name of the parameter and second item is the
+   * value.
+   */
+  get searchParams() {
+    return this._parseSearchParams(this.search);
+  }
+
+  /**
+   * Sets the value of `search` and `searchParams`.
+   *
+   * @param {Array<string[]>} value Search params list.
+   */
+  set searchParams(value) {
+    if (!value || !value.length) {
+      this.search = undefined;
+      return;
+    }
+    this.search = value.map((item) => {
+      if (!item[0] && !item[1]) {
+        return '';
+      }
+      const itemValue = item[1] || '';
+      return `${item[0]}=${itemValue}`;
+    })
+    .join(this.opts.queryDelimiter);
+  }
+
+  /**
+   * Returns the URL for current settings.
+   *
+   * @return {string} URL value.
+   */
+  toString() {
+    let result = '';
+    if (this.protocol) {
+      result += this.protocol;
+      result += '//';
+    }
+    if (this.host) {
+      result += this.host;
+    }
+    if (this.path) {
+      if (this.path === '/' && !this.host && !this.search && !this.anchor) ; else {
+        if (this.path[0] !== '/') {
+          result += '/';
+        }
+        result += this.path;
+      }
+    } else if (this.search || this.anchor) {
+        result += '/';
+      }
+    if (this.search) {
+      const p = this.searchParams;
+      this.searchParams = p;
+      result += `?${this.search}`;
+    }
+    if (this.anchor) {
+      result += `#${this.anchor}`;
+    }
+    return result;
+  }
+}
+
+/** @typedef {import('@api-components/api-view-model-transformer/src/ApiViewModel').ModelItem} ModelItem */
+
+/**
+ * Computes value for `renderEmptyMessage`.
+ *
+ * @param {boolean} allowCustom True if the form allows to add custom values.
+ * @param {object[]} model Current model
+ * @return {boolean} `true` when allowCustom is falsy set and model is empty
+ */
+function canRenderEmptyMessage(allowCustom, model) {
+  return !allowCustom && !model;
+}
+
+/**
+ * Computes if model item is optional.
+ * The items is always optional if is not required and when `hasOptional`
+ * is set to `true`.
+ *
+ * @param {boolean} hasOptional [description]
+ * @param {ModelItem} model Model item.
+ * @return {boolean} `true` if the model item is optional in the form.
+ */
+function isOptional(hasOptional, model) {
+  if (!hasOptional) {
+    return false;
+  }
+  if (!model || !model.required) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Computes if given model item is a custom property (not generated by
+ * AMF model transformation).
+ * @param {ModelItem} model Model item.
+ * @return {boolean} `true` if `isCustom` property is set on model's schema
+ * property.
+ */
+function isCustom(model) {
+  if (!model || !model.schema || !model.schema.isCustom) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Computes value for `renderOptionalCheckbox` property.
+ *
+ * @param {boolean} render Value of `allowHideOptional` property
+ * @param {boolean} has Value of `hasOptional` property.
+ * @return {boolean} True if both values are `true`.
+ */
+function renderCheckbox(render, has) {
+  return render && has;
+}
+
+/**
+ * Computes if any of the parameters are required.
+ * It iterates over the model to find any first element that has `required`
+ * propeerty set to `false`.
+ *
+ * @param {boolean} allowHideOptional State of `allowHideOptional` property.
+ * If `false` this function always returns `false`.
+ * @param {ModelItem[]} model Current model
+ * @return {boolean} `true` if model has at leas one alement that is not required.
+ */
+function hasOptionalParameters(allowHideOptional, model) {
+  if (!allowHideOptional || !model) {
+    return false;
+  }
+  return model.some((item) => item.required === false);
+}
+
+/**
+ * Computes class name for each form item depending on the item state.
+ *
+ * This method to be overriten by child classes.
+ *
+ * @param {ModelItem} item Model item
+ * @param {boolean=} allowHideOptional
+ * @param {boolean=} optionalOpened True if optional parameters are rendered.
+ * @param {boolean=} allowDisableParams
+ * @return {string}
+ */
+function rowClass(
+  item,
+  allowHideOptional,
+  optionalOpened,
+  allowDisableParams
+) {
+  let clazz = 'param-value';
+  if (item && item.required) {
+    clazz += ' required';
+  } else if (allowHideOptional) {
+    clazz += ' optional';
+  }
+  if (optionalOpened) {
+    clazz += ' with-optional';
+  }
+  if (allowDisableParams) {
+    clazz += ' has-enable-button';
+  }
+  return clazz;
+}
 
 /** @typedef {import('@api-components/api-example-generator/src/ExampleGenerator').Example} Example */
 
@@ -55033,156 +55475,461 @@ class ApiViewModel extends AmfHelperMixin(Object) {
   }
 }
 
+/* eslint-disable class-methods-use-this */
+
+/** @typedef {import('@polymer/iron-form').IronFormElement} IronFormElement */
+/** @typedef {import('@api-components/api-view-model-transformer/src/ApiViewModel').ModelItem} ModelItem */
+
 /**
- * This element is deprecated. Use ApiViewModel class instead.
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
+ * A mixin to be implemented to elements that processes AMF data via form
+ * data model and displays forms from the model.
  *
- * This element only has public methods of the old implementation.
+ * It contains common methods used in forms.
  *
- * @customElement
- * @mixes EventsTargetMixin
- * @extends LitElement
+ * Use `api-form-styles` from this package to include common styles.
+ *
+ * @param {*} base
+ * @return {*}
+ * @mixin
  */
-class ApiViewModelTransformer extends EventsTargetMixin(LitElement) {
-  static get properties() {
-    return {
-      /**
-       * An array of propertues for which view model is to be generated.
-       * It accepts model for headers, query parameters, uri parameters and
-       * body.
-       * If `manualModel` is not set, assigning a value to this property will
-       * trigger model computation. Otherwise call `computeViewModel()`
-       * function manually to generate the model.
-       */
-      shape: { type: Array },
-      /**
-       * Generated view model from the `shape`
-       */
-      viewModel: { type: Array },
-      /**
-       * If set, assigning a value to `shape` will not trigger view model
-       * computation.
-       */
-      manualModel: { type: Boolean },
-      /**
-       * Makes the model to always have `hasDescription` to false and
-       * clears and documentation from ther model.
-       */
-      noDocs: { type: Boolean }
-    };
-  }
-
-  get shape() {
-    return this._shape;
-  }
-
-  set shape(value) {
-    const old = this._shape;
-    if (value === old) {
-      return;
+const ApiFormMixin = (base) =>
+  class extends base {
+    static get properties() {
+      return {
+        /**
+         * View model to use to render the form.
+         */
+        model: { type: Array },
+        /**
+         * Set to true to show optional parameters (not required by the API).
+         */
+        optionalOpened: {
+          type: Boolean,
+          reflect: true,
+        },
+        /**
+         * Computed value from `allowHideOptional` and view model.
+         * `true` if current model has any optional property.
+         */
+        hasOptional: { type: Boolean },
+        /**
+         * If set it computes `hasOptional` property and shows checkbox in the
+         * form to show / hide optional properties.
+         */
+        allowHideOptional: { type: Boolean },
+        /**
+         * Computed flag to determine if optional checkbox can be rendered
+         */
+        renderOptionalCheckbox: { type: Boolean },
+        /**
+         * If set, enable / disable param checkbox is rendered next to each
+         * form item.
+         */
+        allowDisableParams: { type: Boolean },
+        /**
+         * When set, renders "add custom" item button.
+         * If the element is to be used withouth AMF model this should always
+         * be enabled. Otherwise users won't be able to add a parameter.
+         */
+        allowCustom: { type: Boolean },
+        /**
+         * Renders items in "narrow" view
+         */
+        narrow: { type: Boolean },
+        /**
+         * Computed value. The form renders empty message (if supported by
+         * the form element). It occurs when model is not set and allowCustom
+         * is not set
+         */
+        renderEmptyMessage: { type: Boolean },
+      };
     }
-    this._shape = value;
-    this._shapeChanged(value);
-  }
 
-  get amf() {
-    return this.__modeler.amf;
-  }
-
-  set amf(value) {
-    this.__modeler.amf = value;
-  }
-
-  get noDocs() {
-    return this.__modeler.noDocs;
-  }
-
-  set noDocs(value) {
-    this.__modeler.noDocs = value;
-  }
-
-  constructor() {
-    super();
-    this._buildPropertyHandler = this._buildPropertyHandler.bind(this);
-    this.__modeler = new ApiViewModel({});
-    this.manualModel = false;
-  }
-
-  _attachListeners(node) {
-    node.addEventListener('api-property-model-build', this._buildPropertyHandler);
-  }
-
-  _detachListeners(node) {
-    node.removeEventListener('api-property-model-build', this._buildPropertyHandler);
-  }
-
-  clearCache() {
-    this.__modeler.clearCache();
-  }
-
-  _shapeChanged(shape) {
-    if (this.manualModel) {
-      return;
+    get model() {
+      return this._model;
     }
-    this.computeViewModel(shape);
-  }
 
-  computeViewModel(shape) {
-    if (!shape) {
-      shape = this.shape;
-    }
-    const result = this.__modeler.computeViewModel(shape);
-    this.viewModel = result;
-    this._notifyViewModelChanged(result);
-    return result;
-  }
-
-  /**
-   * Notifies about view model change by dispatching view-model-changed event.
-   * @param {Array<Object>} value
-   */
-  _notifyViewModelChanged(value) {
-    this.dispatchEvent(new CustomEvent('view-model-changed', {
-      composed: true,
-      detail: {
-        value
+    set model(value) {
+      if (this._sop('model', value)) {
+        this._notifyChanged('model', value);
+        this.renderEmptyMessage = this._computeRenderEmptyMessage(
+          this.allowCustom,
+          value
+        );
+        this.hasOptional = this._computeHasOptionalParameters(
+          this.allowHideOptional,
+          value
+        );
       }
-    }));
-  }
-
-
-  uiModelForAmfItem(amfItem) {
-    return this.__modeler.uiModelForAmfItem(amfItem);
-  }
-
-  modelForRawObject(model, processOptions={}) {
-    return this.__modeler.modelForRawObject(model, processOptions);
-  }
-
-
-  buildProperty(defaults) {
-    return this.__modeler.buildProperty(defaults);
-  }
-
-  /**
-   * Handler for the `api-property-model-build` custom event.
-   * Builds a property view model using event detail object as a base object.
-   *
-   * All changes are applied to the `detail` object. Requesting element must
-   * use the same object.
-   *
-   * @param {CustomEvent} e
-   */
-  _buildPropertyHandler(e) {
-    if (e.defaultPrevented) {
-      return;
     }
-    e.stopImmediatePropagation();
-    e.preventDefault();
-    this.buildProperty(e.detail);
-  }
-}
 
-window.customElements.define('api-view-model-transformer', ApiViewModelTransformer);
+    get allowCustom() {
+      return this._allowCustom;
+    }
+
+    set allowCustom(value) {
+      if (this._sop('allowCustom', value)) {
+        this.renderEmptyMessage = this._computeRenderEmptyMessage(
+          value,
+          this.model
+        );
+      }
+    }
+
+    get allowHideOptional() {
+      return this._allowHideOptional;
+    }
+
+    set allowHideOptional(value) {
+      if (this._sop('allowHideOptional', value)) {
+        this.hasOptional = this._computeHasOptionalParameters(
+          value,
+          this.model
+        );
+        this.renderOptionalCheckbox = this._computeRenderCheckbox(
+          value,
+          this.hasOptional
+        );
+      }
+    }
+
+    get hasOptional() {
+      return this._hasOptional;
+    }
+
+    set hasOptional(value) {
+      if (this._sop('hasOptional', value)) {
+        this._notifyChanged('hasOptional', value);
+        this.renderOptionalCheckbox = this._computeRenderCheckbox(
+          this.allowHideOptional,
+          value
+        );
+      }
+    }
+
+    constructor() {
+      super();
+      this.renderEmptyMessage = true;
+    }
+
+    _sop(prop, value) {
+      const key = `_${prop}`;
+      const old = this[key];
+      if (old === value) {
+        return false;
+      }
+      this[key] = value;
+      if (this.requestUpdate) {
+        this.requestUpdate(prop, old);
+      }
+      return true;
+    }
+
+    _notifyChanged(prop, value) {
+      this.dispatchEvent(
+        new CustomEvent(`${prop}-changed`, {
+          composed: true,
+          detail: {
+            value,
+          },
+        })
+      );
+    }
+
+    /**
+     * Computes class name for each form item depending on the item state.
+     *
+     * This method to be overriten by child classes.
+     *
+     * @param {ModelItem} item Model item
+     * @param {Boolean=} allowHideOptional
+     * @param {Boolean=} optionalOpened True if optional parameters are rendered.
+     * @param {Boolean=} allowDisableParams
+     * @return {String}
+     */
+    computeFormRowClass(
+      item,
+      allowHideOptional,
+      optionalOpened,
+      allowDisableParams
+    ) {
+      return rowClass(
+        item,
+        allowHideOptional,
+        optionalOpened,
+        allowDisableParams
+      );
+    }
+
+    /**
+     * Toggles visibility of optional parameters.
+     */
+    toggleOptionalParams() {
+      if (!this.allowHideOptional) {
+        return;
+      }
+      this.optionalOpened = !this.optionalOpened;
+    }
+
+    /**
+     * Returns a reference to the form element, if the DOM is ready.
+     * This only works with `iron-form` that is in the DOM.
+     *
+     * @return {IronFormElement} Iron form element. It may be `undefined` if local
+     * DOM is not yet initialized.
+     */
+    _getForm() {
+      if (!this.__form && this.shadowRoot) {
+        this.__form = this.shadowRoot.querySelector('iron-form');
+      }
+      return this.__form;
+    }
+
+    /**
+     * Validates the form. It uses `iron-form`'s `validate()` function to
+     * perform the validation.
+     * @return {Boolean} Validation result or `true` if DOM is not yet ready.
+     */
+    _getValidity() {
+      const form = this._getForm();
+      if (!form) {
+        return true;
+      }
+      return form.validate();
+    }
+
+    /**
+     * Link to the form's serialize function.
+     * @return {Object} Serialized form values or `undefined` if DOM is not ready.
+     * Note, `undefined` is returned **only** if DOM is not yet ready.
+     */
+    serializeForm() {
+      const form = this._getForm();
+      if (!form) {
+        return undefined;
+      }
+      return form.serializeForm();
+    }
+
+    /**
+     * Computes if any of the parameters are required.
+     * It iterates over the model to find any first element that has `required`
+     * propeerty set to `false`.
+     *
+     * @param {Boolean} allowHideOptional State of `allowHideOptional` property.
+     * If `false` this function always returns `false`.
+     * @param {ModelItem[]} model Current model
+     * @return {Boolean} `true` if model has at leas one alement that is not required.
+     */
+    _computeHasOptionalParameters(allowHideOptional, model) {
+      return hasOptionalParameters(allowHideOptional, model);
+    }
+
+    /**
+     * Computes value for `renderOptionalCheckbox` property.
+     *
+     * @param {Boolean} render Value of `allowHideOptional` property
+     * @param {Boolean} has Value of `hasOptional` property.
+     * @return {Boolean} True if both values are `true`.
+     */
+    _computeRenderCheckbox(render, has) {
+      return renderCheckbox(render, has);
+    }
+
+    /**
+     * Computes if given model item is a custom property (not generated by
+     * AMF model transformation).
+     * @param {ModelItem} model Model item.
+     * @return {Boolean} `true` if `isCustom` property is set on model's schema
+     * property.
+     */
+    _computeIsCustom(model) {
+      return isCustom(model);
+    }
+
+    /**
+     * Adds empty custom property to the list.
+     *
+     * It dispatches `api-property-model-build` custom event that is handled by
+     * `api-view-model-transformer` to build model item.
+     * This assumem that the transformer element is already in the DOM.
+     *
+     * After the transformation the element pushes or sets the data to the
+     * `model`.
+     *
+     * @param {String} binding Value if the `binding` property.
+     * @param {Object=} opts Default options for the ModelItem. See `ApiViewModel`
+     * for the details.
+     */
+    addCustom(binding, opts = {}) {
+      const { name = '', value = '', inputLabel } = opts;
+      const defaults = {
+        name,
+        value,
+        binding,
+        schema: {
+          enabled: true,
+          isCustom: true,
+          inputLabel,
+        },
+      };
+      const worker = new ApiViewModel();
+      const item = worker.buildProperty(defaults);
+      const model = this.model || [];
+      this.model = [...model, item];
+      this.optionalOpened = true;
+    }
+
+    /**
+     * Removes custom item from the UI.
+     * This can only be called from `dom-repeat` element so it contain's
+     * `model` property.
+     *
+     * @param {CustomEvent} e
+     */
+    _removeCustom(e) {
+      const target = /** @type HTMLElement */ (e.currentTarget);
+      const index = Number(target.dataset.index);
+      if (Number.isNaN(index)) {
+        return;
+      }
+      const { model } = this;
+      if (!model || !model.length) {
+        return;
+      }
+      model.splice(index, 1);
+      this.model = Array.from(model);
+    }
+
+    /**
+     * Computes if model item is optional.
+     * The items is always optional if is not required and when `hasOptional`
+     * is set to `true`.
+     *
+     * @param {Boolean} hasOptional [description]
+     * @param {ModelItem} model Model item.
+     * @return {Boolean} `true` if the model item is optional in the form.
+     */
+    computeIsOptional(hasOptional, model) {
+      return isOptional(hasOptional, model);
+    }
+
+    /**
+     * Computes value for `renderEmptyMessage`.
+     *
+     * @param {Boolean} allowCustom True if the form allows to add custom values.
+     * @param {Array=} model Current model
+     * @return {Boolean} `true` when allowCustom is falsy set and model is empty
+     */
+    _computeRenderEmptyMessage(allowCustom, model) {
+      return canRenderEmptyMessage(allowCustom, model);
+    }
+
+    /**
+     * Dispatches `send-analytics` for GA event.
+     * @param {String} category
+     * @param {String} action
+     * @param {String=} label
+     */
+    _gaEvent(category, action, label) {
+      const e = new CustomEvent('send-analytics', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          type: 'event',
+          category,
+          action,
+          label,
+        },
+      });
+      this.dispatchEvent(e);
+    }
+  };
+
+/**
+Common styles for API forms.
+
+Custom property | Description | Default
+----------------|-------------|----------
+`--api-form-action-button-color` | Color of the action button in the form. Action buttons should perform form's primary actions like "submit" or "add new". Use `--api-form-action-icon-*` for icons related styling | `--secondary-button-color` or `--accent-color`
+`--api-form-action-button-background-color` | Similar to `--api-form-action-button-color` but it's background color | `--secondary-button-background`
+`--api-form-action-button-hover-color` | Color of the action button in the form when hovering. | `--secondary-button-color` or `--accent-color`
+`--api-form-action-button-hover-background-color` | Similar to `--api-form-action-button-hover-color` but it's background color | `--secondary-button-background`
+`--hint-trigger-color` | Color of the form action icon button to dispay documentation for the item. | `rgba(0, 0, 0, 0.74)`
+`--hint-trigger-hover-color` | Color of the form action icon button to dispay documentation for the item when hovered | `rgba(0, 0, 0, 0.74)`
+`--api-form-action-icon-color` | Color of any other than documentation icon button in form row | `--icon-button-color` or `rgba(0, 0, 0, 0.74)`
+`--api-form-action-icon-hover-color` | Color of any other than documentation icon button in form row when hovering | `--accent-color` or `rgba(0, 0, 0, 0.88)`
+`--inline-documentation-background-color` | Background color of the documentation element. | `#FFF3E0`
+`--inline-documentation-color` | Color of the documentation element | `rgba(0, 0, 0, 0.87)`
+`--inline-documentation-font-size` | Font size of the documentaiton element | `13px`
+*/
+
+var apiFormStyles = css`
+  .form-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  :host([narrow]) .form-item,
+  .narrow .form-item {
+    display: block;
+  }
+
+  .form-item[data-optional] {
+    display: none;
+  }
+
+  :host([optionalopened]) [data-optional] {
+    display: flex;
+    flex-direction: row;
+  }
+  /* styling form inline markdown */
+  arc-marked {
+    background-color: var(--inline-documentation-background-color, #fff3e0);
+    padding: 4px;
+    /* Default inputs margin */
+    margin: 0 8px;
+  }
+  /* wrapped for arc-marked */
+  .docs {
+    font-size: var(--arc-font-body1-font-size);
+    font-weight: var(--arc-font-body1-font-weight);
+    line-height: var(--arc-font-body1-line-height);
+    color: var(--inline-documentation-color, rgba(0, 0, 0, 0.87));
+    margin-right: 40px;
+  }
+
+  .markdown-body * {
+    font-size: var(--inline-documentation-font-size, 13px) !important;
+  }
+
+  .markdown-body p:first-child {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  .markdown-body p:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+`;
+
+/** @typedef {import('@api-components/api-view-model-transformer/src/ApiViewModel').ModelItem} ModelItem */
+
 
 /**
  * `api-url-data-model`
@@ -55196,31 +55943,13 @@ window.customElements.define('api-view-model-transformer', ApiViewModelTransform
  *
  * After reseting the model to full AMF WebApi model the values are updated.
  *
- * @customElement
  * @demo demo/index.html
  * @mixes AmfHelperMixin
  * @extends LitElement
  */
 class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
-  get styles() {
-    return css`:host {display: none !important;}`;
-  }
-
-  render() {
-    const { aware } = this;
-    return html`<style>${this.styles}</style>
-    ${aware ?
-      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : undefined}`;
-  }
-
   static get properties() {
     return {
-      /**
-       * Name of the scope to use with `raml-aware`.
-       * If this element is used with other aware elements, it updates
-       * `webApi` when aware value change.
-       */
-      aware: { type: String },
       /**
        * A value to override API's base URI.
        */
@@ -55229,17 +55958,10 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
        * The `@id` property of selected endpoint and method to compute
        * data models for.
        */
-      selected: { type: String }
+      selected: { type: String },
     };
   }
 
-  get _transformer() {
-    if (!this.__transformer) {
-      this.__transformer = document.createElement('api-view-model-transformer');
-    }
-    this.__transformer.amf = this.amf;
-    return this.__transformer;
-  }
   /**
    * Computed value of server definition from the AMF model.
    *
@@ -55253,10 +55975,6 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     const old = this._server;
     if (value === old) {
       return;
-    }
-    if (!value && this.amf) {
-      // computes the default value
-      value = this._computeServer(this.amf);
     }
     this._server = value;
     this._apiParameters = this._computeApiParameters(value, this.version);
@@ -55624,14 +56342,6 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     }
   }
 
-  disconnectedCallback() {
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
-    if (this.__transformer) {
-      this.__transformer = null;
-    }
-  }
   /**
    * Registers an event handler for given type
    * @param {String} eventType Event type (name)
@@ -55667,10 +56377,8 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (!model || !this._hasType(model, this.ns.aml.vocabularies.document.Document)) {
       return;
     }
-    const server = this._computeServer(model);
     const version = this._computeApiVersion(model);
     const protocols = this._computeProtocols(model);
-    this.server = server;
     this.protocols = protocols;
     this.version = version;
   }
@@ -55704,7 +56412,7 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
    * @param {Object} server The `http://raml.org/vocabularies/http#server`
    * object
    * @param {?String} version API version number
-   * @return {Array<Object>} A view model.
+   * @return {Array<ModelItem>} A view model.
    */
   _computeApiParameters(server, version) {
     if (!server) {
@@ -55723,7 +56431,8 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
         }
       }
     }
-    let model = this._transformer.computeViewModel(variables);
+    const gen = new ApiViewModel({ amf: this.amf });
+    let model = gen.computeViewModel(variables);
     if (model && model.length) {
       model = Array.from(model);
     } else {
@@ -55750,7 +56459,8 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
         return apiParameters;
       }
     }
-    let model = this._transformer.computeViewModel(params);
+    const gen = new ApiViewModel({ amf: this.amf });
+    let model = gen.computeViewModel(params);
     if (!model) {
       model = [];
     }
@@ -55794,7 +56504,8 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
     if (!params) {
       return [];
     }
-    let data = this._transformer.computeViewModel(params);
+    const gen = new ApiViewModel({ amf: this.amf });
+    let data = gen.computeViewModel(params);
     if (data && data.length) {
       data = Array.from(data);
     } else {
@@ -55918,7 +56629,9 @@ class ApiUrlDataModel extends AmfHelperMixin(LitElement) {
    * Clears the cache in the view model transformer.
    */
   clearCache() {
-    this._transformer.clearCache();
+    // @todo(Pawel): This should be a static property
+    const gen = new ApiViewModel({ amf: this.amf });
+    gen.clearCache();
   }
 }
 
@@ -58723,496 +59436,6 @@ class AnypointCheckbox extends ButtonStateMixin(ControlStateMixin(CheckedElement
 }
 
 window.customElements.define('anypoint-checkbox', AnypointCheckbox);
-
-/** @typedef {import('@api-components/api-view-model-transformer/src/ApiViewModel').ModelItem} ModelItem */
-
-/**
- * Computes value for `renderEmptyMessage`.
- *
- * @param {boolean} allowCustom True if the form allows to add custom values.
- * @param {object[]} model Current model
- * @return {boolean} `true` when allowCustom is falsy set and model is empty
- */
-function canRenderEmptyMessage(allowCustom, model) {
-  return !allowCustom && !model;
-}
-
-/**
- * Computes if model item is optional.
- * The items is always optional if is not required and when `hasOptional`
- * is set to `true`.
- *
- * @param {boolean} hasOptional [description]
- * @param {ModelItem} model Model item.
- * @return {boolean} `true` if the model item is optional in the form.
- */
-function isOptional(hasOptional, model) {
-  if (!hasOptional) {
-    return false;
-  }
-  if (!model || !model.required) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Computes if given model item is a custom property (not generated by
- * AMF model transformation).
- * @param {ModelItem} model Model item.
- * @return {boolean} `true` if `isCustom` property is set on model's schema
- * property.
- */
-function isCustom(model) {
-  if (!model || !model.schema || !model.schema.isCustom) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Computes value for `renderOptionalCheckbox` property.
- *
- * @param {boolean} render Value of `allowHideOptional` property
- * @param {boolean} has Value of `hasOptional` property.
- * @return {boolean} True if both values are `true`.
- */
-function renderCheckbox(render, has) {
-  return render && has;
-}
-
-/**
- * Computes if any of the parameters are required.
- * It iterates over the model to find any first element that has `required`
- * propeerty set to `false`.
- *
- * @param {boolean} allowHideOptional State of `allowHideOptional` property.
- * If `false` this function always returns `false`.
- * @param {ModelItem[]} model Current model
- * @return {boolean} `true` if model has at leas one alement that is not required.
- */
-function hasOptionalParameters(allowHideOptional, model) {
-  if (!allowHideOptional || !model) {
-    return false;
-  }
-  return model.some((item) => item.required === false);
-}
-
-/**
- * Computes class name for each form item depending on the item state.
- *
- * This method to be overriten by child classes.
- *
- * @param {ModelItem} item Model item
- * @param {boolean=} allowHideOptional
- * @param {boolean=} optionalOpened True if optional parameters are rendered.
- * @param {boolean=} allowDisableParams
- * @return {string}
- */
-function rowClass(
-  item,
-  allowHideOptional,
-  optionalOpened,
-  allowDisableParams
-) {
-  let clazz = 'param-value';
-  if (item && item.required) {
-    clazz += ' required';
-  } else if (allowHideOptional) {
-    clazz += ' optional';
-  }
-  if (optionalOpened) {
-    clazz += ' with-optional';
-  }
-  if (allowDisableParams) {
-    clazz += ' has-enable-button';
-  }
-  return clazz;
-}
-
-/* eslint-disable class-methods-use-this */
-
-/** @typedef {import('@polymer/iron-form').IronFormElement} IronFormElement */
-/** @typedef {import('@api-components/api-view-model-transformer/src/ApiViewModel').ModelItem} ModelItem */
-
-/**
-@license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * A mixin to be implemented to elements that processes AMF data via form
- * data model and displays forms from the model.
- *
- * It contains common methods used in forms.
- *
- * Use `api-form-styles` from this package to include common styles.
- *
- * @param {*} base
- * @return {*}
- * @mixin
- */
-const ApiFormMixin = (base) =>
-  class extends base {
-    static get properties() {
-      return {
-        /**
-         * View model to use to render the form.
-         */
-        model: { type: Array },
-        /**
-         * Set to true to show optional parameters (not required by the API).
-         */
-        optionalOpened: {
-          type: Boolean,
-          reflect: true,
-        },
-        /**
-         * Computed value from `allowHideOptional` and view model.
-         * `true` if current model has any optional property.
-         */
-        hasOptional: { type: Boolean },
-        /**
-         * If set it computes `hasOptional` property and shows checkbox in the
-         * form to show / hide optional properties.
-         */
-        allowHideOptional: { type: Boolean },
-        /**
-         * Computed flag to determine if optional checkbox can be rendered
-         */
-        renderOptionalCheckbox: { type: Boolean },
-        /**
-         * If set, enable / disable param checkbox is rendered next to each
-         * form item.
-         */
-        allowDisableParams: { type: Boolean },
-        /**
-         * When set, renders "add custom" item button.
-         * If the element is to be used withouth AMF model this should always
-         * be enabled. Otherwise users won't be able to add a parameter.
-         */
-        allowCustom: { type: Boolean },
-        /**
-         * Renders items in "narrow" view
-         */
-        narrow: { type: Boolean },
-        /**
-         * Computed value. The form renders empty message (if supported by
-         * the form element). It occurs when model is not set and allowCustom
-         * is not set
-         */
-        renderEmptyMessage: { type: Boolean },
-      };
-    }
-
-    get model() {
-      return this._model;
-    }
-
-    set model(value) {
-      if (this._sop('model', value)) {
-        this._notifyChanged('model', value);
-        this.renderEmptyMessage = this._computeRenderEmptyMessage(
-          this.allowCustom,
-          value
-        );
-        this.hasOptional = this._computeHasOptionalParameters(
-          this.allowHideOptional,
-          value
-        );
-      }
-    }
-
-    get allowCustom() {
-      return this._allowCustom;
-    }
-
-    set allowCustom(value) {
-      if (this._sop('allowCustom', value)) {
-        this.renderEmptyMessage = this._computeRenderEmptyMessage(
-          value,
-          this.model
-        );
-      }
-    }
-
-    get allowHideOptional() {
-      return this._allowHideOptional;
-    }
-
-    set allowHideOptional(value) {
-      if (this._sop('allowHideOptional', value)) {
-        this.hasOptional = this._computeHasOptionalParameters(
-          value,
-          this.model
-        );
-        this.renderOptionalCheckbox = this._computeRenderCheckbox(
-          value,
-          this.hasOptional
-        );
-      }
-    }
-
-    get hasOptional() {
-      return this._hasOptional;
-    }
-
-    set hasOptional(value) {
-      if (this._sop('hasOptional', value)) {
-        this._notifyChanged('hasOptional', value);
-        this.renderOptionalCheckbox = this._computeRenderCheckbox(
-          this.allowHideOptional,
-          value
-        );
-      }
-    }
-
-    constructor() {
-      super();
-      this.renderEmptyMessage = true;
-    }
-
-    _sop(prop, value) {
-      const key = `_${prop}`;
-      const old = this[key];
-      if (old === value) {
-        return false;
-      }
-      this[key] = value;
-      if (this.requestUpdate) {
-        this.requestUpdate(prop, old);
-      }
-      return true;
-    }
-
-    _notifyChanged(prop, value) {
-      this.dispatchEvent(
-        new CustomEvent(`${prop}-changed`, {
-          composed: true,
-          detail: {
-            value,
-          },
-        })
-      );
-    }
-
-    /**
-     * Computes class name for each form item depending on the item state.
-     *
-     * This method to be overriten by child classes.
-     *
-     * @param {ModelItem} item Model item
-     * @param {Boolean=} allowHideOptional
-     * @param {Boolean=} optionalOpened True if optional parameters are rendered.
-     * @param {Boolean=} allowDisableParams
-     * @return {String}
-     */
-    computeFormRowClass(
-      item,
-      allowHideOptional,
-      optionalOpened,
-      allowDisableParams
-    ) {
-      return rowClass(
-        item,
-        allowHideOptional,
-        optionalOpened,
-        allowDisableParams
-      );
-    }
-
-    /**
-     * Toggles visibility of optional parameters.
-     */
-    toggleOptionalParams() {
-      if (!this.allowHideOptional) {
-        return;
-      }
-      this.optionalOpened = !this.optionalOpened;
-    }
-
-    /**
-     * Returns a reference to the form element, if the DOM is ready.
-     * This only works with `iron-form` that is in the DOM.
-     *
-     * @return {IronFormElement} Iron form element. It may be `undefined` if local
-     * DOM is not yet initialized.
-     */
-    _getForm() {
-      if (!this.__form && this.shadowRoot) {
-        this.__form = this.shadowRoot.querySelector('iron-form');
-      }
-      return this.__form;
-    }
-
-    /**
-     * Validates the form. It uses `iron-form`'s `validate()` function to
-     * perform the validation.
-     * @return {Boolean} Validation result or `true` if DOM is not yet ready.
-     */
-    _getValidity() {
-      const form = this._getForm();
-      if (!form) {
-        return true;
-      }
-      return form.validate();
-    }
-
-    /**
-     * Link to the form's serialize function.
-     * @return {Object} Serialized form values or `undefined` if DOM is not ready.
-     * Note, `undefined` is returned **only** if DOM is not yet ready.
-     */
-    serializeForm() {
-      const form = this._getForm();
-      if (!form) {
-        return undefined;
-      }
-      return form.serializeForm();
-    }
-
-    /**
-     * Computes if any of the parameters are required.
-     * It iterates over the model to find any first element that has `required`
-     * propeerty set to `false`.
-     *
-     * @param {Boolean} allowHideOptional State of `allowHideOptional` property.
-     * If `false` this function always returns `false`.
-     * @param {ModelItem[]} model Current model
-     * @return {Boolean} `true` if model has at leas one alement that is not required.
-     */
-    _computeHasOptionalParameters(allowHideOptional, model) {
-      return hasOptionalParameters(allowHideOptional, model);
-    }
-
-    /**
-     * Computes value for `renderOptionalCheckbox` property.
-     *
-     * @param {Boolean} render Value of `allowHideOptional` property
-     * @param {Boolean} has Value of `hasOptional` property.
-     * @return {Boolean} True if both values are `true`.
-     */
-    _computeRenderCheckbox(render, has) {
-      return renderCheckbox(render, has);
-    }
-
-    /**
-     * Computes if given model item is a custom property (not generated by
-     * AMF model transformation).
-     * @param {ModelItem} model Model item.
-     * @return {Boolean} `true` if `isCustom` property is set on model's schema
-     * property.
-     */
-    _computeIsCustom(model) {
-      return isCustom(model);
-    }
-
-    /**
-     * Adds empty custom property to the list.
-     *
-     * It dispatches `api-property-model-build` custom event that is handled by
-     * `api-view-model-transformer` to build model item.
-     * This assumem that the transformer element is already in the DOM.
-     *
-     * After the transformation the element pushes or sets the data to the
-     * `model`.
-     *
-     * @param {String} binding Value if the `binding` property.
-     * @param {Object=} opts Default options for the ModelItem. See `ApiViewModel`
-     * for the details.
-     */
-    addCustom(binding, opts = {}) {
-      const { name = '', value = '', inputLabel } = opts;
-      const defaults = {
-        name,
-        value,
-        binding,
-        schema: {
-          enabled: true,
-          isCustom: true,
-          inputLabel,
-        },
-      };
-      const worker = new ApiViewModel();
-      const item = worker.buildProperty(defaults);
-      const model = this.model || [];
-      this.model = [...model, item];
-      this.optionalOpened = true;
-    }
-
-    /**
-     * Removes custom item from the UI.
-     * This can only be called from `dom-repeat` element so it contain's
-     * `model` property.
-     *
-     * @param {CustomEvent} e
-     */
-    _removeCustom(e) {
-      const target = /** @type HTMLElement */ (e.currentTarget);
-      const index = Number(target.dataset.index);
-      if (Number.isNaN(index)) {
-        return;
-      }
-      const { model } = this;
-      if (!model || !model.length) {
-        return;
-      }
-      model.splice(index, 1);
-      this.model = Array.from(model);
-    }
-
-    /**
-     * Computes if model item is optional.
-     * The items is always optional if is not required and when `hasOptional`
-     * is set to `true`.
-     *
-     * @param {Boolean} hasOptional [description]
-     * @param {ModelItem} model Model item.
-     * @return {Boolean} `true` if the model item is optional in the form.
-     */
-    computeIsOptional(hasOptional, model) {
-      return isOptional(hasOptional, model);
-    }
-
-    /**
-     * Computes value for `renderEmptyMessage`.
-     *
-     * @param {Boolean} allowCustom True if the form allows to add custom values.
-     * @param {Array=} model Current model
-     * @return {Boolean} `true` when allowCustom is falsy set and model is empty
-     */
-    _computeRenderEmptyMessage(allowCustom, model) {
-      return canRenderEmptyMessage(allowCustom, model);
-    }
-
-    /**
-     * Dispatches `send-analytics` for GA event.
-     * @param {String} category
-     * @param {String} action
-     * @param {String=} label
-     */
-    _gaEvent(category, action, label) {
-      const e = new CustomEvent('send-analytics', {
-        bubbles: true,
-        composed: true,
-        detail: {
-          type: 'event',
-          category,
-          action,
-          label,
-        },
-      });
-      this.dispatchEvent(e);
-    }
-  };
 
 var styles$6 = css`
 :host {
@@ -62609,355 +62832,77 @@ class ApiUrlParamsEditor extends ValidatableMixin(EventsTargetMixin(LitElement))
 
 window.customElements.define('api-url-params-editor', ApiUrlParamsEditor);
 
+/* eslint-disable class-methods-use-this */
+
 /**
- * A mixin for the authorization panel that provides support for
- * AMF model.
- *
- * This is purely for code r1eadiness.
- *
- * @param {Class} base
- * @return {Class}
- * @mixinFunction
+ * `anypoint-item`
+ * An Anypoint list item with 2 or 3 lines.
  */
-const AuthorizationPanelAmfOverlay = (base) => class extends AmfHelperMixin(base) {
+class AnypointItemBody extends LitElement {
+  get styles() {
+    return css`
+      :host {
+        overflow: hidden; /* needed for text-overflow: ellipsis to work on ff */
+        flex-direction: column;
+        display: flex;
+        justify-content: center;
+        flex: 1;
+        flex-basis: 0.000000001px;
+      }
+
+      :host([twoline]) {
+        min-height: var(--anypoint-item-body-two-line-min-height, 72px);
+      }
+
+      :host([threeline]) {
+        min-height: var(--anypoint-item-body-three-line-min-height, 88px);
+      }
+
+      :host > ::slotted(*) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      :host > ::slotted([secondary]) {
+        font-size: var(--font-body-font-size);
+        letter-spacing: var(--font-body-letter-spacing);
+        font-weight: var(--font-body-font-weight);
+        color: var(--anypoint-item-body-secondary-color, var(--secondary-text-color));
+        margin-top: 4px;
+      }
+
+      :host([compatibility]:hover) > ::slotted([secondary]),
+      .anypoint-item[compatibility]:hover > [secondary] {
+        color: var(
+          --anypoint-item-secondary-focus-color,
+          var(--anypoint-item-focus-color,
+            var(--anypoint-color-coreBlue3)
+          )
+        );
+
+        border-left-color: var(
+          --anypoint-item-border-left-hover-color,
+          var(--anypoint-color-coreBlue3)
+        );
+        border-right-color: var(
+          --anypoint-item-border-right-hover-color,
+          var(--anypoint-color-coreBlue3)
+        );
+      }
+    `;
+  }
+
   static get properties() {
     return {
-      /**
-       * Security definition for an endpoint in AMF json/ld model.
-       * It is `http://raml.org/vocabularies/security#security`
-       * property of the `http://www.w3.org/ns/hydra/core#supportedOperation`
-       * property of an endpoint.
-       */
-      securedBy: { type: Array },
-      /**
-       * List of currently available custom security schemes declared in
-       * the AMF
-       */
-      customSchemes: { type: Array },
-      /**
-       * Computed value of validation state.
-       * To be used with CSS selectors to style the element when the authorization
-       * form is onvalid.
-       *
-       * Example:
-       *
-       * ```css
-       * authorization-panel[invalid] {
-       *  border: 1px red solid;
-       * }
-       * ```
-       */
-      invalid: { type: Boolean, reflect: true },
-      /**
-       * Computed value from the AMF model.
-       * If authorization is required by endpoint defined in the model,
-       * then internally this property is set to `true`.
-       *
-       * It can be `false` if `selected` is `none`, meaning RAML spec
-       * allows no authorization.
-       */
-      _authRequired: { type: Boolean },
-    };
-  }
-
-  get authRequired() {
-    return this._authRequired;
-  }
-
-  get _authRequired() {
-    return this.__authRequired;
-  }
-
-  set _authRequired(value) {
-    if (this._sop('_authRequired', value)) {
-      this.validate();
-      this.dispatchEvent(new CustomEvent('authrequired-changed', {
-        detail: {
-          value
-        }
-      }));
-    }
-  }
-
-  get securedBy() {
-    return this._securedBy;
-  }
-
-  set securedBy(value) {
-    if (this._sop('securedBy', value)) {
-      this._securedByChanged();
-    }
-  }
-  /**
-   * Sets Observable Property.
-   * @param {String} prop Property name to set
-   * @param {any} value A value to set
-   * @return {Boolean} True if property was changed.
-   */
-  _sop(prop, value) {
-    const key = `_${prop}`;
-    const old = this[key];
-    /* istanbul ignore if */
-    if (old === value) {
-      return false;
-    }
-    this[key] = value;
-    this.requestUpdate(prop, old);
-    return true;
-  }
-  /**
-   * Overrides `AmfHelperMixin.__amfChanged`
-   */
-  __amfChanged() {
-    this._securedByChanged();
-  }
-  /**
-   * Validates current settings received from currently selected authorization
-   * panel.
-   *
-   * @return {Boolean} Validation result.
-   */
-  validate() {
-    const { settings, selected,  _authRequired } = this;
-    const formValid = settings && settings.valid;
-    let result;
-    if (!settings && _authRequired) {
-      result = false;
-    } else if (!settings) {
-      result = true;
-    } else if ((selected === undefined || selected === -1) && _authRequired) {
-      // valid by default
-      result = true;
-    } else if ((selected === undefined || selected === -1) && !_authRequired) {
-      result = true;
-    } else if (formValid === undefined && !_authRequired) {
-      result = true;
-    } else  if (formValid !== undefined) {
-      result = formValid;
-    } else {
-      result = true;
-    }
-    this.invalid = !result;
-    return result;
-  }
-
-  _securedByChanged() {
-    if (this._amfDebouncer) {
-      return;
-    }
-    // See https://github.com/anypoint-web-components/anypoint-selector/issues/1
-    this.selected = -1;
-    this.authMethods = undefined;
-    this._amfDebouncer = true;
-    setTimeout(() => {
-      this._amfDebouncer = false;
-      this._processAmfModel();
-    });
-  }
-  /**
-   * Restores component to it's initial state.
-   * @return {Promise}
-   */
-  async restoreDefaults() {
-    this._authRequired = false;
-    this.authMethods = this._listAuthMethods();
-    await this.updateComplete;
-    this.selected = 0;
-  }
-
-  async _processAmfModel() {
-    const secured = this.securedBy;
-    if (!secured || !secured.length) {
-      await this.restoreDefaults();
-      return;
-    }
-    const supported = [];
-    const secPrefix = this.ns.aml.vocabularies.security;
-    let hasNull = false;
-    for (let i = 0, len = secured.length; i < len; i++) {
-      // TODO temporarily retrieve first item of security:schemes due to AMF 4 model change
-      const item = this._hasType(secured[i], secPrefix.securityRequirement)
-        ? (this._getValueArray(secured[i], secPrefix.schemes) || [])[0]
-        : secured[i];
-      if (!item || (!this._hasType(item, secPrefix.ParametrizedSecurityScheme) &&
-        !this._hasType(item, secPrefix.SecurityScheme))) {
-        continue;
-      }
-      const shKey = this._getAmfKey(secPrefix.scheme);
-      let scheme = item[shKey];
-      if (!scheme) {
-        hasNull = true;
-        continue;
-      }
-      if (scheme instanceof Array) {
-        scheme = scheme[0];
-      }
-      const type = this._getValue(scheme, secPrefix.type);
-      if (!type) {
-        hasNull = true;
-        continue;
-      }
-      let name = this._getValue(scheme, this.ns.aml.vocabularies.core.displayName);
-      if (!name) {
-        if (type === 'x-custom') {
-          name = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
-          if (!name) {
-            name = 'Custom authorization';
-          }
-        } else {
-          name = type;
-        }
-      }
-
-      supported[supported.length] = {
-        name: name,
-        type: type
-      };
-    }
-    if (hasNull) {
-      supported.unshift({
-        name: 'No authorization',
-        type: 'none'
-      });
-    }
-    this.authMethods = supported;
-    const isRequired = !!(supported && supported.length) && !hasNull;
-    this._authRequired = isRequired;
-    this._analyticsEvent('authorization-panel', 'usage-amf', 'loaded');
-    await this.updateComplete;
-    this.selected = 0;
-  }
-
-  /**
-   * Searches for AMF security description in the AMF model.
-   *
-   * @param {String} type Security scheme type as defined in RAML spec.
-   * @param {?String} name Display name of the security scheme
-   * @return {[type]} [description]
-   */
-  _computeAmfSettings(type, name) {
-    const model = this.securedBy;
-    if (!model) {
-      return;
-    }
-    if (name === type) {
-      name = undefined;
-    }
-    const secPrefix = this.ns.aml.vocabularies.security;
-    for (let i = 0, len = model.length; i < len; i++) {
-      // TODO temporarily retrieve first item of security:schemes due to AMF 4 model change
-      const item = this._hasType(model[i], secPrefix.securityRequirement)
-        ? (this._getValueArray(model[i], secPrefix.schemes) || [])[0]
-        : model[i];
-      if (!item) {
-        continue;
-      }
-      const shKey = this._getAmfKey(secPrefix.scheme);
-      let scheme = item[shKey];
-      if (!scheme) {
-        continue;
-      }
-      if (scheme instanceof Array) {
-        scheme = scheme[0];
-      }
-      const modelType = this._getValue(scheme, secPrefix.type);
-      if (!modelType) {
-        continue;
-      }
-      if (modelType === type) {
-        if (!name) {
-          return item;
-        }
-        let modelName = this._getValue(scheme, this.ns.aml.vocabularies.core.displayName);
-        if (modelName !== name) {
-          modelName = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
-        }
-        // modelName = this._getValue(item, secPrefix.name);
-        if (modelName === name) {
-          return item;
-        }
-      }
-    }
-  }
-
-  /**
-   * Finds a RAML method name from both RAML type or auth panel type.
-   * @param {String} type
-   * @return {String|undefined} RAML type name
-   */
-  _panelTypeToRamType(type) {
-    switch (type) {
-      case 'none':
-      case 'No authorization':
-        return 'none';
-      case 'ntlm':
-      case 'NTLM':
-        return 'ntlm';
-      case 'basic':
-      case 'Basic Authentication':
-        return 'Basic Authentication';
-      case 'digest':
-      case 'Digest Authentication':
-        return 'Digest Authentication';
-      case 'oauth1':
-      case 'OAuth 1.0':
-        return 'OAuth 1.0';
-      case 'oauth2':
-      case 'OAuth 2.0':
-        return 'OAuth 2.0';
-      case 'client-certificate':
-      case 'Client certificate':
-        return 'Client certificate';
-    }
-  }
-};
-
-/**
-@license
-Copyright 2018 The Advanced REST client authors
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * Base class for all authorization methods
- *
- * @appliesMixin EventsTargetMixin
- * @extends LitElement
- */
-class AuthMethodBase extends EventsTargetMixin(LitElement) {
-  static get properties() {
-    return {
-      /**
-       * Setting passed to paper buttons.
-       */
-      noink: { type: Boolean },
-      /**
-       * WHen set it prohibits methods from rendering inline documentation.
-       */
-      noDocs: { type: Boolean },
-      /**
-       * When set the editor is in read only mode.
-       */
-      readOnly: { type: Boolean },
-      /**
-       * When set the inputs are disabled
-       */
-      disabled: { type: Boolean },
       /**
        * Enables compatibility with Anypoint components.
        */
-      compatibility: { type: Boolean },
+      compatibility: { type: Boolean, reflect: true },
       /**
-       * Enables Material Design outlined style
+       * @deprecated Use `compatibility` instead
        */
-      outlined: { type: Boolean }
+      legacy: { type: Boolean },
     };
   }
 
@@ -62969,224 +62914,154 @@ class AuthMethodBase extends EventsTargetMixin(LitElement) {
     this.compatibility = value;
   }
 
-  constructor(type) {
-    super();
-    this.type = type;
-  }
-  /**
-   * Restores settings from stored value.
-   * Abstract to be overriten.
-   * @abstract
-   */
-  restore() {}
-  /**
-   * Resets settings to default state
-   * @abstract
-   */
-  reset() {}
-  /**
-   * Sets Observable Property.
-   * @param {String} prop Property name to set
-   * @param {any} value A value to set
-   * @return {Boolean} True if property was changed.
-   */
-  _sop(prop, value) {
-    const key = `_${prop}`;
-    const old = this[key];
-    /* istanbul ignore if */
-    if (old === value) {
-      return false;
-    }
-    this[key] = value;
-    this.requestUpdate(prop, old);
-    return true;
-  }
-
-  _notifyChanged(prop, value) {
-    this.dispatchEvent(new CustomEvent(`${prop}-changed`, {
-      detail: {
-        value
-      }
-    }));
-  }
-  /**
-   * Generates auth data model by calling `validate()` and `getSettings()` functions.
-   *
-   * @param {String} type Auth form type.
-   * @return {Object|undefined} Gnerated data model or undefined when the settings
-   * should be cleared
-   */
-  _createModel(type) {
-    const settings = this.getSettings();
-    if (!settings) {
-      return;
-    }
-    return {
-      settings,
-      type,
-      valid: this.validate()
-    };
-  }
-  /**
-   * Generates data model and disaptches `auth-settings-changed` custom event.
-   *
-   * @param {String} type Auth form type.
-   * @return {CustomEvent} Dispatched event
-   */
-  _notifySettingsChange(type) {
-    const detail = this._createModel(type);
-    const e = new CustomEvent('auth-settings-changed', {
-      detail,
-      bubbles: true,
-      composed: true
-    });
-    this.dispatchEvent(e);
-    return e;
-  }
-  /**
-   * A coniniet method to set a property value and call the settings changed function.
-   *
-   * Note, this function is to be called from user input only. Calling this function
-   * from a property change will cause invalid validation report.
-   *
-   * @param {String} prop Name of the property to set
-   * @param {any} value A value to set.
-   */
-  _setSettingsInputValue(prop, value) {
-    this.__isInputEvent = true;
-    this[prop] = value;
-    this._settingsChanged();
-    this.__isInputEvent = false;
-  }
-
-  /**
-   * Dispatches `auth-settings-changed` custom event asynchronously or, if
-   * `__isInputEvent` flag is set, synchronously.
-   */
-  _settingsChanged() {
-    if (this.__isInputEvent) {
-      this.__notifyChanged();
-    } else {
-      if (this.__settingsDebouncer) {
-        clearTimeout(this.__settingsDebouncer);
-      }
-      this.__settingsDebouncer = setTimeout(() => this.__notifyChanged());
-    }
-  }
-
-  __notifyChanged() {
-    this.__settingsDebouncer = null;
-    const e = this._notifySettingsChange(this.type);
-    if (this._notifyHeaderChange) {
-      this._notifyHeaderChange(e.detail.settings);
-    }
-  }
-
-  _getEventTarget(e) {
-    let target;
-    if (e.composedPath) {
-      target = e.composedPath()[0];
-    } else if (e.path) {
-      target = e.path[0];
-    } else {
-      target = e.target;
-    }
-    return target;
-  }
-  /**
-   * Restores an item from a session store and assigns it to a local
-   * property.
-   * @param {String} sessionKey Session storage key
-   * @param {String} localKey This component's property
-   */
-  _restoreSessionProperty(sessionKey, localKey) {
-    if (!this[localKey]) {
-      const value = sessionStorage.getItem(sessionKey);
-      if (value) {
-        this[localKey] = value;
-      }
-    }
-  }
-  /**
-   * Stores a property in a session storage.
-   * @param {String} sessionKey A storage key
-   * @param {String} value Value to store
-   */
-  _storeSessionProperty(sessionKey, value) {
-    if (!value) {
-      return;
-    }
-    if (typeof value === 'object') {
-      value = JSON.stringify(value);
-    }
-    sessionStorage.setItem(sessionKey, value);
+  render() {
+    return html`<style>${this.styles}</style>
+      <slot></slot>
+    `;
   }
 }
 
-var authStyles = css `
-anypoint-input,
-anypoint-masked-input {
-  width: auto;
-  display: inline-block;
-}
+window.customElements.define('anypoint-item-body', AnypointItemBody);
 
-api-property-form-item {
-  margin: -8px 0px;
-}
+var authStyles = css`
+  :host {
+    display: block;
+  }
 
-.edit-icon {
-  visibility: hidden;
-}
+  anypoint-input,
+  anypoint-masked-input {
+    width: auto;
+    display: block;
+  }
 
-[hidden] {
-  display: none !important;
-}
+  anypoint-input[compatibility][required],
+  anypoint-input[compatibility][invalidmessage],
+  anypoint-input[compatibility][infomessage]
+    anypoint-masked-input[compatibility][required],
+  anypoint-masked-input[compatibility][invalidmessage],
+  anypoint-masked-input[compatibility][infomessage] {
+    margin-bottom: 32px;
+  }
 
-.adv-toggle {
-  margin-top: 8px;
-}
+  api-property-form-item {
+    margin: -8px 0px;
+  }
 
-.markdown-body,
-.docs-container {
-  font-size: var(--arc-font-body1-font-size);
-  font-weight: var(--arc-font-body1-font-weight);
-  line-height: var(--arc-font-body1-line-height);
-  color: var(--inline-documentation-color, rgba(0, 0, 0, 0.87));
-}
+  .edit-icon {
+    visibility: hidden;
+  }
 
-arc-marked {
-  background-color: var(--inline-documentation-background-color, #FFF3E0);
-  padding: 4px;
-}
+  [hidden] {
+    display: none !important;
+  }
 
-.markdown-body p:first-child {
-  margin-top: 0;
-  padding-top: 0;
-}
+  .adv-toggle {
+    margin-top: 8px;
+  }
 
-.markdown-body p:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
+  .markdown-body,
+  .docs-container {
+    font-size: var(--arc-font-body1-font-size);
+    font-weight: var(--arc-font-body1-font-weight);
+    line-height: var(--arc-font-body1-line-height);
+    color: var(--inline-documentation-color, rgba(0, 0, 0, 0.87));
+  }
 
-.form-title {
-  font-size: 1.25rem;
-  margin: 12px 8px;
-}
+  .markdown-body p:first-child {
+    margin-top: 0;
+    padding-top: 0;
+  }
 
-.subtitle {
-  font-size: var(--arc-font-subhead-font-size);
-  font-weight: var(--arc-font-subhead-font-weight);
-  line-height: var(--arc-font-subhead-line-height);
-  margin: 12px 8px;
-}
+  .markdown-body p:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
 
-.icon {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  fill: currentColor;
-}
+  .form-title {
+    font-size: 1.25rem;
+    margin: 12px 8px;
+  }
+
+  .subtitle {
+    font-size: var(--arc-font-subhead-font-size);
+    font-weight: var(--arc-font-subhead-font-weight);
+    line-height: var(--arc-font-subhead-line-height);
+    margin: 12px 8px;
+  }
+
+  .icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+  }
+
+  anypoint-input.block,
+  anypoint-masked-input.block,
+  anypoint-dropdown-menu {
+    display: block;
+  }
+
+  .authorize-actions {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+  }
+
+  .token-info,
+  .redirect-info {
+    margin: 12px 8px;
+    color: var(
+      --authorization-method-oauth2-redirect-info-color,
+      rgba(0, 0, 0, 0.74)
+    );
+  }
+
+  .code {
+    font-family: var(--arc-font-code-family);
+    flex: 1;
+    outline: none;
+    cursor: text;
+  }
+
+  .code[tabindex]:focus {
+    outline: auto;
+  }
+
+  .token-label {
+    font-weight: 500;
+    margin: 12px 8px;
+  }
+
+  .current-token {
+    margin-top: 12px;
+  }
+
+  .redirect-section,
+  oauth2-scope-selector {
+    box-sizing: border-box;
+  }
+
+  .read-only-param-field {
+    background-color: var(
+      --authorization-method-oauth2-redirect-info-background-color,
+      rgba(0, 0, 0, 0.12)
+    );
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+    display: flex;
+    flex-direction: row;
+  }
+
+  .read-only-param-field.padding {
+    padding: 12px;
+  }
+
+  .error-message {
+    color: var(--error-color);
+  }
 `;
 
 /* eslint-disable class-methods-use-this */
@@ -63287,1108 +63162,4009 @@ window.customElements.define('anypoint-masked-input', AnypointMaskedInput);
 
 /**
 @license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
 */
-/**
- * The `<auth-method-basic>` element displays a form to provide the Basic
- * auth credentials.
- * It calculates base64 has while typing into username or password field.
- *
- * It accepts `hash` as a property and once set it will atempt to decode it
- * and set username and paswword.
- *
- * ### Example
- *
- * ```html
- * <auth-method-basic hash="dGVzdDp0ZXN0"></auth-method-basic>
- * ```
- *
- * This example will produce a form with prefilled username and passowrd with
- * value "test".
- *
- * @customElement
- * @memberof UiElements
- * @demo demo/basic.html
- * @extends AuthMethodBase
- */
-class AuthMethodBasic extends AuthMethodBase {
-  get styles() {
-    return [
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
+const template$1 = html$1`
+<custom-style>
+  <style is="custom-style">
+    html {
 
-      anypoint-input,
-      anypoint-masked-input {
-        display: inline-block;
-        width: calc(100% - 16px);
-        margin: 8px;
-      }`
-    ];
-  }
+      /* Material Design color palette for Google products */
 
-  render() {
-    const {
-      username,
-      password,
-      outlined,
-      compatibility,
-      readOnly,
-      disabled
-    } = this;
-    return html`<style>${this.styles}</style>
-      <iron-form>
-        <form autocomplete="on">
-          <anypoint-input
-            .value="${username}"
-            @input="${this._usernameHandler}"
-            name="username"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Username is required">
-            <label slot="label">User name</label>
-          </anypoint-input>
-          <anypoint-masked-input
-            name="password"
-            .value="${password}"
-            @input="${this._passwordHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}">
-            <label slot="label">Password</label>
-          </anypoint-masked-input>
-        </form>
-      </iron-form>`;
-  }
+      --google-red-100: #f4c7c3;
+      --google-red-300: #e67c73;
+      --google-red-500: #db4437;
+      --google-red-700: #c53929;
 
-  static get properties() {
-    return {
-      // The password.
-      password: { type: String },
-      // The username.
-      username: { type: String }
-    };
-  }
-  /**
-   * @return {String} base64 hash of the uid and passwd. When set it will override
-   * current username and password.
-   */
-  get hash() {
-    let { username, password } = this;
-    if (!username) {
-      username = '';
+      --google-blue-100: #c6dafc;
+      --google-blue-300: #7baaf7;
+      --google-blue-500: #4285f4;
+      --google-blue-700: #3367d6;
+
+      --google-green-100: #b7e1cd;
+      --google-green-300: #57bb8a;
+      --google-green-500: #0f9d58;
+      --google-green-700: #0b8043;
+
+      --google-yellow-100: #fce8b2;
+      --google-yellow-300: #f7cb4d;
+      --google-yellow-500: #f4b400;
+      --google-yellow-700: #f09300;
+
+      --google-grey-100: #f5f5f5;
+      --google-grey-300: #e0e0e0;
+      --google-grey-500: #9e9e9e;
+      --google-grey-700: #616161;
+
+      /* Material Design color palette from online spec document */
+
+      --paper-red-50: #ffebee;
+      --paper-red-100: #ffcdd2;
+      --paper-red-200: #ef9a9a;
+      --paper-red-300: #e57373;
+      --paper-red-400: #ef5350;
+      --paper-red-500: #f44336;
+      --paper-red-600: #e53935;
+      --paper-red-700: #d32f2f;
+      --paper-red-800: #c62828;
+      --paper-red-900: #b71c1c;
+      --paper-red-a100: #ff8a80;
+      --paper-red-a200: #ff5252;
+      --paper-red-a400: #ff1744;
+      --paper-red-a700: #d50000;
+
+      --paper-pink-50: #fce4ec;
+      --paper-pink-100: #f8bbd0;
+      --paper-pink-200: #f48fb1;
+      --paper-pink-300: #f06292;
+      --paper-pink-400: #ec407a;
+      --paper-pink-500: #e91e63;
+      --paper-pink-600: #d81b60;
+      --paper-pink-700: #c2185b;
+      --paper-pink-800: #ad1457;
+      --paper-pink-900: #880e4f;
+      --paper-pink-a100: #ff80ab;
+      --paper-pink-a200: #ff4081;
+      --paper-pink-a400: #f50057;
+      --paper-pink-a700: #c51162;
+
+      --paper-purple-50: #f3e5f5;
+      --paper-purple-100: #e1bee7;
+      --paper-purple-200: #ce93d8;
+      --paper-purple-300: #ba68c8;
+      --paper-purple-400: #ab47bc;
+      --paper-purple-500: #9c27b0;
+      --paper-purple-600: #8e24aa;
+      --paper-purple-700: #7b1fa2;
+      --paper-purple-800: #6a1b9a;
+      --paper-purple-900: #4a148c;
+      --paper-purple-a100: #ea80fc;
+      --paper-purple-a200: #e040fb;
+      --paper-purple-a400: #d500f9;
+      --paper-purple-a700: #aa00ff;
+
+      --paper-deep-purple-50: #ede7f6;
+      --paper-deep-purple-100: #d1c4e9;
+      --paper-deep-purple-200: #b39ddb;
+      --paper-deep-purple-300: #9575cd;
+      --paper-deep-purple-400: #7e57c2;
+      --paper-deep-purple-500: #673ab7;
+      --paper-deep-purple-600: #5e35b1;
+      --paper-deep-purple-700: #512da8;
+      --paper-deep-purple-800: #4527a0;
+      --paper-deep-purple-900: #311b92;
+      --paper-deep-purple-a100: #b388ff;
+      --paper-deep-purple-a200: #7c4dff;
+      --paper-deep-purple-a400: #651fff;
+      --paper-deep-purple-a700: #6200ea;
+
+      --paper-indigo-50: #e8eaf6;
+      --paper-indigo-100: #c5cae9;
+      --paper-indigo-200: #9fa8da;
+      --paper-indigo-300: #7986cb;
+      --paper-indigo-400: #5c6bc0;
+      --paper-indigo-500: #3f51b5;
+      --paper-indigo-600: #3949ab;
+      --paper-indigo-700: #303f9f;
+      --paper-indigo-800: #283593;
+      --paper-indigo-900: #1a237e;
+      --paper-indigo-a100: #8c9eff;
+      --paper-indigo-a200: #536dfe;
+      --paper-indigo-a400: #3d5afe;
+      --paper-indigo-a700: #304ffe;
+
+      --paper-blue-50: #e3f2fd;
+      --paper-blue-100: #bbdefb;
+      --paper-blue-200: #90caf9;
+      --paper-blue-300: #64b5f6;
+      --paper-blue-400: #42a5f5;
+      --paper-blue-500: #2196f3;
+      --paper-blue-600: #1e88e5;
+      --paper-blue-700: #1976d2;
+      --paper-blue-800: #1565c0;
+      --paper-blue-900: #0d47a1;
+      --paper-blue-a100: #82b1ff;
+      --paper-blue-a200: #448aff;
+      --paper-blue-a400: #2979ff;
+      --paper-blue-a700: #2962ff;
+
+      --paper-light-blue-50: #e1f5fe;
+      --paper-light-blue-100: #b3e5fc;
+      --paper-light-blue-200: #81d4fa;
+      --paper-light-blue-300: #4fc3f7;
+      --paper-light-blue-400: #29b6f6;
+      --paper-light-blue-500: #03a9f4;
+      --paper-light-blue-600: #039be5;
+      --paper-light-blue-700: #0288d1;
+      --paper-light-blue-800: #0277bd;
+      --paper-light-blue-900: #01579b;
+      --paper-light-blue-a100: #80d8ff;
+      --paper-light-blue-a200: #40c4ff;
+      --paper-light-blue-a400: #00b0ff;
+      --paper-light-blue-a700: #0091ea;
+
+      --paper-cyan-50: #e0f7fa;
+      --paper-cyan-100: #b2ebf2;
+      --paper-cyan-200: #80deea;
+      --paper-cyan-300: #4dd0e1;
+      --paper-cyan-400: #26c6da;
+      --paper-cyan-500: #00bcd4;
+      --paper-cyan-600: #00acc1;
+      --paper-cyan-700: #0097a7;
+      --paper-cyan-800: #00838f;
+      --paper-cyan-900: #006064;
+      --paper-cyan-a100: #84ffff;
+      --paper-cyan-a200: #18ffff;
+      --paper-cyan-a400: #00e5ff;
+      --paper-cyan-a700: #00b8d4;
+
+      --paper-teal-50: #e0f2f1;
+      --paper-teal-100: #b2dfdb;
+      --paper-teal-200: #80cbc4;
+      --paper-teal-300: #4db6ac;
+      --paper-teal-400: #26a69a;
+      --paper-teal-500: #009688;
+      --paper-teal-600: #00897b;
+      --paper-teal-700: #00796b;
+      --paper-teal-800: #00695c;
+      --paper-teal-900: #004d40;
+      --paper-teal-a100: #a7ffeb;
+      --paper-teal-a200: #64ffda;
+      --paper-teal-a400: #1de9b6;
+      --paper-teal-a700: #00bfa5;
+
+      --paper-green-50: #e8f5e9;
+      --paper-green-100: #c8e6c9;
+      --paper-green-200: #a5d6a7;
+      --paper-green-300: #81c784;
+      --paper-green-400: #66bb6a;
+      --paper-green-500: #4caf50;
+      --paper-green-600: #43a047;
+      --paper-green-700: #388e3c;
+      --paper-green-800: #2e7d32;
+      --paper-green-900: #1b5e20;
+      --paper-green-a100: #b9f6ca;
+      --paper-green-a200: #69f0ae;
+      --paper-green-a400: #00e676;
+      --paper-green-a700: #00c853;
+
+      --paper-light-green-50: #f1f8e9;
+      --paper-light-green-100: #dcedc8;
+      --paper-light-green-200: #c5e1a5;
+      --paper-light-green-300: #aed581;
+      --paper-light-green-400: #9ccc65;
+      --paper-light-green-500: #8bc34a;
+      --paper-light-green-600: #7cb342;
+      --paper-light-green-700: #689f38;
+      --paper-light-green-800: #558b2f;
+      --paper-light-green-900: #33691e;
+      --paper-light-green-a100: #ccff90;
+      --paper-light-green-a200: #b2ff59;
+      --paper-light-green-a400: #76ff03;
+      --paper-light-green-a700: #64dd17;
+
+      --paper-lime-50: #f9fbe7;
+      --paper-lime-100: #f0f4c3;
+      --paper-lime-200: #e6ee9c;
+      --paper-lime-300: #dce775;
+      --paper-lime-400: #d4e157;
+      --paper-lime-500: #cddc39;
+      --paper-lime-600: #c0ca33;
+      --paper-lime-700: #afb42b;
+      --paper-lime-800: #9e9d24;
+      --paper-lime-900: #827717;
+      --paper-lime-a100: #f4ff81;
+      --paper-lime-a200: #eeff41;
+      --paper-lime-a400: #c6ff00;
+      --paper-lime-a700: #aeea00;
+
+      --paper-yellow-50: #fffde7;
+      --paper-yellow-100: #fff9c4;
+      --paper-yellow-200: #fff59d;
+      --paper-yellow-300: #fff176;
+      --paper-yellow-400: #ffee58;
+      --paper-yellow-500: #ffeb3b;
+      --paper-yellow-600: #fdd835;
+      --paper-yellow-700: #fbc02d;
+      --paper-yellow-800: #f9a825;
+      --paper-yellow-900: #f57f17;
+      --paper-yellow-a100: #ffff8d;
+      --paper-yellow-a200: #ffff00;
+      --paper-yellow-a400: #ffea00;
+      --paper-yellow-a700: #ffd600;
+
+      --paper-amber-50: #fff8e1;
+      --paper-amber-100: #ffecb3;
+      --paper-amber-200: #ffe082;
+      --paper-amber-300: #ffd54f;
+      --paper-amber-400: #ffca28;
+      --paper-amber-500: #ffc107;
+      --paper-amber-600: #ffb300;
+      --paper-amber-700: #ffa000;
+      --paper-amber-800: #ff8f00;
+      --paper-amber-900: #ff6f00;
+      --paper-amber-a100: #ffe57f;
+      --paper-amber-a200: #ffd740;
+      --paper-amber-a400: #ffc400;
+      --paper-amber-a700: #ffab00;
+
+      --paper-orange-50: #fff3e0;
+      --paper-orange-100: #ffe0b2;
+      --paper-orange-200: #ffcc80;
+      --paper-orange-300: #ffb74d;
+      --paper-orange-400: #ffa726;
+      --paper-orange-500: #ff9800;
+      --paper-orange-600: #fb8c00;
+      --paper-orange-700: #f57c00;
+      --paper-orange-800: #ef6c00;
+      --paper-orange-900: #e65100;
+      --paper-orange-a100: #ffd180;
+      --paper-orange-a200: #ffab40;
+      --paper-orange-a400: #ff9100;
+      --paper-orange-a700: #ff6500;
+
+      --paper-deep-orange-50: #fbe9e7;
+      --paper-deep-orange-100: #ffccbc;
+      --paper-deep-orange-200: #ffab91;
+      --paper-deep-orange-300: #ff8a65;
+      --paper-deep-orange-400: #ff7043;
+      --paper-deep-orange-500: #ff5722;
+      --paper-deep-orange-600: #f4511e;
+      --paper-deep-orange-700: #e64a19;
+      --paper-deep-orange-800: #d84315;
+      --paper-deep-orange-900: #bf360c;
+      --paper-deep-orange-a100: #ff9e80;
+      --paper-deep-orange-a200: #ff6e40;
+      --paper-deep-orange-a400: #ff3d00;
+      --paper-deep-orange-a700: #dd2c00;
+
+      --paper-brown-50: #efebe9;
+      --paper-brown-100: #d7ccc8;
+      --paper-brown-200: #bcaaa4;
+      --paper-brown-300: #a1887f;
+      --paper-brown-400: #8d6e63;
+      --paper-brown-500: #795548;
+      --paper-brown-600: #6d4c41;
+      --paper-brown-700: #5d4037;
+      --paper-brown-800: #4e342e;
+      --paper-brown-900: #3e2723;
+
+      --paper-grey-50: #fafafa;
+      --paper-grey-100: #f5f5f5;
+      --paper-grey-200: #eeeeee;
+      --paper-grey-300: #e0e0e0;
+      --paper-grey-400: #bdbdbd;
+      --paper-grey-500: #9e9e9e;
+      --paper-grey-600: #757575;
+      --paper-grey-700: #616161;
+      --paper-grey-800: #424242;
+      --paper-grey-900: #212121;
+
+      --paper-blue-grey-50: #eceff1;
+      --paper-blue-grey-100: #cfd8dc;
+      --paper-blue-grey-200: #b0bec5;
+      --paper-blue-grey-300: #90a4ae;
+      --paper-blue-grey-400: #78909c;
+      --paper-blue-grey-500: #607d8b;
+      --paper-blue-grey-600: #546e7a;
+      --paper-blue-grey-700: #455a64;
+      --paper-blue-grey-800: #37474f;
+      --paper-blue-grey-900: #263238;
+
+      /* opacity for dark text on a light background */
+      --dark-divider-opacity: 0.12;
+      --dark-disabled-opacity: 0.38; /* or hint text or icon */
+      --dark-secondary-opacity: 0.54;
+      --dark-primary-opacity: 0.87;
+
+      /* opacity for light text on a dark background */
+      --light-divider-opacity: 0.12;
+      --light-disabled-opacity: 0.3; /* or hint text or icon */
+      --light-secondary-opacity: 0.7;
+      --light-primary-opacity: 1.0;
+
     }
-    if (!password) {
-      password = '';
-    }
-    let hash;
-    if (username || password) {
-      const enc = `${username}:${password}`;
-      hash = btoa(enc);
-    } else {
-      hash = '';
-    }
-    return hash;
-  }
 
-  get username() {
-    return this._username || '';
-  }
-
-  set username(value) {
-    /* istanbul ignore else */
-    if (this._sop('username', value)) {
-      this._valueChanged();
-      this._notifyChanged('username', value);
-    }
-  }
-
-  get password() {
-    return this._password || '';
-  }
-
-  set password(value) {
-    /* istanbul ignore else */
-    if (this._sop('password', value)) {
-      this._valueChanged();
-      this._notifyChanged('password', value);
-    }
-  }
-
-  constructor() {
-    super('basic');
-    this._onAuthSettings = this._onAuthSettings.bind(this);
-  }
-
-  _attachListeners(node) {
-    node.addEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-
-  _detachListeners(node) {
-    node.removeEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-
-  firstUpdated() {
-    this._valueChanged();
-  }
-
-  /**
-   * Resets state of the form.
-   */
-  reset() {
-    this.username = '';
-    this.password = '';
-  }
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} Validation result.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
-    }
-    return form.validate();
-  }
-  /**
-   * Creates a settings object with user provided data.
-   *
-   * @return {Object} User provided data
-   */
-  getSettings() {
-    return {
-      hash: this.hash,
-      password: this.password || '',
-      username: this.username || ''
-    };
-  }
-  /**
-   * Restores settings from stored value.
-   *
-   * @param {Object} settings Object returned by `_getSettings()`
-   */
-  restore(settings) {
-    this.password = settings.password;
-    this.username = settings.username;
-  }
-  /**
-   * Handler to the `auth-settings-changed` event (fired by all auth panels).
-   * If the event was fired by other element with the same method ttype
-   * then the form will be updated to incomming values.
-   * This helps to sync changes between elements in the same app.
-   *
-   * @param {Event} e
-   */
-  _onAuthSettings(e) {
-    if (this._getEventTarget(e) === this || e.detail.type !== 'basic') {
-      return;
-    }
-    this.restore(e.detail.settings);
-  }
-  /**
-   * Dispatches `request-header-changed` custom event to inform other
-   * elements about authorization value change.
-   *
-   * @param {Object} settings
-   */
-  _notifyHeaderChange(settings) {
-    const hash = settings && settings.hash || '';
-    const value = `Basic ${hash}`;
-    this.dispatchEvent(new CustomEvent('request-header-changed', {
-      detail: {
-        name: 'Authorization',
-        value
-      },
-      bubbles: true,
-      composed: true
-    }));
-  }
-
-  _usernameHandler(e) {
-    this._setSettingsInputValue('username', e.target.value);
-  }
-
-  _passwordHandler(e) {
-    this._setSettingsInputValue('password', e.target.value);
-  }
-
-  _valueChanged() {
-    if (this.__isInputEvent) {
-      return;
-    }
-    this._settingsChanged();
-  }
-  /**
-   * Fired when error occured when decoding hash.
-   * The event is not bubbling.
-   *
-   * @event error
-   * @param {Error} error The error object.
-   */
-  /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
-   *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings containing hash, password
-   * and username.
-   * @param {String} type The authorization type - basic
-   * @param {Boolean} valid True if the form has been validated.
-   */
-  /**
-   * Fired when the header value has changed.
-   *
-   * @event request-header-changed
-   * @param {String} name Name of the header
-   * @param {String} value Value of the header
-   */
-}
-window.customElements.define('auth-method-basic', AuthMethodBasic);
+  </style>
+</custom-style>
+`;
+template$1.setAttribute('style', 'display: none;');
+document.head.appendChild(template$1.content);
 
 /**
 @license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+const $_documentContainer = document.createElement('template');
+$_documentContainer.setAttribute('style', 'display: none;');
+
+$_documentContainer.innerHTML = `<dom-module id="paper-spinner-styles">
+  <template>
+    <style>
+      /*
+      /**************************/
+      /* STYLES FOR THE SPINNER */
+      /**************************/
+
+      /*
+       * Constants:
+       *      ARCSIZE     = 270 degrees (amount of circle the arc takes up)
+       *      ARCTIME     = 1333ms (time it takes to expand and contract arc)
+       *      ARCSTARTROT = 216 degrees (how much the start location of the arc
+       *                                should rotate each time, 216 gives us a
+       *                                5 pointed star shape (it's 360/5 * 3).
+       *                                For a 7 pointed star, we might do
+       *                                360/7 * 3 = 154.286)
+       *      SHRINK_TIME = 400ms
+       */
+
+      :host {
+        display: inline-block;
+        position: relative;
+        width: 28px;
+        height: 28px;
+
+        /* 360 * ARCTIME / (ARCSTARTROT + (360-ARCSIZE)) */
+        --paper-spinner-container-rotation-duration: 1568ms;
+
+        /* ARCTIME */
+        --paper-spinner-expand-contract-duration: 1333ms;
+
+        /* 4 * ARCTIME */
+        --paper-spinner-full-cycle-duration: 5332ms;
+
+        /* SHRINK_TIME */
+        --paper-spinner-cooldown-duration: 400ms;
+      }
+
+      #spinnerContainer {
+        width: 100%;
+        height: 100%;
+
+        /* The spinner does not have any contents that would have to be
+         * flipped if the direction changes. Always use ltr so that the
+         * style works out correctly in both cases. */
+        direction: ltr;
+      }
+
+      #spinnerContainer.active {
+        -webkit-animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite;
+        animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite;
+      }
+
+      @-webkit-keyframes container-rotate {
+        to { -webkit-transform: rotate(360deg) }
+      }
+
+      @keyframes container-rotate {
+        to { transform: rotate(360deg) }
+      }
+
+      .spinner-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        white-space: nowrap;
+        color: var(--paper-spinner-color, var(--google-blue-500));
+      }
+
+      .layer-1 {
+        color: var(--paper-spinner-layer-1-color, var(--google-blue-500));
+      }
+
+      .layer-2 {
+        color: var(--paper-spinner-layer-2-color, var(--google-red-500));
+      }
+
+      .layer-3 {
+        color: var(--paper-spinner-layer-3-color, var(--google-yellow-500));
+      }
+
+      .layer-4 {
+        color: var(--paper-spinner-layer-4-color, var(--google-green-500));
+      }
+
+      /**
+       * IMPORTANT NOTE ABOUT CSS ANIMATION PROPERTIES (keanulee):
+       *
+       * iOS Safari (tested on iOS 8.1) does not handle animation-delay very well - it doesn't
+       * guarantee that the animation will start _exactly_ after that value. So we avoid using
+       * animation-delay and instead set custom keyframes for each color (as layer-2undant as it
+       * seems).
+       */
+      .active .spinner-layer {
+        -webkit-animation-name: fill-unfill-rotate;
+        -webkit-animation-duration: var(--paper-spinner-full-cycle-duration);
+        -webkit-animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+        -webkit-animation-iteration-count: infinite;
+        animation-name: fill-unfill-rotate;
+        animation-duration: var(--paper-spinner-full-cycle-duration);
+        animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+        animation-iteration-count: infinite;
+        opacity: 1;
+      }
+
+      .active .spinner-layer.layer-1 {
+        -webkit-animation-name: fill-unfill-rotate, layer-1-fade-in-out;
+        animation-name: fill-unfill-rotate, layer-1-fade-in-out;
+      }
+
+      .active .spinner-layer.layer-2 {
+        -webkit-animation-name: fill-unfill-rotate, layer-2-fade-in-out;
+        animation-name: fill-unfill-rotate, layer-2-fade-in-out;
+      }
+
+      .active .spinner-layer.layer-3 {
+        -webkit-animation-name: fill-unfill-rotate, layer-3-fade-in-out;
+        animation-name: fill-unfill-rotate, layer-3-fade-in-out;
+      }
+
+      .active .spinner-layer.layer-4 {
+        -webkit-animation-name: fill-unfill-rotate, layer-4-fade-in-out;
+        animation-name: fill-unfill-rotate, layer-4-fade-in-out;
+      }
+
+      @-webkit-keyframes fill-unfill-rotate {
+        12.5% { -webkit-transform: rotate(135deg) } /* 0.5 * ARCSIZE */
+        25%   { -webkit-transform: rotate(270deg) } /* 1   * ARCSIZE */
+        37.5% { -webkit-transform: rotate(405deg) } /* 1.5 * ARCSIZE */
+        50%   { -webkit-transform: rotate(540deg) } /* 2   * ARCSIZE */
+        62.5% { -webkit-transform: rotate(675deg) } /* 2.5 * ARCSIZE */
+        75%   { -webkit-transform: rotate(810deg) } /* 3   * ARCSIZE */
+        87.5% { -webkit-transform: rotate(945deg) } /* 3.5 * ARCSIZE */
+        to    { -webkit-transform: rotate(1080deg) } /* 4   * ARCSIZE */
+      }
+
+      @keyframes fill-unfill-rotate {
+        12.5% { transform: rotate(135deg) } /* 0.5 * ARCSIZE */
+        25%   { transform: rotate(270deg) } /* 1   * ARCSIZE */
+        37.5% { transform: rotate(405deg) } /* 1.5 * ARCSIZE */
+        50%   { transform: rotate(540deg) } /* 2   * ARCSIZE */
+        62.5% { transform: rotate(675deg) } /* 2.5 * ARCSIZE */
+        75%   { transform: rotate(810deg) } /* 3   * ARCSIZE */
+        87.5% { transform: rotate(945deg) } /* 3.5 * ARCSIZE */
+        to    { transform: rotate(1080deg) } /* 4   * ARCSIZE */
+      }
+
+      @-webkit-keyframes layer-1-fade-in-out {
+        0% { opacity: 1 }
+        25% { opacity: 1 }
+        26% { opacity: 0 }
+        89% { opacity: 0 }
+        90% { opacity: 1 }
+        to { opacity: 1 }
+      }
+
+      @keyframes layer-1-fade-in-out {
+        0% { opacity: 1 }
+        25% { opacity: 1 }
+        26% { opacity: 0 }
+        89% { opacity: 0 }
+        90% { opacity: 1 }
+        to { opacity: 1 }
+      }
+
+      @-webkit-keyframes layer-2-fade-in-out {
+        0% { opacity: 0 }
+        15% { opacity: 0 }
+        25% { opacity: 1 }
+        50% { opacity: 1 }
+        51% { opacity: 0 }
+        to { opacity: 0 }
+      }
+
+      @keyframes layer-2-fade-in-out {
+        0% { opacity: 0 }
+        15% { opacity: 0 }
+        25% { opacity: 1 }
+        50% { opacity: 1 }
+        51% { opacity: 0 }
+        to { opacity: 0 }
+      }
+
+      @-webkit-keyframes layer-3-fade-in-out {
+        0% { opacity: 0 }
+        40% { opacity: 0 }
+        50% { opacity: 1 }
+        75% { opacity: 1 }
+        76% { opacity: 0 }
+        to { opacity: 0 }
+      }
+
+      @keyframes layer-3-fade-in-out {
+        0% { opacity: 0 }
+        40% { opacity: 0 }
+        50% { opacity: 1 }
+        75% { opacity: 1 }
+        76% { opacity: 0 }
+        to { opacity: 0 }
+      }
+
+      @-webkit-keyframes layer-4-fade-in-out {
+        0% { opacity: 0 }
+        65% { opacity: 0 }
+        75% { opacity: 1 }
+        90% { opacity: 1 }
+        to { opacity: 0 }
+      }
+
+      @keyframes layer-4-fade-in-out {
+        0% { opacity: 0 }
+        65% { opacity: 0 }
+        75% { opacity: 1 }
+        90% { opacity: 1 }
+        to { opacity: 0 }
+      }
+
+      .circle-clipper {
+        display: inline-block;
+        position: relative;
+        width: 50%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      /**
+       * Patch the gap that appear between the two adjacent div.circle-clipper while the
+       * spinner is rotating (appears on Chrome 50, Safari 9.1.1, and Edge).
+       */
+      .spinner-layer::after {
+        content: '';
+        left: 45%;
+        width: 10%;
+        border-top-style: solid;
+      }
+
+      .spinner-layer::after,
+      .circle-clipper .circle {
+        box-sizing: border-box;
+        position: absolute;
+        top: 0;
+        border-width: var(--paper-spinner-stroke-width, 3px);
+        border-radius: 50%;
+      }
+
+      .circle-clipper .circle {
+        bottom: 0;
+        width: 200%;
+        border-style: solid;
+        border-bottom-color: transparent !important;
+      }
+
+      .circle-clipper.left .circle {
+        left: 0;
+        border-right-color: transparent !important;
+        -webkit-transform: rotate(129deg);
+        transform: rotate(129deg);
+      }
+
+      .circle-clipper.right .circle {
+        left: -100%;
+        border-left-color: transparent !important;
+        -webkit-transform: rotate(-129deg);
+        transform: rotate(-129deg);
+      }
+
+      .active .gap-patch::after,
+      .active .circle-clipper .circle {
+        -webkit-animation-duration: var(--paper-spinner-expand-contract-duration);
+        -webkit-animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+        -webkit-animation-iteration-count: infinite;
+        animation-duration: var(--paper-spinner-expand-contract-duration);
+        animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+        animation-iteration-count: infinite;
+      }
+
+      .active .circle-clipper.left .circle {
+        -webkit-animation-name: left-spin;
+        animation-name: left-spin;
+      }
+
+      .active .circle-clipper.right .circle {
+        -webkit-animation-name: right-spin;
+        animation-name: right-spin;
+      }
+
+      @-webkit-keyframes left-spin {
+        0% { -webkit-transform: rotate(130deg) }
+        50% { -webkit-transform: rotate(-5deg) }
+        to { -webkit-transform: rotate(130deg) }
+      }
+
+      @keyframes left-spin {
+        0% { transform: rotate(130deg) }
+        50% { transform: rotate(-5deg) }
+        to { transform: rotate(130deg) }
+      }
+
+      @-webkit-keyframes right-spin {
+        0% { -webkit-transform: rotate(-130deg) }
+        50% { -webkit-transform: rotate(5deg) }
+        to { -webkit-transform: rotate(-130deg) }
+      }
+
+      @keyframes right-spin {
+        0% { transform: rotate(-130deg) }
+        50% { transform: rotate(5deg) }
+        to { transform: rotate(-130deg) }
+      }
+
+      #spinnerContainer.cooldown {
+        -webkit-animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite, fade-out var(--paper-spinner-cooldown-duration) cubic-bezier(0.4, 0.0, 0.2, 1);
+        animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite, fade-out var(--paper-spinner-cooldown-duration) cubic-bezier(0.4, 0.0, 0.2, 1);
+      }
+
+      @-webkit-keyframes fade-out {
+        0% { opacity: 1 }
+        to { opacity: 0 }
+      }
+
+      @keyframes fade-out {
+        0% { opacity: 1 }
+        to { opacity: 0 }
+      }
+    </style>
+  </template>
+</dom-module>`;
+
+document.head.appendChild($_documentContainer.content);
+
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+/** @polymerBehavior */
+const PaperSpinnerBehavior = {
+
+  properties: {
+    /**
+     * Displays the spinner.
+     */
+    active: {
+      type: Boolean,
+      value: false,
+      reflectToAttribute: true,
+      observer: '__activeChanged'
+    },
+
+    /**
+     * Alternative text content for accessibility support.
+     * If alt is present, it will add an aria-label whose content matches alt
+     * when active. If alt is not present, it will default to 'loading' as the
+     * alt value.
+     */
+    alt: {type: String, value: 'loading', observer: '__altChanged'},
+
+    __coolingDown: {type: Boolean, value: false}
+  },
+
+  __computeContainerClasses: function(active, coolingDown) {
+    return [
+      active || coolingDown ? 'active' : '',
+      coolingDown ? 'cooldown' : ''
+    ].join(' ');
+  },
+
+  __activeChanged: function(active, old) {
+    this.__setAriaHidden(!active);
+    this.__coolingDown = !active && old;
+  },
+
+  __altChanged: function(alt) {
+    // user-provided `aria-label` takes precedence over prototype default
+    if (alt === 'loading') {
+      this.alt = this.getAttribute('aria-label') || alt;
+    } else {
+      this.__setAriaHidden(alt === '');
+      this.setAttribute('aria-label', alt);
+    }
+  },
+
+  __setAriaHidden: function(hidden) {
+    var attr = 'aria-hidden';
+    if (hidden) {
+      this.setAttribute(attr, 'true');
+    } else {
+      this.removeAttribute(attr);
+    }
+  },
+
+  __reset: function() {
+    this.active = false;
+    this.__coolingDown = false;
+  }
+};
+
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+const template$2 = html$1`
+  <style include="paper-spinner-styles"></style>
+
+  <div id="spinnerContainer" class-name="[[__computeContainerClasses(active, __coolingDown)]]" on-animationend="__reset" on-webkit-animation-end="__reset">
+    <div class="spinner-layer layer-1">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div>
+      <div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+
+    <div class="spinner-layer layer-2">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div>
+      <div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+
+    <div class="spinner-layer layer-3">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div>
+      <div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+
+    <div class="spinner-layer layer-4">
+      <div class="circle-clipper left">
+        <div class="circle"></div>
+      </div>
+      <div class="circle-clipper right">
+        <div class="circle"></div>
+      </div>
+    </div>
+  </div>
+`;
+template$2.setAttribute('strip-whitespace', '');
+
+/**
+Material design: [Progress &
+activity](https://www.google.com/design/spec/components/progress-activity.html)
+
+Element providing a multiple color material design circular spinner.
+
+    <paper-spinner active></paper-spinner>
+
+The default spinner cycles between four layers of colors; by default they are
+blue, red, yellow and green. It can be customized to cycle between four
+different colors. Use <paper-spinner-lite> for single color spinners.
+
+### Accessibility
+
+Alt attribute should be set to provide adequate context for accessibility. If
+not provided, it defaults to 'loading'. Empty alt can be provided to mark the
+element as decorative if alternative content is provided in another form (e.g. a
+text block following the spinner).
+
+    <paper-spinner alt="Loading contacts list" active></paper-spinner>
+
+### Styling
+
+The following custom properties and mixins are available for styling:
+
+Custom property | Description | Default
+----------------|-------------|----------
+`--paper-spinner-layer-1-color` | Color of the first spinner rotation | `--google-blue-500`
+`--paper-spinner-layer-2-color` | Color of the second spinner rotation | `--google-red-500`
+`--paper-spinner-layer-3-color` | Color of the third spinner rotation | `--google-yellow-500`
+`--paper-spinner-layer-4-color` | Color of the fourth spinner rotation | `--google-green-500`
+`--paper-spinner-stroke-width` | The width of the spinner stroke | 3px
+
+@group Paper Elements
+@element paper-spinner
+@hero hero.svg
+@demo demo/index.html
+*/
+Polymer({
+  _template: template$2,
+
+  is: 'paper-spinner',
+
+  behaviors: [PaperSpinnerBehavior]
+});
+
+/**
+ * @license
+ * Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
+ * This code may only be used under the BSD style license found at
+ * http://polymer.github.io/LICENSE.txt
+ * The complete set of authors may be found at
+ * http://polymer.github.io/AUTHORS.txt
+ * The complete set of contributors may be found at
+ * http://polymer.github.io/CONTRIBUTORS.txt
+ * Code distributed by Google as part of the polymer project is also
+ * subject to an additional IP rights grant found at
+ * http://polymer.github.io/PATENTS.txt
+ */
+// IE11 doesn't support classList on SVG elements, so we emulate it with a Set
+class ClassList {
+    constructor(element) {
+        this.classes = new Set();
+        this.changed = false;
+        this.element = element;
+        const classList = (element.getAttribute('class') || '').split(/\s+/);
+        for (const cls of classList) {
+            this.classes.add(cls);
+        }
+    }
+    add(cls) {
+        this.classes.add(cls);
+        this.changed = true;
+    }
+    remove(cls) {
+        this.classes.delete(cls);
+        this.changed = true;
+    }
+    commit() {
+        if (this.changed) {
+            let classString = '';
+            this.classes.forEach((cls) => classString += cls + ' ');
+            this.element.setAttribute('class', classString);
+        }
+    }
+}
+/**
+ * Stores the ClassInfo object applied to a given AttributePart.
+ * Used to unset existing values when a new ClassInfo object is applied.
+ */
+const previousClassesCache = new WeakMap();
+/**
+ * A directive that applies CSS classes. This must be used in the `class`
+ * attribute and must be the only part used in the attribute. It takes each
+ * property in the `classInfo` argument and adds the property name to the
+ * element's `class` if the property value is truthy; if the property value is
+ * falsey, the property name is removed from the element's `class`. For example
+ * `{foo: bar}` applies the class `foo` if the value of `bar` is truthy.
+ * @param classInfo {ClassInfo}
+ */
+const classMap = directive((classInfo) => (part) => {
+    if (!(part instanceof AttributePart) || (part instanceof PropertyPart) ||
+        part.committer.name !== 'class' || part.committer.parts.length > 1) {
+        throw new Error('The `classMap` directive must be used in the `class` attribute ' +
+            'and must be the only part in the attribute.');
+    }
+    const { committer } = part;
+    const { element } = committer;
+    let previousClasses = previousClassesCache.get(part);
+    if (previousClasses === undefined) {
+        // Write static classes once
+        // Use setAttribute() because className isn't a string on SVG elements
+        element.setAttribute('class', committer.strings.join(' '));
+        previousClassesCache.set(part, previousClasses = new Set());
+    }
+    const classList = (element.classList || new ClassList(element));
+    // Remove old classes that no longer apply
+    // We use forEach() instead of for-of so that re don't require down-level
+    // iteration.
+    previousClasses.forEach((name) => {
+        if (!(name in classInfo)) {
+            classList.remove(name);
+            previousClasses.delete(name);
+        }
+    });
+    // Add or remove classes based on their classMap value
+    for (const name in classInfo) {
+        const value = classInfo[name];
+        if (value != previousClasses.has(name)) {
+            // We explicitly want a loose truthy check of `value` because it seems
+            // more convenient that '' and 0 are skipped.
+            if (value) {
+                classList.add(name);
+                previousClasses.add(name);
+            }
+            else {
+                classList.remove(name);
+                previousClasses.delete(name);
+            }
+        }
+    }
+    if (typeof classList.commit === 'function') {
+        classList.commit();
+    }
+});
+
+/** @typedef {import('lit-html').TemplateResult} TemplateResult */
+
+/**
+ * @typedef {Object} InputConfiguration
+ * @property {string=} type Type of the control
+ * @property {boolean=} autocomplete Whether `autocomplete` is on. Default to `true`.
+ * @property {boolean=} outlined
+ * @property {boolean=} compatibility
+ * @property {boolean=} readOnly
+ * @property {boolean=} disabled
+ * @property {boolean=} required
+ * @property {boolean=} autoValidate
+ * @property {string=} invalidLabel Invalid message
+ * @property {string=} infoLabel Info message
+ * @property {object=} classes CSS class names
+ */
+
+/**
+ * Renders an input element for for the view.
+ *
+ * @param {string} name Input name
+ * @param {string|number} value Current input value
+ * @param {string} label The label to render
+ * @param {Function} inputHandler Handler for the input event.
+ * @param {InputConfiguration=} [opts={}] Optional configuration options
+ * @return {TemplateResult}
+ */
+const inputTemplate = (name, value, label, inputHandler, opts = {}) => {
+  const config = { ...opts };
+  config.type = opts.type || 'text';
+  if (opts.autocomplete === undefined) {
+    config.autocomplete = true;
+  }
+  return html`
+    <anypoint-input
+      .value="${value}"
+      @input="${inputHandler}"
+      name="${name}"
+      type="${config.type}"
+      ?required="${config.required}"
+      ?autoValidate="${config.autoValidate}"
+      ?autocomplete="${config.autocomplete}"
+      ?outlined="${config.outlined}"
+      ?compatibility="${config.compatibility}"
+      ?readOnly="${config.readOnly}"
+      ?disabled="${config.disabled}"
+      invalidMessage="${ifDefined(config.invalidLabel)}"
+      infoMessage="${ifDefined(config.infoLabel)}"
+      class="${classMap(config.classes)}"
+    >
+      <label slot="label">${label}</label>
+    </anypoint-input>
+  `;
+};
+
+/**
+ * Renders a password input element for the view.
+ *
+ * @param {String} name Input name
+ * @param {String} value Current input value
+ * @param {String} label The label to render
+ * @param {Function} inputHandler Handler for the input event.
+ * @param {InputConfiguration=} [opts={}] Optional configuration options
+ * @return {TemplateResult}
+ */
+const passwordTemplate = (
+  name,
+  value,
+  label,
+  inputHandler,
+  opts = {}
+) => {
+  const config = { ...opts };
+  config.type = opts.type || 'text';
+  if (opts.autocomplete === undefined) {
+    config.autocomplete = true;
+  }
+  return html`
+    <anypoint-masked-input
+      .value="${value}"
+      @input="${inputHandler}"
+      name="${name}"
+      type="${config.type}"
+      ?required="${config.required}"
+      ?autoValidate="${config.autoValidate}"
+      ?autocomplete="${config.autocomplete}"
+      ?outlined="${config.outlined}"
+      ?compatibility="${config.compatibility}"
+      ?readOnly="${config.readOnly}"
+      ?disabled="${config.disabled}"
+      invalidMessage="${ifDefined(config.invalidLabel)}"
+      infoMessage="${ifDefined(config.infoLabel)}"
+      class="${classMap(config.classes)}"
+    >
+      <label slot="label">${label}</label>
+    </anypoint-masked-input>
+  `;
+};
+
+/* eslint-disable no-param-reassign */
+
+/**
+ * Normalizes type name to a string identifier.
+ * It casts input to a string and lowercase it.
+ * @param {string} type Type value
+ * @return {string} Normalized value.
+ */
+const normalizeType = (type) => {
+  if (!type) {
+    return undefined;
+  }
+  return String(type).toLowerCase();
+};
+
+const METHOD_BASIC = 'basic';
+const METHOD_BEARER = 'bearer';
+const METHOD_NTLM = 'ntlm';
+const METHOD_DIGEST = 'digest';
+const METHOD_OAUTH1 = 'oauth 1';
+const METHOD_OAUTH2 = 'oauth 2';
+
+/**
+ * Dispatches `change` event on passed `element`
+ * @param {HTMLElement} element Event target
+ */
+const notifyChange = (element) => {
+  element.dispatchEvent(new CustomEvent('change'));
+};
+
+const selectionHandler = Symbol('selectionHandler');
+const inputHandler = Symbol('inputHandler');
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+const serializeBasicAuth = Symbol('serializeBasicAuth');
+const restoreBasicAuth = Symbol('restoreBasicAuth');
+const renderBasicAuth = Symbol('renderBasicAuth');
+const clearBasicAuth = Symbol('clearBasicAuth');
+
+/**
+ * @typedef {Object} BasicParams
+ * @property {string} password - User password value
+ * @property {string} username - User name value
+ */
+
+/**
+ * @param {AuthorizationMethod} base
+ */
+const mxFunction$h = (base) => {
+  class BasicMethodMixinImpl extends base {
+    /**
+     * Clears basic auth settings
+     */
+    [clearBasicAuth]() {
+      this.password = '';
+      this.username = '';
+    }
+
+    /**
+     * Serialized input values
+     * @return {BasicParams} An object with user input
+     */
+    [serializeBasicAuth]() {
+      return {
+        password: this.password || '',
+        username: this.username || '',
+      };
+    }
+
+    /**
+     * Resotrespreviously serialized Basic authentication values.
+     * @param {BasicParams} settings Previously serialized values
+     */
+    [restoreBasicAuth](settings) {
+      this.password = settings.password;
+      this.username = settings.username;
+    }
+
+    [renderBasicAuth]() {
+      const {
+        username,
+        password,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      } = this;
+      const uConfig = {
+        required: true,
+        autoValidate: true,
+        invalidLabel: 'Username is required',
+        classes: { block: true },
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      };
+      return html` <form autocomplete="on" class="basic-auth">
+        ${inputTemplate(
+          'username',
+          username,
+          'User name',
+          this[inputHandler],
+          uConfig
+        )}
+        ${passwordTemplate(
+          'password',
+          password,
+          'Password',
+          this[inputHandler],
+          {
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+      </form>`;
+    }
+  }
+  return BasicMethodMixinImpl;
+};
+
+/**
+ *
+ *
+ * @mixin
+ */
+const BasicMethodMixin = dedupeMixin(mxFunction$h);
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+const serializeBearerAuth = Symbol('serializeBearerAuth');
+const restoreBearerAuth = Symbol('restoreBearerAuth');
+const renderBearerAuth = Symbol('renderBearerAuth');
+const clearBearerAuth = Symbol('clearBearerAuth');
+
+/**
+ * @typedef {Object} BearerParams
+ * @property {string} token - Berarer token value
+ */
+
+/**
+ * @param {AuthorizationMethod} base
+ */
+const mxFunction$i = (base) => {
+  class BearerMethodMixinImpl extends base {
+    /**
+     * Clears Bearer auth settings
+     */
+    [clearBearerAuth]() {
+      this.token = '';
+    }
+
+    /**
+     * Serialized input values
+     * @return {BearerParams} An object with user input
+     */
+    [serializeBearerAuth]() {
+      return {
+        token: this.token || '',
+      };
+    }
+
+    /**
+     * Resotrespreviously serialized Bearer authentication values.
+     * @param {BearerParams} settings Previously serialized values
+     */
+    [restoreBearerAuth](settings) {
+      this.token = settings.token;
+    }
+
+    [renderBearerAuth]() {
+      const { token, outlined, compatibility, readOnly, disabled } = this;
+      const tokenConfig = {
+        required: true,
+        autoValidate: true,
+        invalidLabel: 'Token is required',
+        classes: { block: true },
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      };
+      return html` <form autocomplete="on" class="bearer-auth">
+        ${passwordTemplate(
+          'token',
+          token,
+          'Token',
+          this[inputHandler],
+          tokenConfig
+        )}
+      </form>`;
+    }
+  }
+  return BearerMethodMixinImpl;
+};
+
+/**
+ *
+ *
+ * @mixin
+ */
+const BearerMethodMixin = dedupeMixin(mxFunction$i);
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+const serializeNtlmAuth = Symbol('serializeNtlmAuth');
+const restoreNtlmAuth = Symbol('restoreNtlmAuth');
+const renderNtlmAuth = Symbol('renderNtlmAuth');
+const clearNtlmAuth = Symbol('clearNtlmAuth');
+
+/**
+ * @typedef {Object} NtlmParams
+ * @property {string} password - User password value
+ * @property {string} username - User name value
+ * @property {string} domain - NT domain
+ */
+
+/**
+ * @param {AuthorizationMethod} base
+ */
+const mxFunction$j = (base) => {
+  class NtlmMethodMixinImpl extends base {
+    static get properties() {
+      return {
+        /**
+         * Authorization domain
+         *
+         * Used in the following types:
+         * - NTLM
+         */
+        domain: { type: String },
+      };
+    }
+
+    /**
+     * Clears NTLM auth settings
+     */
+    [clearNtlmAuth]() {
+      this.password = '';
+      this.username = '';
+      this.domain = '';
+    }
+
+    /**
+     * Serialized input values
+     * @return {NtlmParams} An object with user input
+     */
+    [serializeNtlmAuth]() {
+      return {
+        password: this.password || '',
+        username: this.username || '',
+        domain: this.domain || '',
+      };
+    }
+
+    /**
+     * Resotres previously serialized NTML authentication values.
+     * @param {NtlmParams} settings Previously serialized values
+     */
+    [restoreNtlmAuth](settings) {
+      this.password = settings.password;
+      this.username = settings.username;
+      this.domain = settings.domain;
+    }
+
+    [renderNtlmAuth]() {
+      const {
+        username,
+        password,
+        domain,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      } = this;
+      return html` <form autocomplete="on" class="ntlm-auth">
+        ${inputTemplate('username', username, 'User name', this[inputHandler], {
+          required: true,
+          autoValidate: true,
+          invalidLabel: 'Username is required',
+          classes: { block: true },
+          outlined,
+          compatibility,
+          readOnly,
+          disabled,
+        })}
+        ${passwordTemplate(
+          'password',
+          password,
+          'Password',
+          this[inputHandler],
+          {
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+        ${inputTemplate('domain', domain, 'NT domain', this[inputHandler], {
+          classes: { block: true },
+          outlined,
+          compatibility,
+          readOnly,
+          disabled,
+        })}
+      </form>`;
+    }
+  }
+  return NtlmMethodMixinImpl;
+};
+
+/**
+ * A mixin that adds support for NTLM method computations.
+ *
+ * @mixin
+ */
+const NtlmMethodMixin = dedupeMixin(mxFunction$j);
+
+/* eslint-disable no-plusplus */
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+const renderDigestAuth = Symbol('renderDigestAuth');
+const setDigestDefaults = Symbol('setDigestDefaults');
+const serializeDigestAuth = Symbol('serializeDigestAuth');
+const restoreDigestAuth = Symbol('restoreDigestAuth');
+const clearDigestAuth = Symbol('clearDigestAuth');
+const _generateDigestResponse = Symbol('_generateDigestResponse');
+const _getHA1 = Symbol('_getHA1');
+const _getHA2 = Symbol('_getHA2');
+const _qopTemplate = Symbol('_qopTemplate');
+const _processRequestUrl = Symbol('_processRequestUrl');
+const _hashAlgorithmTemplate = Symbol('_hashAlgorithmTemplate');
+
+/**
+ * Generates client nonce for Digest authorization.
+ *
+ * @return {string} Generated client nonce.
+ */
+const generateCnonce = () => {
+  const characters = 'abcdef0123456789';
+  let token = '';
+  for (let i = 0; i < 16; i++) {
+    const randNum = Math.round(Math.random() * characters.length);
+    token += characters.substr(randNum, 1);
+  }
+  return token;
+};
+
+/**
+ * @typedef {Object} DigestParams
+ * @property {string} password - User password value
+ * @property {string} username - User name value
+ * @property {string} realm
+ * @property {string} nonce
+ * @property {string} uri
+ * @property {string} qop
+ * @property {string} opaque
+ * @property {string} response
+ * @property {string|number} nc
+ * @property {string} cnonce
+ * @property {string} algorithm
+ */
+
+/**
+ * @param {typeof HTMLElement} base
+ */
+const mxFunction$k = (base) => {
+  class DigestMethodMixinImpl extends base {
+    static get properties() {
+      return {
+        /**
+         * Server issued realm for Digest authorization.
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        realm: { type: String },
+        /**
+         * Server issued nonce for Digest authorization.
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        nonce: { type: String },
+        /**
+         * The algorithm used to hash the response for Digest authorization.
+         *
+         * It can be either `MD5` or `MD5-sess`.
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        algorithm: { type: String },
+        /**
+         * The quality of protection value for the digest response.
+         * Either '', 'auth' or 'auth-int'
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        qop: { type: String },
+        /**
+         * Nonce count - increments with each request used with the same nonce
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        nc: { type: Number },
+        /**
+         * Client nonce
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        cnonce: { type: String },
+        /**
+         * A string of data specified by the server
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        opaque: { type: String },
+        /**
+         * Hashed response to server challenge
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        response: { type: String },
+        /**
+         * Request HTTP method
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        httpMethod: { type: String },
+        /**
+         * Current request URL.
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        requestUrl: { type: String },
+
+        _requestUri: { type: String },
+        /**
+         * Current request body.
+         *
+         * Used in the following types:
+         * - Digest
+         */
+        requestBody: { type: String },
+      };
+    }
+
+    get requestUrl() {
+      return this._requestUrl;
+    }
+
+    set requestUrl(value) {
+      const old = this._requestUrl;
+      /* istanbul ignore if */
+      if (old === value) {
+        return;
+      }
+      this._requestUrl = value;
+      this[_processRequestUrl](value);
+    }
+
+    [_processRequestUrl](value) {
+      if (!value || typeof value !== 'string') {
+        this._requestUri = undefined;
+        notifyChange(this);
+        return;
+      }
+      let result;
+      try {
+        const url = new URL(value);
+        result = url.pathname;
+      } catch (_) {
+        result = value.trim();
+      }
+      this._requestUri = result;
+      notifyChange(this);
+    }
+
+    [setDigestDefaults]() {
+      if (!this.nc) {
+        this.nc = 1;
+      }
+      if (!this.algorithm) {
+        this.algorithm = 'MD5';
+      }
+      if (!this.cnonce) {
+        this.cnonce = generateCnonce();
+      }
+    }
+
+    /**
+     * Clears Digest auth settings
+     */
+    [clearDigestAuth]() {
+      this.password = '';
+      this.username = '';
+      this.realm = '';
+      this.nonce = '';
+      this.opaque = '';
+      this.qop = '';
+      this.cnonce = '';
+      this.algorithm = '';
+      this.nc = '';
+      this.response = '';
+      this[setDigestDefaults]();
+      // url, method, and body should not be controlled by this
+      // component.
+    }
+
+    /**
+     * Resotres previously serialized Digest authentication values.
+     * @param {DigestParams} settings Previously serialized values
+     */
+    [restoreDigestAuth](settings) {
+      this.username = settings.username;
+      this.password = settings.password;
+      this.realm = settings.realm;
+      this.nonce = settings.nonce;
+      this.opaque = settings.opaque;
+      this.qop = settings.qop;
+      this.cnonce = settings.cnonce;
+      this.algorithm = settings.algorithm;
+      if (settings.uri) {
+        this._requestUri = settings.uri;
+      }
+      if (settings.nc) {
+        this.nc = Number(String(settings.nc).replace(/0+/, ''));
+      }
+    }
+
+    /**
+     * Serialized input values
+     * @return {DigestParams} An object with user input
+     */
+    [serializeDigestAuth]() {
+      this.response = this[_generateDigestResponse]();
+      const settings = {
+        username: this.username || '',
+        password: this.password || '',
+        realm: this.realm,
+        nonce: this.nonce,
+        uri: this._requestUri,
+        response: this.response,
+        opaque: this.opaque,
+        qop: this.qop,
+        nc: `00000000${this.nc}`.slice(-8),
+        cnonce: this.cnonce,
+        algorithm: this.algorithm,
+      };
+      return settings;
+    }
+
+    /**
+     * Generates the response header based on the parameters provided in the
+     * form.
+     *
+     * See https://en.wikipedia.org/wiki/Digest_access_authentication#Overview
+     *
+     * @return {String} A response part of the authenticated digest request.
+     */
+    [_generateDigestResponse]() {
+      /* global CryptoJS */
+      const HA1 = this[_getHA1]();
+      const HA2 = this[_getHA2]();
+      const ncString = `00000000${this.nc}`.slice(-8);
+      let responseStr = `${HA1}:${this.nonce}`;
+      if (!this.qop) {
+        responseStr += `:${HA2}`;
+      } else {
+        responseStr += `:${ncString}:${this.cnonce}:${this.qop}:${HA2}`;
+      }
+      // @ts-ignore
+      return CryptoJS.MD5(responseStr).toString();
+    }
+
+    // Generates HA1 as defined in Digest spec.
+    [_getHA1]() {
+      const { username, realm, password } = this;
+      let HA1param = `${username}:${realm}:${password}`;
+      // @ts-ignore
+      let HA1 = CryptoJS.MD5(HA1param).toString();
+      if (this.algorithm === 'MD5-sess') {
+        const { nonce, cnonce } = this;
+        HA1param = `${HA1}:${nonce}:${cnonce}`;
+        // @ts-ignore
+        HA1 = CryptoJS.MD5(HA1param).toString();
+      }
+      return HA1;
+    }
+
+    // Generates HA2 as defined in Digest spec.
+    [_getHA2]() {
+      const { httpMethod, _requestUri } = this;
+      let HA2param = `${httpMethod}:${_requestUri}`;
+      if (this.qop === 'auth-int') {
+        // @ts-ignore
+        const v = CryptoJS.MD5(this.requestBody).toString();
+        HA2param += `:${v}`;
+      }
+      // @ts-ignore
+      return CryptoJS.MD5(HA2param).toString();
+    }
+
+    [_qopTemplate]() {
+      const { outlined, compatibility, readOnly, disabled, qop } = this;
+      return html`<anypoint-dropdown-menu
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        name="qop"
+      >
+        <label slot="label">Quality of protection</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${qop}"
+          @selected-changed="${this[selectionHandler]}"
+          ?outlined="${outlined}"
+          ?compatibility="${compatibility}"
+          ?readOnly="${readOnly}"
+          ?disabled="${disabled}"
+          attrforselected="data-qop"
+        >
+          <anypoint-item ?compatibility="${compatibility}" data-qop="auth"
+            >auth</anypoint-item
+          >
+          <anypoint-item ?compatibility="${compatibility}" data-qop="auth-int"
+            >auth-int</anypoint-item
+          >
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [_hashAlgorithmTemplate]() {
+      const { outlined, compatibility, readOnly, disabled, algorithm } = this;
+      return html`<anypoint-dropdown-menu
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        name="algorithm"
+      >
+        <label slot="label">Hash algorithm</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${algorithm}"
+          @selected-changed="${this[selectionHandler]}"
+          ?outlined="${outlined}"
+          ?compatibility="${compatibility}"
+          ?readOnly="${readOnly}"
+          ?disabled="${disabled}"
+          attrforselected="data-algorithm"
+        >
+          <anypoint-item ?compatibility="${compatibility}" data-algorithm="MD5"
+            >MD5</anypoint-item
+          >
+          <anypoint-item
+            ?compatibility="${compatibility}"
+            data-algorithm="MD5-sess"
+            >MD5-sess</anypoint-item
+          >
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [renderDigestAuth]() {
+      const {
+        username,
+        password,
+        realm,
+        nonce,
+        nc,
+        opaque,
+        cnonce,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      } = this;
+      return html` <form autocomplete="on" class="digest-auth">
+        ${inputTemplate('username', username, 'User name', this[inputHandler], {
+          required: true,
+          autoValidate: true,
+          invalidLabel: 'Username is required',
+          classes: { block: true },
+          outlined,
+          compatibility,
+          readOnly,
+          disabled,
+        })}
+        ${passwordTemplate(
+          'password',
+          password,
+          'Password',
+          this[inputHandler],
+          {
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+        ${inputTemplate(
+          'realm',
+          realm,
+          'Server issued realm',
+          this[inputHandler],
+          {
+            required: true,
+            autoValidate: true,
+            invalidLabel: 'Realm is required',
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+        ${inputTemplate(
+          'nonce',
+          nonce,
+          'Server issued nonce',
+          this[inputHandler],
+          {
+            required: true,
+            autoValidate: true,
+            invalidLabel: 'Nonce is required',
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+        ${this[_qopTemplate]()}
+        ${inputTemplate('nc', nc, 'Nonce count', this[inputHandler], {
+          required: true,
+          autoValidate: true,
+          invalidLabel: 'Nonce count is required',
+          classes: { block: true },
+          type: 'number',
+          outlined,
+          compatibility,
+          readOnly,
+          disabled,
+        })}
+        ${this[_hashAlgorithmTemplate]()}
+        ${inputTemplate(
+          'opaque',
+          opaque,
+          'Server issued opaque string',
+          this[inputHandler],
+          {
+            required: true,
+            autoValidate: true,
+            invalidLabel: 'Server issued opaque is required',
+            classes: { block: true },
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          }
+        )}
+        ${inputTemplate('cnonce', cnonce, 'Client nounce', this[inputHandler], {
+          required: true,
+          autoValidate: true,
+          invalidLabel: 'Client nounce is required',
+          classes: { block: true },
+          outlined,
+          compatibility,
+          readOnly,
+          disabled,
+        })}
+      </form>`;
+    }
+  }
+  return DigestMethodMixinImpl;
+};
+
+/**
+ * A mixin that adds support for Digest method computations.
+ *
+ * @mixin
+ */
+const DigestMethodMixin = dedupeMixin(mxFunction$k);
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+/* eslint-disable no-plusplus */
+
+const oauth1ErrorHandler = Symbol('oauth1ErrorHandler');
+const oauth1tokenResponseHandler = Symbol('oauth1tokenResponseHandler');
+const oauth1ParamLocationTemplate = Symbol('oauth1ParamLocationTemplate');
+const oauth1TokenMethodTemplate = Symbol('oauth1TokenMethodTemplate');
+const oauth1TimestampTemplate = Symbol('oauth1TimestampTemplate');
+const oauth1NonceTemplate = Symbol('oauth1NonceTemplate');
+const oauth1SignatureMethodsTemplate = Symbol('oauth1SignatureMethodsTemplate');
+const timestampHandler = Symbol('timestampHandler');
+const nonceHandler = Symbol('nonceHandler');
+const genTimestamp = Symbol('genTimestamp');
+const genNonce = Symbol('genNonce');
+const serializeOauth1Auth = Symbol('serializeOauth1Auth');
+const restoreOauth1Auth = Symbol('restoreOauth1Auth');
+const setOauth1Defaults = Symbol('setOauth1Defaults');
+const authorizeOauth1 = Symbol('authorizeOauth1');
+const renderOauth1Auth = Symbol('renderOauth1Auth');
+const clearOauth1Auth = Symbol('clearOauth1Auth');
+
+const defaultSignatureMethods = ['HMAC-SHA1', 'RSA-SHA1', 'PLAINTEXT'];
+
+/**
+ * @typedef {Object} Oauth1Params
+ * @property {string} consumerKey
+ * @property {string} consumerSecret
+ * @property {string} token
+ * @property {string} tokenSecret
+ * @property {string|number} timestamp
+ * @property {string} nonce
+ * @property {string} realm
+ * @property {string} signatureMethod
+ * @property {string} requestTokenUri
+ * @property {string} accessTokenUri
+ * @property {string} redirectUri
+ * @property {string} authParamsLocation
+ * @property {string} authTokenMethod
+ * @property {string} authorizationUri
+ * @property {string} type - always set ot oauth1
+ */
+
+/**
+ * @param {AuthorizationMethod} base
+ */
+const mxFunction$l = (base) => {
+  class Oauth1MethodMixinImpl extends base {
+    static get properties() {
+      return {
+        /**
+         * Client ID aka consumer key
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        consumerKey: { type: String },
+        /**
+         * The client secret aka consumer secret
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        consumerSecret: { type: String },
+        /**
+         * Oauth 1 token secret (from the oauth console).
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        tokenSecret: { type: String },
+        /**
+         * Token request timestamp
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        timestamp: { type: Number },
+        /**
+         * The nonce generated for this request
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        nonce: { type: String },
+        /**
+         * Optional parameter, realm.
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        realm: { type: String },
+        /**
+         * Signature method. Enum {`HMAC-SHA256`, `HMAC-SHA1`, `PLAINTEXT`}
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        signatureMethod: { type: String },
+        /**
+         * OAuth1 endpoint to obtain request token to request user authorization.
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        requestTokenUri: { type: String },
+        /**
+         * HTTP method to obtain authorization header.
+         * Spec recommends POST
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        authTokenMethod: { type: String },
+        /**
+         * A location of the OAuth 1 authorization parameters.
+         * It can be either in the URL as a query string (`querystring` value)
+         * or in the authorization header (`authorization`) value.
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        authParamsLocation: { type: String },
+        /**
+         * List of currently support signature methods.
+         * This can be updated when `amfSettings` property is set.
+         *
+         * Used in the following types:
+         * - OAuth 1
+         */
+        signatureMethods: { type: Array },
+      };
+    }
+
+    constructor() {
+      super();
+      this[oauth1ErrorHandler] = this[oauth1ErrorHandler].bind(this);
+      this[oauth1tokenResponseHandler] = this[oauth1tokenResponseHandler].bind(
+        this
+      );
+    }
+
+    _attachListeners(node) {
+      super._attachListeners(node);
+      node.addEventListener('oauth1-error', this[oauth1ErrorHandler]);
+      node.addEventListener(
+        'oauth1-token-response',
+        this[oauth1tokenResponseHandler]
+      );
+    }
+
+    _detachListeners(node) {
+      super._detachListeners(node);
+      node.removeEventListener('oauth1-error', this[oauth1ErrorHandler]);
+      node.removeEventListener(
+        'oauth1-token-response',
+        this[oauth1tokenResponseHandler]
+      );
+    }
+
+    [setOauth1Defaults]() {
+      if (!this.signatureMethod) {
+        this.signatureMethod = 'HMAC-SHA1';
+      }
+      if (!this.authTokenMethod) {
+        this.authTokenMethod = 'POST';
+      }
+      if (!this.authParamsLocation) {
+        this.authParamsLocation = 'authorization';
+      }
+      if (!this.signatureMethods) {
+        this.signatureMethods = defaultSignatureMethods;
+      }
+      if (!this.timestamp) {
+        this[genTimestamp](true);
+      }
+      if (!this.nonce) {
+        this[genNonce](true);
+      }
+    }
+
+    /**
+     * Clears OAuth 1 auth settings
+     */
+    [clearOauth1Auth]() {
+      this.consumerKey = '';
+      this.consumerSecret = '';
+      this.token = '';
+      this.tokenSecret = '';
+      this.timestamp = '';
+      this.nonce = '';
+      this.realm = '';
+      this.signatureMethod = '';
+      this.requestTokenUri = '';
+      this.accessTokenUri = '';
+      this.authTokenMethod = '';
+      this.authParamsLocation = '';
+      this.authorizationUri = '';
+      this[setOauth1Defaults]();
+    }
+
+    /**
+     * Serialized input values
+     * @return {Oauth1Params} An object with user input
+     */
+    [serializeOauth1Auth]() {
+      return {
+        consumerKey: this.consumerKey,
+        consumerSecret: this.consumerSecret,
+        token: this.token,
+        tokenSecret: this.tokenSecret,
+        timestamp: this.timestamp,
+        nonce: this.nonce,
+        realm: this.realm,
+        signatureMethod: this.signatureMethod,
+        requestTokenUri: this.requestTokenUri,
+        accessTokenUri: this.accessTokenUri,
+        redirectUri: this.redirectUri,
+        authTokenMethod: this.authTokenMethod,
+        authParamsLocation: this.authParamsLocation,
+        authorizationUri: this.authorizationUri,
+        type: 'oauth1',
+      };
+    }
+
+    /**
+     * Resotres previously serialized authentication values.
+     * @param {Oauth1Params} settings Previously serialized values
+     */
+    [restoreOauth1Auth](settings) {
+      this.consumerKey = settings.consumerKey;
+      this.consumerSecret = settings.consumerSecret;
+      this.token = settings.token;
+      this.tokenSecret = settings.tokenSecret;
+      this.timestamp = settings.timestamp;
+      this.nonce = settings.nonce;
+      this.realm = settings.realm;
+      this.signatureMethod = settings.signatureMethod;
+      this.requestTokenUri = settings.requestTokenUri;
+      this.accessTokenUri = settings.accessTokenUri;
+      this.redirectUri = settings.redirectUri;
+      this.authTokenMethod = settings.authTokenMethod;
+      this.authParamsLocation = settings.authParamsLocation;
+      this.authorizationUri = settings.authorizationUri;
+    }
+
+    /**
+     * Handles OAuth1 authorization errors.
+     */
+    [oauth1ErrorHandler]() {
+      this._authorizing = false;
+    }
+
+    /**
+     * Handler for the `oauth1-token-response` custom event.
+     * Sets `token` and `tokenSecret` properties from the event.
+     *
+     * @param {CustomEvent} e
+     */
+    [oauth1tokenResponseHandler](e) {
+      this._authorizing = false;
+      this.token = e.detail.oauth_token;
+      this.tokenSecret = e.detail.oauth_token_secret;
+      notifyChange(this);
+    }
+
+    /**
+     * Sets timestamp in seconds
+     * @param {Boolean} ignoreChange Ignores change bnotification when set
+     */
+    [genTimestamp](ignoreChange) {
+      const t = Math.floor(Date.now() / 1000);
+      this.timestamp = t;
+      if (!ignoreChange) {
+        notifyChange(this);
+      }
+    }
+
+    [timestampHandler]() {
+      this[genTimestamp](false);
+    }
+
+    /**
+     * Sets autogenerated nocne
+     * @param {Boolean} ignoreChange Ignores change bnotification when set
+     */
+    [genNonce](ignoreChange) {
+      const result = [];
+      const chrs =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const chrsLength = chrs.length;
+      const length = 32;
+      for (let i = 0; i < length; i++) {
+        result[result.length] = chrs[Math.floor(Math.random() * chrsLength)];
+      }
+      this.nonce = result.join('');
+      if (!ignoreChange) {
+        notifyChange(this);
+      }
+    }
+
+    [nonceHandler]() {
+      this[genNonce](false);
+    }
+
+    /**
+     * Sends the `oauth1-token-requested` event.
+     * @return {Boolean} True if event was sent. Can be false if event is not
+     * handled or when the form is invalid.
+     */
+    [authorizeOauth1]() {
+      if (!this.validate()) {
+        return false;
+      }
+      this._authorizing = true;
+      const detail = {};
+      /* istanbul ignore else */
+      if (this.consumerKey) {
+        detail.consumerKey = this.consumerKey;
+      }
+      /* istanbul ignore else */
+      if (this.consumerSecret) {
+        detail.consumerSecret = this.consumerSecret;
+      }
+      /* istanbul ignore else */
+      if (this.token) {
+        detail.token = this.token;
+      }
+      /* istanbul ignore else */
+      if (this.tokenSecret) {
+        detail.tokenSecret = this.tokenSecret;
+      }
+      /* istanbul ignore else */
+      if (this.timestamp) {
+        detail.timestamp = this.timestamp;
+      }
+      /* istanbul ignore else */
+      if (this.nonce) {
+        detail.nonce = this.nonce;
+      }
+      /* istanbul ignore else */
+      if (this.realm) {
+        detail.realm = this.realm;
+      }
+      /* istanbul ignore else */
+      if (this.signatureMethod) {
+        detail.signatureMethod = this.signatureMethod;
+      }
+      /* istanbul ignore else */
+      if (this.requestTokenUri) {
+        detail.requestTokenUri = this.requestTokenUri;
+      }
+      /* istanbul ignore else */
+      if (this.accessTokenUri) {
+        detail.accessTokenUri = this.accessTokenUri;
+      }
+      /* istanbul ignore else */
+      if (this.redirectUri) {
+        detail.redirectUri = this.redirectUri;
+      }
+      /* istanbul ignore else */
+      if (this.authParamsLocation) {
+        detail.authParamsLocation = this.authParamsLocation;
+      }
+      /* istanbul ignore else */
+      if (this.authTokenMethod) {
+        detail.authTokenMethod = this.authTokenMethod;
+      }
+      /* istanbul ignore else */
+      if (this.authorizationUri) {
+        detail.authorizationUri = this.authorizationUri;
+      }
+      detail.type = 'oauth1';
+      this.dispatchEvent(
+        new CustomEvent('oauth1-token-requested', {
+          detail,
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        })
+      );
+      return true;
+    }
+
+    [oauth1TokenMethodTemplate]() {
+      const {
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+        authTokenMethod,
+      } = this;
+      return html`<anypoint-dropdown-menu
+        name="authTokenMethod"
+        required
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+      >
+        <label slot="label">Authorization token method</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${authTokenMethod}"
+          @selected-changed="${this[selectionHandler]}"
+          data-name="authTokenMethod"
+          ?outlined="${outlined}"
+          ?compatibility="${compatibility}"
+          ?readOnly="${readOnly}"
+          ?disabled="${disabled}"
+          attrforselected="data-value"
+        >
+          <anypoint-item ?compatibility="${compatibility}" data-value="GET"
+            >GET</anypoint-item
+          >
+          <anypoint-item ?compatibility="${compatibility}" data-value="POST"
+            >POST</anypoint-item
+          >
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [oauth1ParamLocationTemplate]() {
+      const {
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+        authParamsLocation,
+      } = this;
+      return html`<anypoint-dropdown-menu
+        required
+        name="authParamsLocation"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+      >
+        <label slot="label">Oauth parameters location</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${authParamsLocation}"
+          @selected-changed="${this[selectionHandler]}"
+          data-name="authParamsLocation"
+          ?outlined="${outlined}"
+          ?compatibility="${compatibility}"
+          ?readOnly="${readOnly}"
+          ?disabled="${disabled}"
+          attrforselected="data-value"
+        >
+          <anypoint-item
+            ?compatibility="${compatibility}"
+            data-value="querystring"
+            >Query string</anypoint-item
+          >
+          <anypoint-item
+            ?compatibility="${compatibility}"
+            data-value="authorization"
+            >Authorization header</anypoint-item
+          >
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [oauth1TimestampTemplate]() {
+      const { outlined, compatibility, readOnly, disabled, timestamp } = this;
+      return html`<anypoint-input
+        required
+        autovalidate
+        name="timestamp"
+        .value="${timestamp}"
+        @input="${this[inputHandler]}"
+        type="number"
+        autocomplete="on"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        invalidmessage="Timestamp is required"
+      >
+        <label slot="label">Timestamp</label>
+        <anypoint-icon-button
+          slot="suffix"
+          title="Regenerate timestamp"
+          aria-label="Press to regenerate timestamp"
+          @click="${this[timestampHandler]}"
+        >
+          <span class="icon">${cached}</span>
+        </anypoint-icon-button>
+      </anypoint-input>`;
+    }
+
+    [oauth1NonceTemplate]() {
+      const { outlined, compatibility, readOnly, disabled, nonce } = this;
+      return html`<anypoint-input
+        required
+        autovalidate
+        name="nonce"
+        .value="${nonce}"
+        @input="${this[inputHandler]}"
+        type="text"
+        autocomplete="on"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        invalidmessage="Nonce is required"
+      >
+        <label slot="label">Nonce</label>
+        <anypoint-icon-button
+          slot="suffix"
+          title="Regenerate nonce"
+          aria-label="Press to regenerate nonce"
+          @click="${this[nonceHandler]}"
+        >
+          <span class="icon">${cached}</span>
+        </anypoint-icon-button>
+      </anypoint-input>`;
+    }
+
+    [oauth1SignatureMethodsTemplate]() {
+      const {
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+        signatureMethod,
+        signatureMethods,
+      } = this;
+      return html`<anypoint-dropdown-menu
+        required
+        name="signatureMethod"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+      >
+        <label slot="label">Signature method</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${signatureMethod}"
+          @selected-changed="${this[selectionHandler]}"
+          data-name="signatureMethod"
+          ?outlined="${outlined}"
+          ?compatibility="${compatibility}"
+          ?readOnly="${readOnly}"
+          ?disabled="${disabled}"
+          attrforselected="data-value"
+        >
+          ${signatureMethods.map(
+            (item) =>
+              html`<anypoint-item
+                ?compatibility="${compatibility}"
+                data-value="${item}"
+                >${item}</anypoint-item
+              >`
+          )}
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [renderOauth1Auth]() {
+      const {
+        consumerKey,
+        consumerSecret,
+        token,
+        tokenSecret,
+        requestTokenUri,
+        accessTokenUri,
+        authorizationUri,
+        redirectUri,
+        realm,
+        signatureMethods,
+        _authorizing,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      } = this;
+      const hasSignatureMethods = !!(
+        signatureMethods && signatureMethods.length
+      );
+      return html`<form autocomplete="on" class="oauth1-auth">
+          ${this[oauth1TokenMethodTemplate]()}
+          ${this[oauth1ParamLocationTemplate]()}
+          ${passwordTemplate(
+            'consumerKey',
+            consumerKey,
+            'Consumer key',
+            this[inputHandler],
+            {
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+              required: true,
+              autoValidate: true,
+              invalidLabel: 'Consumer key is required',
+            }
+          )}
+          ${passwordTemplate(
+            'consumerSecret',
+            consumerSecret,
+            'Consumer secret',
+            this[inputHandler],
+            {
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${passwordTemplate('token', token, 'Token', this[inputHandler], {
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          })}
+          ${passwordTemplate(
+            'tokenSecret',
+            tokenSecret,
+            'Token secret',
+            this[inputHandler],
+            {
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${inputTemplate(
+            'requestTokenUri',
+            requestTokenUri,
+            'Request token URI',
+            this[inputHandler],
+            {
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${inputTemplate(
+            'accessTokenUri',
+            accessTokenUri,
+            'Token Authorization URI',
+            this[inputHandler],
+            {
+              type: 'url',
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${inputTemplate(
+            'authorizationUri',
+            authorizationUri,
+            'User authorization dialog URI',
+            this[inputHandler],
+            {
+              type: 'url',
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${inputTemplate(
+            'redirectUri',
+            redirectUri,
+            'Redirect URI',
+            this[inputHandler],
+            {
+              type: 'url',
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+            }
+          )}
+          ${this[oauth1TimestampTemplate]()} ${this[oauth1NonceTemplate]()}
+          ${passwordTemplate('realm', realm, 'Realm', this[inputHandler], {
+            outlined,
+            compatibility,
+            readOnly,
+            disabled,
+          })}
+          ${hasSignatureMethods ? this[oauth1SignatureMethodsTemplate]() : ''}
+        </form>
+
+        <div class="authorize-actions">
+          <anypoint-button
+            ?disabled="${_authorizing}"
+            class="auth-button"
+            @click="${this.authorize}"
+            >Authorize</anypoint-button
+          >
+          <paper-spinner .active="${_authorizing}"></paper-spinner>
+        </div>`;
+    }
+  }
+  return Oauth1MethodMixinImpl;
+};
+/**
+ * A mixin that adds support for OAuth 1 method computations.
+ *
+ * @mixin
+ */
+const Oauth1MethodMixin = dedupeMixin(mxFunction$l);
+
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+/**
+ * `iron-range-behavior` provides the behavior for something with a minimum to
+ * maximum range.
+ *
+ * @demo demo/index.html
+ * @polymerBehavior
+ */
+const IronRangeBehavior = {
+
+  properties: {
+
+    /**
+     * The number that represents the current value.
+     */
+    value: {type: Number, value: 0, notify: true, reflectToAttribute: true},
+
+    /**
+     * The number that indicates the minimum value of the range.
+     */
+    min: {type: Number, value: 0, notify: true},
+
+    /**
+     * The number that indicates the maximum value of the range.
+     */
+    max: {type: Number, value: 100, notify: true},
+
+    /**
+     * Specifies the value granularity of the range's value.
+     */
+    step: {type: Number, value: 1, notify: true},
+
+    /**
+     * Returns the ratio of the value.
+     */
+    ratio: {type: Number, value: 0, readOnly: true, notify: true},
+  },
+
+  observers: ['_update(value, min, max, step)'],
+
+  _calcRatio: function(value) {
+    return (this._clampValue(value) - this.min) / (this.max - this.min);
+  },
+
+  _clampValue: function(value) {
+    return Math.min(this.max, Math.max(this.min, this._calcStep(value)));
+  },
+
+  _calcStep: function(value) {
+    // polymer/issues/2493
+    value = parseFloat(value);
+
+    if (!this.step) {
+      return value;
+    }
+
+    var numSteps = Math.round((value - this.min) / this.step);
+    if (this.step < 1) {
+      /**
+       * For small values of this.step, if we calculate the step using
+       * `Math.round(value / step) * step` we may hit a precision point issue
+       * eg. 0.1 * 0.2 =  0.020000000000000004
+       * http://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
+       *
+       * as a work around we can divide by the reciprocal of `step`
+       */
+      return numSteps / (1 / this.step) + this.min;
+    } else {
+      return numSteps * this.step + this.min;
+    }
+  },
+
+  _validateValue: function() {
+    var v = this._clampValue(this.value);
+    this.value = this.oldValue = isNaN(v) ? this.oldValue : v;
+    return this.value !== v;
+  },
+
+  _update: function() {
+    this._validateValue();
+    this._setRatio(this._calcRatio(this.value) * 100);
+  }
+
+};
+
+/**
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
+found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
+part of the polymer project is also subject to an additional IP rights grant
+found at http://polymer.github.io/PATENTS.txt
+*/
+
+/**
+Material design: [Progress &
+activity](https://www.google.com/design/spec/components/progress-activity.html)
+
+The progress bars are for situations where the percentage completed can be
+determined. They give users a quick sense of how much longer an operation
+will take.
+
+Example:
+
+    <paper-progress value="10"></paper-progress>
+
+There is also a secondary progress which is useful for displaying intermediate
+progress, such as the buffer level during a streaming playback progress bar.
+
+Example:
+
+    <paper-progress value="10" secondary-progress="30"></paper-progress>
+
+### Styling progress bar:
+
+To change the active progress bar color:
+
+    paper-progress {
+       --paper-progress-active-color: #e91e63;
+    }
+
+To change the secondary progress bar color:
+
+    paper-progress {
+      --paper-progress-secondary-color: #f8bbd0;
+    }
+
+To change the progress bar background color:
+
+    paper-progress {
+      --paper-progress-container-color: #64ffda;
+    }
+
+Add the class `transiting` to a paper-progress to animate the progress bar when
+the value changed. You can also customize the transition:
+
+    paper-progress {
+      --paper-progress-transition-duration: 0.08s;
+      --paper-progress-transition-timing-function: ease;
+      --paper-progress-transition-delay: 0s;
+    }
+
+To change the duration of the indeterminate cycle:
+
+    paper-progress {
+      --paper-progress-indeterminate-cycle-duration: 2s;
+    }
+
+The following mixins are available for styling:
+
+Custom property | Description | Default
+----------------|-------------|---------
+`--paper-progress-container` | Mixin applied to container | `{}`
+`--paper-progress-transition-duration` | Duration of the transition | `0.08s`
+`--paper-progress-transition-timing-function` | The timing function for the transition | `ease`
+`--paper-progress-transition-delay` | delay for the transition | `0s`
+`--paper-progress-container-color` | Color of the container | `--google-grey-300`
+`--paper-progress-active-color` | The color of the active bar | `--google-green-500`
+`--paper-progress-secondary-color` | The color of the secondary bar | `--google-green-100`
+`--paper-progress-disabled-active-color` | The color of the active bar if disabled | `--google-grey-500`
+`--paper-progress-disabled-secondary-color` | The color of the secondary bar if disabled  | `--google-grey-300`
+`--paper-progress-height` | The height of the progress bar | `4px`
+`--paper-progress-indeterminate-cycle-duration` | Duration of an indeterminate cycle | `2s`
+
+@group Paper Elements
+@element paper-progress
+@demo demo/index.html
+*/
+Polymer({
+  _template: html$1`
+    <style>
+      :host {
+        display: block;
+        width: 200px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      :host([hidden]), [hidden] {
+        display: none !important;
+      }
+
+      #progressContainer {
+        @apply --paper-progress-container;
+        position: relative;
+      }
+
+      #progressContainer,
+      /* the stripe for the indeterminate animation*/
+      .indeterminate::after {
+        height: var(--paper-progress-height, 4px);
+      }
+
+      #primaryProgress,
+      #secondaryProgress,
+      .indeterminate::after {
+        @apply --layout-fit;
+      }
+
+      #progressContainer,
+      .indeterminate::after {
+        background: var(--paper-progress-container-color, var(--google-grey-300));
+      }
+
+      :host(.transiting) #primaryProgress,
+      :host(.transiting) #secondaryProgress {
+        -webkit-transition-property: -webkit-transform;
+        transition-property: transform;
+
+        /* Duration */
+        -webkit-transition-duration: var(--paper-progress-transition-duration, 0.08s);
+        transition-duration: var(--paper-progress-transition-duration, 0.08s);
+
+        /* Timing function */
+        -webkit-transition-timing-function: var(--paper-progress-transition-timing-function, ease);
+        transition-timing-function: var(--paper-progress-transition-timing-function, ease);
+
+        /* Delay */
+        -webkit-transition-delay: var(--paper-progress-transition-delay, 0s);
+        transition-delay: var(--paper-progress-transition-delay, 0s);
+      }
+
+      #primaryProgress,
+      #secondaryProgress {
+        @apply --layout-fit;
+        -webkit-transform-origin: left center;
+        transform-origin: left center;
+        -webkit-transform: scaleX(0);
+        transform: scaleX(0);
+        will-change: transform;
+      }
+
+      #primaryProgress {
+        background: var(--paper-progress-active-color, var(--google-green-500));
+      }
+
+      #secondaryProgress {
+        background: var(--paper-progress-secondary-color, var(--google-green-100));
+      }
+
+      :host([disabled]) #primaryProgress {
+        background: var(--paper-progress-disabled-active-color, var(--google-grey-500));
+      }
+
+      :host([disabled]) #secondaryProgress {
+        background: var(--paper-progress-disabled-secondary-color, var(--google-grey-300));
+      }
+
+      :host(:not([disabled])) #primaryProgress.indeterminate {
+        -webkit-transform-origin: right center;
+        transform-origin: right center;
+        -webkit-animation: indeterminate-bar var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
+        animation: indeterminate-bar var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
+      }
+
+      :host(:not([disabled])) #primaryProgress.indeterminate::after {
+        content: "";
+        -webkit-transform-origin: center center;
+        transform-origin: center center;
+
+        -webkit-animation: indeterminate-splitter var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
+        animation: indeterminate-splitter var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
+      }
+
+      @-webkit-keyframes indeterminate-bar {
+        0% {
+          -webkit-transform: scaleX(1) translateX(-100%);
+        }
+        50% {
+          -webkit-transform: scaleX(1) translateX(0%);
+        }
+        75% {
+          -webkit-transform: scaleX(1) translateX(0%);
+          -webkit-animation-timing-function: cubic-bezier(.28,.62,.37,.91);
+        }
+        100% {
+          -webkit-transform: scaleX(0) translateX(0%);
+        }
+      }
+
+      @-webkit-keyframes indeterminate-splitter {
+        0% {
+          -webkit-transform: scaleX(.75) translateX(-125%);
+        }
+        30% {
+          -webkit-transform: scaleX(.75) translateX(-125%);
+          -webkit-animation-timing-function: cubic-bezier(.42,0,.6,.8);
+        }
+        90% {
+          -webkit-transform: scaleX(.75) translateX(125%);
+        }
+        100% {
+          -webkit-transform: scaleX(.75) translateX(125%);
+        }
+      }
+
+      @keyframes indeterminate-bar {
+        0% {
+          transform: scaleX(1) translateX(-100%);
+        }
+        50% {
+          transform: scaleX(1) translateX(0%);
+        }
+        75% {
+          transform: scaleX(1) translateX(0%);
+          animation-timing-function: cubic-bezier(.28,.62,.37,.91);
+        }
+        100% {
+          transform: scaleX(0) translateX(0%);
+        }
+      }
+
+      @keyframes indeterminate-splitter {
+        0% {
+          transform: scaleX(.75) translateX(-125%);
+        }
+        30% {
+          transform: scaleX(.75) translateX(-125%);
+          animation-timing-function: cubic-bezier(.42,0,.6,.8);
+        }
+        90% {
+          transform: scaleX(.75) translateX(125%);
+        }
+        100% {
+          transform: scaleX(.75) translateX(125%);
+        }
+      }
+    </style>
+
+    <div id="progressContainer">
+      <div id="secondaryProgress" hidden\$="[[_hideSecondaryProgress(secondaryRatio)]]"></div>
+      <div id="primaryProgress"></div>
+    </div>
+`,
+
+  is: 'paper-progress',
+  behaviors: [IronRangeBehavior],
+
+  properties: {
+    /**
+     * The number that represents the current secondary progress.
+     */
+    secondaryProgress: {type: Number, value: 0},
+
+    /**
+     * The secondary ratio
+     */
+    secondaryRatio: {type: Number, value: 0, readOnly: true},
+
+    /**
+     * Use an indeterminate progress indicator.
+     */
+    indeterminate:
+        {type: Boolean, value: false, observer: '_toggleIndeterminate'},
+
+    /**
+     * True if the progress is disabled.
+     */
+    disabled: {
+      type: Boolean,
+      value: false,
+      reflectToAttribute: true,
+      observer: '_disabledChanged'
+    }
+  },
+
+  observers:
+      ['_progressChanged(secondaryProgress, value, min, max, indeterminate)'],
+
+  hostAttributes: {role: 'progressbar'},
+
+  _toggleIndeterminate: function(indeterminate) {
+    // If we use attribute/class binding, the animation sometimes doesn't
+    // translate properly on Safari 7.1. So instead, we toggle the class here in
+    // the update method.
+    this.toggleClass('indeterminate', indeterminate, this.$.primaryProgress);
+  },
+
+  _transformProgress: function(progress, ratio) {
+    var transform = 'scaleX(' + (ratio / 100) + ')';
+    progress.style.transform = progress.style.webkitTransform = transform;
+  },
+
+  _mainRatioChanged: function(ratio) {
+    this._transformProgress(this.$.primaryProgress, ratio);
+  },
+
+  _progressChanged: function(
+      secondaryProgress, value, min, max, indeterminate) {
+    secondaryProgress = this._clampValue(secondaryProgress);
+    value = this._clampValue(value);
+
+    var secondaryRatio = this._calcRatio(secondaryProgress) * 100;
+    var mainRatio = this._calcRatio(value) * 100;
+
+    this._setSecondaryRatio(secondaryRatio);
+    this._transformProgress(this.$.secondaryProgress, secondaryRatio);
+    this._transformProgress(this.$.primaryProgress, mainRatio);
+
+    this.secondaryProgress = secondaryProgress;
+
+    if (indeterminate) {
+      this.removeAttribute('aria-valuenow');
+    } else {
+      this.setAttribute('aria-valuenow', value);
+    }
+    this.setAttribute('aria-valuemin', min);
+    this.setAttribute('aria-valuemax', max);
+  },
+
+  _disabledChanged: function(disabled) {
+    this.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+  },
+
+  _hideSecondaryProgress: function(secondaryRatio) {
+    return secondaryRatio === 0;
+  }
+});
+
+/*
+Copyright 2019 Pawel Psztyc, The ARC team
+
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
 the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/* eslint-disable no-param-reassign */
+/* eslint-disable class-methods-use-this */
+
+/** @typedef {import('./AnypointAutocomplete').Suggestion} Suggestion */
+/** @typedef {import('./AnypointAutocomplete').InternalSuggestion} InternalSuggestion */
+/** @typedef {import('lit-element').TemplateResult} TemplateResult */
+
 /**
- * The `<auth-method-digest>` element displays a form for digest authentication.
- * The user have to choose is he want to provide username and password only or
- * all digest parameters to calculate final authorization header.
- *
- * In first case, the listeners and the transport method must perform handshake
- * by it's own. Otherwise authorization header should be set with calculated value.
- *
- * ### Example
- * ```
- * <auth-method-digest username="john" password="doe"></auth-method-digest>
- * ```
- *
- * The `settings` property (of the element or even detail property) for full form
- * has the following structure:
- *
- * ```
- * {
- *  "username": String,
- *  "realm": String,
- *  "nonce": String,
- *  "uri": String,
- *  "response": String,
- *  "opaque": String,
- *  "qop": String - can be empty,
- *  "nc": String,
- *  "cnonce": String
- * }
- * ```
- *
- * ## Response calculation
- * Depending on the algorithm and quality of protection (qop) properties the hasing
- * algorithm may need following data:
- * - request URL
- * - request payload (body)
- * - request HTTP method
- *
- * The element should be provided with this information by setting it's properties.
- * However, the element will listen for `url-value-changed`, `http-method-changed`
- * and `body-value-changed` events on the window object. Once the event is handled
- * it will set up corresponding properties.
- * All this events must have a `value` property set on event's detail object.
+ * Generates an id on passed element.
+ * @param {HTMLElement} target An element to set id on to
+ */
+function ensureNodeId$1(target) {
+  if (target.id) {
+    return;
+  }
+  const id = Math.floor(Math.random() * 100000 + 1);
+  target.id = `anypointAutocompleteInput${id}`;
+}
+
+const suggestionsValue = Symbol('suggestionsValue');
+const processSource = Symbol('processSource');
+const normalizeSource = Symbol('normalizeSource');
+const itemTemplate = Symbol('itemTemplate');
+const rippleTemplate = Symbol('rippleTemplate');
+const openedValue = Symbol('openedValue');
+const openedValuePrivate = Symbol('openedValuePrivate');
+const autocompleteFocus = Symbol('autocompleteFocus');
+
+/**
+ * # `<paper-autocomplete>`
  *
  * @customElement
- * @memberof UiElements
- * @demo demo/digest.html
- * @extends AuthMethodBase
+ * @demo demo/index.html
  */
-class AuthMethodDigest extends AuthMethodBase {
+class AnypointAutocomplete extends LitElement {
   get styles() {
-    return [
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
-
-      anypoint-input,
-      anypoint-masked-input {
-        display: inline-block;
-        width: calc(100% - 16px);
-        margin: 8px;
-      }`
-    ];
+    return css`.highlight {
+      font-weight: bold;
+    }`;
   }
 
-  render() {
-    const {
-      username,
-      password,
-      outlined,
-      compatibility,
-      readOnly,
-      disabled,
-      fullForm
-    } = this;
-    return html`<style>${this.styles}</style>
-    <iron-form>
-      <form autocomplete="on">
-        <anypoint-input
-          .value="${username}"
-          @input="${this._valueHandler}"
-          name="username"
-          type="text"
-          required
-          autovalidate
-          autocomplete="on"
-          .outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}"
-          invalidmessage="Username is required">
-          <label slot="label">User name</label>
-        </anypoint-input>
-        <anypoint-masked-input
-          name="password"
-          .value="${password}"
-          @input="${this._valueHandler}"
-          autocomplete="on"
-          .outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}">
-          <label slot="label">Password</label>
-        </anypoint-masked-input>
-
-        <div class="adv-toggle">
-          <anypoint-checkbox
-            class="adv-settings-input"
-            .checked="${fullForm}"
-            @change="${this._advHandler}"
-            .disabled="${disabled || readOnly}"
-          >Advanced settings</anypoint-checkbox>
-        </div>
-
-        ${fullForm ? html`<div class="extended-form">
-          <anypoint-input
-            .value="${this.realm}"
-            @input="${this._valueHandler}"
-            name="realm"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Realm is required">
-            <label slot="label">Server issued realm</label>
-          </anypoint-input>
-
-          <anypoint-input
-            .value="${this.nonce}"
-            @input="${this._valueHandler}"
-            name="nonce"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Nonce is required">
-            <label slot="label">Server issued nonce</label>
-          </anypoint-input>
-
-          <anypoint-dropdown-menu
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Quality of protection</label>
-            <anypoint-listbox
-              slot="dropdown-content"
-              .selected="${this.qop}"
-              @selected-changed="${this._qopHandler}"
-              .outlined="${outlined}"
-              ?compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-              attrforselected="data-qop">
-              <anypoint-item ?compatibility="${compatibility}" data-qop="auth">auth</anypoint-item>
-              <anypoint-item ?compatibility="${compatibility}" data-qop="auth-int">auth-int</anypoint-item>
-            </anypoint-listbox>
-          </anypoint-dropdown-menu>
-
-          <anypoint-input
-            .value="${this.nc}"
-            @input="${this._valueHandler}"
-            name="nc"
-            type="number"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Nonce count is required">
-            <label slot="label">Nounce count</label>
-          </anypoint-input>
-
-          <anypoint-dropdown-menu
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Hash algorithm</label>
-            <anypoint-listbox
-              slot="dropdown-content"
-              .selected="${this.algorithm}"
-              @selected-changed="${this._algorithmHandler}"
-              .outlined="${outlined}"
-              ?compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-              attrforselected="data-algorithm">
-              <anypoint-item ?compatibility="${compatibility}" data-algorithm="MD5">MD5</anypoint-item>
-              <anypoint-item ?compatibility="${compatibility}" data-algorithm="MD5-sess">MD5-sess</anypoint-item>
-            </anypoint-listbox>
-          </anypoint-dropdown-menu>
-
-          <anypoint-input
-            .value="${this.opaque}"
-            @input="${this._valueHandler}"
-            name="opaque"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Server issued opaque is required">
-            <label slot="label">Server issued opaque string</label>
-          </anypoint-input>
-
-          <anypoint-input
-            .value="${this.cnonce}"
-            @input="${this._valueHandler}"
-            name="cnonce"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Client nounce is required">
-            <label slot="label">Client nounce</label>
-          </anypoint-input>
-        </div>` : ''}
-      </form>
-    </iron-form>`;
+  createRenderRoot() {
+    return this;
   }
 
   static get properties() {
     return {
-      // The password.
-      password: { type: String },
-      // The username.
-      username: { type: String },
-      // If set then it will display all form fields.
-      fullForm: { type: Boolean },
-      // Server issued realm.
-      realm: { type: String },
-      // Server issued nonce.
-      nonce: { type: String },
-      // The realm value for the digest response.
-      algorithm: { type: String },
       /**
-       * The quality of protection value for the digest response.
-       * Either '', 'auth' or 'auth-int'
+       * A target input field to observe.
+       * It accepts an element which is the input with `value` property or
+       * an id of an element that is a child of the parent element of this node.
        */
-      qop: { type: String },
-      // Nonce count - increments with each request used with the same nonce
-      nc: { type: Number },
-      // Client nonce
-      cnonce: { type: String },
-      // A string of data specified by the server
-      opaque: { type: String },
-      // Hashed response to server challenge
-      response: { type: String },
-      // Request HTTP method
-      httpMethod: { type: String },
-      // Current request URL.
-      requestUrl: { type: String },
-
-      _requestUri: { type: String },
-      // Current request body.
-      requestBody: { type: String }
+      target: {},
+      /**
+       * List of suggestions to render.
+       * If the array items are strings they will be used to render a suggestions and
+       * to insert a value.
+       * If the list is an object the each object must contain `value` and `display`
+       * properties.
+       * The `display` property will be used in the suggestions list and the
+       * `value` property will be used to insert the value to the referenced text field.
+       */
+      source: { type: Array },
+      /**
+       * List of suggestion that are rendered.
+       */
+      _suggestions: { type: Array },
+      /**
+       * True when user query changed and waiting for `source` property update
+       */
+      _loading: { type: Boolean },
+      /**
+       * Set this to true if you use async operation in response for query event.
+       * This will render a loader when querying for more suggestions.
+       * Do not use it it you do not handle suggestions asynchronously.
+       */
+      loader: { type: Boolean, reflect: true },
+      /**
+       * If true it will opend suggestions on input field focus.
+       */
+      openOnFocus: { type: Boolean },
+      /**
+       * The orientation against which to align the element vertically
+       * relative to the text input.
+       * Possible values are "top", "bottom", "middle", "auto".
+       */
+      verticalAlign: { type: String },
+      /**
+       * A pixel value that will be added to the position calculated for the
+       * given `verticalAlign`, in the direction of alignment. You can think
+       * of it as increasing or decreasing the distance to the side of the
+       * screen given by `verticalAlign`.
+       *
+       * If `verticalAlign` is "top" or "middle", this offset will increase or
+       * decrease the distance to the top side of the screen: a negative offset
+       * will move the dropdown upwards; a positive one, downwards.
+       *
+       * Conversely if `verticalAlign` is "bottom", this offset will increase
+       * or decrease the distance to the bottom side of the screen: a negative
+       * offset will move the dropdown downwards; a positive one, upwards.
+       */
+      verticalOffset: { type: Number },
+      /**
+       * The orientation against which to align the element horizontally
+       * relative to the text input. Possible values are "left", "right",
+       * "center", "auto".
+       */
+      horizontalAlign: { type: String },
+      /**
+       * A pixel value that will be added to the position calculated for the
+       * given `horizontalAlign`, in the direction of alignment. You can think
+       * of it as increasing or decreasing the distance to the side of the
+       * screen given by `horizontalAlign`.
+       *
+       * If `horizontalAlign` is "left" or "center", this offset will increase or
+       * decrease the distance to the left side of the screen: a negative offset
+       * will move the dropdown to the left; a positive one, to the right.
+       *
+       * Conversely if `horizontalAlign` is "right", this offset will increase
+       * or decrease the distance to the right side of the screen: a negative
+       * offset will move the dropdown to the right; a positive one, to the left.
+       */
+      horizontalOffset: { type: Number },
+      /**
+       * Determines which action to perform when scroll outside an opened overlay
+       * happens. Possible values: lock - blocks scrolling from happening, refit -
+       * computes the new position on the overlay cancel - causes the overlay to
+       * close
+       */
+      scrollAction: { type: String },
+      /**
+       * Removes animation from the dropdown.
+       */
+      noAnimations: { type: Boolean },
+      /**
+       * Removes ripple effect from list items.
+       * This effect is always disabled when `compatibility` is set.
+       */
+      noink: { type: Boolean },
+      /**
+       * Enables compatibility with Anypoint components.
+       */
+      compatibility: { type: Boolean, reflect: true },
+      /**
+       * @deprecated Use `compatibility` instead
+       */
+      legacy: { type: Boolean },
+      /**
+       * When set it won't setup `aria-controls` on target element.
+       */
+      noTargetControls: { type: Boolean }
     };
   }
 
-  get requestUrl() {
-    return this._requestUrl;
+  get target() {
+    return this._target;
   }
 
-  set requestUrl(value) {
-    const old = this._requestUrl;
+  set target(value) {
+    const old = this._target;
+    if (old === value) {
+      return;
+    }
+    this._target = value;
+    this._targetChanged();
+  }
+
+  /**
+   * @return {string[]|InternalSuggestion[]} List of suggestion that are rendered.
+   */
+  get suggestions() {
+    return this._suggestions;
+  }
+
+  /**
+   * @return {boolean} True when user query changed and waiting for `source` property update
+   */
+  get loading() {
+    return this._loading;
+  }
+
+  get _loading() {
+    return this.__loading;
+  }
+
+  set _loading(value) {
+    const old = this.__loading;
     /* istanbul ignore if */
     if (old === value) {
       return;
     }
-    this._requestUrl = value;
-    this._processRequestUrl(value);
+    this.__loading = value;
+    this.requestUpdate('_loading', value);
+    this.dispatchEvent(
+      new CustomEvent('loading-chanegd', {
+        detail: {
+          value
+        }
+      })
+    );
+  }
+
+  get source() {
+    return this._source;
+  }
+
+  set source(value) {
+    const old = this._source;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._source = value;
+    this[suggestionsValue] = this[processSource](value);
+    if (this[openedValue]) {
+      this._filterSuggestions();
+    }
+    if (this._loading) {
+      this._loading = false;
+    }
+  }
+
+  /**
+   * @return {boolean} True if the overlay is currently opened.
+   */
+  get opened() {
+    return this[openedValue];
+  }
+
+  get [openedValue]() {
+    return this[openedValuePrivate] || false;
+  }
+
+  set [openedValue](value) {
+    const old = this[openedValuePrivate];
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this[openedValuePrivate] = value;
+    this.requestUpdate();
+    this._openedChanged(value);
+    this.dispatchEvent(
+      new CustomEvent('opened-changed', {
+        detail: {
+          value
+        }
+      })
+    );
+  }
+
+  get legacy() {
+    return this.compatibility;
+  }
+
+  set legacy(value) {
+    this.compatibility = value;
+  }
+
+  get compatibility() {
+    return this._compatibility;
+  }
+
+  set compatibility(value) {
+    const old = this._compatibility;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._compatibility = value;
+    this.requestUpdate('compatibility', old);
+  }
+
+  get isAttached() {
+    return this._isAttached;
+  }
+
+  set isAttached(value) {
+    const old = this._isAttached;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._isAttached = value;
+    this._targetChanged();
+  }
+
+  get _listbox() {
+    if (!this.__listbox) {
+      this.__listbox = this.querySelector('anypoint-listbox');
+    }
+    return this.__listbox;
+  }
+
+  /**
+   * @return {EventListener} Previously registered handler for `query` event
+   */
+  get onquery() {
+    return this._onquery;
+  }
+
+  /**
+   * Registers a callback function for `query` event
+   * @param {EventListener} value A callback to register. Pass `null` or `undefined`
+   * to clear the listener.
+   */
+  set onquery(value) {
+    if (this._onquery) {
+      this.removeEventListener('query', this._onquery);
+    }
+    if (typeof value !== 'function') {
+      this._onquery = null;
+      return;
+    }
+    this._onquery = value;
+    this.addEventListener('query', value);
+  }
+
+  /**
+   * @return {EventListener} Previously registered handler for `selected` event
+   */
+  get onselected() {
+    return this._onselected;
+  }
+
+  /**
+   * Registers a callback function for `selected` event
+   * @param {EventListener} value A callback to register. Pass `null` or `undefined`
+   * to clear the listener.
+   */
+  set onselected(value) {
+    if (this._onselected) {
+      this.removeEventListener('selected', this._onselected);
+    }
+    if (typeof value !== 'function') {
+      this._onselected = null;
+      return;
+    }
+    this._onselected = value;
+    this.addEventListener('selected', value);
   }
 
   constructor() {
-    super('digest');
-    this.nc = 1;
-    this.algorithm = 'MD5';
-    this._onUrlChanged = this._onUrlChanged.bind(this);
-    this._onHttpMethodChanged = this._onHttpMethodChanged.bind(this);
-    this._onBodyChanged = this._onBodyChanged.bind(this);
-    this._onAuthSettings = this._onAuthSettings.bind(this);
+    super();
+    this._targetInputHandler = this._targetInputHandler.bind(this);
+    this._targetFocusHandler = this._targetFocusHandler.bind(this);
+    this._targetKeydown = this._targetKeydown.bind(this);
+
+    this._suggestions = [];
+    this._loading = false;
+    this.loader = false;
+    this.openOnFocus = false;
+    this[openedValue] = false;
+    this.horizontalAlign = 'center';
+    this.verticalAlign = 'top';
+    this.scrollAction = 'refit';
+    this.horizontalOffset = 0;
+    this.verticalOffset = 2;
+    this.noTargetControls = false;
+    this.noAnimations = false;
+    this.noink = false;
   }
 
-  _attachListeners(node) {
-    node.addEventListener('url-value-changed', this._onUrlChanged);
-    node.addEventListener('http-method-changed', this._onHttpMethodChanged);
-    node.addEventListener('body-value-changed', this._onBodyChanged);
-    node.addEventListener('auth-settings-changed', this._onAuthSettings);
+  connectedCallback() {
+    /* istanbul ignore else */
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    ensureNodeId$1(this);
+    this.style.position = 'absolute';
+    this.isAttached = true;
   }
 
-  _detachListeners(node) {
-    node.removeEventListener('url-value-changed', this._onUrlChanged);
-    node.removeEventListener('http-method-changed', this._onHttpMethodChanged);
-    node.removeEventListener('body-value-changed', this._onBodyChanged);
-    node.removeEventListener('auth-settings-changed', this._onAuthSettings);
+  disconnectedCallback() {
+    /* istanbul ignore else */
+    if (super.disconnectedCallback) {
+      super.disconnectedCallback();
+    }
+    this.isAttached = false;
   }
 
   firstUpdated() {
-    this._settingsChanged();
-  }
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} Validation result.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
+    // Styles are defined here because it does not uses shadow root
+    // to comply with accessibility requiremenets.
+    // Styles defined in the component's `styles` getter won't be applied
+    // to the children.
+    const box = this._listbox;
+    ensureNodeId$1(box);
+    box.style.backgroundColor = 'var(--anypoiont-autocomplete-background-color, #fff)';
+    box.style.boxShadow = 'var(--anypoiont-autocomplete-dropdown-shaddow)';
+    const {id} = box;
+    this.setAttribute('aria-owns', id);
+    this.setAttribute('aria-controls', id);
+    const target = this._oldTarget;
+    if (!target || this.noTargetControls) {
+      return;
     }
-    return form ? form.validate() : true;
-  }
-  /**
-   * Returns current settings. Object's structure depends on `fullForm`
-   * property. If it's `false` then the object will contain username and
-   * password. Otherwise it will contain a list of parameters of the
-   * Authorization header.
-   *
-   * @return {Object}
-   */
-  getSettings() {
-    if (!this.fullForm) {
-      return {
-        password: this.password || '',
-        username: this.username || ''
-      };
-    }
-    this.response = this.generateResponse();
-    const settings = {};
-    settings.username = this.username || '';
-    settings.password = this.password || '';
-    settings.realm = this.realm;
-    settings.nonce = this.nonce;
-    settings.uri = this._requestUri;
-    settings.response = this.response;
-    settings.opaque = this.opaque;
-    settings.qop = this.qop;
-    settings.nc = ('00000000' + this.nc).slice(-8);
-    settings.cnonce = this.cnonce;
-    settings.algorithm = this.algorithm;
-    return settings;
+    target.setAttribute('aria-controls', id);
   }
 
   /**
-   * Restores settings from stored value.
-   *
-   * @param {Object} settings Object returned by `_getSettings()`
+   * Normalizes suggestions into a single struct.
+   * @param {Array<string|Suggestion>|undefined|null} value A list of suggestions to process
+   * @return {InternalSuggestion[]|null} Normalized suggestions
    */
-  restore(settings) {
-    this.username = settings.username;
-    this.password = settings.password;
-    this.realm = settings.realm;
-    this.nonce = settings.nonce;
-    this.opaque = settings.opaque;
-    this.qop = settings.qop;
-    this.cnonce = settings.cnonce;
-    if (settings.uri) {
-      this._requestUri = settings.uri;
+  [processSource](value) {
+    if (!Array.isArray(value)) {
+      return null;
     }
-    if (settings.nc) {
-      this.nc = Number(settings.nc.replace(/0+/, ''));
+    const result = [];
+    value.forEach((item, index) => {
+      const normalized = this[normalizeSource](item, index);
+      if (normalized) {
+        result.push(normalized);
+      }
+    });
+    return result;
+  }
+
+  /**
+   * Normalizes a suggestion
+   * @param {Suggestion|string} value A list of suggestions to process
+   * @param {number} index The index of the suggestion on the source list.
+   * @return {InternalSuggestion|null} Normalized suggestions
+   */
+  [normalizeSource](value, index) {
+    if (typeof value === 'string') {
+      return { value, index };
+    }
+    if (!value.value) {
+      return null;
+    }
+    return { ...value, index };
+  }
+
+  /**
+   * Handler for target property change.
+   */
+  _targetChanged() {
+    const { target, isAttached, _oldTarget } = this;
+    if (_oldTarget) {
+      _oldTarget.removeEventListener('input', this._targetInputHandler);
+      _oldTarget.removeEventListener('focus', this._targetFocusHandler);
+      _oldTarget.removeEventListener('keydown', this._targetKeydown);
+      this._oldTarget = null;
+    }
+    if (!target || !isAttached) {
+      return;
+    }
+    this.notifyResize();
+    if (typeof target === 'string') {
+      const parent = this.parentElement;
+      if (!parent || !parent.querySelector) {
+        return;
+      }
+      const node = parent.querySelector(`#${target}`);
+      if (node) {
+        this.target = node;
+
+      }
+    } else if (target) {
+      target.addEventListener('input', this._targetInputHandler);
+      target.addEventListener('focus', this._targetFocusHandler);
+      target.addEventListener('keydown', this._targetKeydown);
+      this._setupTargetAria(target);
+      this._oldTarget = target;
+      if (target === document.activeElement) {
+        this._targetFocusHandler();
+      }
     }
   }
 
-  _processInput() {
-    if (this.fullForm) {
-      if (!this.nc) {
-        this.nc = 1;
-        return;
-      }
-      if (!this.cnonce) {
-        this.cnonce = this.generateCnonce();
-        return;
+  /**
+   * Sets target input width on the listbox before rendering.
+   */
+  _setComboboxWidth() {
+    const target = this._oldTarget;
+    const box = this._listbox;
+    if (!target || !box || !target.nodeType || target.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const { width } = rect;
+    if (!width) {
+      return;
+    }
+    box.style.width = `${width}px`;
+  }
+
+  /**
+   * Setups relavent aria attributes in the target input.
+   * @param {HTMLElement} target An element to set attribute on to
+   */
+  _setupTargetAria(target) {
+    ensureNodeId$1(this);
+    target.setAttribute('aria-autocomplete', 'list');
+    target.setAttribute('autocomplete', 'off');
+    target.setAttribute('aria-haspopup', 'true');
+    // parent node of the input also should have aria attributes
+    const parent = target.parentElement;
+    if (!parent) {
+      return;
+    }
+    parent.setAttribute('role', 'combobox');
+    parent.setAttribute('aria-expanded', 'false');
+    parent.setAttribute('aria-owns', this.id);
+    parent.setAttribute('aria-haspopup', 'listbox');
+    if (!parent.hasAttribute('aria-label') && !parent.hasAttribute('aria-labelledby')) {
+      parent.setAttribute('aria-label', 'Text input with list suggestions');
+    }
+  }
+
+  /**
+   * Sets `aria-expanded` on input's parent element.
+   * @param {boolean} opened
+   */
+  _openedChanged(opened) {
+    const target = this._oldTarget;
+    const parent = target && target.parentElement;
+    if (!parent) {
+      return;
+    }
+    parent.setAttribute('aria-expanded', String(opened));
+  }
+
+  /**
+   * Renders suggestions on target's `input` event
+   * @param {CustomEvent} e
+   */
+  _targetInputHandler(e) {
+    if (e.detail) {
+      // This event is dispatched by the autocomplete
+      return;
+    }
+    this.renderSuggestions();
+  }
+
+  /**
+   * Renders suggestions on target input focus if `openOnFocus` is set.
+   */
+  _targetFocusHandler() {
+    if (!this.openOnFocus || this.opened || this[autocompleteFocus] || this.__ignoreNextFocus) {
+      return;
+    }
+    this[autocompleteFocus] = true;
+    setTimeout(() => {
+      this[autocompleteFocus] = false;
+      this.renderSuggestions();
+    });
+  }
+
+  /**
+   * Renders suggestions for current input and opens the overlay if
+   * there are suggestions to show.
+   */
+  renderSuggestions() {
+    if (!this.isAttached) {
+      return;
+    }
+    let { value } = this._oldTarget;
+    if (value === undefined || value === null) {
+      value = '';
+    }
+    if (typeof value !== 'string') {
+      value = String(value);
+    }
+    if (this._previousQuery && value.indexOf(this._previousQuery) === 0) {
+      this._previousQuery = value;
+      this._filterSuggestions();
+      return;
+    }
+    this._listbox.selected = -1;
+    this._disaptchQuery(value);
+    this._previousQuery = value;
+    this._filterSuggestions();
+    if (this.loader) {
+      this._loading = true;
+      if (!this[openedValue]) {
+        this._setComboboxWidth();
+        this[openedValue] = true;
       }
     }
   }
+
   /**
-   * Generates client nonce.
-   *
-   * @return {String} Generated client nonce.
+   * Disaptches query event and returns it.
+   * @param {String} value Current input value.
+   * @return {CustomEvent}
    */
-  generateCnonce() {
-    const characters = 'abcdef0123456789';
-    let token = '';
-    for (let i = 0; i < 16; i++) {
-      const randNum = Math.round(Math.random() * characters.length);
-      token += characters.substr(randNum, 1);
-    }
-    return token;
+  _disaptchQuery(value) {
+    const e = new CustomEvent('query', {
+      detail: {
+        value
+      }
+    });
+    this.dispatchEvent(e);
+    return e;
   }
+
   /**
-   * Generates the response header based on the parameters provided in the
-   * form.
-   *
-   * See https://en.wikipedia.org/wiki/Digest_access_authentication#Overview
-   *
-   * @return {String} A response part of the authenticated digest request.
+   * Filter `source` array for current value.
    */
-  generateResponse() {
-    /* global CryptoJS */
-    const HA1 = this._getHA1();
-    const HA2 = this._getHA2();
-    const ncString = ('00000000' + this.nc).slice(-8);
-    let responseStr = HA1 + ':' + this.nonce;
-    if (!this.qop) {
-      responseStr += ':' + HA2;
+  _filterSuggestions() {
+    if (!this._oldTarget || this._previousQuery === undefined) {
+      return;
+    }
+    this._suggestions = [];
+    const source = /** @type InternalSuggestion[] */ (this[suggestionsValue]);
+    if (!source || !source.length) {
+      this[openedValue] = false;
+      return;
+    }
+    const query = this._previousQuery ? this._previousQuery.toLowerCase() : '';
+    const filtered = this._listSuggestions(source, query);
+    if (filtered.length === 0) {
+      this[openedValue] = false;
+      return;
+    }
+    filtered.sort((a, b) => {
+      const valueA = String(a.value);
+      const valueB = String(b.value);
+      const lowerA = valueA.toLowerCase();
+      const lowerB = valueB.toLowerCase();
+      const aIndex = lowerA.indexOf(query);
+      const bIndex = lowerB.indexOf(query);
+      if (aIndex === bIndex) {
+        return valueA.localeCompare(valueB);
+      }
+      if (aIndex === 0 && bIndex !== 0) {
+        return -1;
+      }
+      if (bIndex === 0 && aIndex !== 0) {
+        return 1;
+      }
+      if (valueA > valueB) {
+        return 1;
+      }
+      if (valueA < valueB) {
+        return -1;
+      }
+      return valueA.localeCompare(valueB);
+    });
+    this._suggestions = /** @type Suggestion[] */ (filtered);
+    this.notifyResize();
+    setTimeout(() => {
+      if (!this.opened) {
+        this._setComboboxWidth();
+        this[openedValue] = true;
+      }
+    });
+  }
+
+  /**
+   * Filters out suggestions
+   * @param {InternalSuggestion[]} source Source suggestions (normalized)
+   * @param {string} query Filter term
+   * @return {InternalSuggestion[]} Filtered suggestions.
+   */
+  _listSuggestions(source, query) {
+    if (!query && this.openOnFocus) {
+      return source;
+    }
+    const filter = (item) => {
+      const { value='' } = item;
+      return String(value).toLowerCase().includes(query);
+    };
+    return source.filter(filter);
+  }
+
+  _closeHandler() {
+    if (this[openedValue]) {
+      this[openedValue] = false;
+    }
+  }
+
+  notifyResize() {
+    const node = this.querySelector('anypoint-dropdown');
+    if (node) {
+      // @ts-ignore
+      node.notifyResize();
+    }
+  }
+
+  _selectionHandler(e) {
+    const { selected } = e.target;
+    if (selected === -1 || selected === null || selected === undefined) {
+      return;
+    }
+    this._selectSuggestion(selected);
+  }
+
+  /**
+   * Inserts selected suggestion into the text box and closes the suggestions.
+   * @param {number} selected Index of suggestion to use.
+   */
+  _selectSuggestion(selected) {
+    // pick from the currently rendered suggestions, selected refers to this list
+    const value = this._suggestions[selected];
+    if (!value) {
+      return;
+    }
+    const { target } = this;
+    // The suggestion on the `_suggestions` is a subset of `[suggestionsValue]`
+    // that has the `index` property, which refers to the index position on the source list.
+    const sourceSuggestion = this.source[value.index];
+    if (!sourceSuggestion) {
+      // the source must have changed.
+      return;
+    }
+    const result = String(value.value);
+    target.value = result;
+    target.dispatchEvent(
+      new CustomEvent('input', {
+        detail: {
+          autocomplete: this
+        }
+      })
+    );
+    this[openedValue] = false;
+    this._inform(sourceSuggestion);
+    if (!this.__ignoreCloseRefocus) {
+      this._refocusTarget();
+    }
+  }
+
+  _refocusTarget() {
+    this.__ignoreNextFocus = true;
+    this.target.blur();
+    this.target.focus();
+    setTimeout(() => {
+      this.__ignoreNextFocus = false;
+    });
+  }
+
+  /**
+   * Handler for the keydown event.
+   * @param {KeyboardEvent} e
+   */
+  _targetKeydown(e) {
+    if (e.key === 'ArrowDown') {
+      this._onDownKey();
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (e.key === 'ArrowUp') {
+      this._onUpKey();
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (e.key === 'Enter' || e.key === 'NumEnter') {
+      this._onEnterKey();
+    } else if (e.key === 'Tab') {
+      this._onTabDown();
+    } else if (e.key === 'Escape') {
+      this._onEscKey();
+    }
+  }
+
+  /**
+   * If the dropdown is opened then it focuses on the first element on the list.
+   * If closed it opens the suggestions and focuses on the first element on
+   * the list.
+   */
+  _onDownKey() {
+    if (!this[openedValue]) {
+      this.renderSuggestions();
+      setTimeout(() => {
+        this._listbox.highlightNext();
+      });
     } else {
-      responseStr += ':' + ncString + ':' + this.cnonce + ':' + this.qop + ':' + HA2;
+      this._listbox.highlightNext();
     }
-    return CryptoJS.MD5(responseStr).toString();
   }
-  // Generates HA1 as defined in Digest spec.
-  _getHA1() {
-    let HA1param = this.username + ':' + this.realm + ':' + this.password;
-    let HA1 = CryptoJS.MD5(HA1param).toString();
 
-    if (this.algorithm === 'MD5-sess') {
-      HA1param = HA1 + ':' + this.nonce + ':' + this.cnonce;
-      HA1 = CryptoJS.MD5(HA1param).toString();
+  /**
+   * If the dropdown is opened then it focuses on the last element on the list.
+   * If closed it opens the suggestions and focuses on the last element on
+   * the list.
+   */
+  _onUpKey() {
+    if (!this[openedValue]) {
+      this.renderSuggestions();
+      setTimeout(() => {
+        if (this[openedValue]) {
+          this._listbox.highlightPrevious();
+        }
+      });
+    } else {
+      this._listbox.highlightPrevious();
     }
-    return HA1;
   }
-  // Generates HA2 as defined in Digest spec.
-  _getHA2() {
-    let HA2param = this.httpMethod + ':' + this._requestUri;
-    if (this.qop === 'auth-int') {
-      HA2param += ':' + CryptoJS.MD5(this.requestBody).toString();
-    }
-    return CryptoJS.MD5(HA2param).toString();
-  }
+
   /**
-   * Handler to the `url-value-changed` event. When the element handle this
-   * event it will update the `requestUrl` property.
-   * @param {CustomEvent} e
+   * Closes the dropdown.
    */
-  _onUrlChanged(e) {
-    this.requestUrl = e.detail.value;
+  _onEscKey() {
+    this[openedValue] = false;
   }
+
   /**
-   * Handler to the `http-method-changed` event. When the element handle this
-   * event it will update the `httpMethod` property.
-   * @param {CustomEvent} e
+   * Accetps first suggestion from the dropdown when opened.
    */
-  _onHttpMethodChanged(e) {
-    this.httpMethod = e.detail.value;
-    this._processInput();
-    this._settingsChanged();
-  }
-  /**
-   * Handler to the `body-value-changed` event. When the element handle this
-   * event it will update the `requestBody` property.
-   * @param {CustomEvent} e
-   */
-  _onBodyChanged(e) {
-    this.requestBody = e.detail.value;
-    this._processInput();
-    this._settingsChanged();
-  }
-  /**
-   * Handler to the `auth-settings-changed` event (fired by all auth panels).
-   * If the event was fired by other element with the same method ttype
-   * then the form will be updated to incomming values.
-   * This helps to sync changes between elements in the same app.
-   * @param {CustomEvent} e
-   */
-  _onAuthSettings(e) {
-    const target = this._getEventTarget(e);
-    if (target === this || e.detail.type !== 'digest') {
+  _onEnterKey() {
+    if (!this[openedValue]) {
       return;
     }
-    this.restore(e.detail.settings);
-  }
-
-  _advHandler(e) {
-    this._processInput();
-    this._setSettingsInputValue('fullForm', e.target.checked);
-  }
-
-  _qopHandler(e) {
-    this._processInput();
-    this._setSettingsInputValue('qop', e.detail.value);
-  }
-
-  _algorithmHandler(e) {
-    this._processInput();
-    this._setSettingsInputValue('algorithm', e.detail.value);
-  }
-
-  _valueHandler(e) {
-    const { name, value } = e.target;
-    this._processInput();
-    this._setSettingsInputValue(name, value);
-  }
-
-  _processRequestUrl(value) {
-    if (!value || typeof value !== 'string') {
-      this._requestUri = undefined;
-      this._processInput();
-      this._settingsChanged();
-      return;
+    const { _listbox: node } = this;
+    const { highlightedItem } = node;
+    if (highlightedItem) {
+      const index = Number(node.indexOf(highlightedItem));
+      if (!Number.isNaN(index) && index > -1) {
+        this._selectSuggestion(index);
+        return;
+      }
     }
-    try {
-      const url = new URL(value);
-      value = url.pathname;
-    } catch (_) {
-      value = value.trum();
-    }
-    this._requestUri = value;
-    this._processInput();
-    this._settingsChanged();
+    this._selectSuggestion(0);
   }
+
   /**
-   * Fired when error occured when decoding hash.
-   *
-   * @event error
-   * @param {Error} error The error object.
+   * The element refocuses on the input when suggestions closes.
+   * Also, the lisbox element is focusable so with tab it can be next target.
+   * Finally, the dropdown has close animation that takes some time to finish
+   * so it will try to refocus after the animation finish.
+   * This function sets flags in debouncer to prohibit this.
    */
+  _onTabDown() {
+    if (this[openedValue]) {
+      this._listbox.tabIndex = -1;
+      this.__ignoreNextFocus = true;
+      this.__ignoreCloseRefocus = true;
+      this[openedValue] = false;
+      setTimeout(() => {
+        this._listbox.tabIndex = 0;
+        this.__ignoreNextFocus = false;
+        this.__ignoreCloseRefocus = false;
+      }, 300);
+    }
+  }
+
   /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
+   * Dispatches `selected` event with new value.
    *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings containing hash, password
-   * and username.
-   * @param {String} type The authorization type - basic
-   * @param {Boolean} valid True if the form has been validated.
+   * @param {string|Suggestion} value Selected value.
    */
+  _inform(value) {
+    const ev = new CustomEvent('selected', {
+      detail: {
+        value
+      },
+      cancelable: true
+    });
+    this.dispatchEvent(ev);
+  }
+
+  render() {
+    const {
+      _oldTarget,
+      verticalAlign,
+      horizontalAlign,
+      scrollAction,
+      horizontalOffset,
+      verticalOffset,
+      noAnimations,
+      styles,
+      compatibility,
+    } = this;
+    const offset = compatibility ? -2 : 0;
+    const finalVerticalOffset = verticalOffset  + offset;
+    return html`
+    <style>${styles}</style>
+    <anypoint-dropdown
+      .positionTarget="${_oldTarget}"
+      .verticalAlign="${verticalAlign}"
+      .verticalOffset="${finalVerticalOffset}"
+      .horizontalAlign="${horizontalAlign}"
+      .horizontalOffset="${horizontalOffset}"
+      .scrollAction="${scrollAction}"
+      .opened="${this[openedValue]}"
+      .noAnimations="${noAnimations}"
+      noautofocus
+      nooverlap
+      nocancelonoutsideclick
+      @overlay-closed="${this._closeHandler}"
+    >
+      ${this._listboxTemplate()}
+    </anypoint-dropdown>
+    `;
+  }
+
+  /**
+   * @return {TemplateResult} Returns a template for the listbox
+   */
+  _listboxTemplate() {
+    return html`
+      <anypoint-listbox
+        aria-label="Use arrows and enter to select list item. Escape to close the list."
+        slot="dropdown-content"
+        selectable="anypoint-item,anypoint-item-body"
+        useariaselected
+        @select="${this._selectionHandler}"
+        ?compatibility="${this.compatibility}"
+      >
+        ${this._loaderTemplate()}
+        ${this._listTemplate()}
+      </anypoint-listbox>
+    `;
+  }
+
+  /**
+   * @return {TemplateResult|string} Returns a template for the progress bar
+   */
+  _loaderTemplate() {
+    const { loader, _loading } = this;
+    const _showLoader = !!loader && !!_loading;
+    if (!_showLoader) {
+      return '';
+    }
+    return html`<paper-progress style="width: 100%" indeterminate></paper-progress>`;
+  }
+
+  /**
+   * @return {TemplateResult[]} Returns a template for the list item
+   */
+  _listTemplate() {
+    const { _suggestions=[] } = this;
+    return _suggestions.map((item) => this[itemTemplate](item));
+  }
+
+  /**
+   * @param {Suggestion} item A suggestion to render
+   * @return {TemplateResult} Template for a single drop down item
+   */
+  [itemTemplate](item) {
+    const label = String(item.label || item.value);
+    const { description } = item;
+    const { compatibility, noink } = this;
+    if (description) {
+      return html`<anypoint-item ?compatibility="${compatibility}">
+      <anypoint-item-body ?compatibility="${compatibility}" twoline>
+        <div>${label}</div>
+        <div secondary>${description}</div>
+        ${this[rippleTemplate](compatibility, noink)}
+      </anypoint-item-body></anypoint-item>`;
+    }
+    return html`<anypoint-item ?compatibility="${compatibility}">
+      <div>${label}</div>
+      ${this[rippleTemplate](compatibility, noink)}
+    </anypoint-item>`;
+  }
+
+  [rippleTemplate](compatibility, noink) {
+    if (compatibility) {
+      return '';
+    }
+    return html`<paper-ripple ?noink="${noink}"></paper-ripple>`;
+  }
 }
-window.customElements.define('auth-method-digest', AuthMethodDigest);
-
 /**
-@license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+ * Fired when user entered some text into the input.
+ * It is a time to query external datastore for suggestions and update "source" property.
+ * Source should be updated event if the backend result with empty values and should set
+ * the list to empty array.
+ *
+ * Nore that setting up source in response to this event after the user has closed
+ * the dropdown it will have no effect at the moment.
+ *
+ * @event query
+ * @param {String} value An entered phrase in text field.
+ */
+/**
+ * Fired when the item was selected by the user.
+ * At the time of receiving this event new value is already set in target input field.
+ *
+ * @event selected
+ * @param {String} value Selected value
+ */
+
+/*
+Copyright 2019 Pawel Psztyc, The ARC team
+
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
 the License at
+
 http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
-/**
- * The `<auth-method-ntlm>` element displays a form to provide the NTLM auth
- * credentials.
- *
- * It only provides data since NTLM authentication and all calculations must
- * be conducted when working on socket.
- *
- * This form requires to provide at least username and password. The domain
- * parameter is not required in NTLM so it may be empty.
- *
- * ### Example
- *
- * ```html
- * <auth-method-ntlm username="john" password="doe" domain="my-nt-domain"></auth-method-ntlm>
- * ```
- *
- * @customElement
- * @memberof UiElements
- * @demo demo/ntlm.html
- * @extends AuthMethodBase
- */
-class AuthMethodNtlm extends AuthMethodBase {
-  get styles() {
-    return [
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
 
-      anypoint-input,
-      anypoint-masked-input {
-        display: inline-block;
-        width: calc(100% - 16px);
-        margin: 8px;
-      }`
-    ];
-  }
-
-  render() {
-    const {
-      username,
-      password,
-      domain,
-      outlined,
-      compatibility,
-      readOnly,
-      disabled
-    } = this;
-    return html`<style>${this.styles}</style>
-      <iron-form>
-        <form autocomplete="on">
-          <anypoint-input
-            .value="${username}"
-            @input="${this._valueHandler}"
-            name="username"
-            type="text"
-            required
-            autovalidate
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Username is required">
-            <label slot="label">User name</label>
-          </anypoint-input>
-          <anypoint-masked-input
-            name="password"
-            .value="${password}"
-            @input="${this._valueHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}">
-            <label slot="label">Password</label>
-          </anypoint-masked-input>
-          <anypoint-input
-            .value="${domain}"
-            @input="${this._valueHandler}"
-            name="domain"
-            type="text"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}">
-            <label slot="label">NT domain</label>
-          </anypoint-input>
-        </form>
-      </iron-form>`;
-  }
-
-  static get properties() {
-    return {
-      // The domain parameter for the request.
-      domain: { type: String },
-      // The password.
-      password: { type: String },
-      // The username.
-      username: { type: String }
-    };
-  }
-
-  get username() {
-    return this._username || '';
-  }
-
-  set username(value) {
-    /* istanbul ignore else */
-    if (this._sop('username', value)) {
-      this._valueChanged();
-    }
-  }
-
-  get password() {
-    return this._password || '';
-  }
-
-  set password(value) {
-    /* istanbul ignore else */
-    if (this._sop('password', value)) {
-      this._valueChanged();
-    }
-  }
-
-  get domain() {
-    return this._domain || '';
-  }
-
-  set domain(value) {
-    /* istanbul ignore else */
-    if (this._sop('domain', value)) {
-      this._valueChanged();
-    }
-  }
-
-  constructor() {
-    super('ntlm');
-    this._onAuthSettings = this._onAuthSettings.bind(this);
-  }
-
-  firstUpdated() {
-    this._valueChanged();
-  }
-
-  _attachListeners(node) {
-    node.addEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-  _detachListeners(node) {
-    node.removeEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} `true` if valid, `false` otherwise.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
-    }
-    return form.validate();
-  }
-  /**
-   * Creates a settings object with user provided data.
-   *
-   * @return {Object} User provided data
-   */
-  getSettings() {
-    return {
-      domain: this.domain || '',
-      password: this.password || '',
-      username: this.username || ''
-    };
-  }
-
-  /**
-   * Restores settings from stored value.
-   *
-   * @param {Object} settings Object returned by `_getSettings()`
-   */
-  restore(settings) {
-    this.domain = settings.domain;
-    this.password = settings.password;
-    this.username = settings.username;
-  }
-
-  reset() {
-    this.domain = '';
-    this.password = '';
-    this.username = '';
-  }
-  /**
-   * Handler for the `auth-settings-changed` event (fired by all auth panels).
-   * If the event was fired by other element with the same method ttype
-   * then the form will be updated to incomming values.
-   *
-   * @param {Event} e
-   */
-  _onAuthSettings(e) {
-    if (this._getEventTarget(e) === this || e.detail.type !== 'ntlm') {
-      return;
-    }
-    this.restore(e.detail.settings);
-  }
-
-  _valueHandler(e) {
-    const { name, value } = e.target;
-    this._setSettingsInputValue(name, value);
-  }
-
-  _valueChanged() {
-    if (this.__isInputEvent) {
-      return;
-    }
-    this._settingsChanged();
-  }
-  /**
-   * Fired when error occured when decoding hash.
-   *
-   * @event error
-   * @param {Error} error The error object.
-   */
-  /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
-   *
-   * The `domain` field is not required in the form so check for missing `domain` value if it's
-   * required in your application.
-   *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings containing domain, password
-   * and username.
-   * @param {String} type The authorization type - ntlm
-   * @param {Boolean} valid True if the form has been validated.
-   */
-}
-window.customElements.define('auth-method-ntlm', AuthMethodNtlm);
+window.customElements.define('anypoint-autocomplete', AnypointAutocomplete);
 
 /**
 @license
@@ -67362,2392 +70138,6 @@ Polymer({
 
 /**
 @license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-const template$1 = html$1`
-<custom-style>
-  <style is="custom-style">
-    html {
-
-      /* Material Design color palette for Google products */
-
-      --google-red-100: #f4c7c3;
-      --google-red-300: #e67c73;
-      --google-red-500: #db4437;
-      --google-red-700: #c53929;
-
-      --google-blue-100: #c6dafc;
-      --google-blue-300: #7baaf7;
-      --google-blue-500: #4285f4;
-      --google-blue-700: #3367d6;
-
-      --google-green-100: #b7e1cd;
-      --google-green-300: #57bb8a;
-      --google-green-500: #0f9d58;
-      --google-green-700: #0b8043;
-
-      --google-yellow-100: #fce8b2;
-      --google-yellow-300: #f7cb4d;
-      --google-yellow-500: #f4b400;
-      --google-yellow-700: #f09300;
-
-      --google-grey-100: #f5f5f5;
-      --google-grey-300: #e0e0e0;
-      --google-grey-500: #9e9e9e;
-      --google-grey-700: #616161;
-
-      /* Material Design color palette from online spec document */
-
-      --paper-red-50: #ffebee;
-      --paper-red-100: #ffcdd2;
-      --paper-red-200: #ef9a9a;
-      --paper-red-300: #e57373;
-      --paper-red-400: #ef5350;
-      --paper-red-500: #f44336;
-      --paper-red-600: #e53935;
-      --paper-red-700: #d32f2f;
-      --paper-red-800: #c62828;
-      --paper-red-900: #b71c1c;
-      --paper-red-a100: #ff8a80;
-      --paper-red-a200: #ff5252;
-      --paper-red-a400: #ff1744;
-      --paper-red-a700: #d50000;
-
-      --paper-pink-50: #fce4ec;
-      --paper-pink-100: #f8bbd0;
-      --paper-pink-200: #f48fb1;
-      --paper-pink-300: #f06292;
-      --paper-pink-400: #ec407a;
-      --paper-pink-500: #e91e63;
-      --paper-pink-600: #d81b60;
-      --paper-pink-700: #c2185b;
-      --paper-pink-800: #ad1457;
-      --paper-pink-900: #880e4f;
-      --paper-pink-a100: #ff80ab;
-      --paper-pink-a200: #ff4081;
-      --paper-pink-a400: #f50057;
-      --paper-pink-a700: #c51162;
-
-      --paper-purple-50: #f3e5f5;
-      --paper-purple-100: #e1bee7;
-      --paper-purple-200: #ce93d8;
-      --paper-purple-300: #ba68c8;
-      --paper-purple-400: #ab47bc;
-      --paper-purple-500: #9c27b0;
-      --paper-purple-600: #8e24aa;
-      --paper-purple-700: #7b1fa2;
-      --paper-purple-800: #6a1b9a;
-      --paper-purple-900: #4a148c;
-      --paper-purple-a100: #ea80fc;
-      --paper-purple-a200: #e040fb;
-      --paper-purple-a400: #d500f9;
-      --paper-purple-a700: #aa00ff;
-
-      --paper-deep-purple-50: #ede7f6;
-      --paper-deep-purple-100: #d1c4e9;
-      --paper-deep-purple-200: #b39ddb;
-      --paper-deep-purple-300: #9575cd;
-      --paper-deep-purple-400: #7e57c2;
-      --paper-deep-purple-500: #673ab7;
-      --paper-deep-purple-600: #5e35b1;
-      --paper-deep-purple-700: #512da8;
-      --paper-deep-purple-800: #4527a0;
-      --paper-deep-purple-900: #311b92;
-      --paper-deep-purple-a100: #b388ff;
-      --paper-deep-purple-a200: #7c4dff;
-      --paper-deep-purple-a400: #651fff;
-      --paper-deep-purple-a700: #6200ea;
-
-      --paper-indigo-50: #e8eaf6;
-      --paper-indigo-100: #c5cae9;
-      --paper-indigo-200: #9fa8da;
-      --paper-indigo-300: #7986cb;
-      --paper-indigo-400: #5c6bc0;
-      --paper-indigo-500: #3f51b5;
-      --paper-indigo-600: #3949ab;
-      --paper-indigo-700: #303f9f;
-      --paper-indigo-800: #283593;
-      --paper-indigo-900: #1a237e;
-      --paper-indigo-a100: #8c9eff;
-      --paper-indigo-a200: #536dfe;
-      --paper-indigo-a400: #3d5afe;
-      --paper-indigo-a700: #304ffe;
-
-      --paper-blue-50: #e3f2fd;
-      --paper-blue-100: #bbdefb;
-      --paper-blue-200: #90caf9;
-      --paper-blue-300: #64b5f6;
-      --paper-blue-400: #42a5f5;
-      --paper-blue-500: #2196f3;
-      --paper-blue-600: #1e88e5;
-      --paper-blue-700: #1976d2;
-      --paper-blue-800: #1565c0;
-      --paper-blue-900: #0d47a1;
-      --paper-blue-a100: #82b1ff;
-      --paper-blue-a200: #448aff;
-      --paper-blue-a400: #2979ff;
-      --paper-blue-a700: #2962ff;
-
-      --paper-light-blue-50: #e1f5fe;
-      --paper-light-blue-100: #b3e5fc;
-      --paper-light-blue-200: #81d4fa;
-      --paper-light-blue-300: #4fc3f7;
-      --paper-light-blue-400: #29b6f6;
-      --paper-light-blue-500: #03a9f4;
-      --paper-light-blue-600: #039be5;
-      --paper-light-blue-700: #0288d1;
-      --paper-light-blue-800: #0277bd;
-      --paper-light-blue-900: #01579b;
-      --paper-light-blue-a100: #80d8ff;
-      --paper-light-blue-a200: #40c4ff;
-      --paper-light-blue-a400: #00b0ff;
-      --paper-light-blue-a700: #0091ea;
-
-      --paper-cyan-50: #e0f7fa;
-      --paper-cyan-100: #b2ebf2;
-      --paper-cyan-200: #80deea;
-      --paper-cyan-300: #4dd0e1;
-      --paper-cyan-400: #26c6da;
-      --paper-cyan-500: #00bcd4;
-      --paper-cyan-600: #00acc1;
-      --paper-cyan-700: #0097a7;
-      --paper-cyan-800: #00838f;
-      --paper-cyan-900: #006064;
-      --paper-cyan-a100: #84ffff;
-      --paper-cyan-a200: #18ffff;
-      --paper-cyan-a400: #00e5ff;
-      --paper-cyan-a700: #00b8d4;
-
-      --paper-teal-50: #e0f2f1;
-      --paper-teal-100: #b2dfdb;
-      --paper-teal-200: #80cbc4;
-      --paper-teal-300: #4db6ac;
-      --paper-teal-400: #26a69a;
-      --paper-teal-500: #009688;
-      --paper-teal-600: #00897b;
-      --paper-teal-700: #00796b;
-      --paper-teal-800: #00695c;
-      --paper-teal-900: #004d40;
-      --paper-teal-a100: #a7ffeb;
-      --paper-teal-a200: #64ffda;
-      --paper-teal-a400: #1de9b6;
-      --paper-teal-a700: #00bfa5;
-
-      --paper-green-50: #e8f5e9;
-      --paper-green-100: #c8e6c9;
-      --paper-green-200: #a5d6a7;
-      --paper-green-300: #81c784;
-      --paper-green-400: #66bb6a;
-      --paper-green-500: #4caf50;
-      --paper-green-600: #43a047;
-      --paper-green-700: #388e3c;
-      --paper-green-800: #2e7d32;
-      --paper-green-900: #1b5e20;
-      --paper-green-a100: #b9f6ca;
-      --paper-green-a200: #69f0ae;
-      --paper-green-a400: #00e676;
-      --paper-green-a700: #00c853;
-
-      --paper-light-green-50: #f1f8e9;
-      --paper-light-green-100: #dcedc8;
-      --paper-light-green-200: #c5e1a5;
-      --paper-light-green-300: #aed581;
-      --paper-light-green-400: #9ccc65;
-      --paper-light-green-500: #8bc34a;
-      --paper-light-green-600: #7cb342;
-      --paper-light-green-700: #689f38;
-      --paper-light-green-800: #558b2f;
-      --paper-light-green-900: #33691e;
-      --paper-light-green-a100: #ccff90;
-      --paper-light-green-a200: #b2ff59;
-      --paper-light-green-a400: #76ff03;
-      --paper-light-green-a700: #64dd17;
-
-      --paper-lime-50: #f9fbe7;
-      --paper-lime-100: #f0f4c3;
-      --paper-lime-200: #e6ee9c;
-      --paper-lime-300: #dce775;
-      --paper-lime-400: #d4e157;
-      --paper-lime-500: #cddc39;
-      --paper-lime-600: #c0ca33;
-      --paper-lime-700: #afb42b;
-      --paper-lime-800: #9e9d24;
-      --paper-lime-900: #827717;
-      --paper-lime-a100: #f4ff81;
-      --paper-lime-a200: #eeff41;
-      --paper-lime-a400: #c6ff00;
-      --paper-lime-a700: #aeea00;
-
-      --paper-yellow-50: #fffde7;
-      --paper-yellow-100: #fff9c4;
-      --paper-yellow-200: #fff59d;
-      --paper-yellow-300: #fff176;
-      --paper-yellow-400: #ffee58;
-      --paper-yellow-500: #ffeb3b;
-      --paper-yellow-600: #fdd835;
-      --paper-yellow-700: #fbc02d;
-      --paper-yellow-800: #f9a825;
-      --paper-yellow-900: #f57f17;
-      --paper-yellow-a100: #ffff8d;
-      --paper-yellow-a200: #ffff00;
-      --paper-yellow-a400: #ffea00;
-      --paper-yellow-a700: #ffd600;
-
-      --paper-amber-50: #fff8e1;
-      --paper-amber-100: #ffecb3;
-      --paper-amber-200: #ffe082;
-      --paper-amber-300: #ffd54f;
-      --paper-amber-400: #ffca28;
-      --paper-amber-500: #ffc107;
-      --paper-amber-600: #ffb300;
-      --paper-amber-700: #ffa000;
-      --paper-amber-800: #ff8f00;
-      --paper-amber-900: #ff6f00;
-      --paper-amber-a100: #ffe57f;
-      --paper-amber-a200: #ffd740;
-      --paper-amber-a400: #ffc400;
-      --paper-amber-a700: #ffab00;
-
-      --paper-orange-50: #fff3e0;
-      --paper-orange-100: #ffe0b2;
-      --paper-orange-200: #ffcc80;
-      --paper-orange-300: #ffb74d;
-      --paper-orange-400: #ffa726;
-      --paper-orange-500: #ff9800;
-      --paper-orange-600: #fb8c00;
-      --paper-orange-700: #f57c00;
-      --paper-orange-800: #ef6c00;
-      --paper-orange-900: #e65100;
-      --paper-orange-a100: #ffd180;
-      --paper-orange-a200: #ffab40;
-      --paper-orange-a400: #ff9100;
-      --paper-orange-a700: #ff6500;
-
-      --paper-deep-orange-50: #fbe9e7;
-      --paper-deep-orange-100: #ffccbc;
-      --paper-deep-orange-200: #ffab91;
-      --paper-deep-orange-300: #ff8a65;
-      --paper-deep-orange-400: #ff7043;
-      --paper-deep-orange-500: #ff5722;
-      --paper-deep-orange-600: #f4511e;
-      --paper-deep-orange-700: #e64a19;
-      --paper-deep-orange-800: #d84315;
-      --paper-deep-orange-900: #bf360c;
-      --paper-deep-orange-a100: #ff9e80;
-      --paper-deep-orange-a200: #ff6e40;
-      --paper-deep-orange-a400: #ff3d00;
-      --paper-deep-orange-a700: #dd2c00;
-
-      --paper-brown-50: #efebe9;
-      --paper-brown-100: #d7ccc8;
-      --paper-brown-200: #bcaaa4;
-      --paper-brown-300: #a1887f;
-      --paper-brown-400: #8d6e63;
-      --paper-brown-500: #795548;
-      --paper-brown-600: #6d4c41;
-      --paper-brown-700: #5d4037;
-      --paper-brown-800: #4e342e;
-      --paper-brown-900: #3e2723;
-
-      --paper-grey-50: #fafafa;
-      --paper-grey-100: #f5f5f5;
-      --paper-grey-200: #eeeeee;
-      --paper-grey-300: #e0e0e0;
-      --paper-grey-400: #bdbdbd;
-      --paper-grey-500: #9e9e9e;
-      --paper-grey-600: #757575;
-      --paper-grey-700: #616161;
-      --paper-grey-800: #424242;
-      --paper-grey-900: #212121;
-
-      --paper-blue-grey-50: #eceff1;
-      --paper-blue-grey-100: #cfd8dc;
-      --paper-blue-grey-200: #b0bec5;
-      --paper-blue-grey-300: #90a4ae;
-      --paper-blue-grey-400: #78909c;
-      --paper-blue-grey-500: #607d8b;
-      --paper-blue-grey-600: #546e7a;
-      --paper-blue-grey-700: #455a64;
-      --paper-blue-grey-800: #37474f;
-      --paper-blue-grey-900: #263238;
-
-      /* opacity for dark text on a light background */
-      --dark-divider-opacity: 0.12;
-      --dark-disabled-opacity: 0.38; /* or hint text or icon */
-      --dark-secondary-opacity: 0.54;
-      --dark-primary-opacity: 0.87;
-
-      /* opacity for light text on a dark background */
-      --light-divider-opacity: 0.12;
-      --light-disabled-opacity: 0.3; /* or hint text or icon */
-      --light-secondary-opacity: 0.7;
-      --light-primary-opacity: 1.0;
-
-    }
-
-  </style>
-</custom-style>
-`;
-template$1.setAttribute('style', 'display: none;');
-document.head.appendChild(template$1.content);
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-const $_documentContainer = document.createElement('template');
-$_documentContainer.setAttribute('style', 'display: none;');
-
-$_documentContainer.innerHTML = `<dom-module id="paper-spinner-styles">
-  <template>
-    <style>
-      /*
-      /**************************/
-      /* STYLES FOR THE SPINNER */
-      /**************************/
-
-      /*
-       * Constants:
-       *      ARCSIZE     = 270 degrees (amount of circle the arc takes up)
-       *      ARCTIME     = 1333ms (time it takes to expand and contract arc)
-       *      ARCSTARTROT = 216 degrees (how much the start location of the arc
-       *                                should rotate each time, 216 gives us a
-       *                                5 pointed star shape (it's 360/5 * 3).
-       *                                For a 7 pointed star, we might do
-       *                                360/7 * 3 = 154.286)
-       *      SHRINK_TIME = 400ms
-       */
-
-      :host {
-        display: inline-block;
-        position: relative;
-        width: 28px;
-        height: 28px;
-
-        /* 360 * ARCTIME / (ARCSTARTROT + (360-ARCSIZE)) */
-        --paper-spinner-container-rotation-duration: 1568ms;
-
-        /* ARCTIME */
-        --paper-spinner-expand-contract-duration: 1333ms;
-
-        /* 4 * ARCTIME */
-        --paper-spinner-full-cycle-duration: 5332ms;
-
-        /* SHRINK_TIME */
-        --paper-spinner-cooldown-duration: 400ms;
-      }
-
-      #spinnerContainer {
-        width: 100%;
-        height: 100%;
-
-        /* The spinner does not have any contents that would have to be
-         * flipped if the direction changes. Always use ltr so that the
-         * style works out correctly in both cases. */
-        direction: ltr;
-      }
-
-      #spinnerContainer.active {
-        -webkit-animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite;
-        animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite;
-      }
-
-      @-webkit-keyframes container-rotate {
-        to { -webkit-transform: rotate(360deg) }
-      }
-
-      @keyframes container-rotate {
-        to { transform: rotate(360deg) }
-      }
-
-      .spinner-layer {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        white-space: nowrap;
-        color: var(--paper-spinner-color, var(--google-blue-500));
-      }
-
-      .layer-1 {
-        color: var(--paper-spinner-layer-1-color, var(--google-blue-500));
-      }
-
-      .layer-2 {
-        color: var(--paper-spinner-layer-2-color, var(--google-red-500));
-      }
-
-      .layer-3 {
-        color: var(--paper-spinner-layer-3-color, var(--google-yellow-500));
-      }
-
-      .layer-4 {
-        color: var(--paper-spinner-layer-4-color, var(--google-green-500));
-      }
-
-      /**
-       * IMPORTANT NOTE ABOUT CSS ANIMATION PROPERTIES (keanulee):
-       *
-       * iOS Safari (tested on iOS 8.1) does not handle animation-delay very well - it doesn't
-       * guarantee that the animation will start _exactly_ after that value. So we avoid using
-       * animation-delay and instead set custom keyframes for each color (as layer-2undant as it
-       * seems).
-       */
-      .active .spinner-layer {
-        -webkit-animation-name: fill-unfill-rotate;
-        -webkit-animation-duration: var(--paper-spinner-full-cycle-duration);
-        -webkit-animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
-        -webkit-animation-iteration-count: infinite;
-        animation-name: fill-unfill-rotate;
-        animation-duration: var(--paper-spinner-full-cycle-duration);
-        animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
-        animation-iteration-count: infinite;
-        opacity: 1;
-      }
-
-      .active .spinner-layer.layer-1 {
-        -webkit-animation-name: fill-unfill-rotate, layer-1-fade-in-out;
-        animation-name: fill-unfill-rotate, layer-1-fade-in-out;
-      }
-
-      .active .spinner-layer.layer-2 {
-        -webkit-animation-name: fill-unfill-rotate, layer-2-fade-in-out;
-        animation-name: fill-unfill-rotate, layer-2-fade-in-out;
-      }
-
-      .active .spinner-layer.layer-3 {
-        -webkit-animation-name: fill-unfill-rotate, layer-3-fade-in-out;
-        animation-name: fill-unfill-rotate, layer-3-fade-in-out;
-      }
-
-      .active .spinner-layer.layer-4 {
-        -webkit-animation-name: fill-unfill-rotate, layer-4-fade-in-out;
-        animation-name: fill-unfill-rotate, layer-4-fade-in-out;
-      }
-
-      @-webkit-keyframes fill-unfill-rotate {
-        12.5% { -webkit-transform: rotate(135deg) } /* 0.5 * ARCSIZE */
-        25%   { -webkit-transform: rotate(270deg) } /* 1   * ARCSIZE */
-        37.5% { -webkit-transform: rotate(405deg) } /* 1.5 * ARCSIZE */
-        50%   { -webkit-transform: rotate(540deg) } /* 2   * ARCSIZE */
-        62.5% { -webkit-transform: rotate(675deg) } /* 2.5 * ARCSIZE */
-        75%   { -webkit-transform: rotate(810deg) } /* 3   * ARCSIZE */
-        87.5% { -webkit-transform: rotate(945deg) } /* 3.5 * ARCSIZE */
-        to    { -webkit-transform: rotate(1080deg) } /* 4   * ARCSIZE */
-      }
-
-      @keyframes fill-unfill-rotate {
-        12.5% { transform: rotate(135deg) } /* 0.5 * ARCSIZE */
-        25%   { transform: rotate(270deg) } /* 1   * ARCSIZE */
-        37.5% { transform: rotate(405deg) } /* 1.5 * ARCSIZE */
-        50%   { transform: rotate(540deg) } /* 2   * ARCSIZE */
-        62.5% { transform: rotate(675deg) } /* 2.5 * ARCSIZE */
-        75%   { transform: rotate(810deg) } /* 3   * ARCSIZE */
-        87.5% { transform: rotate(945deg) } /* 3.5 * ARCSIZE */
-        to    { transform: rotate(1080deg) } /* 4   * ARCSIZE */
-      }
-
-      @-webkit-keyframes layer-1-fade-in-out {
-        0% { opacity: 1 }
-        25% { opacity: 1 }
-        26% { opacity: 0 }
-        89% { opacity: 0 }
-        90% { opacity: 1 }
-        to { opacity: 1 }
-      }
-
-      @keyframes layer-1-fade-in-out {
-        0% { opacity: 1 }
-        25% { opacity: 1 }
-        26% { opacity: 0 }
-        89% { opacity: 0 }
-        90% { opacity: 1 }
-        to { opacity: 1 }
-      }
-
-      @-webkit-keyframes layer-2-fade-in-out {
-        0% { opacity: 0 }
-        15% { opacity: 0 }
-        25% { opacity: 1 }
-        50% { opacity: 1 }
-        51% { opacity: 0 }
-        to { opacity: 0 }
-      }
-
-      @keyframes layer-2-fade-in-out {
-        0% { opacity: 0 }
-        15% { opacity: 0 }
-        25% { opacity: 1 }
-        50% { opacity: 1 }
-        51% { opacity: 0 }
-        to { opacity: 0 }
-      }
-
-      @-webkit-keyframes layer-3-fade-in-out {
-        0% { opacity: 0 }
-        40% { opacity: 0 }
-        50% { opacity: 1 }
-        75% { opacity: 1 }
-        76% { opacity: 0 }
-        to { opacity: 0 }
-      }
-
-      @keyframes layer-3-fade-in-out {
-        0% { opacity: 0 }
-        40% { opacity: 0 }
-        50% { opacity: 1 }
-        75% { opacity: 1 }
-        76% { opacity: 0 }
-        to { opacity: 0 }
-      }
-
-      @-webkit-keyframes layer-4-fade-in-out {
-        0% { opacity: 0 }
-        65% { opacity: 0 }
-        75% { opacity: 1 }
-        90% { opacity: 1 }
-        to { opacity: 0 }
-      }
-
-      @keyframes layer-4-fade-in-out {
-        0% { opacity: 0 }
-        65% { opacity: 0 }
-        75% { opacity: 1 }
-        90% { opacity: 1 }
-        to { opacity: 0 }
-      }
-
-      .circle-clipper {
-        display: inline-block;
-        position: relative;
-        width: 50%;
-        height: 100%;
-        overflow: hidden;
-      }
-
-      /**
-       * Patch the gap that appear between the two adjacent div.circle-clipper while the
-       * spinner is rotating (appears on Chrome 50, Safari 9.1.1, and Edge).
-       */
-      .spinner-layer::after {
-        content: '';
-        left: 45%;
-        width: 10%;
-        border-top-style: solid;
-      }
-
-      .spinner-layer::after,
-      .circle-clipper .circle {
-        box-sizing: border-box;
-        position: absolute;
-        top: 0;
-        border-width: var(--paper-spinner-stroke-width, 3px);
-        border-radius: 50%;
-      }
-
-      .circle-clipper .circle {
-        bottom: 0;
-        width: 200%;
-        border-style: solid;
-        border-bottom-color: transparent !important;
-      }
-
-      .circle-clipper.left .circle {
-        left: 0;
-        border-right-color: transparent !important;
-        -webkit-transform: rotate(129deg);
-        transform: rotate(129deg);
-      }
-
-      .circle-clipper.right .circle {
-        left: -100%;
-        border-left-color: transparent !important;
-        -webkit-transform: rotate(-129deg);
-        transform: rotate(-129deg);
-      }
-
-      .active .gap-patch::after,
-      .active .circle-clipper .circle {
-        -webkit-animation-duration: var(--paper-spinner-expand-contract-duration);
-        -webkit-animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
-        -webkit-animation-iteration-count: infinite;
-        animation-duration: var(--paper-spinner-expand-contract-duration);
-        animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
-        animation-iteration-count: infinite;
-      }
-
-      .active .circle-clipper.left .circle {
-        -webkit-animation-name: left-spin;
-        animation-name: left-spin;
-      }
-
-      .active .circle-clipper.right .circle {
-        -webkit-animation-name: right-spin;
-        animation-name: right-spin;
-      }
-
-      @-webkit-keyframes left-spin {
-        0% { -webkit-transform: rotate(130deg) }
-        50% { -webkit-transform: rotate(-5deg) }
-        to { -webkit-transform: rotate(130deg) }
-      }
-
-      @keyframes left-spin {
-        0% { transform: rotate(130deg) }
-        50% { transform: rotate(-5deg) }
-        to { transform: rotate(130deg) }
-      }
-
-      @-webkit-keyframes right-spin {
-        0% { -webkit-transform: rotate(-130deg) }
-        50% { -webkit-transform: rotate(5deg) }
-        to { -webkit-transform: rotate(-130deg) }
-      }
-
-      @keyframes right-spin {
-        0% { transform: rotate(-130deg) }
-        50% { transform: rotate(5deg) }
-        to { transform: rotate(-130deg) }
-      }
-
-      #spinnerContainer.cooldown {
-        -webkit-animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite, fade-out var(--paper-spinner-cooldown-duration) cubic-bezier(0.4, 0.0, 0.2, 1);
-        animation: container-rotate var(--paper-spinner-container-rotation-duration) linear infinite, fade-out var(--paper-spinner-cooldown-duration) cubic-bezier(0.4, 0.0, 0.2, 1);
-      }
-
-      @-webkit-keyframes fade-out {
-        0% { opacity: 1 }
-        to { opacity: 0 }
-      }
-
-      @keyframes fade-out {
-        0% { opacity: 1 }
-        to { opacity: 0 }
-      }
-    </style>
-  </template>
-</dom-module>`;
-
-document.head.appendChild($_documentContainer.content);
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-/** @polymerBehavior */
-const PaperSpinnerBehavior = {
-
-  properties: {
-    /**
-     * Displays the spinner.
-     */
-    active: {
-      type: Boolean,
-      value: false,
-      reflectToAttribute: true,
-      observer: '__activeChanged'
-    },
-
-    /**
-     * Alternative text content for accessibility support.
-     * If alt is present, it will add an aria-label whose content matches alt
-     * when active. If alt is not present, it will default to 'loading' as the
-     * alt value.
-     */
-    alt: {type: String, value: 'loading', observer: '__altChanged'},
-
-    __coolingDown: {type: Boolean, value: false}
-  },
-
-  __computeContainerClasses: function(active, coolingDown) {
-    return [
-      active || coolingDown ? 'active' : '',
-      coolingDown ? 'cooldown' : ''
-    ].join(' ');
-  },
-
-  __activeChanged: function(active, old) {
-    this.__setAriaHidden(!active);
-    this.__coolingDown = !active && old;
-  },
-
-  __altChanged: function(alt) {
-    // user-provided `aria-label` takes precedence over prototype default
-    if (alt === 'loading') {
-      this.alt = this.getAttribute('aria-label') || alt;
-    } else {
-      this.__setAriaHidden(alt === '');
-      this.setAttribute('aria-label', alt);
-    }
-  },
-
-  __setAriaHidden: function(hidden) {
-    var attr = 'aria-hidden';
-    if (hidden) {
-      this.setAttribute(attr, 'true');
-    } else {
-      this.removeAttribute(attr);
-    }
-  },
-
-  __reset: function() {
-    this.active = false;
-    this.__coolingDown = false;
-  }
-};
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-const template$2 = html$1`
-  <style include="paper-spinner-styles"></style>
-
-  <div id="spinnerContainer" class-name="[[__computeContainerClasses(active, __coolingDown)]]" on-animationend="__reset" on-webkit-animation-end="__reset">
-    <div class="spinner-layer layer-1">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div>
-      <div class="circle-clipper right">
-        <div class="circle"></div>
-      </div>
-    </div>
-
-    <div class="spinner-layer layer-2">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div>
-      <div class="circle-clipper right">
-        <div class="circle"></div>
-      </div>
-    </div>
-
-    <div class="spinner-layer layer-3">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div>
-      <div class="circle-clipper right">
-        <div class="circle"></div>
-      </div>
-    </div>
-
-    <div class="spinner-layer layer-4">
-      <div class="circle-clipper left">
-        <div class="circle"></div>
-      </div>
-      <div class="circle-clipper right">
-        <div class="circle"></div>
-      </div>
-    </div>
-  </div>
-`;
-template$2.setAttribute('strip-whitespace', '');
-
-/**
-Material design: [Progress &
-activity](https://www.google.com/design/spec/components/progress-activity.html)
-
-Element providing a multiple color material design circular spinner.
-
-    <paper-spinner active></paper-spinner>
-
-The default spinner cycles between four layers of colors; by default they are
-blue, red, yellow and green. It can be customized to cycle between four
-different colors. Use <paper-spinner-lite> for single color spinners.
-
-### Accessibility
-
-Alt attribute should be set to provide adequate context for accessibility. If
-not provided, it defaults to 'loading'. Empty alt can be provided to mark the
-element as decorative if alternative content is provided in another form (e.g. a
-text block following the spinner).
-
-    <paper-spinner alt="Loading contacts list" active></paper-spinner>
-
-### Styling
-
-The following custom properties and mixins are available for styling:
-
-Custom property | Description | Default
-----------------|-------------|----------
-`--paper-spinner-layer-1-color` | Color of the first spinner rotation | `--google-blue-500`
-`--paper-spinner-layer-2-color` | Color of the second spinner rotation | `--google-red-500`
-`--paper-spinner-layer-3-color` | Color of the third spinner rotation | `--google-yellow-500`
-`--paper-spinner-layer-4-color` | Color of the fourth spinner rotation | `--google-green-500`
-`--paper-spinner-stroke-width` | The width of the spinner stroke | 3px
-
-@group Paper Elements
-@element paper-spinner
-@hero hero.svg
-@demo demo/index.html
-*/
-Polymer({
-  _template: template$2,
-
-  is: 'paper-spinner',
-
-  behaviors: [PaperSpinnerBehavior]
-});
-
-/* eslint-disable class-methods-use-this */
-
-/**
- * `anypoint-item`
- * An Anypoint list item with 2 or 3 lines.
- */
-class AnypointItemBody extends LitElement {
-  get styles() {
-    return css`
-      :host {
-        overflow: hidden; /* needed for text-overflow: ellipsis to work on ff */
-        flex-direction: column;
-        display: flex;
-        justify-content: center;
-        flex: 1;
-        flex-basis: 0.000000001px;
-      }
-
-      :host([twoline]) {
-        min-height: var(--anypoint-item-body-two-line-min-height, 72px);
-      }
-
-      :host([threeline]) {
-        min-height: var(--anypoint-item-body-three-line-min-height, 88px);
-      }
-
-      :host > ::slotted(*) {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      :host > ::slotted([secondary]) {
-        font-size: var(--font-body-font-size);
-        letter-spacing: var(--font-body-letter-spacing);
-        font-weight: var(--font-body-font-weight);
-        color: var(--anypoint-item-body-secondary-color, var(--secondary-text-color));
-        margin-top: 4px;
-      }
-
-      :host([compatibility]:hover) > ::slotted([secondary]),
-      .anypoint-item[compatibility]:hover > [secondary] {
-        color: var(
-          --anypoint-item-secondary-focus-color,
-          var(--anypoint-item-focus-color,
-            var(--anypoint-color-coreBlue3)
-          )
-        );
-
-        border-left-color: var(
-          --anypoint-item-border-left-hover-color,
-          var(--anypoint-color-coreBlue3)
-        );
-        border-right-color: var(
-          --anypoint-item-border-right-hover-color,
-          var(--anypoint-color-coreBlue3)
-        );
-      }
-    `;
-  }
-
-  static get properties() {
-    return {
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean, reflect: true },
-      /**
-       * @deprecated Use `compatibility` instead
-       */
-      legacy: { type: Boolean },
-    };
-  }
-
-  get legacy() {
-    return this.compatibility;
-  }
-
-  set legacy(value) {
-    this.compatibility = value;
-  }
-
-  render() {
-    return html`<style>${this.styles}</style>
-      <slot></slot>
-    `;
-  }
-}
-
-window.customElements.define('anypoint-item-body', AnypointItemBody);
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-/**
- * `iron-range-behavior` provides the behavior for something with a minimum to
- * maximum range.
- *
- * @demo demo/index.html
- * @polymerBehavior
- */
-const IronRangeBehavior = {
-
-  properties: {
-
-    /**
-     * The number that represents the current value.
-     */
-    value: {type: Number, value: 0, notify: true, reflectToAttribute: true},
-
-    /**
-     * The number that indicates the minimum value of the range.
-     */
-    min: {type: Number, value: 0, notify: true},
-
-    /**
-     * The number that indicates the maximum value of the range.
-     */
-    max: {type: Number, value: 100, notify: true},
-
-    /**
-     * Specifies the value granularity of the range's value.
-     */
-    step: {type: Number, value: 1, notify: true},
-
-    /**
-     * Returns the ratio of the value.
-     */
-    ratio: {type: Number, value: 0, readOnly: true, notify: true},
-  },
-
-  observers: ['_update(value, min, max, step)'],
-
-  _calcRatio: function(value) {
-    return (this._clampValue(value) - this.min) / (this.max - this.min);
-  },
-
-  _clampValue: function(value) {
-    return Math.min(this.max, Math.max(this.min, this._calcStep(value)));
-  },
-
-  _calcStep: function(value) {
-    // polymer/issues/2493
-    value = parseFloat(value);
-
-    if (!this.step) {
-      return value;
-    }
-
-    var numSteps = Math.round((value - this.min) / this.step);
-    if (this.step < 1) {
-      /**
-       * For small values of this.step, if we calculate the step using
-       * `Math.round(value / step) * step` we may hit a precision point issue
-       * eg. 0.1 * 0.2 =  0.020000000000000004
-       * http://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
-       *
-       * as a work around we can divide by the reciprocal of `step`
-       */
-      return numSteps / (1 / this.step) + this.min;
-    } else {
-      return numSteps * this.step + this.min;
-    }
-  },
-
-  _validateValue: function() {
-    var v = this._clampValue(this.value);
-    this.value = this.oldValue = isNaN(v) ? this.oldValue : v;
-    return this.value !== v;
-  },
-
-  _update: function() {
-    this._validateValue();
-    this._setRatio(this._calcRatio(this.value) * 100);
-  }
-
-};
-
-/**
-@license
-Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
-This code may only be used under the BSD style license found at
-http://polymer.github.io/LICENSE.txt The complete set of authors may be found at
-http://polymer.github.io/AUTHORS.txt The complete set of contributors may be
-found at http://polymer.github.io/CONTRIBUTORS.txt Code distributed by Google as
-part of the polymer project is also subject to an additional IP rights grant
-found at http://polymer.github.io/PATENTS.txt
-*/
-
-/**
-Material design: [Progress &
-activity](https://www.google.com/design/spec/components/progress-activity.html)
-
-The progress bars are for situations where the percentage completed can be
-determined. They give users a quick sense of how much longer an operation
-will take.
-
-Example:
-
-    <paper-progress value="10"></paper-progress>
-
-There is also a secondary progress which is useful for displaying intermediate
-progress, such as the buffer level during a streaming playback progress bar.
-
-Example:
-
-    <paper-progress value="10" secondary-progress="30"></paper-progress>
-
-### Styling progress bar:
-
-To change the active progress bar color:
-
-    paper-progress {
-       --paper-progress-active-color: #e91e63;
-    }
-
-To change the secondary progress bar color:
-
-    paper-progress {
-      --paper-progress-secondary-color: #f8bbd0;
-    }
-
-To change the progress bar background color:
-
-    paper-progress {
-      --paper-progress-container-color: #64ffda;
-    }
-
-Add the class `transiting` to a paper-progress to animate the progress bar when
-the value changed. You can also customize the transition:
-
-    paper-progress {
-      --paper-progress-transition-duration: 0.08s;
-      --paper-progress-transition-timing-function: ease;
-      --paper-progress-transition-delay: 0s;
-    }
-
-To change the duration of the indeterminate cycle:
-
-    paper-progress {
-      --paper-progress-indeterminate-cycle-duration: 2s;
-    }
-
-The following mixins are available for styling:
-
-Custom property | Description | Default
-----------------|-------------|---------
-`--paper-progress-container` | Mixin applied to container | `{}`
-`--paper-progress-transition-duration` | Duration of the transition | `0.08s`
-`--paper-progress-transition-timing-function` | The timing function for the transition | `ease`
-`--paper-progress-transition-delay` | delay for the transition | `0s`
-`--paper-progress-container-color` | Color of the container | `--google-grey-300`
-`--paper-progress-active-color` | The color of the active bar | `--google-green-500`
-`--paper-progress-secondary-color` | The color of the secondary bar | `--google-green-100`
-`--paper-progress-disabled-active-color` | The color of the active bar if disabled | `--google-grey-500`
-`--paper-progress-disabled-secondary-color` | The color of the secondary bar if disabled  | `--google-grey-300`
-`--paper-progress-height` | The height of the progress bar | `4px`
-`--paper-progress-indeterminate-cycle-duration` | Duration of an indeterminate cycle | `2s`
-
-@group Paper Elements
-@element paper-progress
-@demo demo/index.html
-*/
-Polymer({
-  _template: html$1`
-    <style>
-      :host {
-        display: block;
-        width: 200px;
-        position: relative;
-        overflow: hidden;
-      }
-
-      :host([hidden]), [hidden] {
-        display: none !important;
-      }
-
-      #progressContainer {
-        @apply --paper-progress-container;
-        position: relative;
-      }
-
-      #progressContainer,
-      /* the stripe for the indeterminate animation*/
-      .indeterminate::after {
-        height: var(--paper-progress-height, 4px);
-      }
-
-      #primaryProgress,
-      #secondaryProgress,
-      .indeterminate::after {
-        @apply --layout-fit;
-      }
-
-      #progressContainer,
-      .indeterminate::after {
-        background: var(--paper-progress-container-color, var(--google-grey-300));
-      }
-
-      :host(.transiting) #primaryProgress,
-      :host(.transiting) #secondaryProgress {
-        -webkit-transition-property: -webkit-transform;
-        transition-property: transform;
-
-        /* Duration */
-        -webkit-transition-duration: var(--paper-progress-transition-duration, 0.08s);
-        transition-duration: var(--paper-progress-transition-duration, 0.08s);
-
-        /* Timing function */
-        -webkit-transition-timing-function: var(--paper-progress-transition-timing-function, ease);
-        transition-timing-function: var(--paper-progress-transition-timing-function, ease);
-
-        /* Delay */
-        -webkit-transition-delay: var(--paper-progress-transition-delay, 0s);
-        transition-delay: var(--paper-progress-transition-delay, 0s);
-      }
-
-      #primaryProgress,
-      #secondaryProgress {
-        @apply --layout-fit;
-        -webkit-transform-origin: left center;
-        transform-origin: left center;
-        -webkit-transform: scaleX(0);
-        transform: scaleX(0);
-        will-change: transform;
-      }
-
-      #primaryProgress {
-        background: var(--paper-progress-active-color, var(--google-green-500));
-      }
-
-      #secondaryProgress {
-        background: var(--paper-progress-secondary-color, var(--google-green-100));
-      }
-
-      :host([disabled]) #primaryProgress {
-        background: var(--paper-progress-disabled-active-color, var(--google-grey-500));
-      }
-
-      :host([disabled]) #secondaryProgress {
-        background: var(--paper-progress-disabled-secondary-color, var(--google-grey-300));
-      }
-
-      :host(:not([disabled])) #primaryProgress.indeterminate {
-        -webkit-transform-origin: right center;
-        transform-origin: right center;
-        -webkit-animation: indeterminate-bar var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
-        animation: indeterminate-bar var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
-      }
-
-      :host(:not([disabled])) #primaryProgress.indeterminate::after {
-        content: "";
-        -webkit-transform-origin: center center;
-        transform-origin: center center;
-
-        -webkit-animation: indeterminate-splitter var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
-        animation: indeterminate-splitter var(--paper-progress-indeterminate-cycle-duration, 2s) linear infinite;
-      }
-
-      @-webkit-keyframes indeterminate-bar {
-        0% {
-          -webkit-transform: scaleX(1) translateX(-100%);
-        }
-        50% {
-          -webkit-transform: scaleX(1) translateX(0%);
-        }
-        75% {
-          -webkit-transform: scaleX(1) translateX(0%);
-          -webkit-animation-timing-function: cubic-bezier(.28,.62,.37,.91);
-        }
-        100% {
-          -webkit-transform: scaleX(0) translateX(0%);
-        }
-      }
-
-      @-webkit-keyframes indeterminate-splitter {
-        0% {
-          -webkit-transform: scaleX(.75) translateX(-125%);
-        }
-        30% {
-          -webkit-transform: scaleX(.75) translateX(-125%);
-          -webkit-animation-timing-function: cubic-bezier(.42,0,.6,.8);
-        }
-        90% {
-          -webkit-transform: scaleX(.75) translateX(125%);
-        }
-        100% {
-          -webkit-transform: scaleX(.75) translateX(125%);
-        }
-      }
-
-      @keyframes indeterminate-bar {
-        0% {
-          transform: scaleX(1) translateX(-100%);
-        }
-        50% {
-          transform: scaleX(1) translateX(0%);
-        }
-        75% {
-          transform: scaleX(1) translateX(0%);
-          animation-timing-function: cubic-bezier(.28,.62,.37,.91);
-        }
-        100% {
-          transform: scaleX(0) translateX(0%);
-        }
-      }
-
-      @keyframes indeterminate-splitter {
-        0% {
-          transform: scaleX(.75) translateX(-125%);
-        }
-        30% {
-          transform: scaleX(.75) translateX(-125%);
-          animation-timing-function: cubic-bezier(.42,0,.6,.8);
-        }
-        90% {
-          transform: scaleX(.75) translateX(125%);
-        }
-        100% {
-          transform: scaleX(.75) translateX(125%);
-        }
-      }
-    </style>
-
-    <div id="progressContainer">
-      <div id="secondaryProgress" hidden\$="[[_hideSecondaryProgress(secondaryRatio)]]"></div>
-      <div id="primaryProgress"></div>
-    </div>
-`,
-
-  is: 'paper-progress',
-  behaviors: [IronRangeBehavior],
-
-  properties: {
-    /**
-     * The number that represents the current secondary progress.
-     */
-    secondaryProgress: {type: Number, value: 0},
-
-    /**
-     * The secondary ratio
-     */
-    secondaryRatio: {type: Number, value: 0, readOnly: true},
-
-    /**
-     * Use an indeterminate progress indicator.
-     */
-    indeterminate:
-        {type: Boolean, value: false, observer: '_toggleIndeterminate'},
-
-    /**
-     * True if the progress is disabled.
-     */
-    disabled: {
-      type: Boolean,
-      value: false,
-      reflectToAttribute: true,
-      observer: '_disabledChanged'
-    }
-  },
-
-  observers:
-      ['_progressChanged(secondaryProgress, value, min, max, indeterminate)'],
-
-  hostAttributes: {role: 'progressbar'},
-
-  _toggleIndeterminate: function(indeterminate) {
-    // If we use attribute/class binding, the animation sometimes doesn't
-    // translate properly on Safari 7.1. So instead, we toggle the class here in
-    // the update method.
-    this.toggleClass('indeterminate', indeterminate, this.$.primaryProgress);
-  },
-
-  _transformProgress: function(progress, ratio) {
-    var transform = 'scaleX(' + (ratio / 100) + ')';
-    progress.style.transform = progress.style.webkitTransform = transform;
-  },
-
-  _mainRatioChanged: function(ratio) {
-    this._transformProgress(this.$.primaryProgress, ratio);
-  },
-
-  _progressChanged: function(
-      secondaryProgress, value, min, max, indeterminate) {
-    secondaryProgress = this._clampValue(secondaryProgress);
-    value = this._clampValue(value);
-
-    var secondaryRatio = this._calcRatio(secondaryProgress) * 100;
-    var mainRatio = this._calcRatio(value) * 100;
-
-    this._setSecondaryRatio(secondaryRatio);
-    this._transformProgress(this.$.secondaryProgress, secondaryRatio);
-    this._transformProgress(this.$.primaryProgress, mainRatio);
-
-    this.secondaryProgress = secondaryProgress;
-
-    if (indeterminate) {
-      this.removeAttribute('aria-valuenow');
-    } else {
-      this.setAttribute('aria-valuenow', value);
-    }
-    this.setAttribute('aria-valuemin', min);
-    this.setAttribute('aria-valuemax', max);
-  },
-
-  _disabledChanged: function(disabled) {
-    this.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-  },
-
-  _hideSecondaryProgress: function(secondaryRatio) {
-    return secondaryRatio === 0;
-  }
-});
-
-/*
-Copyright 2019 Pawel Psztyc, The ARC team
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-
-/* eslint-disable no-param-reassign */
-/* eslint-disable class-methods-use-this */
-
-/** @typedef {import('./AnypointAutocomplete').Suggestion} Suggestion */
-/** @typedef {import('./AnypointAutocomplete').InternalSuggestion} InternalSuggestion */
-/** @typedef {import('lit-element').TemplateResult} TemplateResult */
-
-/**
- * Generates an id on passed element.
- * @param {HTMLElement} target An element to set id on to
- */
-function ensureNodeId$1(target) {
-  if (target.id) {
-    return;
-  }
-  const id = Math.floor(Math.random() * 100000 + 1);
-  target.id = `anypointAutocompleteInput${id}`;
-}
-
-const suggestionsValue = Symbol('suggestionsValue');
-const processSource = Symbol('processSource');
-const normalizeSource = Symbol('normalizeSource');
-const itemTemplate = Symbol('itemTemplate');
-const rippleTemplate = Symbol('rippleTemplate');
-const openedValue = Symbol('openedValue');
-const openedValuePrivate = Symbol('openedValuePrivate');
-const autocompleteFocus = Symbol('autocompleteFocus');
-
-/**
- * # `<paper-autocomplete>`
- *
- * @customElement
- * @demo demo/index.html
- */
-class AnypointAutocomplete extends LitElement {
-  get styles() {
-    return css`.highlight {
-      font-weight: bold;
-    }`;
-  }
-
-  createRenderRoot() {
-    return this;
-  }
-
-  static get properties() {
-    return {
-      /**
-       * A target input field to observe.
-       * It accepts an element which is the input with `value` property or
-       * an id of an element that is a child of the parent element of this node.
-       */
-      target: {},
-      /**
-       * List of suggestions to render.
-       * If the array items are strings they will be used to render a suggestions and
-       * to insert a value.
-       * If the list is an object the each object must contain `value` and `display`
-       * properties.
-       * The `display` property will be used in the suggestions list and the
-       * `value` property will be used to insert the value to the referenced text field.
-       */
-      source: { type: Array },
-      /**
-       * List of suggestion that are rendered.
-       */
-      _suggestions: { type: Array },
-      /**
-       * True when user query changed and waiting for `source` property update
-       */
-      _loading: { type: Boolean },
-      /**
-       * Set this to true if you use async operation in response for query event.
-       * This will render a loader when querying for more suggestions.
-       * Do not use it it you do not handle suggestions asynchronously.
-       */
-      loader: { type: Boolean, reflect: true },
-      /**
-       * If true it will opend suggestions on input field focus.
-       */
-      openOnFocus: { type: Boolean },
-      /**
-       * The orientation against which to align the element vertically
-       * relative to the text input.
-       * Possible values are "top", "bottom", "middle", "auto".
-       */
-      verticalAlign: { type: String },
-      /**
-       * A pixel value that will be added to the position calculated for the
-       * given `verticalAlign`, in the direction of alignment. You can think
-       * of it as increasing or decreasing the distance to the side of the
-       * screen given by `verticalAlign`.
-       *
-       * If `verticalAlign` is "top" or "middle", this offset will increase or
-       * decrease the distance to the top side of the screen: a negative offset
-       * will move the dropdown upwards; a positive one, downwards.
-       *
-       * Conversely if `verticalAlign` is "bottom", this offset will increase
-       * or decrease the distance to the bottom side of the screen: a negative
-       * offset will move the dropdown downwards; a positive one, upwards.
-       */
-      verticalOffset: { type: Number },
-      /**
-       * The orientation against which to align the element horizontally
-       * relative to the text input. Possible values are "left", "right",
-       * "center", "auto".
-       */
-      horizontalAlign: { type: String },
-      /**
-       * A pixel value that will be added to the position calculated for the
-       * given `horizontalAlign`, in the direction of alignment. You can think
-       * of it as increasing or decreasing the distance to the side of the
-       * screen given by `horizontalAlign`.
-       *
-       * If `horizontalAlign` is "left" or "center", this offset will increase or
-       * decrease the distance to the left side of the screen: a negative offset
-       * will move the dropdown to the left; a positive one, to the right.
-       *
-       * Conversely if `horizontalAlign` is "right", this offset will increase
-       * or decrease the distance to the right side of the screen: a negative
-       * offset will move the dropdown to the right; a positive one, to the left.
-       */
-      horizontalOffset: { type: Number },
-      /**
-       * Determines which action to perform when scroll outside an opened overlay
-       * happens. Possible values: lock - blocks scrolling from happening, refit -
-       * computes the new position on the overlay cancel - causes the overlay to
-       * close
-       */
-      scrollAction: { type: String },
-      /**
-       * Removes animation from the dropdown.
-       */
-      noAnimations: { type: Boolean },
-      /**
-       * Removes ripple effect from list items.
-       * This effect is always disabled when `compatibility` is set.
-       */
-      noink: { type: Boolean },
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean, reflect: true },
-      /**
-       * @deprecated Use `compatibility` instead
-       */
-      legacy: { type: Boolean },
-      /**
-       * When set it won't setup `aria-controls` on target element.
-       */
-      noTargetControls: { type: Boolean }
-    };
-  }
-
-  get target() {
-    return this._target;
-  }
-
-  set target(value) {
-    const old = this._target;
-    if (old === value) {
-      return;
-    }
-    this._target = value;
-    this._targetChanged();
-  }
-
-  /**
-   * @return {string[]|InternalSuggestion[]} List of suggestion that are rendered.
-   */
-  get suggestions() {
-    return this._suggestions;
-  }
-
-  /**
-   * @return {boolean} True when user query changed and waiting for `source` property update
-   */
-  get loading() {
-    return this._loading;
-  }
-
-  get _loading() {
-    return this.__loading;
-  }
-
-  set _loading(value) {
-    const old = this.__loading;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this.__loading = value;
-    this.requestUpdate('_loading', value);
-    this.dispatchEvent(
-      new CustomEvent('loading-chanegd', {
-        detail: {
-          value
-        }
-      })
-    );
-  }
-
-  get source() {
-    return this._source;
-  }
-
-  set source(value) {
-    const old = this._source;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this._source = value;
-    this[suggestionsValue] = this[processSource](value);
-    if (this[openedValue]) {
-      this._filterSuggestions();
-    }
-    if (this._loading) {
-      this._loading = false;
-    }
-  }
-
-  /**
-   * @return {boolean} True if the overlay is currently opened.
-   */
-  get opened() {
-    return this[openedValue];
-  }
-
-  get [openedValue]() {
-    return this[openedValuePrivate] || false;
-  }
-
-  set [openedValue](value) {
-    const old = this[openedValuePrivate];
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this[openedValuePrivate] = value;
-    this.requestUpdate();
-    this._openedChanged(value);
-    this.dispatchEvent(
-      new CustomEvent('opened-changed', {
-        detail: {
-          value
-        }
-      })
-    );
-  }
-
-  get legacy() {
-    return this.compatibility;
-  }
-
-  set legacy(value) {
-    this.compatibility = value;
-  }
-
-  get compatibility() {
-    return this._compatibility;
-  }
-
-  set compatibility(value) {
-    const old = this._compatibility;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this._compatibility = value;
-    this.requestUpdate('compatibility', old);
-  }
-
-  get isAttached() {
-    return this._isAttached;
-  }
-
-  set isAttached(value) {
-    const old = this._isAttached;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this._isAttached = value;
-    this._targetChanged();
-  }
-
-  get _listbox() {
-    if (!this.__listbox) {
-      this.__listbox = this.querySelector('anypoint-listbox');
-    }
-    return this.__listbox;
-  }
-
-  /**
-   * @return {EventListener} Previously registered handler for `query` event
-   */
-  get onquery() {
-    return this._onquery;
-  }
-
-  /**
-   * Registers a callback function for `query` event
-   * @param {EventListener} value A callback to register. Pass `null` or `undefined`
-   * to clear the listener.
-   */
-  set onquery(value) {
-    if (this._onquery) {
-      this.removeEventListener('query', this._onquery);
-    }
-    if (typeof value !== 'function') {
-      this._onquery = null;
-      return;
-    }
-    this._onquery = value;
-    this.addEventListener('query', value);
-  }
-
-  /**
-   * @return {EventListener} Previously registered handler for `selected` event
-   */
-  get onselected() {
-    return this._onselected;
-  }
-
-  /**
-   * Registers a callback function for `selected` event
-   * @param {EventListener} value A callback to register. Pass `null` or `undefined`
-   * to clear the listener.
-   */
-  set onselected(value) {
-    if (this._onselected) {
-      this.removeEventListener('selected', this._onselected);
-    }
-    if (typeof value !== 'function') {
-      this._onselected = null;
-      return;
-    }
-    this._onselected = value;
-    this.addEventListener('selected', value);
-  }
-
-  constructor() {
-    super();
-    this._targetInputHandler = this._targetInputHandler.bind(this);
-    this._targetFocusHandler = this._targetFocusHandler.bind(this);
-    this._targetKeydown = this._targetKeydown.bind(this);
-
-    this._suggestions = [];
-    this._loading = false;
-    this.loader = false;
-    this.openOnFocus = false;
-    this[openedValue] = false;
-    this.horizontalAlign = 'center';
-    this.verticalAlign = 'top';
-    this.scrollAction = 'refit';
-    this.horizontalOffset = 0;
-    this.verticalOffset = 2;
-    this.noTargetControls = false;
-    this.noAnimations = false;
-    this.noink = false;
-  }
-
-  connectedCallback() {
-    /* istanbul ignore else */
-    if (super.connectedCallback) {
-      super.connectedCallback();
-    }
-    ensureNodeId$1(this);
-    this.style.position = 'absolute';
-    this.isAttached = true;
-  }
-
-  disconnectedCallback() {
-    /* istanbul ignore else */
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
-    this.isAttached = false;
-  }
-
-  firstUpdated() {
-    // Styles are defined here because it does not uses shadow root
-    // to comply with accessibility requiremenets.
-    // Styles defined in the component's `styles` getter won't be applied
-    // to the children.
-    const box = this._listbox;
-    ensureNodeId$1(box);
-    box.style.backgroundColor = 'var(--anypoiont-autocomplete-background-color, #fff)';
-    box.style.boxShadow = 'var(--anypoiont-autocomplete-dropdown-shaddow)';
-    const {id} = box;
-    this.setAttribute('aria-owns', id);
-    this.setAttribute('aria-controls', id);
-    const target = this._oldTarget;
-    if (!target || this.noTargetControls) {
-      return;
-    }
-    target.setAttribute('aria-controls', id);
-  }
-
-  /**
-   * Normalizes suggestions into a single struct.
-   * @param {Array<string|Suggestion>|undefined|null} value A list of suggestions to process
-   * @return {InternalSuggestion[]|null} Normalized suggestions
-   */
-  [processSource](value) {
-    if (!Array.isArray(value)) {
-      return null;
-    }
-    const result = [];
-    value.forEach((item, index) => {
-      const normalized = this[normalizeSource](item, index);
-      if (normalized) {
-        result.push(normalized);
-      }
-    });
-    return result;
-  }
-
-  /**
-   * Normalizes a suggestion
-   * @param {Suggestion|string} value A list of suggestions to process
-   * @param {number} index The index of the suggestion on the source list.
-   * @return {InternalSuggestion|null} Normalized suggestions
-   */
-  [normalizeSource](value, index) {
-    if (typeof value === 'string') {
-      return { value, index };
-    }
-    if (!value.value) {
-      return null;
-    }
-    return { ...value, index };
-  }
-
-  /**
-   * Handler for target property change.
-   */
-  _targetChanged() {
-    const { target, isAttached, _oldTarget } = this;
-    if (_oldTarget) {
-      _oldTarget.removeEventListener('input', this._targetInputHandler);
-      _oldTarget.removeEventListener('focus', this._targetFocusHandler);
-      _oldTarget.removeEventListener('keydown', this._targetKeydown);
-      this._oldTarget = null;
-    }
-    if (!target || !isAttached) {
-      return;
-    }
-    this.notifyResize();
-    if (typeof target === 'string') {
-      const parent = this.parentElement;
-      if (!parent || !parent.querySelector) {
-        return;
-      }
-      const node = parent.querySelector(`#${target}`);
-      if (node) {
-        this.target = node;
-
-      }
-    } else if (target) {
-      target.addEventListener('input', this._targetInputHandler);
-      target.addEventListener('focus', this._targetFocusHandler);
-      target.addEventListener('keydown', this._targetKeydown);
-      this._setupTargetAria(target);
-      this._oldTarget = target;
-      if (target === document.activeElement) {
-        this._targetFocusHandler();
-      }
-    }
-  }
-
-  /**
-   * Sets target input width on the listbox before rendering.
-   */
-  _setComboboxWidth() {
-    const target = this._oldTarget;
-    const box = this._listbox;
-    if (!target || !box || !target.nodeType || target.nodeType !== Node.ELEMENT_NODE) {
-      return;
-    }
-    const rect = target.getBoundingClientRect();
-    const { width } = rect;
-    if (!width) {
-      return;
-    }
-    box.style.width = `${width}px`;
-  }
-
-  /**
-   * Setups relavent aria attributes in the target input.
-   * @param {HTMLElement} target An element to set attribute on to
-   */
-  _setupTargetAria(target) {
-    ensureNodeId$1(this);
-    target.setAttribute('aria-autocomplete', 'list');
-    target.setAttribute('autocomplete', 'off');
-    target.setAttribute('aria-haspopup', 'true');
-    // parent node of the input also should have aria attributes
-    const parent = target.parentElement;
-    if (!parent) {
-      return;
-    }
-    parent.setAttribute('role', 'combobox');
-    parent.setAttribute('aria-expanded', 'false');
-    parent.setAttribute('aria-owns', this.id);
-    parent.setAttribute('aria-haspopup', 'listbox');
-    if (!parent.hasAttribute('aria-label') && !parent.hasAttribute('aria-labelledby')) {
-      parent.setAttribute('aria-label', 'Text input with list suggestions');
-    }
-  }
-
-  /**
-   * Sets `aria-expanded` on input's parent element.
-   * @param {boolean} opened
-   */
-  _openedChanged(opened) {
-    const target = this._oldTarget;
-    const parent = target && target.parentElement;
-    if (!parent) {
-      return;
-    }
-    parent.setAttribute('aria-expanded', String(opened));
-  }
-
-  /**
-   * Renders suggestions on target's `input` event
-   * @param {CustomEvent} e
-   */
-  _targetInputHandler(e) {
-    if (e.detail) {
-      // This event is dispatched by the autocomplete
-      return;
-    }
-    this.renderSuggestions();
-  }
-
-  /**
-   * Renders suggestions on target input focus if `openOnFocus` is set.
-   */
-  _targetFocusHandler() {
-    if (!this.openOnFocus || this.opened || this[autocompleteFocus] || this.__ignoreNextFocus) {
-      return;
-    }
-    this[autocompleteFocus] = true;
-    setTimeout(() => {
-      this[autocompleteFocus] = false;
-      this.renderSuggestions();
-    });
-  }
-
-  /**
-   * Renders suggestions for current input and opens the overlay if
-   * there are suggestions to show.
-   */
-  renderSuggestions() {
-    if (!this.isAttached) {
-      return;
-    }
-    let { value } = this._oldTarget;
-    if (value === undefined || value === null) {
-      value = '';
-    }
-    if (typeof value !== 'string') {
-      value = String(value);
-    }
-    if (this._previousQuery && value.indexOf(this._previousQuery) === 0) {
-      this._previousQuery = value;
-      this._filterSuggestions();
-      return;
-    }
-    this._listbox.selected = -1;
-    this._disaptchQuery(value);
-    this._previousQuery = value;
-    this._filterSuggestions();
-    if (this.loader) {
-      this._loading = true;
-      if (!this[openedValue]) {
-        this._setComboboxWidth();
-        this[openedValue] = true;
-      }
-    }
-  }
-
-  /**
-   * Disaptches query event and returns it.
-   * @param {String} value Current input value.
-   * @return {CustomEvent}
-   */
-  _disaptchQuery(value) {
-    const e = new CustomEvent('query', {
-      detail: {
-        value
-      }
-    });
-    this.dispatchEvent(e);
-    return e;
-  }
-
-  /**
-   * Filter `source` array for current value.
-   */
-  _filterSuggestions() {
-    if (!this._oldTarget || this._previousQuery === undefined) {
-      return;
-    }
-    this._suggestions = [];
-    const source = /** @type InternalSuggestion[] */ (this[suggestionsValue]);
-    if (!source || !source.length) {
-      this[openedValue] = false;
-      return;
-    }
-    const query = this._previousQuery ? this._previousQuery.toLowerCase() : '';
-    const filtered = this._listSuggestions(source, query);
-    if (filtered.length === 0) {
-      this[openedValue] = false;
-      return;
-    }
-    filtered.sort((a, b) => {
-      const valueA = String(a.value);
-      const valueB = String(b.value);
-      const lowerA = valueA.toLowerCase();
-      const lowerB = valueB.toLowerCase();
-      const aIndex = lowerA.indexOf(query);
-      const bIndex = lowerB.indexOf(query);
-      if (aIndex === bIndex) {
-        return valueA.localeCompare(valueB);
-      }
-      if (aIndex === 0 && bIndex !== 0) {
-        return -1;
-      }
-      if (bIndex === 0 && aIndex !== 0) {
-        return 1;
-      }
-      if (valueA > valueB) {
-        return 1;
-      }
-      if (valueA < valueB) {
-        return -1;
-      }
-      return valueA.localeCompare(valueB);
-    });
-    this._suggestions = /** @type Suggestion[] */ (filtered);
-    this.notifyResize();
-    setTimeout(() => {
-      if (!this.opened) {
-        this._setComboboxWidth();
-        this[openedValue] = true;
-      }
-    });
-  }
-
-  /**
-   * Filters out suggestions
-   * @param {InternalSuggestion[]} source Source suggestions (normalized)
-   * @param {string} query Filter term
-   * @return {InternalSuggestion[]} Filtered suggestions.
-   */
-  _listSuggestions(source, query) {
-    if (!query && this.openOnFocus) {
-      return source;
-    }
-    const filter = (item) => {
-      const { value='' } = item;
-      return String(value).toLowerCase().includes(query);
-    };
-    return source.filter(filter);
-  }
-
-  _closeHandler() {
-    if (this[openedValue]) {
-      this[openedValue] = false;
-    }
-  }
-
-  notifyResize() {
-    const node = this.querySelector('anypoint-dropdown');
-    if (node) {
-      // @ts-ignore
-      node.notifyResize();
-    }
-  }
-
-  _selectionHandler(e) {
-    const { selected } = e.target;
-    if (selected === -1 || selected === null || selected === undefined) {
-      return;
-    }
-    this._selectSuggestion(selected);
-  }
-
-  /**
-   * Inserts selected suggestion into the text box and closes the suggestions.
-   * @param {number} selected Index of suggestion to use.
-   */
-  _selectSuggestion(selected) {
-    // pick from the currently rendered suggestions, selected refers to this list
-    const value = this._suggestions[selected];
-    if (!value) {
-      return;
-    }
-    const { target } = this;
-    // The suggestion on the `_suggestions` is a subset of `[suggestionsValue]`
-    // that has the `index` property, which refers to the index position on the source list.
-    const sourceSuggestion = this.source[value.index];
-    if (!sourceSuggestion) {
-      // the source must have changed.
-      return;
-    }
-    const result = String(value.value);
-    target.value = result;
-    target.dispatchEvent(
-      new CustomEvent('input', {
-        detail: {
-          autocomplete: this
-        }
-      })
-    );
-    this[openedValue] = false;
-    this._inform(sourceSuggestion);
-    if (!this.__ignoreCloseRefocus) {
-      this._refocusTarget();
-    }
-  }
-
-  _refocusTarget() {
-    this.__ignoreNextFocus = true;
-    this.target.blur();
-    this.target.focus();
-    setTimeout(() => {
-      this.__ignoreNextFocus = false;
-    });
-  }
-
-  /**
-   * Handler for the keydown event.
-   * @param {KeyboardEvent} e
-   */
-  _targetKeydown(e) {
-    if (e.key === 'ArrowDown') {
-      this._onDownKey();
-      e.preventDefault();
-      e.stopPropagation();
-    } else if (e.key === 'ArrowUp') {
-      this._onUpKey();
-      e.preventDefault();
-      e.stopPropagation();
-    } else if (e.key === 'Enter' || e.key === 'NumEnter') {
-      this._onEnterKey();
-    } else if (e.key === 'Tab') {
-      this._onTabDown();
-    } else if (e.key === 'Escape') {
-      this._onEscKey();
-    }
-  }
-
-  /**
-   * If the dropdown is opened then it focuses on the first element on the list.
-   * If closed it opens the suggestions and focuses on the first element on
-   * the list.
-   */
-  _onDownKey() {
-    if (!this[openedValue]) {
-      this.renderSuggestions();
-      setTimeout(() => {
-        this._listbox.highlightNext();
-      });
-    } else {
-      this._listbox.highlightNext();
-    }
-  }
-
-  /**
-   * If the dropdown is opened then it focuses on the last element on the list.
-   * If closed it opens the suggestions and focuses on the last element on
-   * the list.
-   */
-  _onUpKey() {
-    if (!this[openedValue]) {
-      this.renderSuggestions();
-      setTimeout(() => {
-        if (this[openedValue]) {
-          this._listbox.highlightPrevious();
-        }
-      });
-    } else {
-      this._listbox.highlightPrevious();
-    }
-  }
-
-  /**
-   * Closes the dropdown.
-   */
-  _onEscKey() {
-    this[openedValue] = false;
-  }
-
-  /**
-   * Accetps first suggestion from the dropdown when opened.
-   */
-  _onEnterKey() {
-    if (!this[openedValue]) {
-      return;
-    }
-    const { _listbox: node } = this;
-    const { highlightedItem } = node;
-    if (highlightedItem) {
-      const index = Number(node.indexOf(highlightedItem));
-      if (!Number.isNaN(index) && index > -1) {
-        this._selectSuggestion(index);
-        return;
-      }
-    }
-    this._selectSuggestion(0);
-  }
-
-  /**
-   * The element refocuses on the input when suggestions closes.
-   * Also, the lisbox element is focusable so with tab it can be next target.
-   * Finally, the dropdown has close animation that takes some time to finish
-   * so it will try to refocus after the animation finish.
-   * This function sets flags in debouncer to prohibit this.
-   */
-  _onTabDown() {
-    if (this[openedValue]) {
-      this._listbox.tabIndex = -1;
-      this.__ignoreNextFocus = true;
-      this.__ignoreCloseRefocus = true;
-      this[openedValue] = false;
-      setTimeout(() => {
-        this._listbox.tabIndex = 0;
-        this.__ignoreNextFocus = false;
-        this.__ignoreCloseRefocus = false;
-      }, 300);
-    }
-  }
-
-  /**
-   * Dispatches `selected` event with new value.
-   *
-   * @param {string|Suggestion} value Selected value.
-   */
-  _inform(value) {
-    const ev = new CustomEvent('selected', {
-      detail: {
-        value
-      },
-      cancelable: true
-    });
-    this.dispatchEvent(ev);
-  }
-
-  render() {
-    const {
-      _oldTarget,
-      verticalAlign,
-      horizontalAlign,
-      scrollAction,
-      horizontalOffset,
-      verticalOffset,
-      noAnimations,
-      styles,
-      compatibility,
-    } = this;
-    const offset = compatibility ? -2 : 0;
-    const finalVerticalOffset = verticalOffset  + offset;
-    return html`
-    <style>${styles}</style>
-    <anypoint-dropdown
-      .positionTarget="${_oldTarget}"
-      .verticalAlign="${verticalAlign}"
-      .verticalOffset="${finalVerticalOffset}"
-      .horizontalAlign="${horizontalAlign}"
-      .horizontalOffset="${horizontalOffset}"
-      .scrollAction="${scrollAction}"
-      .opened="${this[openedValue]}"
-      .noAnimations="${noAnimations}"
-      noautofocus
-      nooverlap
-      nocancelonoutsideclick
-      @overlay-closed="${this._closeHandler}"
-    >
-      ${this._listboxTemplate()}
-    </anypoint-dropdown>
-    `;
-  }
-
-  /**
-   * @return {TemplateResult} Returns a template for the listbox
-   */
-  _listboxTemplate() {
-    return html`
-      <anypoint-listbox
-        aria-label="Use arrows and enter to select list item. Escape to close the list."
-        slot="dropdown-content"
-        selectable="anypoint-item,anypoint-item-body"
-        useariaselected
-        @select="${this._selectionHandler}"
-        ?compatibility="${this.compatibility}"
-      >
-        ${this._loaderTemplate()}
-        ${this._listTemplate()}
-      </anypoint-listbox>
-    `;
-  }
-
-  /**
-   * @return {TemplateResult|string} Returns a template for the progress bar
-   */
-  _loaderTemplate() {
-    const { loader, _loading } = this;
-    const _showLoader = !!loader && !!_loading;
-    if (!_showLoader) {
-      return '';
-    }
-    return html`<paper-progress style="width: 100%" indeterminate></paper-progress>`;
-  }
-
-  /**
-   * @return {TemplateResult[]} Returns a template for the list item
-   */
-  _listTemplate() {
-    const { _suggestions=[] } = this;
-    return _suggestions.map((item) => this[itemTemplate](item));
-  }
-
-  /**
-   * @param {Suggestion} item A suggestion to render
-   * @return {TemplateResult} Template for a single drop down item
-   */
-  [itemTemplate](item) {
-    const label = String(item.label || item.value);
-    const { description } = item;
-    const { compatibility, noink } = this;
-    if (description) {
-      return html`<anypoint-item ?compatibility="${compatibility}">
-      <anypoint-item-body ?compatibility="${compatibility}" twoline>
-        <div>${label}</div>
-        <div secondary>${description}</div>
-        ${this[rippleTemplate](compatibility, noink)}
-      </anypoint-item-body></anypoint-item>`;
-    }
-    return html`<anypoint-item ?compatibility="${compatibility}">
-      <div>${label}</div>
-      ${this[rippleTemplate](compatibility, noink)}
-    </anypoint-item>`;
-  }
-
-  [rippleTemplate](compatibility, noink) {
-    if (compatibility) {
-      return '';
-    }
-    return html`<paper-ripple ?noink="${noink}"></paper-ripple>`;
-  }
-}
-/**
- * Fired when user entered some text into the input.
- * It is a time to query external datastore for suggestions and update "source" property.
- * Source should be updated event if the backend result with empty values and should set
- * the list to empty array.
- *
- * Nore that setting up source in response to this event after the user has closed
- * the dropdown it will have no effect at the moment.
- *
- * @event query
- * @param {String} value An entered phrase in text field.
- */
-/**
- * Fired when the item was selected by the user.
- * At the time of receiving this event new value is already set in target input field.
- *
- * @event selected
- * @param {String} value Selected value
- */
-
-/*
-Copyright 2019 Pawel Psztyc, The ARC team
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-
-window.customElements.define('anypoint-autocomplete', AnypointAutocomplete);
-
-/**
-@license
 Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
@@ -70402,838 +70792,3026 @@ the License.
 
 window.customElements.define('oauth2-scope-selector', OAuth2ScopeSelector);
 
-/**
-@license
-Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * The `<auth-method-oauth2>` element displays a form to provide the OAuth 2.0 settings.
- *
- * ### Example
- *
- * ```html
- * <auth-method-oauth2></auth-method-oauth2>
- * ```
- *
- * This element uses `oauth2-scope-selector` so the `allowedScopes`, `preventCustomScopes` and
- * `scopes` properties will be set on this element. See documentation of `oauth2-scope-selector`
- * for more description.
+/* eslint-disable max-len */
 
- * ### Forcing the user to select scope from the list
- *
- * ```html
- * <auth-method-oauth2 prevent-custom-scopes></auth-method-oauth2>
- * ```
- *
- * ```javascript
- * var form = document.querySelector('auth-method-oauth2');
- * form.allowedScopes = ['profile', 'email'];
- * ```
- *
- * ## Authorizing the user
- * The element sends the `oauth2-token-requested` with the OAuth settings provided with the form.
- * Any element / app can handle this event and perform authorization.
- * *
- * When the authorization is performed the app / other element should set back `accessToken` property
- * of this element or send the `oauth2-token-response` with token response value so the change will
- * can reflected in the UI.
- * ARC provides the `oauth2-authorization` element that can handle this events.
- *
- * ### Example
- *
- * ```html
- * <auth-method-oauth2></auth-method-oauth2>
- * <oauth2-authorization></oauth2-authorization>
- * ```
- *
- * The `oauth2-authorization` can be set anywhere in the DOM up from this element siblings to the
- * body. See demo for example usage.
- *
- ## Redirect URL
- * Most OAuth 2 providers requires setting the redirect URL with the request. This can't be changed
- * by the user and redirect URL can be only set in the provider's settings panel. The element
- * accepts the `redirectUri` property which will be displayed to the user that (s)he has to set up
- * this callback URL in the OAuth provider settings. It can be any URL where token / code will be
- * handled properly and the value returned to the `oauth2-authorization` element.
- * See `oauth2-authorization` documentation for more information.
- *
- * If you going to use `oauth2-authorization` popup then the redirect URL value must be set to:
- * `/bower_components/oauth-authorization/oauth-popup.html`. Mind missing `2` in `oauth-authorization`.
- * This popup is a common popup for auth methods.
- *
- * ### OAuth 2.0 extensibility
- *
- * As per [RFC6749, section 8](https://tools.ietf.org/html/rfc6749#section-8) OAuth 2.0
- * protocol can be extended by custom `grant_type`, custom query parameters and custom headers.
- *
- * This is not yet supported in RAML. However, working together with RAML spec creators,
- * an official RAML annotation to extend OAuth 2.0 settings has been created.
- * The annotation source can be found in the [RAML organization repository]
- * (https://github.com/raml-org/raml-annotations/blob/master/annotations/security-schemes/oauth-2-custom-settings.raml).
- *
- * When the annotation is applied to the `ramlSettings` property, this element renders
- * additional form inputs to support custom schemes.
- *
- * This produces additional property in the token authorization request: `customData`.
- * The object contains user input from custom properties.
- * *
- * #### `customData` model
- *
- * ```json
- * customData: {
- *  auth: {
- *    parameters: Array|undefined
- *  },
- *  token: {
- *    parameters: Array|undefined,
- *    headers: Array|undefined,
- *    body: Array|undefined
- *  }
- * }
- * ```
- * `auth` contains properties to be applied to the authorization request.
- * Only query parameetrs are (and can be) supported.
- *
- * `token` property contains properties to be applied when making token request.
- * It can include `parameters` as a query parameters, `headers` as a list
- * of headers to apply, and `body` as a list of properties to send with
- * body.
- *
- * Note: `body` content type is always `application/x-www-form-urlencoded`.
- * `customData.token.body` parameters must not be url encoded. Processors
- * handing token request should handle values encoding.
- *
- * #### Annotation example
- *
- * ```yaml
- *  annotationTypes:
- *    customSettings: !include oauth-2-custom-settings.raml
- *  securitySchemes:
- *    oauth2:
- *      type: OAuth 2.0
- *      describedBy:
- *        headers:
- *          Authorization:
- *            example: "Bearer token"
- *      settings:
- *        (customSettings):
- *          authorizationSettings:
- *            queryParameters:
- *              resource:
- *                type: string
- *                required: true
- *                description: |
- *                  A resource ID that defines a domain of authorization.
- *          accessTokenSettings:
- *            body:
- *              resource:
- *                type: string
- *                required: true
- *                description: |
- *                  A resource ID that defines a domain of authorization.
- *        accessTokenUri: https://auth.domain.com/authorize
- *        authorizationUri: https://auth.domain.com/token
- *        authorizationGrants: [code]
- *     scopes: profile
- * ```
- *
- * ## clientId and clientSecret
- *
- * In RAML there's no way to set an example or demo clientId/secret for the
- * tools like API console. This component supports reading data from
- * Polymer's `iron-meta` component. Meta components creeated with
- * `oauth2-client-id` and `oauth2-client-secret` will be used to prepopulate
- * the form if the form doesn't contain this properties already.
- *
- * Note, values changed by the user are persistent per browser session
- * (until browser is closed). Refresing the page will restore user input
- * instead the one defined in `iron-meta` elements.
- *
- * ### Example
- *
- * ```html
- * <iron-meta key="oauth2-client-id" value="abcd"></iron-meta>
- * <iron-meta key="oauth2-client-secret" value="efgh"></iron-meta>
- * ```
- *
- * @customElement
- * @memberof UiElements
- * @appliesMixin AmfHelperMixin
- * @demo demo/oauth2.html
- * @demo demo/oauth2-amf.html Using AMF data model
- * @extends AuthMethodBase
+const onIcon = html`<svg viewBox="0 0 16 16">
+  <path d="M11.605 3.086L6.898 9.803 4.311 7.991 3.164 9.629l4.225 2.959 5.657-8.073c-.396-.554-.884-1.037-1.441-1.429z"></path>
+</svg>`;
+
+const offIcon = html`<svg viewBox="0 0 16 16">
+  <path d="M13.289 3.418c-.218-.252-.455-.489-.707-.707L8 7.293 3.418 2.711c-.252.218-.489.455-.707.707L7.293 8l-4.582 4.582c.218.252.455.489.707.707L8 8.707l4.582 4.582c.252-.218.489-.455.707-.707L8.707 8l4.582-4.582z"></path>
+</svg>`;
+
+var styles$9 = css`
+:host {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  height: 48px;
+  margin: 0 12px;
+}
+
+:host([disabled]) {
+  pointer-events: none;
+  opacity: 0.54;
+}
+
+:host(:focus) {
+  outline:none;
+}
+
+.toggle-container {
+  position: relative;
+}
+
+.track {
+  background-color: var(--anypoint-switch-color, #000);
+  border: 1px var(--anypoint-switch-color, #000) solid;
+  opacity: .38;
+
+  box-sizing: border-box;
+  width: 32px;
+  height: 14px;
+  border-radius: 7px;
+  transition: opacity 90ms cubic-bezier(.4,0,.2,1),
+    background-color 90ms cubic-bezier(.4,0,.2,1),
+    border-color 90ms cubic-bezier(.4,0,.2,1);
+}
+
+.button {
+  background-color: var(--anypoint-switch-button-color, #fff);
+  border: 10px var(--anypoint-switch-button-color, #fff) solid;
+  box-shadow: 0 3px 1px -2px rgba(0,0,0,.2),
+    0 2px 2px 0 rgba(0,0,0,.14),
+    0 1px 5px 0 rgba(0,0,0,.12);
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 2;
+
+  transition: background-color 90ms cubic-bezier(.4,0,.2,1),
+    border-color 90ms cubic-bezier(.4,0,.2,1);
+}
+
+.button:before {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  content: "";
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: opacity 15ms linear, background-color 15ms linear;
+  z-index: 0;
+  background-color: var(--anypoint-switch-color, #000);
+}
+
+.toggle-container {
+  position: absolute;
+  left: -18px;
+  right: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  transform: translateX(0);
+  cursor: pointer;
+  transition: transform 90ms cubic-bezier(.4,0,.2,1);
+}
+
+.label {
+  margin-left: 10px;
+  cursor: default;
+}
+
+.toggle-container:hover .button:before {
+  opacity: .04;
+}
+
+:host(:focus) .button:before {
+  opacity: .12;
+}
+
+:host([checked]) .button:before {
+  background-color: var(--anypoint-switch-active-color, var(--primary-color));
+}
+
+:host([checked]) .track {
+  opacity: .54;
+  background-color: var(--anypoint-switch-active-color, var(--primary-color));
+  border: 1px var(--anypoint-switch-active-color, var(--primary-color)) solid;
+}
+
+:host([checked]) .button {
+  background-color: var(--anypoint-switch-active-color, var(--primary-color));
+  border: 10px var(--anypoint-switch-active-color, var(--primary-color)) solid;
+}
+
+:host([checked]) .toggle-container {
+  transform: translateX(20px);
+}
+
+:host([compatibility]) {
+  height: 36px;
+}
+
+.anypoint.container {
+  width: 64px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+.anypoint .tracker {
+  background: var(--anypoint-switch-background-color, var(--anypoint-color-aluminum2));
+  height: 100%;
+  width: inherit;
+  position: relative;
+}
+
+:host(:focus) .tracker {
+  background: var(--anypoint-switch-focus-background-color, var(--anypoint-color-aluminum3));
+}
+
+.anypoint .tracker:before {
+  position: absolute;
+  content: "";
+  background-color: var(--anypoint-switch-tracker-background-color, var(--anypoint-color-steel2));
+  height: 2px;
+  top: calc(50% - 2px);
+  left: 15%;
+  right: 15%;
+}
+
+.anypoint .toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  top: 10%;
+  left: 5%;
+  width: 28px;
+  height: 28px;
+  background: var(--anypoint-switch-toggle-background-color, var(--anypoint-color-aluminum3));
+  border-radius: 100%;
+  cursor: pointer;
+  transition: background-color .15s, transform .15s ease-out;
+}
+
+:host(:focus) .anypoint .toggle {
+  background: var(--anypoint-switch-toggle-focus-background-color, var(--anypoint-color-aluminum4));
+}
+
+.anypoint .icon {
+  display: block;
+  height: 16px;
+  width: 16px;
+  fill: var(--anypoint-switch-toggle-icon-color, currentColor);
+}
+
+:host([checked]) .anypoint .toggle {
+  background-color: var(--anypoint-switch-toggle-checked-background-color, var(--anypoint-color-robustBlue2));
+  color: #fff;
+  transform: translateX(28px);
+}`;
+
+/* eslint-disable class-methods-use-this */
+
+/**
+ * `anypoint-switch`
  */
-class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
-  get styles() {
-    return [
-      markdownStyles,
-      apiFormStyles,
-      authStyles,
-      css`:host {
-        display: block;
-        font-size: var(--arc-font-body1-font-size);
-        font-weight: var(--arc-font-body1-font-weight);
-        line-height: var(--arc-font-body1-line-height);
-      }
-
-      .form {
-        flex: 1;
-      }
-
-      oauth2-scope-selector {
-        margin: 24px 0;
-        outline: none;
-      }
-
-      .grant-dropdown {
-        width: auto;
-        min-width: 320px;
-      }
-
-      .authorize-actions {
-        display: flex;
-        flex-direction: row;
-        flex: 1;
-        align-items: center;
-      }
-
-      .authorize-actions > anypoint-button {
-        margin: 0;
-      }
-
-      .authorize-actions > anypoint-spinner {
-        margin-left: 12px;
-      }
-
-      .token-info,
-      .redirect-info {
-        margin: 12px 8px;
-        color: var(--auth-method-oauth2-redirect-info-color, rgba(0, 0, 0, 0.74));
-      }
-
-      .code {
-        font-family: var(--arc-font-code-family);
-        flex: 1;
-        outline: none;
-        cursor: text;
-      }
-
-      .token-label {
-        font-weight: 500;
-        font-size: 16px;
-        margin: 12px 8px;
-      }
-
-      .current-token {
-        margin-top: 12px;
-      }
-
-      .redirect-section,
-      oauth2-scope-selector {
-        box-sizing: border-box;
-      }
-
-      *[hiddable] {
-        display: none;
-      }
-
-      *[data-grant="authorization_code"] *[data-visible~="authorization_code"],
-      *[data-grant="client_credentials"] *[data-visible~="client_credentials"],
-      *[data-grant="implicit"] *[data-visible~="implicit"],
-      *[data-grant="password"] *[data-visible~="password"] {
-        display: inline-block;
-      }
-
-      form[is-custom-grant] *[data-visible] {
-        display: block !important;
-      }
-
-      .field-value {
-        display: flex;
-        flex-direction: row;
-        flex: 1;
-        align-items: center;
-      }
-
-      api-property-form-item {
-        flex: 1;
-      }
-
-      .error-toast {
-        background-color: var(--warning-primary-color, #FF7043);
-        color: var(--warning-contrast-color, #fff);
-      }
-
-      api-property-form-item[is-array] {
-        margin-top: 8px;
-      }
-
-      .read-only-param-field {
-         background-color: rgba(0, 0, 0, 0.12);
-         display: block;
-         white-space: pre-wrap;
-         word-wrap: break-word;
-         word-break: break-all;
-         display: flex;
-         flex-direction: row;
-       }
-
-       .read-only-param-field.padding {
-         padding: 12px;
-       }
-
-       anypoint-input,
-       anypoint-masked-input {
-         display: inline-block;
-         width: calc(100% - 16px);
-         margin: 16px 8px;
-       }
-
-       :host([compatibility]) anypoint-input,
-       :host([compatibility]) anypoint-masked-input {
-         margin-top: 20px;
-         margin-bottom: 20px;
-       }
-
-       :host([compatibility]) api-property-form-item {
-         margin: 0.1px 0;
-       }`
-    ];
+class AnypointSwitch extends ButtonStateMixin(ControlStateMixin(CheckedElementMixin(LitElement))) {
+  static get styles() {
+    return styles$9;
   }
 
   static get properties() {
     return {
-      // Seleted authorization grand type.
-      grantType: { type: String },
+      formDisabled: { type: Boolean, reflect: true },
       /**
-       * Computed value, true if the grant type is a cutom definition.
+       * Enables Anypoint compatibility
        */
-      isCustomGrant: { type: Boolean },
-      // The client ID for the auth token.
-      clientId: { type: String },
-      // The client secret. It to be used when selected server flow.
-      clientSecret: { type: String },
-      // The authorization URL to initialize the OAuth flow.
-      authorizationUri: { type: String },
-      // The access token URL to exchange code for token. It is used in server flow.
-      accessTokenUri: { type: String },
-      // The password. To be used with the password flow.
-      password: { type: String },
-      // The password. To be used with the password flow.
-      username: { type: String },
-      /**
-       * A callback URL to be used with this element.
-       * User can't change the callback URL and it will inform the user to setup OAuth to use
-       * this value.
-       *
-       * This is relevant when selected flow is the browser flow.
-       */
-      redirectUri: { type: String },
-      /**
-       * List of user selected scopes.
-       * It can be pre-populated with list of scopes (array of strings).
-       */
-      scopes: { type: Array },
-      /**
-       * List of pre-defined scopes to choose from. It will be passed to the `oauth2-scope-selector`
-       * element.
-       */
-      allowedScopes: { type: Array },
-      /**
-       * If true then the `oauth2-scope-selector` will disallow to add a scope that is not
-       * in the `allowedScopes` list. Has no effect if the `allowedScopes` is not set.
-       */
-      preventCustomScopes: { type: Boolean },
-      // True when currently authorizing the user.
-      _authorizing: { type: Boolean },
-      /**
-       * When the user authorized the app it should be set to the token value.
-       * This element do not perform authorization. Other elements must intercept
-       * `oauth2-token-requested` and perform the authorization.
-       */
-      accessToken: { type: String },
-      /**
-       * Received from the response token value.
-       * By default it is "bearer" as the only one defined in OAuth 2.0
-       * spec.
-       * If the token response contains `tokenType` property this value is
-       * updated.
-       */
-      tokenType: { type: String },
-      /**
-       * AMF json/ld mode describing security scheme.
-       */
-      amfSettings: { type: Object },
-
-      // Currently available grant types.
-      grantTypes: { type: Array },
-      /**
-       * The element automatically hides following fileds it the element has been initialized
-       * with values for this fields (without user interaction):
-       *
-       * - autorization url
-       * - token url
-       * - scopes
-       *
-       * If all this values are set then the element sets `isAdvanced` attribute and sets
-       * `advancedOpened` to false
-       *
-       * Setting this property will prevent this behavior.
-       */
-      noAuto: { type: Boolean },
-      /**
-       * If set it renders autorization url, token url and scopes as advanced options
-       * which are then invisible by default. User can oen setting using the UI.
-       */
-      isAdvanced: { type: Boolean },
-      /**
-       * If true then the advanced options are opened.
-       */
-      advancedOpened: { type: Boolean },
-      /**
-       * If set, the grant typr selector will be hidden from the UI.
-       */
-      noGrantType: { type: Boolean },
-      /**
-       * List of query parameters to apply to authorization request.
-       * This is allowed by the OAuth 2.0 spec as an extension of the
-       * protocol.
-       * This value is computed if the `ramlSettings` contains annotations
-       * and one of it is `customSettings`.
-       * See https://github.com/raml-org/raml-annotations for definition.
-       */
-      _authQueryParameters: { type: Array },
-      /**
-       * List of query parameters to apply to token request.
-       * This is allowed by the OAuth 2.0 spec as an extension of the
-       * protocol.
-       * This value is computed if the `ramlSettings` contains annotations
-       * and one of it is `customSettings`.
-       * See https://github.com/raml-org/raml-annotations for definition.
-       */
-      _tokenQueryParameters: { type: Array },
-      /**
-       * List of headers to apply to token request.
-       * This is allowed by the OAuth 2.0 spec as an extension of the
-       * protocol.
-       * This value is computed if the `ramlSettings` contains annotations
-       * and one of it is `customSettings`.
-       * See https://github.com/raml-org/raml-annotations for definition.
-       */
-      _tokenHeaders: { type: Array },
-      /**
-       * List of body parameters to apply to token request.
-       * This is allowed by the OAuth 2.0 spec as an extension of the
-       * protocol.
-       * This value is computed if the `ramlSettings` contains annotations
-       * and one of it is `customSettings`.
-       * See https://github.com/raml-org/raml-annotations for definition.
-       */
-      _tokenBody: { type: Array },
-      /**
-       * Default delivery method of access token. Reported with
-       * settings change event as `deliveryMethod`.
-       *
-       * This value is added to event's `settings` property.
-       *
-       * When setting AMF model, this value may change, if AMF description
-       * forces different than default placement of the token.
-       */
-      oauthDeliveryMethod: { type: String },
-      /**
-       * Default parameter name that carries access token. Reported with
-       * the settings change event as `deliveryName`.
-       *
-       * This value is added to event's `settings` property.
-       *
-       * When setting AMF model, this value may change, if AMF description
-       * forces different than default parameter name for the token.
-       */
-      oauthDeliveryName: { type: String },
-      /**
-       * Renders slightly different view that is optymized for mobile
-       * or narrow area on desktop.
-       */
-      narrow: { type: Boolean, reflect: true }
+      compatibility: { type: Boolean, reflect: true }
     };
   }
 
-  get grantType() {
-    return this._grantType || '';
+  static get formAssociated() {
+    return true;
   }
 
-  set grantType(value) {
-    if (this._sop('grantType', value)) {
-      this.isCustomGrant = this._computeIsCustomGrant(value);
-      if (value === 'password') {
-        this.advancedOpened = true;
-        this.isAdvanced = false;
-      } else if (!this.isAdvanced) {
-        this._autoHide();
-      }
-    }
-  }
-
-  get grantTypes() {
-    return this._grantTypes;
-  }
-
-  set grantTypes(value) {
-    /* istanbul ignore else */
-    if (this._sop('grantTypes', value)) {
-      if (value && value.length === 1) {
-        this.noGrantType = true;
-      } else {
-        this.noGrantType = false;
-      }
-    }
-  }
-
-  get accessToken() {
-    return this._accessToken;
-  }
-
-  set accessToken(value) {
-    /* istanbul ignore else */
-    if (this._sop('accessToken', value)) {
-      this._storeSessionProperty(this.storeKeys.token, value);
-    }
-  }
-
-  get tokenType() {
-    return this._tokenType;
-  }
-
-  set tokenType(value) {
-    /* istanbul ignore else */
-    if (this._sop('tokenType', value)) {
-      this._storeSessionProperty(this.storeKeys.tokenType, value);
-    }
-  }
-
-  get amfSettings() {
-    return this._amfSettings;
-  }
-
-  set amfSettings(value) {
-    /* istanbul ignore else */
-    if (this._sop('amfSettings', value)) {
-      this._amfSettingsChanged();
-    }
-  }
-
-  get _queryModelOpts() {
-    return {
-      valueDelimiter: '=',
-      decodeValues: true
-    };
-  }
-
-  get _headersModelOpts() {
-    return {
-      valueDelimiter: ':'
-    };
-  }
-
-  /**
-   * List of OAuth 2.0 grants.
-   * This list can be extended by custom grants
-   * @return {Array<Object>} List of objects with `type` and `label`
-   * properties.
-   */
-  get _oauth2GrantTypes() {
-    return [{
-      type: 'implicit',
-      label: 'Access token (browser flow)'
-    }, {
-      type: 'authorization_code',
-      label: 'Authorization code (server flow)'
-    }, {
-      type: 'client_credentials',
-      label: 'Client credentials'
-    }, {
-      type: 'password',
-      label: 'Password'
-    }];
+  get form() {
+    return this._internals && this._internals.form;
   }
 
   constructor() {
-    super('oauth2');
-    this._oauth2ErrorHandler = this._oauth2ErrorHandler.bind(this);
-    this._tokenSuccessHandler = this._tokenSuccessHandler.bind(this);
-    this._headerChangedHandler = this._headerChangedHandler.bind(this);
-
-    this.oauthDeliveryName = 'authorization';
-    this.oauthDeliveryMethod = 'header';
-    this.grantTypes = this._oauth2GrantTypes;
-  }
-
-  firstUpdated() {
-    this._isInitialized = true;
-    if (this.amfSettings) {
-      this._amfSettingsChanged();
-    }
-    this._autoHide();
-    this._autoRestore();
-    if (!this._tokenType) {
-      this._tokenType = 'Bearer';
+    super();
+    this.ariaActiveAttribute = 'aria-checked';
+    this.checked = false;
+    this.compatibility = false;
+    this.toggles = true;
+    /* to work with iron-form */
+    this._hasIronCheckedElementBehavior = true;
+    // @ts-ignore
+    if (this.attachInternals) {
+      // @ts-ignore
+      this._internals = this.attachInternals();
     }
   }
 
-  updated() {
-    this._settingsChanged();
+  connectedCallback() {
+    // button state mixin sets role to checkbox
+    if (!this.hasAttribute('role')) {
+      this.setAttribute('role', 'checkbox');
+    }
+    if (super.connectedCallback) {
+      super.connectedCallback();
+    }
+    if (!this.hasAttribute('aria-checked')) {
+      this.setAttribute('aria-checked', 'false');
+    }
+    if (!this.hasAttribute('tabindex')) {
+      this.setAttribute('tabindex', '0');
+    }
+  }
+
+  /**
+   * Synchronizes the element's `active` and `checked` state.
+   */
+  _buttonStateChanged() {
+    if (this.disabled) {
+      return;
+    }
+    this.checked = this.active;
+  }
+
+  _clickHandler(e) {
+    if (this.disabled) {
+      return;
+    }
+    super._clickHandler(e);
+  }
+
+  _checkedChanged(value) {
+    super._checkedChanged(value);
+    this.setAttribute('aria-checked', value ? 'true' : 'false');
+    if (this._internals) {
+      this._internals.setFormValue(value ? this.value : '');
+
+      if (!this.matches(':disabled') && this.hasAttribute('required') && !value) {
+        this._internals.setValidity({
+          customError: true
+        }, 'This field is required.');
+      } else {
+        this._internals.setValidity({});
+      }
+    } else {
+      this.validate(this.checked);
+    }
+  }
+
+  checkValidity() {
+    if (this._internals) {
+      return this._internals.checkValidity();
+    }
+    return this.required ? this.checked : true;
+  }
+
+  formDisabledCallback(disabled) {
+    this.formDisabled = disabled;
+  }
+
+  formResetCallback() {
+    this.checked = false;
+    this._internals.setFormValue('');
+  }
+
+  formStateRestoreCallback(state) {
+    this._internals.setFormValue(state);
+    this.checked = !!state;
+  }
+
+  _disabledChanged(disabled) {
+    this.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+    this.setAttribute('tabindex', disabled ? '-1' : '0');
+  }
+
+  _mdContent() {
+    return html`<div class="track"></div>
+    <div class="toggle-container">
+      <div class="button"></div>
+    </div>`;
+  }
+
+  _compatibleContent() {
+    const { checked } = this;
+    const icon = checked ? onIcon : offIcon;
+    return html`
+    <div class="anypoint container">
+      <div class="tracker">
+        <div class="toggle">
+          <span class="icon">${icon}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  render() {
+    const { compatibility } = this;
+    return html`
+    ${compatibility ?
+      this._compatibleContent() :
+      this._mdContent()}
+    <div class="label"><slot></slot></div>
+    `;
+  }
+}
+
+window.customElements.define('anypoint-switch', AnypointSwitch);
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+
+/* eslint-disable no-plusplus */
+/* eslint-disable prefer-destructuring */
+/* eslint-disable no-param-reassign */
+/* eslint-disable class-methods-use-this */
+
+/** Functions */
+const _oauth2ErrorHandler = Symbol('oauth2ErrorHandler');
+const _tokenSuccessHandler = Symbol('tokenSuccessHandler');
+const _clickCopyAction = Symbol('clickCopyAction');
+const _scopesChanged = Symbol('scopesChanged');
+const _oauth2RedirectTemplate = Symbol('oauth2RedirectTemplate');
+const _oauth2GrantTypeTemplate = Symbol('oauth2GrantTypeTemplate');
+const _oauth2AdvancedTemplate = Symbol('oauth2AdvancedTemplate');
+const _oath2AuthorizeTemplate = Symbol('oath2AuthorizeTemplate');
+const _oauth2TokenTemplate = Symbol('oauth2TokenTemplate');
+const _advHandler = Symbol('advHandler');
+const readUrlValue = Symbol('readUrlValue');
+const setOauth2Defaults = Symbol('setOauth2Defaults');
+const authorizeOauth2 = Symbol('authorizeOauth2');
+const renderOauth2Auth = Symbol('renderOauth2Auth');
+const restoreOauth2Auth = Symbol('restoreOauth2Auth');
+const serializeOauth2Auth = Symbol('serializeOauth2Auth');
+const oauth2CustomPropertiesTemplate = Symbol(
+  'oauth2CustomPropertiesTemplate'
+);
+const autoHide = Symbol('autoHide');
+const clearOauth2Auth = Symbol('clearOauth2Auth');
+
+/**
+ * List of OAuth 2.0 default grant types.
+ * This list can be extended by custom grants
+ *
+ * @return {Array<Object>} List of objects with `type` and `label`
+ * properties.
+ */
+const oauth2GrantTypes = [
+  {
+    type: 'implicit',
+    label: 'Access token (browser flow)',
+  },
+  {
+    type: 'authorization_code',
+    label: 'Authorization code (server flow)',
+  },
+  {
+    type: 'client_credentials',
+    label: 'Client credentials',
+  },
+  {
+    type: 'password',
+    label: 'Password',
+  },
+];
+
+const makeNodeSelection = (node) => {
+  const body = /** @type {HTMLBodyElement} */ (document.body);
+  /* istanbul ignore if */
+  // @ts-ignore
+  if (body.createTextRange) {
+    // @ts-ignore
+    const range = body.createTextRange();
+    range.moveToElementText(node);
+    range.select();
+  } else if (window.getSelection) {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNode(node);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+};
+
+/**
+ * A handler for `focus` event on a label that contains text and
+ * should be coppied to clipboard when user is interacting with it.
+ *
+ * @param {KeyboardEvent} e
+ */
+const selectFocusable = (e) => {
+  const node = /** @type {HTMLElement} */ (e.target);
+  makeNodeSelection(node);
+};
+
+const errorTemplate = (msg) => {
+  return html`<p class="error-message">⚠ ${msg}</p>`;
+};
+
+/**
+ * @typedef {Object} Oauth2Params
+ * @property {string} grantType - OAuth 2 grant type
+ * @property {string} type - The same as `grantType`, used fpor compatibility.
+ * @property {string=} clientId - Registered client ID
+ * @property {string=} clientSecret - Registered client secret
+ * @property {string=} accessToken - Current access token
+ * @property {String[]=} scopes - List of token scopes. Can be undefined
+ * @property {string=} password - User password value
+ * @property {string=} username - User name value
+ * @property {string=} authorizationUri - User authorization URI
+ * @property {string=} accessTokenUri - Token exchange URI
+ * @property {string=} state - Generated state parameter for current request
+ */
+
+/**
+ * @param {AuthorizationMethod} base
+ */
+const mxFunction$m = (base) => {
+  class Oauth2MethodMixinImpl extends base {
+    /**
+     * @return {Boolean} Computed value, true if the grant type is a cutom definition.
+     */
+    get isCustomGrant() {
+      const { grantType } = this;
+      return (
+        !!grantType &&
+        [
+          'implicit',
+          'authorization_code',
+          'client_credentials',
+          'password',
+        ].indexOf(grantType) === -1
+      );
+    }
+
+    get clientIdRequired() {
+      const { grantType } = this;
+      return ['client_credentials', 'password'].indexOf(grantType) === -1;
+    }
+
+    get oauth2ClientSecretRendered() {
+      const { grantType, isCustomGrant } = this;
+      return (
+        isCustomGrant ||
+        (!!grantType &&
+          ['authorization_code', 'client_credentials', 'password'].indexOf(
+            grantType
+          ) !== -1)
+      );
+    }
+
+    get oauth2ClientSecretRequired() {
+      const { grantType } = this;
+      return ['authorization_code'].indexOf(grantType) !== -1;
+    }
+
+    get oauth2AuthorizationUriRendered() {
+      const { grantType, isCustomGrant } = this;
+      return (
+        isCustomGrant ||
+        (!!grantType &&
+          ['implicit', 'authorization_code'].indexOf(grantType) !== -1)
+      );
+    }
+
+    get oauth2AccessTokenUriRendered() {
+      const { grantType, isCustomGrant } = this;
+      return (
+        isCustomGrant ||
+        (!!grantType &&
+          ['client_credentials', 'authorization_code', 'password'].indexOf(
+            grantType
+          ) !== -1)
+      );
+    }
+
+    get oauth2PasswordRendered() {
+      const { grantType, isCustomGrant } = this;
+      return (
+        isCustomGrant || (!!grantType && ['password'].indexOf(grantType) !== -1)
+      );
+    }
+
+    static get properties() {
+      return {
+        // Seleted authorization grand type.
+        grantType: { type: String },
+
+        // The client ID for the auth token.
+        clientId: { type: String },
+
+        // The client secret. It to be used when selected server flow.
+        clientSecret: { type: String },
+
+        /**
+         * List of user selected scopes.
+         * It can be pre-populated with list of scopes (array of strings).
+         */
+        scopes: { type: Array },
+
+        /**
+         * List of pre-defined scopes to choose from. It will be passed to the `oauth2-scope-selector`
+         * element.
+         */
+        allowedScopes: { type: Array },
+
+        /**
+         * If true then the `oauth2-scope-selector` will disallow to add a scope that is not
+         * in the `allowedScopes` list. Has no effect if the `allowedScopes` is not set.
+         */
+        preventCustomScopes: { type: Boolean },
+
+        /**
+         * When the user authorized the app it should be set to the token value.
+         * This element do not perform authorization. Other elements must intercept
+         * `oauth2-token-requested` and perform the authorization.
+         */
+        accessToken: { type: String },
+
+        /**
+         * Received from the response token value.
+         * By default it is "bearer" as the only one defined in OAuth 2.0
+         * spec.
+         * If the token response contains `tokenType` property this value is
+         * updated.
+         */
+        tokenType: { type: String },
+
+        /**
+         * Currently available grant types.
+         */
+        grantTypes: { type: Array },
+
+        /**
+         * If set it renders autorization url, token url and scopes as advanced options
+         * which are then invisible by default. User can oen setting using the UI.
+         */
+        isAdvanced: { type: Boolean },
+
+        /**
+         * If true then the advanced options are opened.
+         */
+        advancedOpened: { type: Boolean },
+
+        /**
+         * If set, the grant type selector is hidden from the UI.
+         */
+        noGrantType: { type: Boolean },
+
+        /**
+         * Default delivery method of access token. Reported with
+         * settings change event as `deliveryMethod`.
+         *
+         * This value is added to event's `settings` property.
+         *
+         * When setting AMF model, this value may change, if AMF description
+         * forces different than default placement of the token.
+         */
+        oauthDeliveryMethod: { type: String },
+
+        /**
+         * Default parameter name that carries access token. Reported with
+         * the settings change event as `deliveryName`.
+         *
+         * This value is added to event's `settings` property.
+         *
+         * When setting AMF model, this value may change, if AMF description
+         * forces different than default parameter name for the token.
+         */
+        oauthDeliveryName: { type: String },
+
+        /**
+         * A base URI to use to construct correct URLs to authorization endpoints.
+         * The UI will present authorization endpoints as provided by the user
+         * or attributes. However, if the paths are relative (must start with '/')
+         * then base URI is added to the path.
+         */
+        baseUri: { type: String },
+
+        /**
+         * An error message returned by the authorizartion.
+         * It renders error dialog when an error ocurred. It is automaticzally cleared
+         * when the user request the token again.
+         */
+        lastErrorMessage: { type: String },
+      };
+    }
+
+    /**
+     * @return {string|null} Last generated state or null of not generated.
+     */
+    get lastState() {
+      return this._lastState || null;
+    }
+
+    constructor() {
+      super();
+      this[_oauth2ErrorHandler] = this[_oauth2ErrorHandler].bind(this);
+      this[_tokenSuccessHandler] = this[_tokenSuccessHandler].bind(this);
+    }
+
+    _attachListeners(node) {
+      super._attachListeners(node);
+      node.addEventListener('oauth2-error', this[_oauth2ErrorHandler]);
+      node.addEventListener(
+        'oauth2-token-response',
+        this[_tokenSuccessHandler]
+      );
+    }
+
+    _detachListeners(node) {
+      super._detachListeners(node);
+      node.removeEventListener('oauth2-error', this[_oauth2ErrorHandler]);
+      node.removeEventListener(
+        'oauth2-token-response',
+        this[_tokenSuccessHandler]
+      );
+    }
+
+    /**
+     * Restores previously serialized values
+     * @param {Oauth2Params} settings
+     */
+    [restoreOauth2Auth](settings) {
+      const type = settings.grantType || settings.type;
+      this.grantType = type;
+      this.clientId = settings.clientId;
+      this.accessToken = settings.accessToken;
+      this.scopes = settings.scopes;
+      switch (type) {
+        case 'implicit':
+          this.authorizationUri = settings.authorizationUri;
+          break;
+        case 'authorization_code':
+          this.authorizationUri = settings.authorizationUri;
+          this.clientSecret = settings.clientSecret;
+          this.accessTokenUri = settings.accessTokenUri;
+          break;
+        case 'client_credentials':
+          // The server flow.
+          this.clientSecret = settings.clientSecret;
+          this.accessTokenUri = settings.accessTokenUri;
+          break;
+        case 'password':
+          // The server flow.
+          this.username = settings.username;
+          this.password = settings.password;
+          this.accessTokenUri = settings.accessTokenUri;
+          this.clientSecret = settings.clientSecret;
+          break;
+        default:
+          this.authorizationUri = settings.authorizationUri;
+          this.clientSecret = settings.clientSecret;
+          this.accessTokenUri = settings.accessTokenUri;
+          this.username = settings.username;
+          this.password = settings.password;
+      }
+    }
+
+    /**
+     * Serializes OAuth2 parameters into a configuration object.
+     * @return {Oauth2Params}
+     */
+    [serializeOauth2Auth]() {
+      const { grantType } = this;
+      const detail = {
+        type: grantType,
+        grantType,
+        clientId: this.clientId,
+        accessToken: this.accessToken || '',
+        tokenType: this.tokenType,
+        scopes: this.scopes,
+        deliveryMethod: this.oauthDeliveryMethod,
+        deliveryName: this.oauthDeliveryName,
+      };
+
+      switch (grantType) {
+        case 'implicit':
+          // The browser flow.
+          detail.authorizationUri = this[readUrlValue](this.authorizationUri);
+          detail.redirectUri = this[readUrlValue](this.redirectUri);
+          break;
+        case 'authorization_code':
+          // The server flow.
+          detail.authorizationUri = this[readUrlValue](this.authorizationUri);
+          detail.clientSecret = this.clientSecret;
+          detail.accessTokenUri = this[readUrlValue](this.accessTokenUri);
+          detail.redirectUri = this[readUrlValue](this.redirectUri);
+          break;
+        case 'client_credentials':
+          // The server flow.
+          detail.accessTokenUri = this[readUrlValue](this.accessTokenUri);
+          detail.clientSecret = this.clientSecret;
+          break;
+        case 'password':
+          // The server flow.
+          detail.username = this.username;
+          detail.password = this.password;
+          detail.accessTokenUri = this[readUrlValue](this.accessTokenUri);
+          detail.clientSecret = this.clientSecret;
+          break;
+        default:
+          // Custom grant type.
+          detail.authorizationUri = this[readUrlValue](this.authorizationUri);
+          detail.clientSecret = this.clientSecret;
+          detail.accessTokenUri = this[readUrlValue](this.accessTokenUri);
+          detail.redirectUri = this[readUrlValue](this.redirectUri);
+          detail.username = this.username;
+          detail.password = this.password;
+          break;
+      }
+      return detail;
+    }
+
+    /**
+     * When defined and the `url` is a relative path staring with `/` then it
+     * adds base URI to the path and returns concatenated value.
+     *
+     * @param {string} url
+     * @return {string} Final URL value.
+     */
+    [readUrlValue](url) {
+      const { baseUri } = this;
+      if (!url || !baseUri) {
+        return url;
+      }
+      url = String(url);
+      if (url[0] === '/') {
+        let uri = baseUri;
+        if (uri[uri.length - 1] === '/') {
+          uri = uri.substr(0, uri.length - 1);
+        }
+        return `${uri}${url}`;
+      }
+      return url;
+    }
+
+    [setOauth2Defaults]() {
+      if (!this.oauthDeliveryName) {
+        this.oauthDeliveryName = 'authorization';
+      }
+      if (!this.oauthDeliveryMethod) {
+        this.oauthDeliveryMethod = 'header';
+      }
+      if (!this.grantTypes) {
+        this.grantTypes = oauth2GrantTypes;
+      }
+      this[autoHide]();
+      if (!this.tokenType) {
+        this.tokenType = 'Bearer';
+      }
+    }
+
+    /**
+     * Clears OAuth 1 auth settings
+     */
+    [clearOauth2Auth]() {
+      this.grantType = '';
+      this.accessToken = '';
+      this.tokenType = '';
+      this.scopes = [];
+      this.oauthDeliveryMethod = '';
+      this.oauthDeliveryName = '';
+      this.authorizationUri = '';
+      this.accessTokenUri = '';
+      this.clientId = '';
+      this.clientSecret = '';
+      this.username = '';
+      this.password = '';
+
+      this[setOauth2Defaults]();
+    }
+
+    [authorizeOauth2]() {
+      if (this.lastErrorMessage) {
+        this.lastErrorMessage = undefined;
+      }
+      const validationResult = this.validate();
+      if (!validationResult) {
+        return false;
+      }
+      const detail = this[serializeOauth2Auth]();
+      this._lastState = this.generateState();
+      detail.state = this._lastState;
+      const e = new CustomEvent('oauth2-token-requested', {
+        detail,
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      this.dispatchEvent(e);
+      if (!e.defaultPrevented) {
+        return false;
+      }
+      this._authorizing = true;
+      return true;
+    }
+
+    /**
+     * Handler for `oauth2-error` custom event.
+     * Informs the user about the error in the flow if the state property
+     * is the one used with the request.
+     *
+     * @param {CustomEvent} e
+     */
+    [_oauth2ErrorHandler](e) {
+      const info = e.detail;
+      // API console may not support state check (may not return it back)
+      if (typeof info.state !== 'undefined') {
+        if (info.state !== this._lastState) {
+          return;
+        }
+      }
+      this._authorizing = false;
+      this._lastState = undefined;
+      const { message = 'Unknown error' } = e.detail;
+      this.lastErrorMessage = message;
+    }
+
+    /**
+     * Handler for the token response from the authorization component.
+     *
+     * @param {CustomEvent} e
+     */
+    [_tokenSuccessHandler](e) {
+      const info = e.detail;
+      // API console may not support state check (may not return it back)
+      if (typeof info.state !== 'undefined') {
+        if (info.state !== this._lastState) {
+          return;
+        }
+      }
+      this._authorizing = false;
+      this._lastState = undefined;
+      if (info.accessToken && info.accessToken !== this.accessToken) {
+        if (info.tokenType && info.tokenType !== this.tokenType) {
+          this.tokenType = info.tokenType;
+        } else if (!info.tokenType && this.tokenType !== 'Bearer') {
+          this.tokenType = 'Bearer';
+        }
+        this.accessToken = info.accessToken;
+        notifyChange(this);
+      }
+    }
+
+    /**
+     * Generates `state` parameter for the OAuth2 call.
+     *
+     * @return {string} Generated state string.
+     */
+    generateState() {
+      let text = '';
+      const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      for (let i = 0; i < 6; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+      }
+      return text;
+    }
+
+    /**
+     * This function hides all non-crucial fields that has been pre-filled when element has been
+     * initialize (values not provided by the user). Hidden fields will be available under
+     * "advanced" options.
+     *
+     * To prevent this behavior set `no-auto` attribute on this element.
+     */
+    [autoHide]() {
+      const { grantType, scopes } = this;
+      const hasScopes = !!(scopes && scopes.length);
+      let advOpened;
+      switch (grantType) {
+        case 'implicit':
+          advOpened = !(hasScopes && !!this.authorizationUri);
+          break;
+        case 'authorization_code':
+          advOpened = !(
+            hasScopes &&
+            !!this.authorizationUri &&
+            !!this.accessTokenUri
+          );
+          break;
+        case 'client_credentials':
+          advOpened = !this.accessTokenUri;
+          break;
+        default:
+          advOpened = true;
+          break;
+      }
+      this.advancedOpened = advOpened;
+      if (!advOpened) {
+        this.isAdvanced = true;
+      }
+    }
+
+    /**
+     * A handler for `focus` event on a label that contains text and
+     * should be coppied to clipboard when user is interacting with it.
+     *
+     * @param {MouseEvent} e
+     */
+    [_clickCopyAction](e) {
+      const node = /** @type {HTMLElement} */ (e.target);
+      const elm = this.shadowRoot.querySelector('clipboard-copy');
+      elm.content = node.innerText;
+      /* istanbul ignore if */
+      if (elm.copy()) ;
+      setTimeout(() => {
+        makeNodeSelection(node);
+      });
+    }
+
+    [_scopesChanged](e) {
+      this.scopes = e.detail.value;
+      notifyChange(this);
+    }
+
+    [_advHandler](e) {
+      this.advancedOpened = e.target.checked;
+    }
+
+    [_oauth2RedirectTemplate]() {
+      const { redirectUri } = this;
+      return html`<div class="subtitle">Redirect URI</div>
+        <section>
+          <div class="redirect-section">
+            <p class="redirect-info">
+              Set this redirect URI in OAuth 2.0 provider settings.
+            </p>
+            <p class="read-only-param-field padding">
+              <span
+                class="code"
+                @click="${this[_clickCopyAction]}"
+                @focus="${selectFocusable}"
+                title="Click to copy the URI"
+                tabindex="0"
+                >${redirectUri}</span
+              >
+            </p>
+          </div>
+        </section>`;
+    }
+
+    [_oauth2GrantTypeTemplate]() {
+      const {
+        grantType,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+        noGrantType,
+        isCustomGrant,
+      } = this;
+      const items = this.grantTypes || [];
+      return html` <anypoint-dropdown-menu
+        name="grantType"
+        ?required="${!isCustomGrant}"
+        class="grant-dropdown"
+        ?hidden="${noGrantType}"
+        .outlined="${outlined}"
+        .compatibility="${compatibility}"
+        .readOnly="${readOnly}"
+        .disabled="${disabled}"
+      >
+        <label slot="label">Grant type</label>
+        <anypoint-listbox
+          slot="dropdown-content"
+          .selected="${grantType}"
+          @selected-changed="${this[selectionHandler]}"
+          data-name="grantType"
+          .outlined="${outlined}"
+          .compatibility="${compatibility}"
+          .readOnly="${readOnly}"
+          .disabled="${disabled}"
+          attrforselected="data-value"
+        >
+          ${items.map(
+            (item) =>
+              html`<anypoint-item
+                .compatibility="${compatibility}"
+                data-value="${item.type}"
+                >${item.label}</anypoint-item
+              >`
+          )}
+        </anypoint-listbox>
+      </anypoint-dropdown-menu>`;
+    }
+
+    [_oauth2AdvancedTemplate]() {
+      const {
+        isCustomGrant,
+        advancedOpened,
+        oauth2AuthorizationUriRendered,
+        authorizationUri,
+        oauth2AccessTokenUriRendered,
+        accessTokenUri,
+        oauth2PasswordRendered,
+        username,
+        password,
+        allowedScopes,
+        preventCustomScopes,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+        scopes,
+        baseUri,
+      } = this;
+      // When the baseUri is set then validation won't allow to provide
+      // relative paths to the authorization endpoint hence this should be
+      // defined as string and not "url".
+      const urlType = baseUri ? 'string' : 'url';
+      return html`<div class="advanced-section" ?hidden="${!advancedOpened}">
+        ${oauth2AuthorizationUriRendered
+          ? inputTemplate(
+              'authorizationUri',
+              authorizationUri,
+              'Authorization URI',
+              this[inputHandler],
+              {
+                outlined,
+                compatibility,
+                readOnly,
+                disabled,
+                type: urlType,
+                required: !isCustomGrant,
+                autoValidate: true,
+                invalidLabel:
+                  'Authorization URI is required for this grant type',
+              }
+            )
+          : ''}
+        ${oauth2AccessTokenUriRendered
+          ? inputTemplate(
+              'accessTokenUri',
+              accessTokenUri,
+              'Access token URI',
+              this[inputHandler],
+              {
+                outlined,
+                compatibility,
+                readOnly,
+                disabled,
+                type: urlType,
+                required: !isCustomGrant,
+                autoValidate: true,
+                invalidLabel:
+                  'Access token URI is required for this grant type',
+              }
+            )
+          : ''}
+        ${oauth2PasswordRendered
+          ? inputTemplate(
+              'username',
+              username,
+              'Username',
+              this[inputHandler],
+              {
+                outlined,
+                compatibility,
+                readOnly,
+                disabled,
+                required: !isCustomGrant,
+                autoValidate: true,
+                invalidLabel: 'User name is required for this grant type',
+              }
+            )
+          : ''}
+        ${oauth2PasswordRendered
+          ? inputTemplate(
+              'password',
+              password,
+              'Password',
+              this[inputHandler],
+              {
+                outlined,
+                compatibility,
+                readOnly,
+                disabled,
+                required: !isCustomGrant,
+                autoValidate: true,
+                invalidLabel: 'Password is required for this grant type',
+              }
+            )
+          : ''}
+        <oauth2-scope-selector
+          .allowedScopes="${allowedScopes}"
+          .preventCustomScopes="${preventCustomScopes}"
+          .value="${scopes}"
+          .readOnly="${readOnly}"
+          .disabled="${disabled}"
+          .outlined="${outlined}"
+          .compatibility="${compatibility}"
+          name="scopes"
+          @value-changed="${this[_scopesChanged]}"
+        ></oauth2-scope-selector>
+      </div>`;
+    }
+
+    [_oath2AuthorizeTemplate]() {
+      const { _authorizing, compatibility } = this;
+      return html`<div class="authorize-actions">
+        <anypoint-button
+          ?disabled="${_authorizing}"
+          class="auth-button"
+          ?compatibility="${compatibility}"
+          emphasis="medium"
+          data-type="get-token"
+          @click="${this.authorize}"
+          >Request access token</anypoint-button
+        >
+      </div>`;
+    }
+
+    [_oauth2TokenTemplate]() {
+      const { accessToken, compatibility, _authorizing } = this;
+      return html`<div class="current-token">
+        <label class="token-label">Current token</label>
+        <p class="read-only-param-field padding">
+          <span class="code" @click="${this[_clickCopyAction]}"
+            >${accessToken}</span
+          >
+        </p>
+        <div class="authorize-actions">
+          <anypoint-button
+            ?disabled="${_authorizing}"
+            class="auth-button"
+            ?compatibility="${compatibility}"
+            emphasis="medium"
+            data-type="refresh-token"
+            @click="${this.authorize}
+          "
+            >Refresh access token</anypoint-button
+          >
+        </div>
+      </div>`;
+    }
+
+    [renderOauth2Auth]() {
+      const {
+        clientId,
+        oauth2ClientSecretRendered,
+        clientSecret,
+        isAdvanced,
+        advancedOpened,
+        accessToken,
+        clientIdRequired,
+        oauth2ClientSecretRequired,
+        lastErrorMessage,
+        outlined,
+        compatibility,
+        readOnly,
+        disabled,
+      } = this;
+      return html`<form autocomplete="on" class="oauth2-auth">
+          ${this[_oauth2GrantTypeTemplate]()}
+          ${passwordTemplate(
+            'clientId',
+            clientId,
+            'Client id',
+            this[inputHandler],
+            {
+              outlined,
+              compatibility,
+              readOnly,
+              disabled,
+              required: clientIdRequired,
+              autoValidate: true,
+              invalidLabel: 'Client ID is required for this grant type',
+              infoLabel: clientIdRequired
+                ? undefined
+                : 'Client id is optional for this grant type',
+            }
+          )}
+          ${oauth2ClientSecretRendered
+            ? passwordTemplate(
+                'clientSecret',
+                clientSecret,
+                'Client secret',
+                this[inputHandler],
+                {
+                  outlined,
+                  compatibility,
+                  readOnly,
+                  disabled,
+                  required: oauth2ClientSecretRequired,
+                  autoValidate: true,
+                  invalidLabel: 'Client secret is required for this grant type',
+                }
+              )
+            : ''}
+          ${this[oauth2CustomPropertiesTemplate]()}
+          ${isAdvanced
+            ? html` <div class="adv-toggle">
+                <anypoint-switch
+                  class="adv-settings-input"
+                  .checked="${advancedOpened}"
+                  @change="${this[_advHandler]}"
+                  ?disabled="${readOnly}"
+                  ?compatibility="${compatibility}"
+                  >Advanced settings</anypoint-switch
+                >
+              </div>`
+            : ''}
+          ${this[_oauth2AdvancedTemplate]()}
+        </form>
+        ${this[_oauth2RedirectTemplate]()}
+        ${accessToken
+          ? this[_oauth2TokenTemplate]()
+          : this[_oath2AuthorizeTemplate]()}
+        ${lastErrorMessage ? errorTemplate(lastErrorMessage) : ''}
+        <clipboard-copy></clipboard-copy>`;
+    }
+
+    [oauth2CustomPropertiesTemplate]() {}
+  }
+  return Oauth2MethodMixinImpl;
+};
+
+/**
+ * A mixin that adds support for OAuth 2 method computations.
+ *
+ * @mixin
+ */
+const Oauth2MethodMixin = dedupeMixin(mxFunction$m);
+
+/** @typedef {import('./AuthorizationMethod').AuthorizationMethod} AuthorizationMethod */
+/** @typedef {import('@anypoint-web-components/anypoint-input').AnypointInput} AnypointInput */
+
+/**
+ * Validates basic authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateBasicAuth = (element) => {
+  const { username } = element;
+  return !!username;
+};
+
+/**
+ * Validates bearer authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateBearerAuth = (element) => {
+  const { token } = element;
+  return !!token;
+};
+
+/**
+ * Validates NTLM authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateNtlmAuth = (element) => {
+  const { username } = element;
+  return !!username;
+};
+
+/**
+ * Validates digest authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateDigestAuth = (element) => {
+  const { username, realm, nonce, nc, opaque, cnonce } = element;
+  return !!username && !!realm && !!nonce && !!nc && !!opaque && !!cnonce;
+};
+
+/**
+ * Validates OAuth1 authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth1Auth = (element) => {
+  const {
+    authTokenMethod,
+    authParamsLocation,
+    timestamp,
+    nonce,
+    signatureMethod,
+    consumerKey,
+  } = element;
+  return (
+    !!authTokenMethod &&
+    !!authParamsLocation &&
+    !!timestamp &&
+    !!nonce &&
+    !!signatureMethod &&
+    !!consumerKey
+  );
+};
+
+/**
+ * Validates OAuth2 authorization form with implicit grant type.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2AuthImplicit = (element) => {
+  const { clientId, authorizationUri } = element;
+  return !!clientId && !!authorizationUri;
+};
+
+/**
+ * Validates OAuth2 authorization form with authorization code grant type.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2AuthCode = (element) => {
+  const { clientId, clientSecret, authorizationUri, accessTokenUri } = element;
+  return !!clientId && !!authorizationUri && !!clientSecret && !!accessTokenUri;
+};
+
+/**
+ * Validates OAuth2 authorization form with client credentials grant type.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2AuthCredentials = (element) => {
+  const { accessTokenUri } = element;
+  return !!accessTokenUri;
+};
+
+/**
+ * Validates OAuth2 authorization form with password grant type.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2AuthPassword = (element) => {
+  const { accessTokenUri, username, password } = element;
+  return !!accessTokenUri && !!password && !!username;
+};
+
+/**
+ * Validates OAuth2 authorization form with custom grant type.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2AuthCustom = (element) => {
+  const { accessTokenUri } = element;
+  return !!accessTokenUri;
+};
+/**
+ * Validates the form controls instead of values. This also shows validation
+ * errors.
+ * Note, this uses form-associated custom elements API. At this moment (Nov 2019)
+ * it is only available in CHrome 77. FF is implementing it and Edge will be
+ * Chome soon.
+ *
+ * @param {HTMLFormElement} form The form to validate
+ * @return {Boolean} True if the form is valid.
+ */
+const validateOauth2form = (form) => {
+  const invalid = /** @type {AnypointInput[]} */ (Array.from(
+    form.elements
+  )).some((node) => {
+    if (!node.validate) {
+      return true;
+    }
+    return !node.validate();
+  });
+  return !invalid;
+};
+
+/**
+ * Validates OAuth2 authorization form.
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateOauth2Auth = (element) => {
+  const { grantType } = element;
+  if (!grantType) {
+    return false;
+  }
+  const form = element.shadowRoot.querySelector('form');
+  if (form && form.elements.length) {
+    return validateOauth2form(form);
+  }
+  // Array.from($0.elements).forEach((node) => node.validate());
+  switch (grantType) {
+    case 'implicit':
+      return validateOauth2AuthImplicit(element);
+    case 'authorization_code':
+      return validateOauth2AuthCode(element);
+    case 'client_credentials':
+      return validateOauth2AuthCredentials(element);
+    case 'password':
+      return validateOauth2AuthPassword(element);
+    default:
+      return validateOauth2AuthCustom(element);
+  }
+};
+
+/**
+ * Validates current authorization type
+ * @param {AuthorizationMethod} element An instance of the element.
+ * @return {Boolean} Validation result
+ */
+const validateForm = (element) => {
+  const type = normalizeType(element.type);
+  switch (type) {
+    case METHOD_BASIC:
+      return validateBasicAuth(element);
+    case METHOD_BEARER:
+      return validateBearerAuth(element);
+    case METHOD_NTLM:
+      return validateNtlmAuth(element);
+    case METHOD_DIGEST:
+      return validateDigestAuth(element);
+    case METHOD_OAUTH1:
+      return validateOauth1Auth(element);
+    case METHOD_OAUTH2:
+      return validateOauth2Auth(element);
+    default:
+      return true;
+  }
+};
+
+const typeChangedSymbol = Symbol('typeChangedSymbol');
+
+/**
+ * An element that renders various authorization methods.
+ *
+ * ## Development
+ *
+ * The element mixes in multimple mixins from `src/` directory.
+ * Each mixin support an authorization method. When selection change (the `type`
+ * property) a render function from correcponding mixin is called.
+ *
+ * @extends LitElement
+ * @mixes Oauth2MethodMixin
+ * @mixes Oauth1MethodMixin
+ * @mixes DigestMethodMixin
+ * @mixes BasicMethodMixin
+ * @mixes NtlmMethodMixin
+ * @mixes EventsTargetMixin
+ */
+class AuthorizationMethod extends Oauth2MethodMixin(
+  Oauth1MethodMixin(
+    DigestMethodMixin(
+      NtlmMethodMixin(
+        BearerMethodMixin(BasicMethodMixin(EventsTargetMixin(LitElement)))
+      )
+    )
+  )
+) {
+  get styles() {
+    return authStyles;
+  }
+
+  static get properties() {
+    return {
+      /**
+       * Authorization method type.
+       *
+       * Supported types are (case insensitive, spaces sensitive):
+       *
+       * - Basic
+       * - Client certificate
+       * - Digest
+       * - NTLM
+       * - OAuth 1
+       * - OAuth 2
+       *
+       * Depending on selected type different properties are used.
+       * For example Basic type only uses `username` and `password` properties,
+       * while NTLM also uses `domain` property.
+       *
+       * See readme file for detailed list of properties depending on selected type.
+       */
+      type: { type: String, reflect: true },
+      /**
+       * When set the editor is in read only mode.
+       */
+      readOnly: { type: Boolean },
+      /**
+       * When set the inputs are disabled
+       */
+      disabled: { type: Boolean },
+      /**
+       * Enables compatibility with Anypoint components.
+       */
+      compatibility: { type: Boolean },
+      /**
+       * Enables Material Design outlined style
+       */
+      outlined: { type: Boolean },
+      /**
+       * Renders mobile friendly view.
+       */
+      narrow: { type: Boolean, reflect: true },
+      /**
+       * Current password.
+       *
+       * Used in the following types:
+       * - Basic
+       * - NTLM
+       * - Digest
+       * - OAuth 2
+       */
+      password: { type: String },
+      /**
+       * Current username.
+       *
+       * Used in the following types:
+       * - Basic
+       * - NTLM
+       * - Digest
+       * - OAuth 2
+       */
+      username: { type: String },
+      /**
+       * Authorization redirect URI
+       *
+       * Used in the following types:
+       * - OAuth 1
+       * - OAuth 2
+       */
+      redirectUri: { type: String },
+      /**
+       * Endpoint to authorize the token (OAuth 1) or exchange code for token (OAuth 2).
+       *
+       * Used in the following types:
+       * - OAuth 1
+       * - OAuth 2
+       */
+      accessTokenUri: { type: String },
+      /**
+       * An URI of authentication endpoint where the user should be redirected
+       * to auththorize the app. This endpoint initialized OAuth flow.
+       *
+       * Used in the following types:
+       * - OAuth 1
+       * - OAuth 2
+       */
+      authorizationUri: { type: String },
+      /**
+       * True when currently authorizing the user.
+       *
+       * Used in the following types:
+       * - OAuth 1
+       * - OAuth 2
+       */
+      _authorizing: { type: Boolean },
+      /**
+       * Oauth 1 or Bearer token (from the oauth console or received from auth server)
+       *
+       * Used in the following types:
+       * - OAuth 1
+       * - bearer
+       */
+      token: { type: String },
+    };
+  }
+
+  get type() {
+    return this._type;
+  }
+
+  set type(value) {
+    const old = this._type;
+    if (old === value) {
+      return;
+    }
+    this._type = value;
+    this.requestUpdate('type', old);
+    this[typeChangedSymbol](value);
+  }
+
+  /**
+   * @return {EventListener} Previously registered function or undefined.
+   */
+  get onchange() {
+    return this._onChange;
+  }
+
+  /**
+   * Registers listener for the `change` event
+   * @param {EventListener} value A function to be called when `change` event is
+   * dispatched
+   */
+  set onchange(value) {
+    if (this._onChange) {
+      this.removeEventListener('change', this._onChange);
+    }
+    if (typeof value !== 'function') {
+      this._onChange = null;
+      return;
+    }
+    this._onChange = value;
+    this.addEventListener('change', value);
+  }
+
+  /**
+   * Used in the following types:
+   * - OAuth 1
+   * - OAuth 2
+   *
+   * @return {boolean} True when currently authorizing the user.
+   */
+  get authorizing() {
+    return this._authorizing || false;
+  }
+
+  constructor() {
+    super();
+    this._authorizing = false;
+    this.password = undefined;
+    this.username = undefined;
+    this.redirectUri = undefined;
+    this.accessTokenUri = undefined;
+    this.authorizationUri = undefined;
+    this.token = undefined;
+    this.readOnly = false;
+    this.disabled = false;
+    this.compatibility = false;
+    this.outlined = false;
+    this.narrow = false;
+    this.type = undefined;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this[typeChangedSymbol](this.type);
+  }
+
+  /**
+   * A function called when `type` changed.
+   * Note, that other properties may not be initialized just yet.
+   *
+   * @param {String} type Current value.
+   */
+  [typeChangedSymbol](type) {
+    switch (normalizeType(type)) {
+      case METHOD_DIGEST:
+        return this[setDigestDefaults]();
+      case METHOD_OAUTH1:
+        return this[setOauth1Defaults]();
+      case METHOD_OAUTH2:
+        return this[setOauth2Defaults]();
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Clears settings for current type.
+   */
+  clear() {
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_BASIC:
+        this[clearBasicAuth]();
+        break;
+      case METHOD_BEARER:
+        this[clearBearerAuth]();
+        break;
+      case METHOD_NTLM:
+        this[clearNtlmAuth]();
+        break;
+      case METHOD_DIGEST:
+        this[clearDigestAuth]();
+        break;
+      case METHOD_OAUTH1:
+        this[clearOauth1Auth]();
+        break;
+      case METHOD_OAUTH2:
+        this[clearOauth2Auth]();
+        break;
+    }
+  }
+
+  /**
+   * Creates a settings object with user provided data for current method.
+   *
+   * @return {Object} User provided data
+   */
+  serialize() {
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_BASIC:
+        return this[serializeBasicAuth]();
+      case METHOD_BEARER:
+        return this[serializeBearerAuth]();
+      case METHOD_NTLM:
+        return this[serializeNtlmAuth]();
+      case METHOD_DIGEST:
+        return this[serializeDigestAuth]();
+      case METHOD_OAUTH1:
+        return this[serializeOauth1Auth]();
+      case METHOD_OAUTH2:
+        return this[serializeOauth2Auth]();
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Validates current method.
+   * @return {Boolean} Valudation state for current authorization method.
+   */
+  validate() {
+    return validateForm(this);
+  }
+
+  /**
+   * Restores previously serialized settings.
+   * A method type must be selected before calling this function.
+   *
+   * @param {Object} settings Depends on current type.
+   * @return {any}
+   */
+  restore(settings) {
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_BASIC:
+        return this[restoreBasicAuth](settings);
+      case METHOD_BEARER:
+        return this[restoreBearerAuth](settings);
+      case METHOD_NTLM:
+        return this[restoreNtlmAuth](settings);
+      case METHOD_DIGEST:
+        return this[restoreDigestAuth](settings);
+      case METHOD_OAUTH1:
+        return this[restoreOauth1Auth](settings);
+      case METHOD_OAUTH2:
+        return this[restoreOauth2Auth](settings);
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * This method only works for OAuth 1 and OAuth 2 authorization methods.
+   *
+   * Authorizes the user by starting OAuth flow.
+   *
+   * @return {any}
+   */
+  authorize() {
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_OAUTH1:
+        return this[authorizeOauth1]();
+      case METHOD_OAUTH2:
+        return this[authorizeOauth2]();
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * A handler for the `input` event on an input element
+   * @param {Event} e Original event dispatched by the input.
+   */
+  [inputHandler](e) {
+    const { name, value } = /** @type HTMLInputElement */ (e.target);
+    this[name] = value;
+    notifyChange(this);
+  }
+
+  [selectionHandler](e) {
+    const {
+      parentElement,
+      selected,
+    } = /** @type HTMLOptionElement */ (e.target);
+    const { name } = /** @type HTMLInputElement */ (parentElement);
+    this[name] = selected;
+    notifyChange(this);
+  }
+
+  render() {
+    const { styles } = this;
+    let tpl;
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_BASIC:
+        tpl = this[renderBasicAuth]();
+        break;
+      case METHOD_BEARER:
+        tpl = this[renderBearerAuth]();
+        break;
+      case METHOD_NTLM:
+        tpl = this[renderNtlmAuth]();
+        break;
+      case METHOD_DIGEST:
+        tpl = this[renderDigestAuth]();
+        break;
+      case METHOD_OAUTH1:
+        tpl = this[renderOauth1Auth]();
+        break;
+      case METHOD_OAUTH2:
+        tpl = this[renderOauth2Auth]();
+        break;
+      default:
+        tpl = '';
+    }
+    return html`
+      <style>
+        ${styles}
+      </style>
+      ${tpl}
+    `;
+  }
+}
+
+/**
+ * This element is deprecated. Use ApiViewModel class instead.
+ *
+ * This element only has public methods of the old implementation.
+ *
+ * @customElement
+ * @mixes EventsTargetMixin
+ * @extends LitElement
+ */
+class ApiViewModelTransformer extends EventsTargetMixin(LitElement) {
+  static get properties() {
+    return {
+      /**
+       * An array of propertues for which view model is to be generated.
+       * It accepts model for headers, query parameters, uri parameters and
+       * body.
+       * If `manualModel` is not set, assigning a value to this property will
+       * trigger model computation. Otherwise call `computeViewModel()`
+       * function manually to generate the model.
+       */
+      shape: { type: Array },
+      /**
+       * Generated view model from the `shape`
+       */
+      viewModel: { type: Array },
+      /**
+       * If set, assigning a value to `shape` will not trigger view model
+       * computation.
+       */
+      manualModel: { type: Boolean },
+      /**
+       * Makes the model to always have `hasDescription` to false and
+       * clears and documentation from ther model.
+       */
+      noDocs: { type: Boolean }
+    };
+  }
+
+  get shape() {
+    return this._shape;
+  }
+
+  set shape(value) {
+    const old = this._shape;
+    if (value === old) {
+      return;
+    }
+    this._shape = value;
+    this._shapeChanged(value);
+  }
+
+  get amf() {
+    return this.__modeler.amf;
+  }
+
+  set amf(value) {
+    this.__modeler.amf = value;
+  }
+
+  get noDocs() {
+    return this.__modeler.noDocs;
+  }
+
+  set noDocs(value) {
+    this.__modeler.noDocs = value;
+  }
+
+  constructor() {
+    super();
+    this._buildPropertyHandler = this._buildPropertyHandler.bind(this);
+    this.__modeler = new ApiViewModel({});
+    this.manualModel = false;
   }
 
   _attachListeners(node) {
-    window.addEventListener('oauth2-error', this._oauth2ErrorHandler);
-    window.addEventListener('oauth2-token-response', this._tokenSuccessHandler);
-    node.addEventListener('request-header-changed', this._headerChangedHandler);
+    node.addEventListener('api-property-model-build', this._buildPropertyHandler);
   }
 
   _detachListeners(node) {
-    window.removeEventListener('oauth2-error', this._oauth2ErrorHandler);
-    window.removeEventListener('oauth2-token-response', this._tokenSuccessHandler);
-    node.removeEventListener('request-header-changed', this._headerChangedHandler);
-  }
-  /**
-   * Overrides `AmfHelperMixin.__amfChanged`
-   */
-  __amfChanged() {
-    this._amfSettingsChanged();
-  }
-  /**
-   * This function hides all non-crucial fields that has been pre-filled when element has been
-   * initialize (values not provided by the user). Hidden fields will be available under
-   * "advanced" options.
-   *
-   * To prevent this behavior set `no-auto` attribute on this element.
-   */
-  _autoHide() {
-    if (this.noAuto) {
-      this.advancedOpened = true;
-      return;
-    }
-    if (this.grantType === 'password') {
-      this.advancedOpened = true;
-    } else if (this.authorizationUri && this.accessTokenUri && !!(this.scopes && this.scopes.length)) {
-      this.isAdvanced = true;
-      this.advancedOpened = false;
-    } else {
-      this.advancedOpened = true;
-    }
+    node.removeEventListener('api-property-model-build', this._buildPropertyHandler);
   }
 
-  get storeKeys() {
-    return {
-      clientId: 'auth.methods.latest.client_id',
-      clientSecret: 'auth.methods.latest.client_secret',
-      authorizationUri: 'auth.methods.latest.auth_uri',
-      accessTokenUri: 'auth.methods.latest.token_uri',
-      username: 'auth.methods.latest.username',
-      password: 'auth.methods.latest.password',
-      token: 'auth.methods.latest.auth_token',
-      tokenType: 'auth.methods.latest.tokenType'
-    };
-  }
-  /**
-   * Automatically restores value from session store if any exists.
-   * It does not override values already set.
-   */
-  _autoRestore() {
-    const keys = this.storeKeys;
-    this._restoreSessionProperty(keys.clientId, 'clientId');
-    this._restoreSessionProperty(keys.token, 'accessToken');
-    this._restoreSessionProperty(keys.tokenType, 'tokenType');
-    this._restoreSessionProperty(keys.authorizationUri, 'authorizationUri');
-    this._restoreSessionProperty(keys.accessTokenUri, 'accessTokenUri');
-    this._restoreSessionProperty(keys.clientSecret, 'clientSecret');
-    this._restoreSessionProperty(keys.username, 'username');
-    this._restoreSessionProperty(keys.password, 'password');
-    if (!this.clientId) {
-      this._restoreMetaClientId();
-    }
-    if (!this.clientSecret) {
-      this._restoreMetaClientSecret();
-    }
-  }
-  /**
-   * Sets `clientId` property from `iron-meta` if created.
-   * The key for the meta is `oauth2-client-id`
-   */
-  _restoreMetaClientId() {
-    const meta = document.createElement('iron-meta').byKey('oauth2-client-id');
-    if (!meta) {
-      return;
-    }
-    this.clientId = meta;
-  }
-  /**
-   * Sets `clientSecret` property from `iron-meta` if created.
-   * The key for the meta is `oauth2-client-secret`
-   */
-  _restoreMetaClientSecret() {
-    const meta = document.createElement('iron-meta').byKey('oauth2-client-secret');
-    if (!meta) {
-      return;
-    }
-    this.clientSecret = meta;
-  }
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} `true` if valid, `false` otherwise.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
-    }
-    return form.validate();
+  clearCache() {
+    this.__modeler.clearCache();
   }
 
-  // Checks if the HTML element should be visible in the UI for given properties.
-  _isFieldDisabled(...args) {
-    const isCustom = args.splice(0, 1)[0];
-    if (isCustom) {
-      return false;
+  _shapeChanged(shape) {
+    if (this.manualModel) {
+      return;
     }
-    const grantType = args.splice(0, 1)[0];
-    return args.indexOf(grantType) === -1;
+    this.computeViewModel(shape);
   }
-  /**
-   * Dispatches the `oauth2-token-requested` event.
-   * The event is handled by `oauth-authorization` component.
-   *
-   * If your application has own OAuth2 token exchange system then
-   * handle the event and authorize the user.
-   *
-   * @return {Boolean} True if event was sent. Can be false if event is not
-   * handled or when the form is invalid.
-   */
-  authorize() {
-    const validationResult = this.validate();
-    if (!validationResult) {
-      this._errorToast('Authorization form is not valid.');
-      return false;
+
+  computeViewModel(shape) {
+    if (!shape) {
+      shape = this.shape;
     }
-    const detail = this.getSettings();
-    this._lastState = this.generateState();
-    detail.state = this._lastState;
-    this._authorizing = true;
-    const e = new CustomEvent('oauth2-token-requested', {
-      detail: detail,
-      bubbles: true,
+    const result = this.__modeler.computeViewModel(shape);
+    this.viewModel = result;
+    this._notifyViewModelChanged(result);
+    return result;
+  }
+
+  /**
+   * Notifies about view model change by dispatching view-model-changed event.
+   * @param {Array<Object>} value
+   */
+  _notifyViewModelChanged(value) {
+    this.dispatchEvent(new CustomEvent('view-model-changed', {
       composed: true,
-      cancelable: true
+      detail: {
+        value
+      }
+    }));
+  }
+
+
+  uiModelForAmfItem(amfItem) {
+    return this.__modeler.uiModelForAmfItem(amfItem);
+  }
+
+  modelForRawObject(model, processOptions={}) {
+    return this.__modeler.modelForRawObject(model, processOptions);
+  }
+
+
+  buildProperty(defaults) {
+    return this.__modeler.buildProperty(defaults);
+  }
+
+  /**
+   * Handler for the `api-property-model-build` custom event.
+   * Builds a property view model using event detail object as a base object.
+   *
+   * All changes are applied to the `detail` object. Requesting element must
+   * use the same object.
+   *
+   * @param {CustomEvent} e
+   */
+  _buildPropertyHandler(e) {
+    if (e.defaultPrevented) {
+      return;
+    }
+    e.stopImmediatePropagation();
+    e.preventDefault();
+    this.buildProperty(e.detail);
+  }
+}
+
+window.customElements.define('api-view-model-transformer', ApiViewModelTransformer);
+
+const initializeCustomModel = Symbol();
+const renderCustom = Symbol();
+const validateCustom = Symbol();
+const serializeCustom = Symbol();
+const restoreCustom = Symbol();
+const updateQueryParameterCustom = Symbol();
+const updateHeaderCustom = Symbol();
+const clearCustom = Symbol();
+const createViewModel = Symbol();
+const readParamsProperties = Symbol();
+const headersTemplate = Symbol();
+const queryTemplate = Symbol();
+const formListTemplate = Symbol();
+const formItemTemplate = Symbol();
+const toggleDocumentation = Symbol();
+const formItemHelpButtonTemplate = Symbol();
+const formItemHelpTemplate = Symbol();
+const inputHandler$1 = Symbol();
+const headersParam = Symbol();
+const queryParametersParam = Symbol();
+const titleTemplate = Symbol();
+const updateModelValue = Symbol();
+const restoreModelValue = Symbol();
+/**
+ * Mixin that adds support for RAML's custom auth method computations
+ *
+ * @param {*} superClass
+ * @return {*}
+ * @mixin
+ */
+const CustomMethodMixin = (superClass) => class extends superClass {
+  /**
+   * Updates query parameter value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateQueryParameterCustom](name, newValue) {
+    this[updateModelValue]('query', name, newValue);
+  }
+
+  /**
+   * Updates header value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateHeaderCustom](name, newValue) {
+    this[updateModelValue]('header', name, newValue);
+  }
+
+  /**
+   * Updates header or query parameters value, if defined in the model.
+   * @param {String} type
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateModelValue](type, name, newValue) {
+    const model = type === 'query' ? this[queryParametersParam] : this[headersParam];
+    if (!model || !model.length) {
+      return;
+    }
+    for (let i = 0, len = model.length; i < len; i++) {
+      const item = model[i];
+      if (item.name === name) {
+        item.value = newValue;
+        this.requestUpdate();
+        return;
+      }
+    }
+  }
+
+  /**
+   * Restores previously serialized values
+   * @param {Oauth2Params} settings
+   */
+  [restoreCustom](settings) {
+    if (!settings) {
+      return;
+    }
+    this[restoreModelValue]('headers', settings.headers);
+    this[restoreModelValue]('query', settings.queryParameters);
+    this.requestUpdate();
+  }
+
+  [restoreModelValue](type, restored) {
+    if (!restored) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam] : this[headersParam];
+    if (!model || !model.length) {
+      return;
+    }
+    Object.keys(restored).forEach((name) => {
+      const item = model.find((item) => item.name === name);
+      if (item) {
+        item.value = restored[name];
+      }
     });
-    this.dispatchEvent(e);
-    this._analyticsEvent('auth-method-oauth2', 'usage-authorize', 'requested');
-    if (!e.defaultPrevented) {
-      this._errorToast('The application did not handled token request correctly.');
-      this._authorizing = false;
-      return false;
-    }
-    return true;
   }
-  /**
-   * Displays an error message in error toast
-   * @param {String} message Message to display.
-   */
-  _errorToast(message) {
-    const toast = this.shadowRoot.querySelector('paper-toast.error-toast');
-    toast.text = message;
-    toast.opened = true;
+
+  [clearCustom]() {
+    const headers = this[headersParam];
+    const queryParameters = this[queryParametersParam];
+    if (Array.isArray(headers)) {
+      headers.forEach((header) => header.value = '');
+    }
+    if (Array.isArray(queryParameters)) {
+      queryParameters.forEach((parameter) => parameter.value = '');
+    }
+  }
+
+  [serializeCustom]() {
+    const headers = this[headersParam];
+    const queryParameters = this[queryParametersParam];
+    const result = {};
+    // Note, in API model, headers and params are unique. They may have array
+    // value but they are always qunique.
+    if (headers && headers.length) {
+      result.headers = {};
+      headers.forEach((header) => result.headers[header.name] = header.value);
+    }
+    if (queryParameters && queryParameters.length) {
+      result.queryParameters = {};
+      queryParameters.forEach((parameter) => result.queryParameters[parameter.name] = parameter.value);
+    }
+    return result;
+  }
+
+  [validateCustom]() {
+    const nodes = this.shadowRoot.querySelectorAll('api-property-form-item');
+    let validationResult = true;
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      const result = node.validate();
+      if (validationResult && !result) {
+        validationResult = result;
+      }
+    }
+    return validationResult;
+  }
+
+  [initializeCustomModel]() {
+    this.schemeName = undefined;
+    this.schemeDescription = undefined;
+    this[headersParam] = undefined;
+    this[queryParametersParam] = undefined;
+    const { security } = this;
+    if (!this._hasType(security, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
+      return;
+    }
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
+    let scheme = security[shKey];
+    if (!scheme) {
+      return;
+    }
+    let type;
+    if (scheme) {
+      if (scheme instanceof Array) {
+        scheme = scheme[0];
+      }
+      type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
+    }
+    if (!type || type.indexOf('x-') !== 0) {
+      return;
+    }
+    const hKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
+    this[createViewModel]('header', this._ensureArray(scheme[hKey]));
+    const params = this[readParamsProperties](scheme);
+    this[createViewModel]('parameter', params);
+    this.schemeName = this._getValue(security, this.ns.aml.vocabularies.core.name);
+    this.schemeDescription = this._getValue(scheme, this.ns.aml.vocabularies.core.description);
+    this.requestUpdate();
   }
 
   /**
-   * Generates `state` parameter for the OAuth2 call.
+   * Generates view model using the tranformer.
    *
-   * @return {String} Generated state string.
+   * @param {String} type Param type. Either `header` or `parameter`.
+   * @param {Array} model
    */
-  generateState() {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    for (let i = 0; i < 6; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
+  async [createViewModel](type, model) {
+    if (!model) {
+      return;
     }
-    return text;
+    const factory = this._transformer;
+    factory.amf = this.amf;
+    const data = factory.computeViewModel(model);
+    if (!data) {
+      return;
+    }
+    if (type === 'header') {
+      this[headersParam] = data;
+    } else if (type === 'parameter') {
+      this[queryParametersParam] = data;
+    }
+    await this.updateComplete;
+    notifyChange(this);
+  }
+  /**
+   * Reads definition of properties for query parameters which can be either a
+   * `parameter` or a `queryString`.
+   *
+   * @param {Object} scheme Security `scheme` model.
+   * @return {Array<Object>|undefined} A list of parameters, if any.
+   */
+  [readParamsProperties](scheme) {
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
+    let result = this._ensureArray(scheme[pKey]);
+    if (result) {
+      return result;
+    }
+    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
+    result = this._ensureArray(scheme[qKey]);
+    if (result) {
+      result = result[0];
+    }
+    return result;
   }
 
   /**
-   * Returns current configuration of the OAuth2.
+   * Handler for the `value-changed` event disaptched by input element.
+   * Dispatches 'request-header-changed' or 'query-parameter-changed'
+   * event. Other components can update their state when the value change.
    *
-   * @return {Object} Current OAuth2 configuration.
+   * @param {CustomEvent} e
    */
-  getSettings() {
-    const detail = {
-      type: this.grantType,
-      clientId: this.clientId,
-      accessToken: this.accessToken || '',
-      tokenType: this.tokenType,
-      scopes: this.scopes,
-      customData: {
-        auth: {},
-        token: {}
-      },
-      deliveryMethod: this.oauthDeliveryMethod,
-      deliveryName: this.oauthDeliveryName
+  [inputHandler$1](e) {
+    if (e.composedPath && e.composedPath()[0] !== e.target) {
+      return;
+    }
+    const index = Number(e.target.dataset.index);
+    const type = e.target.dataset.type;
+    if (index !== index || !type) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam] : this[headersParam];
+    const { value } = e.target;
+    model[index].value = value;
+    notifyChange(this);
+  }
+
+  [renderCustom]() {
+    const {
+      styles,
+    } = this;
+    return html`
+    <style>${styles}</style>
+    ${this[titleTemplate]()}
+    <form autocomplete="on" class="custom-auth">
+      ${this[headersTemplate]()}
+      ${this[queryTemplate]()}
+    </form>
+    `;
+  }
+
+  [titleTemplate]() {
+    const {
+      schemeName,
+      schemeDescription,
+      compatibility,
+      outlined,
+      descriptionOpened,
+    } = this;
+    if (!schemeName) {
+      return '';
+    }
+    return html`
+    <div class="subtitle">
+      <span>Scheme: ${schemeName}</span>
+      ${schemeDescription ? html`<anypoint-icon-button
+        class="hint-icon"
+        title="Toggle description"
+        aria-label="Activate to toggle the description"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        @click="${this.toggleDescription}"
+      >
+        <span class="icon">${help}</span>
+      </anypoint-icon-button>` : ''}
+    </div>
+    ${schemeDescription && descriptionOpened ? html`<div class="docs-container">
+      <arc-marked .markdown="${schemeDescription}" main-docs sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>` : ''}`;
+  }
+
+  [headersTemplate]() {
+    let result = this[formListTemplate](this[headersParam], 'header');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Headers</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  [queryTemplate]() {
+    let result = this[formListTemplate](this[queryParametersParam], 'query');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Query parameters</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  /**
+   * Returns a TemplateResult for form items.
+   * @param {Array<Object>} items List of form items to render
+   * @param {String} type Items type. Either `query` or `header`
+   * @return {TemplateResult}
+   */
+  [formListTemplate](items, type) {
+    if (!items || !items.length) {
+      return '';
+    }
+    const {
+      outlined,
+      compatibility,
+      readOnly,
+      disabled,
+    } = this;
+
+    return html`
+    ${items.map((item, index) =>
+    this[formItemTemplate](item, index, outlined, compatibility, readOnly, disabled, type))}`;
+  }
+
+  /**
+   * Returns a TemplateResult for a form input item
+   *
+   * @param {Object} item
+   * @param {Number} index
+   * @param {Boolean} outlined
+   * @param {Boolean} compatibility
+   * @param {Boolean} readOnly
+   * @param {Boolean} disabled
+   * @param {String} type
+   * @return {TemplateResult}
+   */
+  [formItemTemplate](item, index, outlined, compatibility, readOnly, disabled, type) {
+    const docs = item.extendedDescription || item.description;
+    const hasDocs = !!docs;
+    return html`<div class="field-value">
+      <api-property-form-item
+        .model="${item}"
+        .value="${item.value}"
+        name="${item.name}"
+        ?readonly="${readOnly}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?disabled="${disabled}"
+        data-type="${type}"
+        data-index="${index}"
+        @input="${this[inputHandler$1]}"
+      ></api-property-form-item>
+      ${this[formItemHelpButtonTemplate](hasDocs, type, index)}
+    </div>
+    ${this[formItemHelpTemplate](hasDocs, item.docsOpened, docs)}`;
+  }
+
+  /**
+   * Returns a TemplateResult for docs toggle icon for a form item when the item has docs.
+   * @param {Boolean} hasDocs
+   * @param {String} type
+   * @param {Number} index
+   * @return {TemplateResult}
+   */
+  [formItemHelpButtonTemplate](hasDocs, type, index) {
+    if (!hasDocs) {
+      return '';
+    }
+    return html`<anypoint-icon-button
+      class="hint-icon"
+      title="Toggle description"
+      aria-label="Press to toggle description"
+      data-type="${type}"
+      data-index="${index}"
+      @click="${this[toggleDocumentation]}"
+    >
+      <span class="icon">${help}</span>
+    </anypoint-icon-button>`;
+  }
+  /**
+   * Returns a TemplateResult for docs for a form item when the item has docs and is opened.
+   * @param {Boolean} hasDocs
+   * @param {Boolean} opened
+   * @param {String} docs
+   * @return {TemplateResult}
+   */
+  [formItemHelpTemplate](hasDocs, opened, docs) {
+    if (!hasDocs || !opened) {
+      return '';
+    }
+    return html`
+    <div class="docs-container">
+      <arc-marked .markdown="${docs}" sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>`;
+  }
+
+  /**
+   * Toggles documentartion for custom property.
+   *
+   * @param {CustomEvent} e
+   */
+  [toggleDocumentation](e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const type = e.currentTarget.dataset.type;
+    if (index !== index || !type) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam] : this[headersParam];
+    model[index].docsOpened = !model[index].docsOpened;
+    this.requestUpdate();
+  }
+};
+
+const headersParam$1 = Symbol();
+const queryParametersParam$1 = Symbol();
+const createViewModel$1 = Symbol();
+const readParamsProperties$1 = Symbol();
+const inputHandler$2 = Symbol();
+const headersTemplate$1 = Symbol();
+const queryTemplate$1 = Symbol();
+const formListTemplate$1 = Symbol();
+const formItemTemplate$1 = Symbol();
+const toggleDocumentation$1 = Symbol();
+const formItemHelpButtonTemplate$1 = Symbol();
+const formItemHelpTemplate$1 = Symbol();
+const titleTemplate$1 = Symbol();
+const updateModelValue$1 = Symbol();
+const restoreModelValue$1 = Symbol();
+
+const restorePassThrough = Symbol();
+const serializePassThrough = Symbol();
+const validatePassThrough = Symbol();
+const initializePassThroughModel = Symbol();
+const renderPassThrough = Symbol();
+const updateQueryParameterPassThrough = Symbol();
+const updateHeaderPassThrough = Symbol();
+const clearPassThrough = Symbol();
+
+/**
+ * Mixin that adds support for RAML's Pass Through auth method computations
+ *
+ * @param {*} superClass
+ * @return {*}
+ * @mixin
+ */
+const PassThroughMethodMixin = (superClass) => class extends superClass {
+  /**
+   * Updates query parameter value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateQueryParameterPassThrough](name, newValue) {
+    this[updateModelValue$1]('query', name, newValue);
+  }
+
+  /**
+   * Updates header value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateHeaderPassThrough](name, newValue) {
+    this[updateModelValue$1]('header', name, newValue);
+  }
+
+  /**
+   * Updates header or query parameters value, if defined in the model.
+   * @param {String} type
+   * @param {String} name
+   * @param {String} newValue
+   */
+  [updateModelValue$1](type, name, newValue) {
+    const model = type === 'query' ? this[queryParametersParam$1] : this[headersParam$1];
+    if (!model || !model.length) {
+      return;
+    }
+    for (let i = 0, len = model.length; i < len; i++) {
+      const item = model[i];
+      if (item.name === name) {
+        item.value = newValue;
+        this.requestUpdate();
+        return;
+      }
+    }
+  }
+
+  /**
+   * Restores previously serialized values
+   * @param {Oauth2Params} settings
+   */
+  [restorePassThrough](settings) {
+    if (!settings) {
+      return;
+    }
+    this[restoreModelValue$1]('headers', settings.headers);
+    this[restoreModelValue$1]('query', settings.queryParameters);
+    this.requestUpdate();
+  }
+
+  [restoreModelValue$1](type, restored) {
+    if (!restored) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam$1] : this[headersParam$1];
+    if (!model || !model.length) {
+      return;
+    }
+    Object.keys(restored).forEach((name) => {
+      const item = model.find((item) => item.name === name);
+      if (item) {
+        item.value = restored[name];
+      }
+    });
+  }
+
+  [serializePassThrough]() {
+    const headers = this[headersParam$1];
+    const queryParameters = this[queryParametersParam$1];
+    const result = {};
+    // Note, in API model, headers and params are unique. They may have array
+    // value but they are always qunique.
+    if (headers && headers.length) {
+      result.headers = {};
+      headers.forEach((header) => result.headers[header.name] = header.value);
+    }
+    if (queryParameters && queryParameters.length) {
+      result.queryParameters = {};
+      queryParameters.forEach((parameter) => result.queryParameters[parameter.name] = parameter.value);
+    }
+    return result;
+  }
+
+  [clearPassThrough]() {
+    const headers = this[headersParam$1];
+    const queryParameters = this[queryParametersParam$1];
+    if (Array.isArray(headers)) {
+      headers.forEach((header) => header.value = '');
+    }
+    if (Array.isArray(queryParameters)) {
+      queryParameters.forEach((parameter) => parameter.value = '');
+    }
+  }
+
+  [validatePassThrough]() {
+    const nodes = this.shadowRoot.querySelectorAll('api-property-form-item');
+    let validationResult = true;
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      const result = node.validate();
+      if (validationResult && !result) {
+        validationResult = result;
+      }
+    }
+    return validationResult;
+  }
+
+  [initializePassThroughModel]() {
+    const { security } = this;
+    if (!this._hasType(security, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
+      return;
+    }
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
+    let scheme = security[shKey];
+    if (!scheme) {
+      return;
+    }
+    let type;
+    if (scheme) {
+      if (scheme instanceof Array) {
+        scheme = scheme[0];
+      }
+      type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
+    }
+    if (!type || type.indexOf('Pass Through') !== 0) {
+      return;
+    }
+    const hKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
+    this[createViewModel$1]('header', this._ensureArray(scheme[hKey]));
+    const params = this[readParamsProperties$1](scheme);
+    this[createViewModel$1]('parameter', params);
+    this.schemeName = this._getValue(security, this.ns.aml.vocabularies.core.name);
+    this.schemeDescription = this._getValue(scheme, this.ns.aml.vocabularies.core.description);
+    this.requestUpdate();
+  }
+
+  /**
+   * Generates view model using the tranformer.
+   *
+   * @param {String} type Param type. Either `header` or `parameter`.
+   * @param {Array} model
+   */
+  async [createViewModel$1](type, model) {
+    if (!model) {
+      return;
+    }
+    const factory = this._transformer;
+    factory.amf = this.amf;
+    const data = factory.computeViewModel(model);
+    if (!data) {
+      return;
+    }
+    if (type === 'header') {
+      this[headersParam$1] = data;
+    } else if (type === 'parameter') {
+      this[queryParametersParam$1] = data;
+    }
+    await this.updateComplete;
+    notifyChange(this);
+  }
+  /**
+   * Reads definition of properties for query parameters which can be either a
+   * `parameter` or a `queryString`.
+   *
+   * @param {Object} scheme Security `scheme` model.
+   * @return {Array<Object>|undefined} A list of parameters, if any.
+   */
+  [readParamsProperties$1](scheme) {
+    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
+    let result = this._ensureArray(scheme[pKey]);
+    if (result) {
+      return result;
+    }
+    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
+    result = this._ensureArray(scheme[qKey]);
+    if (result) {
+      result = result[0];
+    }
+    return result;
+  }
+
+  /**
+   * Handler for the `value-changed` event disaptched by input element.
+   * Dispatches 'request-header-changed' or 'query-parameter-changed'
+   * event. Other components can update their state when the value change.
+   *
+   * @param {CustomEvent} e
+   */
+  [inputHandler$2](e) {
+    if (e.composedPath && e.composedPath()[0] !== e.target) {
+      return;
+    }
+    const index = Number(e.target.dataset.index);
+    const type = e.target.dataset.type;
+    if (index !== index || !type) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam$1] : this[headersParam$1];
+    const { value } = e.target;
+    model[index].value = value;
+    notifyChange(this);
+  }
+
+  [renderPassThrough]() {
+    const {
+      styles,
+    } = this;
+    return html`
+    <style>${styles}</style>
+    ${this[titleTemplate$1]()}
+    <form autocomplete="on" class="passthrough-auth">
+      ${this[headersTemplate$1]()}
+      ${this[queryTemplate$1]()}
+    </form>
+    `;
+  }
+
+  [titleTemplate$1]() {
+    const {
+      schemeName,
+      schemeDescription,
+      compatibility,
+      outlined,
+      descriptionOpened,
+    } = this;
+    if (!schemeName) {
+      return '';
+    }
+    return html`
+    <div class="subtitle">
+      <span>Scheme: ${schemeName}</span>
+      ${schemeDescription ? html`<anypoint-icon-button
+        class="hint-icon"
+        title="Toggle description"
+        aria-label="Activate to toggle the description"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        @click="${this.toggleDescription}"
+      >
+        <span class="icon">${help}</span>
+      </anypoint-icon-button>` : ''}
+    </div>
+    ${schemeDescription && descriptionOpened ? html`<div class="docs-container">
+      <arc-marked .markdown="${schemeDescription}" main-docs sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>` : ''}`;
+  }
+
+  [headersTemplate$1]() {
+    let result = this[formListTemplate$1](this[headersParam$1], 'header');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Headers</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  [queryTemplate$1]() {
+    let result = this[formListTemplate$1](this[queryParametersParam$1], 'query');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Query parameters</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+  /**
+   * Returns a TemplateResult for form items.
+   * @param {Array<Object>} items List of form items to render
+   * @param {String} type Items type. Either `query` or `header`
+   * @return {TemplateResult}
+   */
+  [formListTemplate$1](items, type) {
+    if (!items || !items.length) {
+      return '';
+    }
+    const {
+      outlined,
+      compatibility,
+      readOnly,
+      disabled,
+    } = this;
+
+    return html`
+    ${items.map((item, index) =>
+    this[formItemTemplate$1](item, index, outlined, compatibility, readOnly, disabled, type))}`;
+  }
+
+  /**
+   * Returns a TemplateResult for a form input item
+   *
+   * @param {Object} item
+   * @param {Number} index
+   * @param {Boolean} outlined
+   * @param {Boolean} compatibility
+   * @param {Boolean} readOnly
+   * @param {Boolean} disabled
+   * @param {String} type
+   * @return {TemplateResult}
+   */
+  [formItemTemplate$1](item, index, outlined, compatibility, readOnly, disabled, type) {
+    const docs = item.extendedDescription || item.description;
+    const hasDocs = !!docs;
+    return html`
+    <div class="field-value">
+      <api-property-form-item
+        .model="${item}"
+        .value="${item.value}"
+        name="${item.name}"
+        ?readonly="${readOnly}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?disabled="${disabled}"
+        data-type="${type}"
+        data-index="${index}"
+        @input="${this[inputHandler$2]}"
+      ></api-property-form-item>
+      ${this[formItemHelpButtonTemplate$1](hasDocs, type, index)}
+    </div>
+    ${this[formItemHelpTemplate$1](hasDocs, item.docsOpened, docs)}`;
+  }
+  /**
+   * Returns a TemplateResult for docs toggle icon for a form item when the item has docs.
+   * @param {Boolean} hasDocs
+   * @param {String} type
+   * @param {Number} index
+   * @return {TemplateResult}
+   */
+  [formItemHelpButtonTemplate$1](hasDocs, type, index) {
+    if (!hasDocs) {
+      return '';
+    }
+    return html`<anypoint-icon-button
+      class="hint-icon"
+      title="Toggle description"
+      aria-label="Press to toggle description"
+      data-type="${type}"
+      data-index="${index}"
+      @click="${this[toggleDocumentation$1]}"
+    >
+      <span class="icon">${help}</span>
+    </anypoint-icon-button>`;
+  }
+  /**
+   * Returns a TemplateResult for docs for a form item when the item has docs and is opened.
+   * @param {Boolean} hasDocs
+   * @param {Boolean} opened
+   * @param {String} docs
+   * @return {TemplateResult}
+   */
+  [formItemHelpTemplate$1](hasDocs, opened, docs) {
+    if (!hasDocs || !opened) {
+      return '';
+    }
+    return html`
+    <div class="docs-container">
+      <arc-marked .markdown="${docs}" sanitize>
+        <div slot="markdown-html" class="markdown-body"></div>
+      </arc-marked>
+    </div>`;
+  }
+
+  /**
+   * Toggles documentartion for custom property.
+   *
+   * @param {CustomEvent} e
+   */
+  [toggleDocumentation$1](e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const type = e.currentTarget.dataset.type;
+    if (index !== index || !type) {
+      return;
+    }
+    const model = type === 'query' ? this[queryParametersParam$1] : this[headersParam$1];
+    model[index].docsOpened = !model[index].docsOpened;
+    this.requestUpdate();
+  }
+};
+
+const initializeOauth1Model = Symbol();
+const preFillAmfData = Symbol();
+/**
+ * Mixin that adds support for RAML's custom auth method computations
+ *
+ * @param {*} superClass
+ * @return {*}
+ * @mixin
+ */
+const ApiOauth1MethodMixin = (superClass) => class extends superClass {
+  [initializeOauth1Model]() {
+    const { security } = this;
+    if (!this._hasType(security, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
+      this.signatureMethods = defaultSignatureMethods;
+      return;
+    }
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
+    let scheme = security[shKey];
+    if (!scheme) {
+      return;
+    }
+    if (scheme instanceof Array) {
+      scheme = scheme[0];
+    }
+    const type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
+    const isOauth1 = type === 'OAuth 1.0';
+    if (!isOauth1) {
+      this.signatureMethods = defaultSignatureMethods;
+      return;
+    }
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
+    let settings = scheme[sKey];
+    if (settings instanceof Array) {
+      settings = settings[0];
+    }
+    this[preFillAmfData](settings);
+    this.requestUpdate();
+  }
+
+  /**
+   * Reads API security definition and applies in to the view as predefined
+   * values.
+   *
+   * @param {Object} model AMF model describing settings of the security
+   * scheme
+   */
+  [preFillAmfData](model){
+    if (!model) {
+      return;
+    }
+    const sec = this.ns.aml.vocabularies.security;
+    if (!this._hasType(model, sec.OAuth1Settings)) {
+      return;
+    }
+    this.requestTokenUri = this._getValue(model, sec.requestTokenUri);
+    this.authorizationUri = this._getValue(model, sec.authorizationUri);
+    this.accessTokenUri = this._getValue(model, sec.tokenCredentialsUri);
+    const signaturtes = this._getValueArray(model, sec.signature);
+    if (!signaturtes || !signaturtes.length) {
+      this.signatureMethods = defaultSignatureMethods;
+    } else {
+      this.signatureMethods = signaturtes;
+    }
+  }
+};
+
+const initializeOauth2Model = Symbol();
+const setupOAuthDeliveryMethod = Symbol();
+const getOauth2DeliveryMethod = Symbol();
+const updateGrantTypes = Symbol();
+const preFillAmfData$1 = Symbol();
+const preFillFlowData = Symbol();
+const readSecurityScopes = Symbol();
+const amfCustomSettingsKey = Symbol();
+const applyAnnotationGrants = Symbol();
+const setupAnotationParameters = Symbol();
+const setupAuthRequestQueryParameters = Symbol();
+const setupTokenRequestQueryParameters = Symbol();
+const setupTokenRequestHeaders = Symbol();
+const setupTokenRequestBody = Symbol();
+const createViewModel$2 = Symbol();
+const computeGrantList = Symbol();
+const modelForCustomType = Symbol();
+const toggleDocumentation$2 = Symbol();
+const templateForCustomArray = Symbol();
+const computeAuthCustomData = Symbol();
+const computeTokenCustomData = Symbol();
+const computeCustomParameters = Symbol();
+const authQueryParameters = Symbol();
+const tokenQueryParameters = Symbol();
+const tokenHeaders = Symbol();
+const tokenBody = Symbol();
+const customValueHandler = Symbol();
+const flowForType = Symbol();
+const readFlowScopes = Symbol();
+const readFlowsTypes = Symbol();
+const applyFlow = Symbol();
+const securityScheme = Symbol();
+const isRamlFlow = Symbol();
+
+/**
+ * Mixin that adds support for RAML's custom auth method computations
+ *
+ * @param {*} superClass
+ * @return {*}
+ * @mixin
+ */
+const ApiOauth2MethodMixin = (superClass) => class extends superClass {
+  get grantType() {
+    return super.grantType;
+  }
+
+  set grantType(value) {
+    const old = super.grantType;
+    super.grantType = value;
+    if (old !== value) {
+      this[applyFlow](value);
+    }
+  }
+
+  get [securityScheme]() {
+    const { security } = this;
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
+    let scheme = security && security[shKey];
+    /* istanbul ignore if */
+    if (!scheme) {
+      return null;
+    }
+    /* istanbul ignore else */
+    if (scheme && Array.isArray(scheme)) {
+      scheme = scheme[0];
+    }
+    return scheme;
+  }
+
+  [initializeOauth2Model]() {
+    const { security } = this;
+    if (!this._hasType(security, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
+      this[setupOAuthDeliveryMethod]();
+      this[updateGrantTypes]();
+      return;
+    }
+    const scheme = this[securityScheme];
+    /* istanbul ignore if */
+    if (!scheme) {
+      return;
+    }
+    const type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
+    const isOauth2 = type === 'OAuth 2.0';
+    if (!isOauth2) {
+      this[setupOAuthDeliveryMethod]();
+      this[updateGrantTypes]();
+      return;
+    }
+    this[setupOAuthDeliveryMethod](scheme);
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
+    let settings = scheme[sKey];
+    /* istanbul ignore else */
+    if (Array.isArray(settings)) {
+      settings = settings[0];
+    }
+    this[preFillAmfData$1](settings);
+    this[autoHide]();
+    this.requestUpdate();
+  }
+
+  [serializeOauth2Auth]() {
+    const result = super[serializeOauth2Auth]();
+    result.customData = {
+      auth: {},
+      token: {},
     };
-    switch (this.grantType) {
+    const { grantType } = result;
+    switch (grantType) {
       case 'implicit':
-        // The browser flow.
-        detail.authorizationUri = this.authorizationUri;
-        detail.redirectUri = this.redirectUri;
-        this._computeAuthCustomData(detail);
-        delete detail.customData.token;
+        this[computeAuthCustomData](result);
         break;
       case 'authorization_code':
-        // The server flow.
-        detail.authorizationUri = this.authorizationUri;
-        detail.clientSecret = this.clientSecret;
-        detail.accessTokenUri = this.accessTokenUri;
-        detail.redirectUri = this.redirectUri;
-        this._computeAuthCustomData(detail);
-        this._computeTokenCustomData(detail);
+        this[computeAuthCustomData](result);
+        this[computeTokenCustomData](result);
         break;
       case 'client_credentials':
-        // The server flow.
-        detail.accessTokenUri = this.accessTokenUri;
-        detail.clientSecret = this.clientSecret;
-        this._computeTokenCustomData(detail);
-        delete detail.customData.auth;
-        break;
       case 'password':
-        // The server flow.
-        detail.username = this.username;
-        detail.password = this.password;
-        detail.accessTokenUri = this.accessTokenUri;
-        this._computeTokenCustomData(detail);
-        delete detail.customData.auth;
+        this[computeTokenCustomData](result);
         break;
       default:
-        // Custom grant type.
-        detail.authorizationUri = this.authorizationUri;
-        detail.clientSecret = this.clientSecret;
-        detail.accessTokenUri = this.accessTokenUri;
-        detail.redirectUri = this.redirectUri;
-        detail.username = this.username;
-        detail.password = this.password;
-        this._computeAuthCustomData(detail);
-        this._computeTokenCustomData(detail);
+        this[computeAuthCustomData](result);
+        this[computeTokenCustomData](result);
         break;
     }
-    return detail;
+    return result;
   }
+
   /**
    * Adds `customData` property values that can be applied to the
    * authorization request.
@@ -71241,11 +73819,11 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    * @param {Object} detail Token request detail object. The object is passed
    * by reference so no need for return value
    */
-  _computeAuthCustomData(detail) {
-    const params = this._authQueryParameters;
+  [computeAuthCustomData](detail) {
+    const params = this[authQueryParameters];
     if (params) {
       detail.customData.auth.parameters =
-      this._computeCustomParameters(params);
+      this[computeCustomParameters](params);
     }
   }
   /**
@@ -71255,23 +73833,21 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    * @param {Object} detail Token request detail object. The object is passed
    * by reference so no need for return value
    */
-  _computeTokenCustomData(detail) {
-    const {
-      _tokenQueryParameters,
-      _tokenHeaders,
-      _tokenBody
-    } = this;
-    if (_tokenQueryParameters) {
+  [computeTokenCustomData](detail) {
+    const tqp = this[tokenQueryParameters];
+    const th = this[tokenHeaders];
+    const tb = this[tokenBody];
+    if (tqp) {
       detail.customData.token.parameters =
-        this._computeCustomParameters(_tokenQueryParameters);
+        this[computeCustomParameters](tqp);
     }
-    if (_tokenHeaders) {
+    if (th) {
       detail.customData.token.headers =
-        this._computeCustomParameters(_tokenHeaders);
+        this[computeCustomParameters](th);
     }
-    if (_tokenBody) {
+    if (tb) {
       detail.customData.token.body =
-        this._computeCustomParameters(_tokenBody);
+        this[computeCustomParameters](tb);
     }
   }
   /**
@@ -71284,7 +73860,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    * @return {Array|undefined} Array of objects with `name` and `value`
    * properties or undefined if `params` is empty or no values are available.
    */
-  _computeCustomParameters(params) {
+  [computeCustomParameters](params) {
     if (!params || !params.length) {
       return;
     }
@@ -71301,7 +73877,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
           if (!value) {
             return;
           }
-        } else if (value instanceof Array) {
+        } else if (Array.isArray(value)) {
           if (!value[0]) {
             return;
           }
@@ -71319,139 +73895,9 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     }
     return result;
   }
-  /**
-   * Restores settings from stored value.
-   *
-   * @param {Object} settings Object returned by `getSettings()`
-   */
-  restore(settings) {
-    this.grantType = settings.type;
-    this.clientId = settings.clientId;
-    this.accessToken = settings.accessToken;
-    this.scopes = settings.scopes;
-    switch (this.grantType) {
-      case 'implicit':
-        this.authorizationUri = settings.authorizationUri;
-        break;
-      case 'authorization_code':
-        this.authorizationUri = settings.authorizationUri;
-        this.clientSecret = settings.clientSecret;
-        this.accessTokenUri = settings.accessTokenUri;
-        break;
-      case 'client_credentials':
-        // The server flow.
-        this.clientSecret = settings.clientSecret;
-        this.accessTokenUri = settings.accessTokenUri;
-        break;
-      case 'password':
-        // The server flow.
-        this.username = settings.username;
-        this.password = settings.password;
-        this.accessTokenUri = settings.accessTokenUri;
-        break;
-      default:
-        this.authorizationUri = settings.authorizationUri;
-        this.clientSecret = settings.clientSecret;
-        this.accessTokenUri = settings.accessTokenUri;
-        this.username = settings.username;
-        this.password = settings.password;
-    }
-  }
-  /**
-   * Handler for `oauth2-error` custom event.
-   * Informs the user about the error in the flow if the state property
-   * is the one used with the request.
-   *
-   * @param {CustomEvent} e
-   */
-  _oauth2ErrorHandler(e) {
-    const info = e.detail;
-    // API console may not support state check (may not return it back)
-    if (typeof info.state !== 'undefined') {
-      if (info.state !== this._lastState) {
-        return;
-      }
-    }
-    this._authorizing = false;
-    this._lastState = undefined;
-    this._errorToast(info.message);
-    this._analyticsEvent('auth-method-oauth2', 'usage-authorize', 'failure');
-  }
-  /**
-   * Handler for the token response from the authorization component.
-   *
-   * @param {CustomEvent} e
-   */
-  _tokenSuccessHandler(e) {
-    const info = e.detail;
-    // API console may not support state check (mey not return it back)
-    if (typeof info.state !== 'undefined') {
-      if (info.state !== this._lastState) {
-        return;
-      }
-    }
-    this._authorizing = false;
-    this._lastState = undefined;
-    if (info.accessToken && info.accessToken !== this.accessToken) {
-      if (info.tokenType && info.tokenType !== this.tokenType) {
-        this.tokenType = info.tokenType;
-      } else if (!info.tokenType && this.tokenType !== 'Bearer') {
-        this.tokenType = 'Bearer';
-      }
-      this.accessToken = info.accessToken;
-      this.dispatchEvent(new CustomEvent('oauth2-token-ready', {
-        detail: {
-          token: info.accessToken,
-          tokenType: this.tokenType
-        },
-        bubbles: true,
-        composed: true
-      }));
-    }
-    this._analyticsEvent('auth-method-oauth2', 'usage-authorize', 'success');
-  }
-  /**
-   * Handler to set up data from the AMF model.
-   */
-  _amfSettingsChanged() {
-    if (!this._isInitialized) {
-      return;
-    }
-    const model = this.amfSettings;
-    if (!this._hasType(model, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
-      this._setupOAuthDeliveryMethod();
-      this._updateGrantTypes();
-      return;
-    }
-    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
-    let scheme = model[shKey];
-    let type;
-    if (scheme) {
-      if (scheme instanceof Array) {
-        scheme = scheme[0];
-      }
-      type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
-    }
-    const isOauth2 = type === 'OAuth 2.0';
-    if (!isOauth2) {
-      this._setupOAuthDeliveryMethod();
-      this._updateGrantTypes();
-      return;
-    }
-    this._setupOAuthDeliveryMethod(scheme);
-    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
-    let settings = scheme[sKey];
-    if (settings instanceof Array) {
-      settings = settings[0];
-    }
-    this.__cancelChangeEvent = true;
-    this._preFillAmfData(settings);
-    this.__cancelChangeEvent = false;
-    this._autoHide();
-  }
 
-  _setupOAuthDeliveryMethod(model) {
-    const info = this._getOauth2DeliveryMethod(model);
+  [setupOAuthDeliveryMethod](scheme) {
+    const info = this[getOauth2DeliveryMethod](scheme);
     if (this.oauthDeliveryMethod !== info.method) {
       this.oauthDeliveryMethod = info.method;
     }
@@ -71468,7 +73914,7 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    * @param {Object} info Security AMF model
    * @return {Object}
    */
-  _getOauth2DeliveryMethod(info) {
+  [getOauth2DeliveryMethod](info) {
     const result = {
       method: 'header',
       name: 'authorization'
@@ -71480,7 +73926,8 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
     const nKey = this._getAmfKey(this.ns.aml.vocabularies.core.name);
     let header = info[hKey];
-    if (header instanceof Array) {
+    /* istanbul ignore else */
+    if (Array.isArray(header)) {
       header = header[0];
     }
     if (header) {
@@ -71491,7 +73938,8 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       }
     }
     let parameter = info[pKey];
-    if (parameter instanceof Array) {
+    /* istanbul ignore else */
+    if (Array.isArray(parameter)) {
       parameter = parameter[0];
     }
     if (parameter) {
@@ -71505,282 +73953,14 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     return result;
   }
   /**
-   * Reads API security definition and applies in to the view as predefined
-   * values.
-   *
-   * @param {Object} model AMF model describing settings of the security
-   * scheme
-   */
-  _preFillAmfData(model) {
-    if (!model) {
-      return;
-    }
-    const sec = this.ns.aml.vocabularies.security;
-    if (!this._hasType(model, sec.OAuth2Settings)) {
-      return;
-    }
-
-    /* TODO this is temporary in order to support AMF 4 model change.
-        We need to fully support all flows later on rather than just the first */
-    let possibleFlowsNode = this._getValueArray(model, sec.flows);
-    if (possibleFlowsNode && possibleFlowsNode instanceof Array) {
-      possibleFlowsNode = possibleFlowsNode[0];
-    } else {
-      possibleFlowsNode = model;
-    }
-
-    this.authorizationUri = this._getValue(possibleFlowsNode, sec.authorizationUri) || '';
-    this.accessTokenUri = this._getValue(possibleFlowsNode, sec.accessTokenUri) || '';
-    this.scopes = this._redSecurityScopes(possibleFlowsNode[this._getAmfKey(sec.scope)]);
-    const apiGrants = this._getValueArray(model, sec.authorizationGrant);
-    // TODO check if this also needs to come from `possibleFlowsNode`
-    const annotationKey = this._amfCustomSettingsKey(model);
-    // TODO check if this also needs to come from `possibleFlowsNode`
-    const annotation = annotationKey ? model[annotationKey] : undefined;
-    const grants = this._applyAnnotationGranst(apiGrants, annotation);
-    if (grants && grants instanceof Array && grants.length) {
-      const index = grants.indexOf('code');
-      if (index !== -1) {
-        grants[index] = 'authorization_code';
-      }
-      this._updateGrantTypes(grants);
-    } else {
-      this._updateGrantTypes();
-    }
-    this._setupAnotationParameters(annotation);
-  }
-  /**
-   * Extracts scopes list from the security definition
-   * @param {Array} model
-   * @return {Array<String>|undefined}
-   */
-  _redSecurityScopes(model) {
-    model = this._ensureArray(model);
-    if (!model) {
-      return;
-    }
-    const result = [];
-    for (let i = 0, len = model.length; i < len; i++) {
-      const value = this._getValue(model[i], this.ns.aml.vocabularies.core.name);
-      if (!value) {
-        continue;
-      }
-      result.push(value);
-    }
-    return result;
-  }
-  /**
-   * Finds a key for Custom settings
-   * @param {Object} model Security scheme settings object.
-   * @return {String|undefined}
-   */
-  _amfCustomSettingsKey(model) {
-    const keys = Object.keys(model);
-    const data = this.ns.aml.vocabularies.data;
-    const settingsKeys = [
-      this._getAmfKey(data + 'authorizationSettings'),
-      this._getAmfKey(data + 'authorizationGrants'),
-      this._getAmfKey(data + 'accessTokenSettings')
-    ];
-    for (let i = 0; i < keys.length; i++) {
-      const node = model[keys[i]];
-      if (node[settingsKeys[0]] || node[settingsKeys[1]] || node[settingsKeys[2]]) {
-        return keys[i];
-      }
-    }
-  }
-  /**
-   * Applies `authorizationGrants` from OAuth2 settings annotation.
-   *
-   * @param {Array} gransts OAuth spec grants available for the endpoint
-   * @param {?Object} annotation Read annotation.
-   * @return {Array} List of granst to apply.
-   */
-  _applyAnnotationGranst(gransts, annotation) {
-    if (!annotation) {
-      return gransts;
-    }
-    if (!gransts) {
-      gransts = [];
-    }
-    const d = this.ns.aml.vocabularies.data;
-    let model = annotation[this._getAmfKey(d + 'authorizationGrants')];
-    model = this._ensureArray(model);
-    if (!model || !model.length) {
-      return gransts;
-    }
-    const list = model[0][this._getAmfKey(this.ns.w3.rdfSchema.member)];
-    const addedGrants = [];
-    list.forEach((item) => {
-      const v = this._getValue(item, d + 'value');
-      if (!v) {
-        return;
-      }
-      addedGrants.push(v);
-    });
-    if (!addedGrants.length) {
-      return gransts;
-    }
-    const ignoreKey = d + 'ignoreDefaultGrants';
-    if (typeof annotation[ignoreKey] !== 'undefined') {
-      gransts = [];
-    }
-    gransts = gransts.concat(addedGrants);
-    return gransts;
-  }
-  /**
-   * Sets up annotation supported variables to apply form view for:
-   * - authorization query parameters
-   * - authorization headers
-   * - token query parameters
-   * - token headers
-   * - token body
-   *
-   * @param {Object} annotation Annotation applied to the OAuth settings
-   */
-  _setupAnotationParameters(annotation) {
-    /* istanbul ignore if */
-    if (this._authQueryParameters) {
-      this._authQueryParameters = undefined;
-    }
-    /* istanbul ignore if */
-    if (this._tokenQueryParameters) {
-      this._tokenQueryParameters = undefined;
-    }
-    /* istanbul ignore if */
-    if (this._tokenHeaders) {
-      this._tokenHeaders = undefined;
-    }
-    /* istanbul ignore if */
-    if (this._tokenBody) {
-      this._tokenBody = undefined;
-    }
-    /* istanbul ignore if */
-    if (!annotation) {
-      return;
-    }
-    const d = this.ns.aml.vocabularies.data;
-    const qpKey = this._getAmfKey(d + 'queryParameters');
-    let authSettings = annotation[this._getAmfKey(d + 'authorizationSettings')];
-    let tokenSettings = annotation[this._getAmfKey(d + 'accessTokenSettings')];
-    if (authSettings) {
-      if (authSettings instanceof Array) {
-        authSettings = authSettings[0];
-      }
-      const qp = authSettings[qpKey];
-      if (qp) {
-        this._setupAuthRequestQueryParameters(qp);
-      }
-    }
-    if (tokenSettings) {
-      if (tokenSettings instanceof Array) {
-        tokenSettings = tokenSettings[0];
-      }
-      const qp = tokenSettings[qpKey];
-      const headers = tokenSettings[this._getAmfKey(d + 'headers')];
-      const body = tokenSettings[this._getAmfKey(d + 'body')];
-      if (qp) {
-        this._setupTokenRequestQueryParameters(qp);
-      }
-      if (headers) {
-        this._setupTokenRequestHeaders(headers);
-      }
-      if (body) {
-        this._setupTokenRequestBody(body);
-      }
-    }
-  }
-  /**
-   * Sets up query parameters to be used with authorization request.
-   *
-   * @param {Array} params List of parameters from the annotation.
-   */
-  _setupAuthRequestQueryParameters(params) {
-    const model = this._createViewModel(params, this._queryModelOpts);
-    /* istanbul ignore if */
-    if (!model) {
-      return;
-    }
-    this._authQueryParameters = model;
-  }
-  /**
-   * Sets up query parameters to be used with token request.
-   *
-   * @param {Array} params List of parameters from the annotation.
-   */
-  _setupTokenRequestQueryParameters(params) {
-    const model = this._createViewModel(params, this._queryModelOpts);
-    /* istanbul ignore if */
-    if (!model) {
-      return;
-    }
-    this._tokenQueryParameters = model;
-  }
-  /**
-   * Sets up headers to be used with token request.
-   *
-   * @param {Array} params List of parameters from the annotation.
-   */
-  _setupTokenRequestHeaders(params) {
-    const model = this._createViewModel(params, this._headersModelOpts);
-    /* istanbul ignore if */
-    if (!model) {
-      return;
-    }
-    this._tokenHeaders = model;
-  }
-  /**
-   * Sets up body parameters to be used with token request.
-   *
-   * @param {Array} params List of parameters from the annotation.
-   */
-  _setupTokenRequestBody(params) {
-    const model = this._createViewModel(params, this._queryModelOpts);
-    /* istanbul ignore if */
-    if (!model) {
-      return;
-    }
-    this._tokenBody = model;
-  }
-  /**
-   * Creats a form view model for type items.
-   *
-   * @param {Array|object} param Property or list of properties to process.
-   * @param {Object} modelOptions
-   * @return {Array|undefined} Form view model or undefined if not set.
-   */
-  _createViewModel(param, modelOptions) {
-    /* istanbul ignore if */
-    if (!param) {
-      return;
-    }
-    if (param instanceof Array) {
-      param = param[0];
-    }
-    const factory = document.createElement('api-view-model-transformer');
-    factory.amf = this.amf;
-    return factory.modelForRawObject(param, modelOptions);
-  }
-  /**
-   * Computes value of `isCustomGrant` property when `grantType` changes.
-   *
-   * @param {String} grantType Selected grant type.
-   * @return {Boolean} `true` if the `grantType` is none of the ones defined
-   * by the OAuth 2.0 spec.
-   */
-  _computeIsCustomGrant(grantType) {
-    return ['implicit', 'authorization_code', 'client_credentials', 'password']
-        .indexOf(grantType) === -1;
-  }
-  /**
    * Updates list of OAuth grant types supported by current endpoint.
    * The information should be available in RAML file.
    *
    * @param {Array<String>?} supportedTypes List of supported types. If empty
    * or not set then all available types will be displayed.
    */
-  _updateGrantTypes(supportedTypes) {
-    const available = this._computeGrantList(supportedTypes);
+  [updateGrantTypes](supportedTypes) {
+    const available = this[computeGrantList](supportedTypes);
     this.grantTypes = available;
     // check if current selection is still available
     const current = this.grantType;
@@ -71790,6 +73970,8 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       this.grantType = available[0].type;
     } else if (available.length === 1) {
       this.grantType = available[0].type;
+    } else {
+      this[applyFlow](current);
     }
   }
   /**
@@ -71800,8 +73982,8 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
    * or not set then all OAuth 2.0 default types are returned.
    * @return {Array<Object>}
    */
-  _computeGrantList(allowed) {
-    let defaults = this._oauth2GrantTypes;
+  [computeGrantList](allowed) {
+    let defaults = Array.from(oauth2GrantTypes);
     if (!allowed || !allowed.length) {
       return defaults;
     }
@@ -71825,142 +74007,465 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
     }
     return defaults;
   }
+
   /**
-   * Handler for the `request-header-changed` custom event.
-   * If the panel is opened the it checks if current header updates
-   * authorization.
+   * It's quite a bit naive approach to determine whether given model is RAML's
+   * or OAS'. There is a significant difference of how to treat grant types
+   * (in OAS it is called flows). While in OAS it is mandaroty to define a grant type
+   * (a flow) RAML has no such requirement. By default this component assumes that
+   * all standard (OAuth 2 defined) grant types are supported when grant types are not
+   * defined. So it is possible to not define them and the component will work.
+   * However, in the AMF model there's always at least one grant type (a flow) whether
+   * it's RAML's or OAS' and whether grant type is defined or not.
    *
-   * @param {Event} e
+   * To apply correct settings this component needs to know how to process the data.
+   * If it's OAS then when changing grant type it also changes current settings
+   * (like scopes, auth uri, etc). If the model is RAML's then change in current grant type
+   * won't trigger settings setup.
+   *
+   * Note, this function returns true when there's no flows whatsoever. It's not
+   * really what it means but it is consistent with component's logic.
+   *
+   * Current method is deterministic and when AMF model change this most probably stop
+   * working. It tests whether there's a single grant type and this grant type
+   * has no AMF's `security:flow` property.
+   *
+   * @param {Array<Object>} flows List of current flows loaded with the AMF model.
+   * @return {Boolean} True if current model should be treated as RAML's model.
    */
-  _headerChangedHandler(e) {
-    /* istanbul ignore if */
-    if (e.defaultPrevented || this._getEventTarget(e) === this) {
+  [isRamlFlow](flows) {
+    if (!Array.isArray(flows)) {
+      return true;
+    }
+    let result = false;
+    if (flows.length === 1) {
+      const type = this._getValue(flows[0], this.ns.aml.vocabularies.security.flow);
+      if (!type) {
+        result = true;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Reads API security definition and applies in to the view as predefined
+   * values.
+   *
+   * @param {Object} model AMF model describing settings of the security
+   * scheme
+   */
+  [preFillAmfData$1](model){
+    if (!model) {
       return;
     }
-    let name = e.detail.name;
-    /* istanbul ignore if */
+    const sec = this.ns.aml.vocabularies.security;
+    if (!this._hasType(model, sec.OAuth2Settings)) {
+      return;
+    }
+    const flows = this._getValueArray(model, sec.flows);
+    if (Array.isArray(flows) && !this[isRamlFlow](flows)) {
+      this[preFillFlowData](flows);
+      return;
+    }
+
+    const flow = flows && flows.length ? flows[0] : model;
+    this.authorizationUri = this._getValue(flow, sec.authorizationUri) || '';
+    this.accessTokenUri = this._getValue(flow, sec.accessTokenUri) || '';
+    this.scopes = this[readSecurityScopes](flow[this._getAmfKey(sec.scope)]);
+    const apiGrants = this._getValueArray(model, sec.authorizationGrant);
+    // TODO check if this also needs to come from `possibleFlowsNode`
+    const annotationKey = this[amfCustomSettingsKey](model);
+    // TODO check if this also needs to come from `possibleFlowsNode`
+    const annotation = annotationKey ? model[annotationKey] : undefined;
+    const grants = this[applyAnnotationGrants](apiGrants, annotation);
+    if (grants && Array.isArray(grants) && grants.length) {
+      const index = grants.indexOf('code');
+      if (index !== -1) {
+        grants[index] = 'authorization_code';
+      }
+      this[updateGrantTypes](grants);
+    } else {
+      this[updateGrantTypes]();
+    }
+    this[setupAnotationParameters](annotation);
+  }
+
+  /**
+   * Prefils authorization data with OAS' definition of a grant type
+   * which they call a flow. This method populates form with the information
+   * find in the model.
+   *
+   * It tries to match a flow to currently selected `grantType`. When no match
+   * then it takes first flow.
+   *
+   * Note, flow data are applied when `grantType` change.
+   *
+   * @param {Array<Object>} flows List of flows in the authorization description.
+   */
+  [preFillFlowData](flows) {
+    // first step is to select the right flow.
+    // If the user already selected a grant type before then it this looks
+    // for a flow for already selected grant type. If its not present then
+    // it uses first available flow.
+    let flow = this[flowForType](flows, this.grantType);
+    if (!flow) {
+      flow = flows[0];
+    }
+    // finally sets grant types from flows
+    const grantTypes = this[readFlowsTypes](flows);
+    this[updateGrantTypes](grantTypes);
+  }
+
+  /**
+   * Searches for a flow in the list of flows for given name.
+   *
+   * @param {Array<Object>} flows List of flows to search in.
+   * @param {String?} type Grant type
+   * @return {Object|undefined}
+   */
+  [flowForType](flows, type) {
+    if (!type) {
+      return;
+    }
+    for (let i = 0, len = flows.length; i < len; i++) {
+      const flow = flows[i];
+      const flowType = this._getValue(flow, this.ns.aml.vocabularies.security.flow);
+      if (flowType === type) {
+        // true for `implicit`, `password`
+        return flow;
+      }
+      if (type === 'authorization_code' && flowType === 'authorizationCode') {
+        return flow;
+      }
+      if (type === 'client_credentials' && flowType === 'clientCredentials') {
+        return flow;
+      }
+    }
+  }
+
+  /**
+   * Reads list of scopes from a flow.
+   *
+   * @param {Object} flow A flow to process.
+   * @return {Array<String>} List of scopes required by an endpoint / API.
+   */
+  [readFlowScopes](flow) {
+    const { security } = this;
+    const scopeKey = this._getAmfKey(this.ns.aml.vocabularies.security.scope);
+    let scopes = this[readSecurityScopes](flow[scopeKey]);
+    if (scopes || !security) {
+      return scopes;
+    }
+    // if scopes are not defined in the opteration then they may be defined in
+    // security settings.
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
+    let settings = security[sKey];
+    /* istanbul ignore else */
+    if (Array.isArray(settings)) {
+      settings = settings[0];
+    }
+    let mainFlow = this._getValueArray(settings, this.ns.aml.vocabularies.security.flows);
+    /* istanbul ignore else */
+    if (Array.isArray(mainFlow)) {
+      mainFlow = mainFlow[0];
+    }
+    if (mainFlow) {
+      scopes = this[readSecurityScopes](mainFlow[scopeKey]);
+    }
+    return scopes;
+  }
+
+  /**
+   * Reads list of grant types from the list of flows.
+   *
+   * @param {Array<Object>} flows List of flows to process.
+   * @return {Array<String>} Grant types cupported by this authorization.
+   */
+  [readFlowsTypes](flows) {
+    const sec = this.ns.aml.vocabularies.security;
+    const grants = [];
+    for (let i = 0; i < flows.length; i++) {
+      const flow = flows[i];
+      let type = this._getValue(flow, sec.flow);
+      if (type === 'authorizationCode') {
+        type = 'authorization_code';
+      } else if (type === 'clientCredentials') {
+        type = 'client_credentials';
+      }
+      grants[grants.length] = type;
+    }
+    return grants;
+  }
+
+  /**
+   * Applies settings from a flow to current properties.
+   * OAS' flows may define different configuration for each flow.
+   * This function is called each time a grant type change. If current settings
+   * does not contain flows then this is ignored.
+   *
+   * @param {?String} name Set grant type
+   */
+  [applyFlow](name) {
     if (!name) {
       return;
     }
-    name = name.toLowerCase();
-    if (name !== 'authorization') {
+    const scheme = this[securityScheme];
+    if (!scheme) {
       return;
     }
-    let value = e.detail.value;
-    if (!value) {
-      if (this.accessToken) {
-        this.accessToken = '';
-      }
+    const sKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
+    let settings = scheme[sKey];
+    /* istanbul ignore else */
+    if (Array.isArray(settings)) {
+      settings = settings[0];
+    }
+    const sec = this.ns.aml.vocabularies.security;
+    const flows = this._getValueArray(settings, sec.flows);
+    if (!Array.isArray(flows) || this[isRamlFlow](flows)) {
       return;
     }
-    const lowerValue = value.toLowerCase();
-    const lowerType = (this.tokenType || 'bearer').toLowerCase();
-    if (lowerValue.indexOf(lowerType) !== 0) {
-      if (this.accessToken) {
-        this.accessToken = '';
-      }
-      return;
+    if (name === 'client_credentials') {
+      name = 'clientCredentials';
+    } else if (name === 'authorization_code') {
+      name = 'authorizationCode';
     }
-    value = value.substr(lowerType.length + 1).trim();
-    this.accessToken = value;
+    const flow = flows.find((flow) => this._getValue(flow, sec.flow) === name);
+    // sets basic oauth properties.
+    this.scopes = flow ? this[readFlowScopes](flow) : [];
+    this.authorizationUri = this._getValue(flow, sec.authorizationUri) || '';
+    this.accessTokenUri = this._getValue(flow, sec.accessTokenUri) || '';
   }
 
-  _modelForCustomType(type) {
-    let model;
-    if (type === 'auth-query') {
-      model = this._authQueryParameters;
-    } else if (type === 'token-query') {
-      model = this._tokenQueryParameters;
-    } else if (type === 'token-headers') {
-      model = this._tokenHeaders;
-    } else {
-      model = this._tokenBody;
-    }
-    return model;
-  }
   /**
-   * Toggles documentartion for custom property.
-   *
-   * @param {CustomEvent} e
+   * Extracts scopes list from the security definition
+   * @param {Array} model
+   * @return {Array<String>|undefined}
    */
-  _toggleDocumentation(e) {
-    const index = Number(e.currentTarget.dataset.index);
-    const type = e.currentTarget.dataset.type;
-    if (index !== index || !type) {
+  [readSecurityScopes](model) {
+    model = this._ensureArray(model);
+    if (!model) {
       return;
     }
-    const model = this._modelForCustomType(type);
-    model[index].docsOpened = !model[index].docsOpened;
-    this.requestUpdate();
+    const result = [];
+    for (let i = 0, len = model.length; i < len; i++) {
+      const value = this._getValue(model[i], this.ns.aml.vocabularies.core.name);
+      if (!value) {
+        continue;
+      }
+      result.push(value);
+    }
+    return result;
   }
   /**
-   * Dispatches analytics event.
-   *
-   * @param {String} category Event category
-   * @param {String} action Event action
-   * @param {String} label Event label
+   * Finds a key for Custom settings
+   * @param {Object} model Security scheme settings object.
+   * @return {String|undefined}
    */
-  _analyticsEvent(category, action, label) {
-    const e = new CustomEvent('send-analytics', {
-      detail: {
-        type: 'event',
-        category: category,
-        action: action,
-        label: label
-      },
-      bubbles: true,
-      composed: true
+  [amfCustomSettingsKey](model) {
+    const keys = Object.keys(model);
+    const data = this.ns.aml.vocabularies.data;
+    const settingsKeys = [
+      this._getAmfKey(data + 'authorizationSettings'),
+      this._getAmfKey(data + 'authorizationGrants'),
+      this._getAmfKey(data + 'accessTokenSettings')
+    ];
+    for (let i = 0; i < keys.length; i++) {
+      const node = model[keys[i]];
+      if (node[settingsKeys[0]] || node[settingsKeys[1]] || node[settingsKeys[2]]) {
+        return keys[i];
+      }
+    }
+  }
+  /**
+   * Applies `authorizationGrants` from OAuth2 settings annotation.
+   *
+   * @param {Array} gransts OAuth spec grants available for the endpoint
+   * @param {?Object} annotation Read annotation.
+   * @return {Array} List of granst to apply.
+   */
+  [applyAnnotationGrants](gransts, annotation) {
+    if (!annotation) {
+      return gransts;
+    }
+    /* istanbul ignore if */
+    if (!gransts) {
+      gransts = [];
+    }
+    const d = this.ns.aml.vocabularies.data;
+    let model = annotation[this._getAmfKey(d + 'authorizationGrants')];
+    model = this._ensureArray(model);
+    /* istanbul ignore if */
+    if (!model || !model.length) {
+      return gransts;
+    }
+    const list = model[0][this._getAmfKey(this.ns.w3.rdfSchema.member)];
+    const addedGrants = [];
+    list.forEach((item) => {
+      const v = this._getValue(item, d + 'value');
+      /* istanbul ignore if */
+      if (!v) {
+        return;
+      }
+      addedGrants.push(v);
     });
-    this.dispatchEvent(e);
+    /* istanbul ignore if */
+    if (!addedGrants.length) {
+      return gransts;
+    }
+    const ignoreKey = d + 'ignoreDefaultGrants';
+    /* istanbul ignore if */
+    if (typeof annotation[this._getAmfKey(ignoreKey)] !== 'undefined') {
+      gransts = [];
+    }
+    gransts = gransts.concat(addedGrants);
+    return gransts;
   }
   /**
-   * A handler for `focus` event on a label that contains text and
-   * should be coppied to clipboard when user is interacting with it.
+   * Sets up annotation supported variables to apply form view for:
+   * - authorization query parameters
+   * - authorization headers
+   * - token query parameters
+   * - token headers
+   * - token body
    *
-   * @param {ClickEvent} e
+   * @param {Object} annotation Annotation applied to the OAuth settings
    */
-  _clickCopyAction(e) {
-    const node = e.target;
-    const elm = this.shadowRoot.querySelector('clipboard-copy');
-    elm.content = node.innerText;
-    if (elm.copy()) {
-      this.shadowRoot.querySelector('#clipboardToast').opened = true;
+  [setupAnotationParameters](annotation) {
+    /* istanbul ignore if */
+    if (this[authQueryParameters]) {
+      this[authQueryParameters] = undefined;
     }
-    setTimeout(() => {
-      if (document.body.createTextRange) {
-        const range = document.body.createTextRange();
-        range.moveToElementText(node);
-        range.select();
-      } else if (window.getSelection) {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNode(node);
-        selection.removeAllRanges();
-        selection.addRange(range);
+    /* istanbul ignore if */
+    if (this[tokenQueryParameters]) {
+      this[tokenQueryParameters] = undefined;
+    }
+    /* istanbul ignore if */
+    if (this[tokenHeaders]) {
+      this[tokenHeaders] = undefined;
+    }
+    /* istanbul ignore if */
+    if (this[tokenBody]) {
+      this[tokenBody] = undefined;
+    }
+    /* istanbul ignore if */
+    if (!annotation) {
+      return;
+    }
+    const d = this.ns.aml.vocabularies.data;
+    // these are non standard data properties and therefore
+    // the namespace has no information  about them.
+    const qpKey = this._getAmfKey(d + 'queryParameters');
+    let authSettings = annotation[this._getAmfKey(d + 'authorizationSettings')];
+    let tokenSettings = annotation[this._getAmfKey(d + 'accessTokenSettings')];
+    /* istanbul ignore else */
+    if (authSettings) {
+      /* istanbul ignore else */
+      if (Array.isArray(authSettings)) {
+        authSettings = authSettings[0];
       }
-    });
-  }
-
-  _advHandler(e) {
-    this._setSettingsInputValue('advancedOpened', e.target.checked);
-  }
-
-  _selectionHandler(e) {
-    const { value } = e.detail;
-    const { name } = e.target.parentElement;
-    this._setSettingsInputValue(name, value);
-  }
-
-  _valueHandler(e) {
-    const { name, value } = e.target;
-    this._setSettingsInputValue(name, value);
-    const persistent = e.target.dataset.persistent;
-    if (persistent === 'true') {
-      this._storeSessionProperty(this.storeKeys[name], value);
+      const qp = authSettings[qpKey];
+      /* istanbul ignore else */
+      if (qp) {
+        this[setupAuthRequestQueryParameters](qp);
+      }
+    }
+    /* istanbul ignore else */
+    if (tokenSettings) {
+      /* istanbul ignore else */
+      if (Array.isArray(tokenSettings)) {
+        tokenSettings = tokenSettings[0];
+      }
+      const qp = tokenSettings[qpKey];
+      const headers = tokenSettings[this._getAmfKey(d + 'headers')];
+      const body = tokenSettings[this._getAmfKey(d + 'body')];
+      /* istanbul ignore else */
+      if (qp) {
+        this[setupTokenRequestQueryParameters](qp);
+      }
+      /* istanbul ignore else */
+      if (headers) {
+        this[setupTokenRequestHeaders](headers);
+      }
+      /* istanbul ignore else */
+      if (body) {
+        this[setupTokenRequestBody](body);
+      }
     }
   }
+  /**
+   * Sets up query parameters to be used with authorization request.
+   *
+   * @param {Array} params List of parameters from the annotation.
+   */
+  [setupAuthRequestQueryParameters](params) {
+    const model = this[createViewModel$2](params, this._queryModelOpts);
+    /* istanbul ignore if */
+    if (!model) {
+      return;
+    }
+    this[authQueryParameters] = model;
+  }
+  /**
+   * Sets up query parameters to be used with token request.
+   *
+   * @param {Array} params List of parameters from the annotation.
+   */
+  [setupTokenRequestQueryParameters](params) {
+    const model = this[createViewModel$2](params, this._queryModelOpts);
+    /* istanbul ignore if */
+    if (!model) {
+      return;
+    }
+    this[tokenQueryParameters] = model;
+  }
+  /**
+   * Sets up headers to be used with token request.
+   *
+   * @param {Array} params List of parameters from the annotation.
+   */
+  [setupTokenRequestHeaders](params) {
+    const model = this[createViewModel$2](params, this._headersModelOpts);
+    /* istanbul ignore if */
+    if (!model) {
+      return;
+    }
+    this[tokenHeaders] = model;
+  }
+  /**
+   * Sets up body parameters to be used with token request.
+   *
+   * @param {Array} params List of parameters from the annotation.
+   */
+  [setupTokenRequestBody](params) {
+    const model = this[createViewModel$2](params, this._queryModelOpts);
+    /* istanbul ignore if */
+    if (!model) {
+      return;
+    }
+    this[tokenBody] = model;
+  }
+  /**
+   * Creats a form view model for type items.
+   *
+   * @param {Array|object} param Property or list of properties to process.
+   * @param {Object} modelOptions
+   * @return {Array|undefined} Form view model or undefined if not set.
+   */
+  [createViewModel$2](param, modelOptions) {
+    /* istanbul ignore if */
+    if (!param) {
+      return;
+    }
+    /* istanbul ignore else */
+    if (Array.isArray(param)) {
+      param = param[0];
+    }
+    const factory = document.createElement('api-view-model-transformer');
+    factory.amf = this.amf;
+    return factory.modelForRawObject(param, modelOptions);
+  }
 
-  _customValueChanged(e) {
+  [customValueHandler](e) {
     const { target } = e;
     const index = Number(target.dataset.index);
     const type = target.dataset.type;
@@ -71969,79 +74474,68 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
       return;
     }
     const { value } = target;
-    const model = this._modelForCustomType(type);
+    const model = this[modelForCustomType](type);
     model[index].value = value;
-    this._settingsChanged();
+    notifyChange(this);
   }
 
-  _scopesChanged(e) {
-    this.scopes = e.detail.value;
+  [modelForCustomType](type) {
+    let model;
+    if (type === 'auth-query') {
+      model = this[authQueryParameters];
+    } else if (type === 'token-query') {
+      model = this[tokenQueryParameters];
+    } else if (type === 'token-headers') {
+      model = this[tokenHeaders];
+    } else {
+      model = this[tokenBody];
+    }
+    return model;
   }
 
-  _getGrantTypeTemplate() {
-    const {
-      grantType,
-      outlined,
-      compatibility,
-      readOnly,
-      disabled,
-      noGrantType
-    } = this;
-    const items = this.grantTypes || [];
+  /**
+   * Toggles documentartion for custom property.
+   *
+   * @param {CustomEvent} e
+   */
+  [toggleDocumentation$2](e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const type = e.currentTarget.dataset.type;
+    if (index !== index || !type) {
+      return;
+    }
+    const model = this[modelForCustomType](type);
+    model[index].docsOpened = !model[index].docsOpened;
+    this.requestUpdate();
+  }
+
+  [oauth2CustomPropertiesTemplate]() {
+    const aqp = this[authQueryParameters];
+    const tqp = this[tokenQueryParameters];
+    const th = this[tokenHeaders];
+    const tb = this[tokenBody];
     return html`
-    <anypoint-dropdown-menu
-      name="grantType"
-      required
-      autovalidate
-      class="grant-dropdown"
-      ?hidden="${noGrantType}"
-      .outlined="${outlined}"
-      .compatibility="${compatibility}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-    >
-      <label slot="label">Grant type</label>
-      <anypoint-listbox
-        slot="dropdown-content"
-        .selected="${grantType}"
-        @selected-changed="${this._selectionHandler}"
-        data-name="grantType"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled="${disabled}"
-        attrforselected="data-value">
-        ${items.map((item) =>
-    html`<anypoint-item .compatibility="${compatibility}" data-value="${item.type}">${item.label}</anypoint-item>`)}
-      </anypoint-listbox>
-    </anypoint-dropdown-menu>`;
-  }
-
-  _getCustomPropertiesTemplate() {
-    const { _authQueryParameters, _tokenQueryParameters, _tokenHeaders, _tokenBody } = this;
-    return html`
-    ${_authQueryParameters && _authQueryParameters.length ?
+    ${aqp && aqp.length ?
       html`<div class="subtitle">Authorization request query parameters</div>
-      ${this._templateForCustomArray(_authQueryParameters, 'auth-query')}` : ''}
-    ${_tokenQueryParameters && _tokenQueryParameters.length ?
+      ${this[templateForCustomArray](aqp, 'auth-query')}` : ''}
+    ${tqp && tqp.length ?
       html`<div class="subtitle">Token request query parameters</div>
-      ${this._templateForCustomArray(_tokenQueryParameters, 'token-query')}` : ''}
-    ${_tokenHeaders && _tokenHeaders.length ?
+      ${this[templateForCustomArray](tqp, 'token-query')}` : ''}
+    ${th && th.length ?
       html`<div class="subtitle">Token request headers</div>
-      ${this._templateForCustomArray(_tokenHeaders, 'token-headers')}` : ''}
-    ${_tokenBody && _tokenBody.length ?
+      ${this[templateForCustomArray](th, 'token-headers')}` : ''}
+    ${tb && tb.length ?
       html`<div class="subtitle">Token request body</div>
-      ${this._templateForCustomArray(_tokenBody, 'token-body')}` : ''}
+      ${this[templateForCustomArray](tb, 'token-body')}` : ''}
     `;
   }
 
-  _templateForCustomArray(items, type) {
+  [templateForCustomArray](items, type) {
     const {
       outlined,
       compatibility,
       readOnly,
       disabled,
-      noDocs
     } = this;
     return items.map((item, index) => html`<div class="custom-data-field">
       <div class="field-value">
@@ -72055,1261 +74549,565 @@ class AuthMethodOauth2 extends AmfHelperMixin(AuthMethodBase) {
           ?disabled="${disabled}"
           data-type="${type}"
           data-index="${index}"
-          @value-changed="${this._customValueChanged}"></api-property-form-item>
-          ${item.hasDescription && !noDocs ? html`<anypoint-icon-button
-            class="hint-icon"
-            title="Toggle description"
-            aria-label="Press to toggle description"
-            data-type="${type}"
-            data-index="${index}"
-            @click="${this._toggleDocumentation}">
-            <span class="icon">${help}</span>
-          </anypoint-icon-button>` : undefined}
+          @value-changed="${this[customValueHandler]}"
+        ></api-property-form-item>
+        ${item.hasDescription ? html`<anypoint-icon-button
+          class="hint-icon"
+          title="Toggle description"
+          aria-label="Press to toggle description"
+          data-type="${type}"
+          data-index="${index}"
+          @click="${this[toggleDocumentation$2]}">
+          <span class="icon">${help}</span>
+        </anypoint-icon-button>` : undefined}
       </div>
-      ${item.hasDescription && !noDocs && item.docsOpened ? html`<div class="docs-container">
+      ${item.hasDescription && item.docsOpened ? html`<div class="docs-container">
         <arc-marked .markdown="${item.description}" sanitize>
           <div slot="markdown-html" class="markdown-body"></div>
         </arc-marked>
       </div>` : ''}
     </div>`);
   }
+};
 
-  _getRedirectTemplate() {
-    const {
-      redirectUri
-    } = this;
-    return html`<div class="subtitle">Redirect URI</div>
-    <section>
-      <div class="redirect-section">
-        <p class="redirect-info">Set this redirect URI in OAuth 2.0 provider settings.</p>
-        <p class="read-only-param-field padding">
-          <span class="code" @click="${this._clickCopyAction}">${redirectUri}</span>
-        </p>
-      </div>
-    </section>`;
-  }
-
-  _getAdvancedTemplate(customGrantRequired) {
-    const {
-      outlined,
-      compatibility,
-      readOnly,
-      disabled,
-      isAdvanced,
-      advancedOpened,
-      grantType,
-      isCustomGrant,
-      authorizationUri,
-      accessTokenUri,
-      username,
-      password,
-      allowedScopes,
-      preventCustomScopes,
-      scopes
-    } = this;
-    const authUriDisabled = disabled ||
-      this._isFieldDisabled(isCustomGrant, grantType, 'implicit', 'authorization_code');
-    const atUriDisabled = disabled ||
-      this._isFieldDisabled(isCustomGrant, grantType, 'client_credentials', 'authorization_code', 'password');
-    const passwdDisabled = disabled ||
-      this._isFieldDisabled(isCustomGrant, grantType, 'password');
-    return html`
-    ${isAdvanced ? html`<div class="adv-toggle">
-      <div class="adv-toggle">
-        <anypoint-checkbox
-          class="adv-settings-input"
-          .checked="${advancedOpened}"
-          @change="${this._advHandler}"
-          .disabled="${readOnly}"
-        >Advanced settings</anypoint-checkbox>
-      </div>
-    </div>` : ''}
-
-    <div class="advanced-section" ?hidden="${!advancedOpened}">
-      <anypoint-input
-        ?required="${customGrantRequired}"
-        autovalidate
-        name="authorizationUri"
-        .value="${authorizationUri}"
-        @input="${this._valueHandler}"
-        type="url"
-        autocomplete="on"
-        hiddable
-        data-persistent="true"
-        data-visible="implicit authorization_code"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled="${authUriDisabled}"
-        title="The authorization URL to initialize the OAuth flow. Check your provider's documentation"
-        invalidmessage="Authorization URI is required for this grant type">
-        <label slot="label">Authorization URI</label>
-      </anypoint-input>
-
-      <anypoint-input
-        ?required="${customGrantRequired}"
-        autovalidate
-        name="accessTokenUri"
-        .value="${accessTokenUri}"
-        @input="${this._valueHandler}"
-        type="url"
-        autocomplete="on"
-        hiddable
-        data-persistent="true"
-        data-visible="client_credentials authorization_code password"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled="${atUriDisabled}"
-        title="The access token URL is used by server implementations to exchange code for access token"
-        invalidmessage="Token URI is required for this grant type">
-        <label slot="label">Access token URI</label>
-      </anypoint-input>
-
-      <anypoint-masked-input
-        ?required="${customGrantRequired}"
-        autovalidate
-        name="username"
-        .value="${username}"
-        @input="${this._valueHandler}"
-        autocomplete="on"
-        hiddable
-        data-persistent="true"
-        data-visible="password"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled="${passwdDisabled}"
-        title="The user name required for this OAuth authentication"
-        invalidmessage="Username is required for this grant type">
-        <label slot="label">Username</label>
-      </anypoint-masked-input>
-
-      <anypoint-masked-input
-        ?required="${customGrantRequired}"
-        autovalidate
-        name="password"
-        .value="${password}"
-        @input="${this._valueHandler}"
-        autocomplete="on"
-        hiddable
-        data-persistent="true"
-        data-visible="password"
-        .outlined="${outlined}"
-        .compatibility="${compatibility}"
-        .readOnly="${readOnly}"
-        .disabled="${passwdDisabled}"
-        title="The password required for this OAuth authentication"
-        invalidmessage="Password is required for this grant type">
-        <label slot="label">Password</label>
-      </anypoint-masked-input>
-
-      <div>
-        <oauth2-scope-selector
-          .allowedScopes="${allowedScopes}"
-          .preventCustomScopes="${preventCustomScopes}"
-          .value="${scopes}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}"
-          .outlined="${outlined}"
-          .compatibility="${compatibility}"
-          name="scopes"
-          @value-changed="${this._scopesChanged}"></oauth2-scope-selector>
-      </div>
-    </div>
-    `;
-  }
-
-  render() {
-    const {
-      outlined,
-      compatibility,
-      readOnly,
-      disabled,
-      grantType,
-      isCustomGrant,
-      clientId,
-      clientSecret,
-      accessToken,
-      _authorizing
-    } = this;
-
-    const customGrantRequired = !isCustomGrant;
-    const clientIdRequired = ['client_credentials', 'password'].indexOf(grantType) !== -1 ? false : customGrantRequired;
-    const secretDisabled = disabled ||
-      this._isFieldDisabled(isCustomGrant, grantType, 'client_credentials', 'authorization_code');
-    const hasAccessToken = !!accessToken;
-    return html`<style>${this.styles}</style>
-    <iron-form data-grant="${grantType}">
-      <form autocomplete="on" ?is-custom-grant="${isCustomGrant}">
-          ${this._getGrantTypeTemplate()}
-          <section>
-            <anypoint-masked-input
-              ?required="${clientIdRequired}"
-              autovalidate
-              name="clientId"
-              .value="${clientId}"
-              @input="${this._valueHandler}"
-              autocomplete="on"
-              data-persistent="true"
-              hiddable
-              data-visible="implicit authorization_code client_credentials"
-              .outlined="${outlined}"
-              .compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-              title="The client ID registered in your OAuth provider"
-              invalidmessage="Client ID is required for this grant type">
-              <label slot="label">Client id</label>
-            </anypoint-masked-input>
-
-            <anypoint-masked-input
-              ?required="${clientIdRequired}"
-              autovalidate
-              name="clientSecret"
-              .value="${clientSecret}"
-              @input="${this._valueHandler}"
-              autocomplete="on"
-              hiddable
-              data-persistent="true"
-              data-visible="authorization_code client_credentials"
-              .outlined="${outlined}"
-              .compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${secretDisabled}"
-              title="The client secret is a generated by your provider unique string for your app"
-              invalidmessage="Client secret is required for this grant type">
-              <label slot="label">Client secret</label>
-            </anypoint-masked-input>
-            ${this._getCustomPropertiesTemplate()}
-            ${this._getAdvancedTemplate(customGrantRequired)}
-          </section>
-          ${this._getRedirectTemplate()}
-      </form>
-    </iron-form>
-
-    ${hasAccessToken ?
-      html`<div class="current-token">
-        <label class="token-label">Current token</label>
-        <p class="read-only-param-field padding">
-          <span class="code" @click="${this._clickCopyAction}">${accessToken}</span>
-        </p>
-        <div class="authorize-actions">
-          <anypoint-button
-            ?disabled="${_authorizing}"
-            class="auth-button"
-            ?compatibility="${compatibility}"
-            emphasis="medium"
-            data-type="refresh-token"
-            @click="${this.authorize}">Refresh access token</anypoint-button>
-          <paper-spinner .active="${_authorizing}"></paper-spinner>
-        </div>
-      </div>` :
-    html`<div class="authorize-actions">
-      <anypoint-button
-        ?disabled="${_authorizing}"
-        class="auth-button"
-        ?compatibility="${compatibility}"
-        emphasis="medium"
-        data-type="get-token"
-        @click="${this.authorize}">Request access token</anypoint-button>
-      <paper-spinner .active="${_authorizing}"></paper-spinner>
-    </div>`}
-
-    <paper-toast text="" duration="5000"></paper-toast>
-    <paper-toast class="error-toast" text="" duration="5000"></paper-toast>
-    <paper-toast text="Value copied to clipboard" id="clipboardToast" duration="2000"></paper-toast>
-    <clipboard-copy></clipboard-copy>`;
-  }
-  /**
-   * Fired when user requested to perform an authorization.
-   * The details object vary depends on the `grantType` property.
-   * However this event always fire two properties set on the `detail` object: `type` and
-   * `clientId`.
-   *
-   * @event oauth2-token-requested
-   * @param {String} type The type of grant option selected by the user. `implicit` is
-   * the browser flow where token ir requested. `authorization_code` or server flow is where
-   * client asks for the authorization code and exchange it later for the auth token using
-   * client secret. Other options are `password` and `client_credentials`.
-   * @param {String} clientId Every type requires `clientId`.
-   * @param {String} authorizationUri Token authorization URL. Used in `implicit` and
-   * `authorization_code` types. In both cases means the initial endpoint to request for token
-   * or the authorization code.
-   * @param {Array<String>} scopes A list of scopes seleted by the user. Used in `implicit`
-   * and `authorization_code` types.
-   * @param {String} redirectUri A redirect URL of the client after authorization (or error).
-   * This must be set in the provider's OAuth settings. Callback URL must communicate with
-   * the app to pass the information back to the application. User can't change the `redirectUri`
-   * but the app shouldn't rely on this value since in browser environment it is possible to
-   * temper with variables. The `redirectUri` must be set to this element by owner app (which
-   * must know this value). A `redirectUri` is set for `implicit` and `authorization_code`
-   * types.
-   * @param {String} clientSecret The client secret that user can get from the OAuth provider
-   * settings console. User in `authorization_code` and `client_credentials` types.
-   * @param {String} accessTokenUri An URL to exchange code for the access token. Used by
-   * `authorization_code`, `client_credentials` and `password` types.
-   * @param {String} username Used with `password` type.
-   * @param {String} password Used with `password` type.
-   * @param {Object} customData Custom query parameters, headers and body applied
-   * to the authorization or token request. See this element description for details.
-   * @param {String} deliveryMethod Access token location in the request.
-   * It can be either `header` or `query`. Defaults to header.
-   * @param {String} deliveryName Name of the parmater to use to transport
-   * the token. By default it is `authorization` for header value.
-   */
-  /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
-   *
-   * This event will set current settings as a detail object which are the same as for the
-   * `oauth2-token-requested` event. Additionally it will contain a `accessToken` property. This
-   * valye can be `undefined` if token hasn't been requested yet by the user.
-   * Clients should support a situaltion when the user do not request the token before requesting
-   * the resource and perform authorization.
-   *
-   * @event auth-settings-changed
-   * @param {Object} settings See the `oauth2-token-requested` for detailed
-   * description
-   * @param {String} type The authentication type selected by the user.
-   * @param {Boolean} valid True if the form has been validated.
-   */
-  /**
-   * Fired when the request token has been obtained and it's ready to serve.
-   * Because only one auth panel can be displayed ad a time it can be assumed
-   * that if new token has been obtained then it is current authorization
-   * method.
-   *
-   * @event oauth2-token-ready
-   * @param {String} token The OAuth 2.0 token
-   * @param {String} tokenType Token type reported by the server.
-   */
+var styles$a = css`
+:host {
+  display: block;
 }
-window.customElements.define('auth-method-oauth2', AuthMethodOauth2);
+
+.field-value {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  align-items: center;
+}
+
+api-property-form-item {
+  flex: 1;
+  margin: 0.1px 0;
+}
+
+.subtitle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 12px 8px;
+}
+
+.section-title {
+  margin: 12px 8px;
+}
+
+.docs-container {
+  margin-bottom: 8px;
+}
+
+arc-marked {
+  background-color: var(--inline-documentation-background-color, #FFF3E0);
+  padding: 4px;
+}
+`;
+
+const createViewModel$3 = Symbol();
+const headersParam$2 = Symbol();
+const queryParam = Symbol();
+const cookiesParam = Symbol();
+const titleTemplate$2 = Symbol();
+const headersTemplate$2 = Symbol();
+const queryTemplate$2 = Symbol();
+const cookieTemplate = Symbol();
+const formListTemplate$2 = Symbol();
+const formItemTemplate$2 = Symbol();
+const inputHandler$3 = Symbol();
+const restoreModelValue$2 = Symbol();
+const updateModelValue$2 = Symbol();
+
+const restoreApiKey = Symbol();
+const serializeApiKey = Symbol();
+const validateApiKey = Symbol();
+const initializeApiKeyModel = Symbol();
+const renderApiKey = Symbol();
+const updateQueryParameterApiKey = Symbol();
+const updateHeaderApiKey = Symbol();
+const updateCookieApiKey = Symbol();
+const clearApiKey = Symbol();
 
 /**
-@license
-Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * The `<auth-method-oauth1>` element displays a form to provide the OAuth 1a settings.
+ * The `api-view-model-transformer` has insternal caching enabled to support
+ * values caching when the user switches through methods in API definition.
  *
- * ### Example
+ * This creates a similar mechanism for caching since this mixin does not use
+ * `api-view-model-transformer`.
  *
- * ```html
- * <auth-method-oauth1 consumer-key="xyz"></auth-method-oauth1>
- * ```
- *
- * ### Required form fields
- *
- * - Consumer key
- * - Timestamp
- * - Nonce
- * - Signature method
- *
- * ## Authorizing the user
- *
- * This element displays form for user input only. To perform authorization and
- * later to sign the request, add `oauth-authorization/oauth1-authorization.html`
- * to the DOM. This element sends `oauth1-token-requested` that is handled by
- * autorization element.
- *
- * Note that the OAuth1 authorization wasn't designed for browser. Most existing
- * OAuth1 implementation disallow browsers to perform the authorization by
- * not allowing POST requests to authorization server. Therefore receiving token
- * may not be possible without using browser extensions to alter HTTP request to
- * enable CORS.
- * If the server disallow obtaining authorization token and secret from clients
- * then the application should listen for `oauth1-token-requested` custom event
- * and perform authorization on the server side.
- *
- * When application is performing authorization instead of `oauth1-authorization`
- * element then the application should dispatch `oauth1-token-response` custom event
- * with `oauth_token` and `oauth_token_secret` properties set on detail object.
- * This element handles the response to reset UI state and to updates other elements
- * status that works with authorization.
- *
- * ## Signing the request
- *
- * See description for `oauth-authorization/oauth1-authorization.html` element.
- *
- * @customElement
- * @memberof UiElements
- * @appliesMixin ApiElements.AmfHelperMixin
- * @demo demo/oauth1.html
- * @extends AuthMethodBase
+ * @type {Object}
  */
-class AuthMethodOauth1 extends AmfHelperMixin(AuthMethodBase) {
-  get styles() {
-    return [
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
+const CACHE = {
+  header: {},
+  query: {},
+  cookie: {},
+};
 
-      .form {
-        max-width: 700px;
-      }
+/**
+ * @typedef SerializedValues
+ * @param {Object=} headers List of serialized headers
+ * @param {Object=} queryParameters List of serialized query parameters
+ * @param {Object=} cookies List of serialized cookies
+ */
 
-      .grant-dropdown {
-        width: 320px;
-      }
-
-      .authorize-actions {
-        margin-top: 12px;
-      }
-
-      anypoint-input,
-      anypoint-masked-input {
-        display: inline-block;
-        width: calc(100% - 16px);
-        margin: 8px;
-      }`
-    ];
-  }
-
-  render() {
-    const {
-      authTokenMethod,
-      authParamsLocation,
-      consumerKey,
-      consumerSecret,
-      token,
-      tokenSecret,
-      requestTokenUri,
-      accessTokenUri,
-      authorizationUri,
-      redirectUri,
-      timestamp,
-      nonce,
-      realm,
-      signatureMethod,
-      signatureMethods,
-      _authorizing,
-      outlined,
-      compatibility,
-      readOnly,
-      disabled
-    } = this;
-    const hasSignatureMethods = !!(signatureMethods && signatureMethods.length);
-    return html`<style>${this.styles}</style>
-    <div class="form">
-      <iron-form>
-        <form autocomplete="on">
-          <anypoint-dropdown-menu
-            name="authTokenMethod"
-            required
-            autovalidate
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Authorization token method</label>
-            <anypoint-listbox
-              slot="dropdown-content"
-              .selected="${authTokenMethod}"
-              @selected-changed="${this._selectionHandler}"
-              data-name="authTokenMethod"
-              .outlined="${outlined}"
-              .compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-              attrforselected="data-value"
-            >
-              <anypoint-item .compatibility="${compatibility}" data-value="GET">GET</anypoint-item>
-              <anypoint-item .compatibility="${compatibility}" data-value="POST">POST</anypoint-item>
-            </anypoint-listbox>
-          </anypoint-dropdown-menu>
-
-          <anypoint-dropdown-menu
-            required
-            autovalidate
-            name="authParamsLocation"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Oauth parameters location</label>
-            <anypoint-listbox
-              slot="dropdown-content"
-              .selected="${authParamsLocation}"
-              @selected-changed="${this._selectionHandler}"
-              data-name="authParamsLocation"
-              .outlined="${outlined}"
-              .compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-              attrforselected="data-value"
-            >
-              <anypoint-item .compatibility="${compatibility}" data-value="querystring">Query string</anypoint-item>
-              <anypoint-item .compatibility="${compatibility}"
-                data-value="authorization">Authorization header</anypoint-item>
-            </anypoint-listbox>
-          </anypoint-dropdown-menu>
-
-          <anypoint-masked-input
-            required
-            autovalidate
-            name="consumerKey"
-            .value="${consumerKey}"
-            @input="${this._valueHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Consumer key is required"
-          >
-            <label slot="label">Consumer key</label>
-          </anypoint-masked-input>
-
-          <anypoint-masked-input
-            name="consumerSecret"
-            .value="${consumerSecret}"
-            @input="${this._valueHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Consumer secret</label>
-          </anypoint-masked-input>
-
-          <anypoint-masked-input
-            name="token"
-            .value="${token}"
-            @input="${this._valueHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Token</label>
-          </anypoint-masked-input>
-
-          <anypoint-masked-input
-            name="tokenSecret"
-            .value="${tokenSecret}"
-            @input="${this._valueHandler}"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Token secret</label>
-          </anypoint-masked-input>
-
-          <anypoint-input
-            name="requestTokenUri"
-            .value="${requestTokenUri}"
-            @input="${this._valueHandler}"
-            type="text"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Request token URL</label>
-          </anypoint-input>
-
-          <anypoint-input
-            name="accessTokenUri"
-            .value="${accessTokenUri}"
-            @input="${this._valueHandler}"
-            type="url"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Token Authorization URL</label>
-          </anypoint-input>
-
-          <anypoint-input
-            name="authorizationUri"
-            .value="${authorizationUri}"
-            @input="${this._valueHandler}"
-            type="url"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">User authorization dialog URL</label>
-          </anypoint-input>
-
-          <anypoint-input
-            name="redirectUri"
-            .value="${redirectUri}"
-            @input="${this._valueHandler}"
-            type="url"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-          >
-            <label slot="label">Redirect URL</label>
-          </anypoint-input>
-
-          <anypoint-input
-            required
-            autovalidate
-            name="timestamp"
-            .value="${timestamp}"
-            @input="${this._valueHandler}"
-            type="number"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Timestamp is required">
-            <label slot="label">Timestamp</label>
-            <anypoint-icon-button
-              slot="suffix"
-              title="Regenerate timestamp"
-              aria-label="Press to regenerate timestamp"
-              @click="${this._genTimestamp}"
-            >
-              <span class="icon">${cached}</span>
-            </anypoint-icon-button>
-          </anypoint-input>
-
-          <anypoint-input
-            required
-            autovalidate
-            name="nonce"
-            .value="${nonce}"
-            @input="${this._valueHandler}"
-            type="text"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            invalidmessage="Nonce is required">
-            <label slot="label">Nonce</label>
-            <anypoint-icon-button
-              slot="suffix"
-              title="Regenerate nonce"
-              aria-label="Press to regenerate nonce"
-              @click="${this._genNonce}"
-            >
-              <span class="icon">${cached}</span>
-            </anypoint-icon-button>
-          </anypoint-input>
-
-          <anypoint-input
-            name="realm"
-            .value="${realm}"
-            @input="${this._valueHandler}"
-            type="text"
-            autocomplete="on"
-            .outlined="${outlined}"
-            .compatibility="${compatibility}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}">
-            <label slot="label">Realm</label>
-          </anypoint-input>
-
-          ${hasSignatureMethods ?
-            html`<anypoint-dropdown-menu
-              required
-              autovalidate
-              name="signatureMethod"
-              .outlined="${outlined}"
-              .compatibility="${compatibility}"
-              .readOnly="${readOnly}"
-              .disabled="${disabled}"
-            >
-              <label slot="label">Signature method</label>
-              <anypoint-listbox
-                slot="dropdown-content"
-                .selected="${signatureMethod}"
-                @selected-changed="${this._selectionHandler}"
-                data-name="signatureMethod"
-                .outlined="${outlined}"
-                .compatibility="${compatibility}"
-                .readOnly="${readOnly}"
-                .disabled="${disabled}"
-                attrforselected="data-value">
-                ${signatureMethods.map((item) =>
-              html`<anypoint-item .compatibility="${compatibility}" data-value="${item}">${item}</anypoint-item>`)}
-              </anypoint-listbox>
-            </anypoint-dropdown-menu>` :
-            ''}
-
-          <div class="authorize-actions">
-            <anypoint-button
-              ?disabled="${_authorizing}"
-              class="auth-button"
-              @click="${this.authorize}">Authorize</anypoint-button>
-            <paper-spinner .active="${_authorizing}"></paper-spinner>
-          </div>
-        </form>
-      </iron-form>
-    </div>
-    <paper-toast text="" duration="5000"></paper-toast>`;
-  }
-
-  static get properties() {
-    return {
-      // Client ID aka consumer key
-      consumerKey: { type: String },
-      // The client secret aka consumer secret
-      consumerSecret: { type: String },
-      // Oauth 1 token (from the oauth console)
-      token: { type: String },
-      // Oauth 1 token secret (from the oauth console)
-      tokenSecret: { type: String },
-      // Timestamp
-      timestamp: { type: Number },
-      // The nonce generated for this request
-      nonce: { type: String },
-      // Optional realm
-      realm: { type: String },
-      /**
-       * Signature method. Enum {`HMAC-SHA256`, `HMAC-SHA1`, `PLAINTEXT`}
-       */
-      signatureMethod: { type: String },
-
-      // True when currently authorizing the user.
-      _authorizing: { type: Boolean },
-      /**
-       * Authorization callback URI
-       */
-      redirectUri: { type: String },
-      /**
-       * OAuth1 endpoint to obtain request token to request user authorization.
-       */
-      requestTokenUri: { type: String },
-      /**
-       * Endpoint to authorize the token.
-       */
-      accessTokenUri: { type: String },
-      /**
-       * HTTP method to obtain authorization header.
-       * Spec recommends POST
-       */
-      authTokenMethod: { type: String },
-      /**
-       * A location of the OAuth 1 authorization parameters.
-       * It can be either in the URL as a query string (`querystring` value)
-       * or in the authorization header (`authorization`) value.
-       */
-      authParamsLocation: { type: String },
-      /**
-       * An URI to authentication endpoint where the user should be redirected
-       * to auththorize the app.
-       */
-      authorizationUri: { type: String },
-      /**
-       * RAML `securedBy` obejct definition.
-       * If set, it will prefill the settings in the auth panel.
-       */
-      amfSettings: { type: Object },
-      /**
-       * List of currently support signature methods.
-       * This can be updated when `amfSettings` property is set.
-       */
-      signatureMethods: { type: Array }
-    };
-  }
+/**
+ * Mixin that adds support for OAS' API Key auth method computations
+ *
+ * @param {*} superClass
+ * @return {*}
+ * @mixin
+ */
+const ApiKeyMethodMixin = (superClass) => class extends superClass {
   /**
-   * Returns default list of signature methods for OAuth1
+   * Clears previouslt set values in the cache storage.
    */
-  get defaultSignatureMethods() {
-    return ['HMAC-SHA1', 'RSA-SHA1', 'PLAINTEXT'];
-  }
-
-  get amfSettings() {
-    return this._amfSettings;
-  }
-
-  set amfSettings(value) {
-    /* istanbul ignore else */
-    if (this._sop('amfSettings', value)) {
-      this._amfSettingsChanged();
-    }
-  }
-
-  constructor() {
-    super('oauth1');
-    this._oauth1ErrorHandler = this._oauth1ErrorHandler.bind(this);
-    this._tokenResponseHandler = this._tokenResponseHandler.bind(this);
-
-    this.signatureMethod = 'HMAC-SHA1';
-    this.authTokenMethod = 'POST';
-    this.authParamsLocation = 'authorization';
-    this._genTimestamp();
-    this._genNonce();
-  }
-
-  connectedCallback() {
-    /* istanbul ignore else */
-    if (super.connectedCallback) {
-      super.connectedCallback();
-    }
-    if (!this.signatureMethods) {
-      this.signatureMethods = this.defaultSignatureMethods;
-    }
-  }
-
-  _attachListeners() {
-    window.addEventListener('oauth1-error', this._oauth1ErrorHandler);
-    window.addEventListener('oauth1-token-response', this._tokenResponseHandler);
-  }
-
-  _detachListeners() {
-    window.removeEventListener('oauth1-error', this._onAuthSettings);
-    window.removeEventListener('oauth1-token-response', this._tokenResponseHandler);
-  }
-
-  updated() {
-    this._settingsChanged();
-  }
-  /**
-   * Overrides `AmfHelperMixin.__amfChanged`
-   */
-  __amfChanged() {
-    this._amfSettingsChanged();
-  }
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} `true` if valid, `false` otherwise.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
-    }
-    return form.validate();
-  }
-
-  _createModel(type) {
-    let validationResult = this.validate();
-    const settings = this.getSettings();
-    if (validationResult) {
-      if (!settings || !settings.token || !settings.tokenSecret) {
-        validationResult = false;
-      }
-    }
-    return {
-      settings,
-      type,
-      valid: validationResult
-    };
-  }
-
-  getSettings() {
-    return {
-      consumerKey: this.consumerKey,
-      consumerSecret: this.consumerSecret,
-      token: this.token,
-      tokenSecret: this.tokenSecret,
-      timestamp: this.timestamp,
-      nonce: this.nonce,
-      realm: this.realm,
-      signatureMethod: this.signatureMethod,
-      requestTokenUri: this.requestTokenUri,
-      accessTokenUri: this.accessTokenUri,
-      redirectUri: this.redirectUri,
-      authTokenMethod: this.authTokenMethod,
-      authParamsLocation: this.authParamsLocation,
-      authorizationUri: this.authorizationUri,
-      type: 'oauth1'
-    };
+  clearApiKeyCache() {
+    CACHE.header = {};
+    CACHE.query = {};
+    CACHE.cookie = {};
   }
 
   /**
-   * Restores settings from stored value.
-   *
-   * @param {Object} settings Object returned by `_getSettings()`
+   * Updates query parameter value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
    */
-  restore(settings) {
-    this.consumerKey = settings.consumerKey;
-    this.consumerSecret = settings.consumerSecret;
-    this.token = settings.token;
-    this.tokenSecret = settings.tokenSecret;
-    this.timestamp = settings.timestamp;
-    this.nonce = settings.nonce;
-    this.realm = settings.realm;
-    this.signatureMethod = settings.signatureMethod;
-    this.requestTokenUri = settings.requestTokenUri;
-    this.accessTokenUri = settings.accessTokenUri;
-    this.redirectUri = settings.redirectUri;
-    this.authTokenMethod = settings.authTokenMethod;
-    this.authParamsLocation = settings.authParamsLocation;
-    this.authorizationUri = settings.authorizationUri;
-  }
-  /**
-   * Sends the `oauth2-token-requested` event.
-   * @return {Boolean} True if event was sent. Can be false if event is not
-   * handled or when the form is invalid.
-   */
-  authorize() {
-    this._authorizing = true;
-    const detail = {};
-    if (this.consumerKey) {
-      detail.consumerKey = this.consumerKey;
-    }
-    if (this.consumerSecret) {
-      detail.consumerSecret = this.consumerSecret;
-    }
-    if (this.token) {
-      detail.token = this.token;
-    }
-    if (this.tokenSecret) {
-      detail.tokenSecret = this.tokenSecret;
-    }
-    /* istanbul ignore else */
-    if (this.timestamp) {
-      detail.timestamp = this.timestamp;
-    }
-    /* istanbul ignore else */
-    if (this.nonce) {
-      detail.nonce = this.nonce;
-    }
-    if (this.realm) {
-      detail.realm = this.realm;
-    }
-    /* istanbul ignore else */
-    if (this.signatureMethod) {
-      detail.signatureMethod = this.signatureMethod;
-    }
-    if (this.requestTokenUri) {
-      detail.requestTokenUri = this.requestTokenUri;
-    }
-    if (this.accessTokenUri) {
-      detail.accessTokenUri = this.accessTokenUri;
-    }
-    if (this.redirectUri) {
-      detail.redirectUri = this.redirectUri;
-    }
-    /* istanbul ignore else */
-    if (this.authParamsLocation) {
-      detail.authParamsLocation = this.authParamsLocation;
-    }
-    /* istanbul ignore else */
-    if (this.authTokenMethod) {
-      detail.authTokenMethod = this.authTokenMethod;
-    }
-    if (this.authorizationUri) {
-      detail.authorizationUri = this.authorizationUri;
-    }
-    detail.type = 'oauth1';
-    this.dispatchEvent(new CustomEvent('oauth1-token-requested', {
-      detail,
-      bubbles: true,
-      composed: true,
-      camcelable: true
-    }));
-    return true;
-  }
-  /**
-   * Handles OAuth1 authorization errors.
-   *
-   * @param {CustomEvent} e
-   */
-  _oauth1ErrorHandler(e) {
-    this._authorizing = false;
-    const toast = this.shadowRoot.querySelector('paper-toast');
-    toast.text = e.detail.message;
-    toast.opened = true;
+  [updateQueryParameterApiKey](name, newValue) {
+    this[updateModelValue$2](this[queryParam], name, newValue);
   }
 
   /**
-   * Handler for the `oauth1-token-response` custom event.
-   * Sets `token` and `tokenSecret` properties from the event.
-   *
-   * @param {CustomEvent} e
+   * Updates header value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
    */
-  _tokenResponseHandler(e) {
-    this._authorizing = false;
-    this.token = e.detail.oauth_token;
-    this.tokenSecret = e.detail.oauth_token_secret;
+  [updateHeaderApiKey](name, newValue) {
+    this[updateModelValue$2](this[headersParam$2], name, newValue);
   }
-  // Sets timestamp in seconds
-  _genTimestamp() {
-    const t = Math.floor(Date.now() / 1000);
-    this.timestamp = t;
-  }
+
   /**
-   * Sets autogenerated nocne
-   * @param {?Number} length Optional, size of generated string. Default to 32.
+   * Updates cookie value, if defined in the model.
+   * @param {String} name
+   * @param {String} newValue
    */
-  _genNonce() {
-    const result = [];
-    const chrs = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    const chrsLength = chrs.length;
-    const length = 32;
-    for (let i = 0; i < length; i++) {
-      result[result.length] = (chrs[Math.floor(Math.random() * chrsLength)]);
-    }
-    this.nonce = result.join('');
+  [updateCookieApiKey](name, newValue) {
+    this[updateModelValue$2](this[cookiesParam], name, newValue);
   }
+
   /**
-   * Called when the AMF object change
+   * Updates header or query parameters value, if defined in the model.
+   * @param {Array<Object>} model Current model for the parameter
+   * @param {String} name
+   * @param {String} newValue
    */
-  _amfSettingsChanged() {
-    const model = this.amfSettings;
-    if (!model) {
-      this.signatureMethods = this.defaultSignatureMethods;
+  [updateModelValue$2](model, name, newValue) {
+    if (!model || !model.length) {
       return;
     }
-    const prefix = this.ns.aml.vocabularies.security;
-    const shKey = this._getAmfKey(prefix.scheme);
-    let scheme = model[shKey];
-    let type;
-    if (scheme) {
+    for (let i = 0, len = model.length; i < len; i++) {
+      const item = model[i];
+      if (item.name === name) {
+        item.value = newValue;
+        this.requestUpdate();
+        return;
+      }
+    }
+  }
+
+  /**
+   * Restores previously serialized values
+   * @param {Oauth2Params} settings
+   */
+  [restoreApiKey](settings) {
+    if (!settings) {
+      return;
+    }
+    this[restoreModelValue$2](this[headersParam$2], settings.headers);
+    this[restoreModelValue$2](this[queryParam], settings.queryParameters);
+    this[restoreModelValue$2](this[cookiesParam], settings.cookies);
+    this.requestUpdate();
+  }
+
+  /**
+   * Restores previously serialized values on a model
+   * @param {Array<Object>=} model The model to add values to
+   * @param {Object=} restored Previously serialized values
+   */
+  [restoreModelValue$2](model, restored) {
+    if (!restored || !model || !model.length) {
+      return;
+    }
+    Object.keys(restored).forEach((name) => {
+      const item = model.find((item) => item.name === name);
+      if (item) {
+        item.value = restored[name];
+      }
+    });
+  }
+
+  /**
+   * Serializes current values to a settings object
+   * @return {SerializedValues}
+   */
+  [serializeApiKey]() {
+    const headers = this[headersParam$2];
+    const queryParameters = this[queryParam];
+    const cookieParameters = this[cookiesParam];
+    const result = {};
+    // Note, in API model, headers and params are unique. They may have array
+    // value but they are always qunique.
+    if (headers && headers.length) {
+      result.headers = {};
+      headers.forEach((header) => result.headers[header.name] = header.value);
+    }
+    if (queryParameters && queryParameters.length) {
+      result.queryParameters = {};
+      queryParameters.forEach((parameter) => result.queryParameters[parameter.name] = parameter.value);
+    }
+    if (cookieParameters && cookieParameters.length) {
+      result.cookies = {};
+      cookieParameters.forEach((parameter) => result.cookies[parameter.name] = parameter.value);
+    }
+    return result;
+  }
+
+  [clearApiKey]() {
+    const headers = this[headersParam$2];
+    const queryParams = this[queryParam];
+    const cookieParameters = this[cookiesParam];
+    if (Array.isArray(headers)) {
+      headers.forEach((header) => header.value = '');
+    }
+    if (Array.isArray(queryParams)) {
+      queryParams.forEach((parameter) => parameter.value = '');
+    }
+    if (Array.isArray(cookieParameters)) {
+      cookieParameters.forEach((cookie) => cookie.value = '');
+    }
+  }
+
+  /**
+   * Performs a validation of current form.
+   * By calling this function invalid field are going to be marked as invalid.
+   *
+   * In the implementation it calls `validate()` function on each input element
+   * that is inserted into the DOM.
+   *
+   * @return {Boolean} validation
+   */
+  [validateApiKey]() {
+    const nodes = this.shadowRoot.querySelectorAll('api-property-form-item');
+    let validationResult = true;
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = nodes[i];
+      const result = node.validate();
+      if (validationResult && !result) {
+        validationResult = result;
+      }
+    }
+    return validationResult;
+  }
+
+  /**
+   * Processes AMF model and generates the view.
+   *
+   * Note, this function clears previously set parameters.
+   *
+   * @return {Promise}
+   */
+  async [initializeApiKeyModel]() {
+    this[headersParam$2] = [];
+    this[queryParam] = [];
+    this[cookiesParam] = [];
+
+    let { security } = this;
+    if (!security) {
+      return;
+    }
+    if (!Array.isArray(security)) {
+      security = [security];
+    }
+    const shKey = this._getAmfKey(this.ns.aml.vocabularies.security.scheme);
+    for (let i = 0, len = security.length; i < len; i++) {
+      const item = security[i];
+      if (!this._hasType(item, this.ns.aml.vocabularies.security.ParametrizedSecurityScheme)) {
+        continue;
+      }
+      let scheme = item[shKey];
+      if (!scheme) {
+        continue;
+      }
       if (scheme instanceof Array) {
         scheme = scheme[0];
       }
-      type = this._getValue(scheme, prefix.type);
+      const type = this._getValue(scheme, this.ns.aml.vocabularies.security.type);
+      if (!type || type.indexOf('Api Key') !== 0) {
+        continue;
+      }
+      this[createViewModel$3](scheme);
     }
-    if (type !== 'OAuth 1.0') {
-      this.signatureMethods = this.defaultSignatureMethods;
+    this.requestUpdate();
+    await this.updateComplete;
+    notifyChange(this);
+  }
+
+  /**
+   * Generates view model for Api Key method.
+   *
+   * @param {Object} model
+   */
+  [createViewModel$3](model) {
+    if (!model) {
       return;
     }
-    const sKey = this._getAmfKey(prefix.settings);
-    let settings = scheme[sKey];
-    if (settings instanceof Array) {
+    const settingsKey = this._getAmfKey(this.ns.aml.vocabularies.security.settings);
+    let settings = model[settingsKey];
+    if (!settings) {
+      return;
+    }
+    if (Array.isArray(settings)) {
       settings = settings[0];
     }
-    if (!settings) {
-      this.signatureMethods = this.defaultSignatureMethods;
+    const name = this._getValue(settings, this.ns.aml.vocabularies.core.name);
+    const binding = this._getValue(settings, this.ns.aml.vocabularies.security.in);
+
+    let result = CACHE[binding][name];
+    if (!result) {
+      result = CACHE[binding][name] = {
+        binding,
+        name,
+        required: true,
+        value: '',
+        description: '',
+        hasDescription: false,
+        schema: {
+          type: 'string',
+          inputLabel: 'Value of the ' + binding,
+          inputType: 'text',
+          isEnum: false,
+          isArray: false,
+          isBool: false,
+          isFile: false,
+          isObject: false,
+          isNillable: false,
+          isUnion: false,
+          enabled: true,
+          hasExtendedDescription: false,
+        }
+      };
+    }
+    switch (binding) {
+      case 'query':
+        this[queryParam].push(result);
+      break;
+      case 'header':
+        this[headersParam$2].push(result);
+      break;
+      case 'cookie':
+        this[cookiesParam].push(result);
+      break;
+    }
+  }
+
+  /**
+   * Handler for the `value-changed` event disaptched by input element.
+   * Dispatches 'request-header-changed' or 'query-parameter-changed'
+   * event. Other components can update their state when the value change.
+   *
+   * @param {CustomEvent} e
+   */
+  [inputHandler$3](e) {
+    if (e.composedPath && e.composedPath()[0] !== e.target) {
       return;
     }
-    this.requestTokenUri = this._getValue(settings, prefix.requestTokenUri);
-    this.authorizationUri = this._getValue(settings, prefix.authorizationUri);
-    this.accessTokenUri = this._getValue(settings, prefix.tokenCredentialsUri);
-    const signaturtes = this._getValueArray(settings, prefix.signature);
-    if (!signaturtes || !signaturtes.length) {
-      this.signatureMethods = this.defaultSignatureMethods;
-    } else {
-      this.signatureMethods = signaturtes;
+    const index = Number(e.target.dataset.index);
+    const type = e.target.dataset.type;
+    if (index !== index || !type) {
+      return;
     }
+    let model;
+    switch (type) {
+      case 'query': model = this[queryParam]; break;
+      case 'header': model = this[headersParam$2]; break;
+      case 'cookie': model = this[cookiesParam]; break;
+    }
+    const { value } = e.target;
+    model[index].value = value;
+    notifyChange(this);
   }
 
-  _selectionHandler(e) {
-    const { value } = e.detail;
-    const { name } = e.target.parentElement;
-    this._setSettingsInputValue(name, value);
-  }
-
-  _valueHandler(e) {
-    const { name, value } = e.target;
-    this._setSettingsInputValue(name, value);
-  }
   /**
-   * Fired when user requested to perform an authorization.
-   * The details object vary depends on the `grantType` property.
-   * However this event always fire two properties set on the `detail` object: `type` and
-   * `clientId`.
+   * Method that renders the view for Api Key security scheme
    *
-   * @event oauth1-token-requested
-   * @param {String} consumerKey The consumer key. May be undefined if not provided.
-   * @param {String} consumerSecret May be undefined if not provided.
-   * @param {String} token May be undefined if not provided.
-   * @param {String} tokenSecret May be undefined if not provided.
-   * @param {String} timestamp May be undefined if not provided.
-   * @param {String} nonce May be undefined if not provided.
-   * @param {String} realm May be undefined if not provided.
-   * @param {String} signatureMethod May be undefined if not provided.
-   * @param {String} type Always `oauth1`
+   * @return {TemplateResult}
    */
-  /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
-   *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings. See the
-   * `oauth1-token-requested` for detailed description.
-   * @param {String} type The authorization type - oauth1
-   */
-}
-window.customElements.define('auth-method-oauth1', AuthMethodOauth1);
-
-/**
-@license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * The `<auth-method-custom>` element displays a form to provide the
- * authorization details for RAML's custom security scheme.
- *
- * The element, alike other auth methods, dispatches `auth-settings-changed`
- * custom event. However, it also sends `request-header-changed` and
- * `query-parameters-changed` custom event to directly manipulate values
- * in corresponding UI element. This events are supported with all API components
- * that handles headers or query parameters.
- *
- * This element is rendered empty if `amfSettings` property is not set.
- * Parent element or application should check if model contains the scheme.
- *
- * ### Example
- *
- * ```html
- * <auth-method-custom securityscheme="{...}"></auth-method-custom>
- * ```
- *
- * @customElement
- * @memberof UiElements
- * @appliesMixin AmfHelperMixin
- * @demo demo/custom.html
- * @extends AuthMethodBase
- */
-class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
-  get styles() {
-    return [
-      markdownStyles,
-      apiFormStyles,
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
-
-      .field-value {
-        display: flex;
-        flex-direction: row;
-        flex: 1;
-        align-items: center;
-      }
-
-      api-property-form-item {
-        flex: 1;
-        margin: 0.1px 0;
-      }
-
-      .subtitle {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .docs-container {
-        margin-top: 8px;
-      }`
-    ];
-  }
-
-  render() {
+  [renderApiKey]() {
     const {
-      _schemeName,
-      _schemeDescription,
-      _hasSchemeDescription,
+      styles,
+    } = this;
+    return html`
+    <style>${styles}</style>
+    ${this[titleTemplate$2]()}
+    <form autocomplete="on" class="custom-auth">
+      ${this[headersTemplate$2]()}
+      ${this[queryTemplate$2]()}
+      ${this[cookieTemplate]()}
+    </form>
+    `;
+  }
+
+  /**
+   * Method that renders scheme's title
+   *
+   * @return {TemplateResult}
+   */
+  [titleTemplate$2]() {
+    return html`
+    <div class="subtitle">
+      <span>Scheme: Api Key</span>
+    </div>`;
+  }
+
+  /**
+   * Method that renders headers, if any
+   *
+   * @return {TemplateResult|string} Empty string is returned when the section
+   * should not be rendered, as documented in `lit-html` library.
+   */
+  [headersTemplate$2]() {
+    let result = this[formListTemplate$2](this[headersParam$2], 'header');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Headers</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  /**
+   * Method that renders query parameters, if any
+   *
+   * @return {TemplateResult|string} Empty string is returned when the section
+   * should not be rendered, as documented in `lit-html` library.
+   */
+  [queryTemplate$2]() {
+    let result = this[formListTemplate$2](this[queryParam], 'query');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Query parameters</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  /**
+   * Method that renders cookies, if any
+   *
+   * @return {TemplateResult|string} Empty string is returned when the section
+   * should not be rendered, as documented in `lit-html` library.
+   */
+  [cookieTemplate]() {
+    let result = this[formListTemplate$2](this[cookiesParam], 'cookie');
+    if (result !== '') {
+      result = html`
+      <label class="section-title">Cookies</label>
+      ${result}
+      `;
+    }
+    return result;
+  }
+
+  /**
+   * Returns a TemplateResult for form items.
+   * @param {Array<Object>} items List of form items to render
+   * @param {String} type Items type. Either `query` or `header`
+   * @return {TemplateResult}
+   */
+  [formListTemplate$2](items, type) {
+    if (!items || !items.length) {
+      return '';
+    }
+    const {
       outlined,
       compatibility,
-      documentationOpened
+      readOnly,
+      disabled,
     } = this;
-    return html`<style>${this.styles}</style>
-      ${_schemeName ? html`<div class="scheme-header">
-        <div class="subtitle">
-          <span>Scheme: ${_schemeName}</span>
-          ${_hasSchemeDescription ? html`<anypoint-icon-button
-            class="hint-icon"
-            title="Toggle description"
-            aria-label="Press to toggle schema description"
-            ?outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            @click="${this.toggleSchemeDocumentation}"
-          >
-            <span class="icon">${help}</span>
-          </anypoint-icon-button>` : ''}
-        </div>
-        ${_hasSchemeDescription && documentationOpened ? html`<div class="docs-container">
-          <arc-marked .markdown="${_schemeDescription}" main-docs sanitize>
-            <div slot="markdown-html" class="markdown-body"></div>
-          </arc-marked>
-        </div>` : ''}
-      </div>` : ''}
 
-      <iron-form>
-        <form autocomplete="on">
-          ${this._getHeadersTemplate()}
-          ${this._getQueryTemplate()}
-        </form>
-      </iron-form>`;
+    return html`
+    ${items.map((item, index) =>
+    this[formItemTemplate$2](item, index, outlined, compatibility, readOnly, disabled, type))}`;
+  }
+
+  /**
+   * Returns a TemplateResult for a form input item
+   *
+   * @param {Object} item
+   * @param {Number} index
+   * @param {Boolean} outlined
+   * @param {Boolean} compatibility
+   * @param {Boolean} readOnly
+   * @param {Boolean} disabled
+   * @param {String} type
+   * @return {TemplateResult}
+   */
+  [formItemTemplate$2](item, index, outlined, compatibility, readOnly, disabled, type) {
+    return html`<div class="field-value">
+      <api-property-form-item
+        .model="${item}"
+        .value="${item.value}"
+        name="${item.name}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?readonly="${readOnly}"
+        ?disabled="${disabled}"
+        required
+        autovalidate
+        data-type="${type}"
+        data-index="${index}"
+        @input="${this[inputHandler$3]}"
+      ></api-property-form-item>
+    </div>`;
+  }
+};
+
+const METHOD_CUSTOM = 'custom';
+const METHOD_PASS_THROUGH = 'pass through';
+const METHOD_API_KEY = 'api key';
+
+class ApiAuthorizationMethod extends AmfHelperMixin(
+  ApiOauth2MethodMixin(
+    ApiOauth1MethodMixin(
+      CustomMethodMixin(
+        PassThroughMethodMixin(
+          ApiKeyMethodMixin(AuthorizationMethod)))))) {
+
+  get styles() {
+    return [
+      super.styles,
+      styles$a,
+    ];
   }
 
   static get properties() {
     return {
       /**
-       * AMF security scheme model.
+       * A security model generated by the AMF parser.
+       * @type {Object|Array}
        */
-      amfSettings: { type: Object },
+      security: { type: Object },
       /**
-       * Computed list of headers to render in the form.
+       * When set the "description" of the security definition is rendered.
+       * @type {Boolean}
        */
-      _headers: { type: Array },
-      /**
-       * Computed list of query parameters to render.
-       */
-      _queryParameters: { type: Array },
-      /**
-       * Name of the security scheme
-       */
-      _schemeName: { type: String },
-      /**
-       * Security scheme description
-       */
-      _schemeDescription: { type: String },
-      /**
-       * True to opend scheme descripyion, if available.
-       */
-      documentationOpened: { type: Boolean }
+      descriptionOpened: { type: Boolean }
     };
-  }
-
-  get _hasSchemeDescription() {
-    if (this.noDocs) {
-      return false;
-    }
-    return !!this._schemeDescription;
-  }
-
-  get amfSettings() {
-    return this._amfSettings;
-  }
-
-  set amfSettings(value) {
-    /* istanbul ignore else */
-    if (this._sop('amfSettings', value)) {
-      this._schemeChanged();
-    }
   }
 
   get _transformer() {
@@ -73319,1974 +75117,300 @@ class AuthMethodCustom extends AmfHelperMixin(AuthMethodBase) {
     return this.__transformer;
   }
 
-  constructor() {
-    super('x-custom');
-    this._headerChangedHandler = this._headerChangedHandler.bind(this);
-    this._parameterChangedHandler = this._parameterChangedHandler.bind(this);
-  }
-
   disconnectedCallback() {
-    /* istanbul ignore else */
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
+    super.disconnectedCallback();
     this.__transformer = null;
   }
 
-  firstUpdated() {
-    this._settingsChanged();
+  updated(changed) {
+    if (changed.has('security') || changed.has('type')) {
+      // the `updated()` is called asynchronously anyway so no need to
+      // call `__apiPropHandler()`
+      this._processSecurity();
+    }
   }
 
-  _attachListeners(node) {
-    node.addEventListener('request-header-changed', this._headerChangedHandler);
-    node.addEventListener('query-parameter-changed', this._parameterChangedHandler);
-  }
-
-  _detachListeners(node) {
-    node.removeEventListener('request-header-changed', this._headerChangedHandler);
-    node.removeEventListener('query-parameter-changed', this._parameterChangedHandler);
-  }
   /**
    * Overrides `AmfHelperMixin.__amfChanged`
    */
-  __amfChanged() {
-    this._schemeChanged();
+  async __amfChanged() {
+    this.__apiPropHandler();
   }
 
-  _getHeadersTemplate() {
-    return this._formListTemplate(this._headers, 'header');
-  }
-
-  _getQueryTemplate() {
-    return this._formListTemplate(this._queryParameters, 'query');
-  }
-
-  _formListTemplate(items, type) {
-    if (!items || !items.length) {
-      return '';
-    }
-    const {
-      outlined,
-      compatibility,
-      readOnly,
-      disabled,
-      noDocs
-    } = this;
-    return html`
-    ${items.map((item, index) =>
-    this._formItemTemplate(item, index, outlined, compatibility, readOnly, disabled, noDocs, type))}`;
-  }
-
-  _formItemTemplate(item, index, outlined, compatibility, readOnly, disabled, noDocs, type) {
-    return html`<div class="field-value">
-      <api-property-form-item
-        .model="${item}"
-        .value="${item.value}"
-        name="${item.name}"
-        ?readonly="${readOnly}"
-        ?outlined="${outlined}"
-        ?compatibility="${compatibility}"
-        ?disabled="${disabled}"
-        data-type="${type}"
-        data-index="${index}"
-        @value-changed="${this._inputValueChanged}"></api-property-form-item>
-        ${item.hasDescription && !noDocs ? html`<anypoint-icon-button
-          class="hint-icon"
-          title="Toggle description"
-          aria-label="Press to toggle description"
-          data-type="${type}"
-          data-index="${index}"
-          @click="${this._toggleDocumentation}"
-        >
-          <span class="icon">${help}</span>
-        </anypoint-icon-button>` : undefined}
-    </div>
-    ${item.hasDescription && !noDocs && item.docsOpened ? html`<div class="docs-container">
-      <arc-marked .markdown="${item.description}" sanitize>
-        <div slot="markdown-html" class="markdown-body"></div>
-      </arc-marked>
-    </div>` : ''}`;
-  }
-
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} `true` if valid, `false` otherwise.
-   */
-  validate() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    /* istanbul ignore if */
-    if (!form) {
-      return true;
-    }
-    return form.validate();
-  }
-
-  _schemeChanged() {
-    if (this.__schemeChangeDebouncer) {
+  async __apiPropHandler() {
+    if (this.__schemeDebouncer) {
       return;
     }
-    this.__schemeChangeDebouncer = true;
+    // This ensures that the `type` and `security` properties are reflected
+    // from the attribute, if set.
+    await this.updateComplete;
+    this.__schemeDebouncer = true;
     setTimeout(() => {
-      this.__schemeChangeDebouncer = false;
-      this.__schemeChanged(this.amfSettings);
+      this.__schemeDebouncer = false;
+      this._processSecurity();
     });
   }
 
-  __schemeChanged() {
-    const model = this.amfSettings;
-    const prefix = this.ns.raml.vocabularies.security;
-    this._headers = undefined;
-    this._queryParameters = undefined;
-    if (!this._hasType(model, prefix.ParametrizedSecurityScheme)) {
-      return;
+  _processSecurity() {
+    const type = normalizeType(this.type);
+    switch (type) {
+      case METHOD_CUSTOM: this[initializeCustomModel](); break;
+      case METHOD_OAUTH2: this[initializeOauth2Model](); break;
+      case METHOD_OAUTH1: this[initializeOauth1Model](); break;
+      case METHOD_PASS_THROUGH: this[initializePassThroughModel](); break;
+      case METHOD_API_KEY: this[initializeApiKeyModel](); break;
     }
-    const shKey = this._getAmfKey(prefix.scheme);
-    let scheme = model[shKey];
-    let type;
-    if (scheme) {
-      if (scheme instanceof Array) {
-        scheme = scheme[0];
-      }
-      type = this._getValue(scheme, prefix.type);
-    }
-    if (!type || type.indexOf('x-') !== 0) {
-      return;
-    }
-    const hKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.header);
-    this._createViewModel('header', this._ensureArray(scheme[hKey]));
-    const params = this._readParamsProperties(scheme);
-    this._createViewModel('parameter', params);
-    this._schemeName = this._getValue(model, this.ns.aml.vocabularies.core.name);
-    this._schemeDescription = this._getValue(scheme, this.ns.aml.vocabularies.core.description);
-    this._settingsChanged();
   }
 
-  _readParamsProperties(scheme) {
-    const pKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.parameter);
-    let result = this._ensureArray(scheme[pKey]);
-    if (result) {
-      return result;
-    }
-    const qKey = this._getAmfKey(this.ns.aml.vocabularies.apiContract.queryString);
-    result = this._ensureArray(scheme[qKey]);
-    if (result) {
-      result = result[0];
-    }
-    return result;
-  }
   /**
-   * Generates view model using the tranformer.
+   * Toggles value of `descriptionOpened` property.
    *
-   * @param {String} type Param type. Either `header` or `parameter`.
-   * @param {Array} model
+   * This is a utility method for UI event handling. Use `descriptionOpened`
+   * attribute directly instead of this method.
    */
-  _createViewModel(type, model) {
-    if (!model) {
-      return;
-    }
-    const factory = this._transformer;
-    factory.amf = this.amf;
-    const data = factory.computeViewModel(model);
-    if (!data) {
-      return;
-    }
-    if (type === 'header') {
-      this._headers = data;
-      this._notifyModelChanged(type, data);
-    } else if (type === 'parameter') {
-      this._queryParameters = data;
-      this._notifyModelChanged(type, data);
-    }
+  toggleDescription() {
+    this.descriptionOpened = !this.descriptionOpened;
   }
-  /**
-   * Returns current configuration of the OAuth2.
-   *
-   * @return {Object} Current OAuth2 configuration.
-   */
-  getSettings() {
-    const form = this.shadowRoot.querySelector('iron-form');
-    if (!form) {
-      return {};
-    }
-    return form.serializeForm();
-  }
-  /**
-   * Toggles documentartion for custom property.
-   *
-   * @param {CustomEvent} e
-   */
-  _toggleDocumentation(e) {
-    const index = Number(e.currentTarget.dataset.index);
-    const type = e.currentTarget.dataset.type;
-    if (index !== index || !type) {
-      return;
-    }
-    const model = type === 'query' ? this._queryParameters : this._headers;
-    model[index].docsOpened = !model[index].docsOpened;
-    this.requestUpdate();
-  }
-  /**
-   * Toggles docs opened state
-   */
-  toggleSchemeDocumentation() {
-    this.documentationOpened = !this.documentationOpened;
-  }
-  /**
-   * Handler for the `request-header-changed` event.
-   * It updates value for a single header if this header is already on the list.
-   * @param {CustomEvent} e
-   */
-  _headerChangedHandler(e) {
-    this._updateEventValue(e, this._headers);
-  }
-  /**
-   * Handler for the `query-parameter-changed` event.
-   * It updates value for a single parameter if this parameter is already on the list.
-   * @param {CustomEvent} e
-   */
-  _parameterChangedHandler(e) {
-    this._updateEventValue(e, this._queryParameters);
-  }
-  /**
-   * Update array value for given type (`headers` or `queryParameters`) for given event.
-   * @param {CustomEvent} e
-   * @param {Array} model Model to use to update the value.
-   */
-  _updateEventValue(e, model) {
-    if (!model || !model.length) {
-      return;
-    }
-    const target = this._getEventTarget(e);
-    if (target === this || e.defaultPrevented) {
-      return;
-    }
-    const name = e.detail.name;
-    if (!name || typeof name !== 'string') {
-      return;
-    }
-    for (let i = 0, len = model.length; i < len; i++) {
-      const pName = model[i].name;
-      if (!pName) {
-        continue;
-      }
-      if (pName === name) {
-        model[i].value = e.detail.value;
-        this.requestUpdate();
-        this._settingsChanged();
-        return;
-      }
-    }
-  }
-  /**
-   * Handler for the `value-changed` event disaptched by input element.
-   * Dispatches 'request-header-changed' or 'query-parameter-changed'
-   * event. Other components can update their state when the value change.
-   *
-   * @param {CustomEvent} e
-   */
-  _inputValueChanged(e) {
-    const index = Number(e.target.dataset.index);
-    const type = e.target.dataset.type;
-    if (index !== index || !type) {
-      return;
-    }
-    const model = type === 'query' ? this._queryParameters : this._headers;
-    const { name } = model[index];
-    const { value } = e.detail;
-    model[index].value = value;
-    this.__isInputEvent = true;
-    this._settingsChanged();
-    this.__isInputEvent = false;
-    this._dispatchParamChanged(type, name, value);
-  }
-  /**
-   * Dispatches header/query parameter changed event - depending on the type.
-   * @param {String} type `header` or `query`
-   * @param {String} name name of the property
-   * @param {String} value changed value
-   */
-  _dispatchParamChanged(type, name, value) {
-    const eventType = type === 'header' ? 'request-header-changed' : 'query-parameter-changed';
-    this.dispatchEvent(new CustomEvent(eventType, {
-      detail: {
-        name,
-        value
-      },
-      bubbles: true,
-      composed: true
-    }));
-  }
-  /**
-   * Calls `_dispatchParamChanged()` on each item to notify other editors about
-   * value change.
-   * @param {String} type Changed type.
-   * @param {String} data View model
-   */
-  _notifyModelChanged(type, data) {
-    if (!data || !data.length) {
-      return;
-    }
-    data.forEach((item) => this._dispatchParamChanged(type, item.name, item.value));
-  }
-  /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
-   *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings containing hash, password
-   * and username.
-   * @param {String} type The authorization type - x-custom
-   * @param {Boolean} valid True if the form has been validated.
-   * @param {String} name Name of the custom method to differeciante them if many.
-   */
-  /**
-   * Fired when the header value has changed.
-   *
-   * @event request-header-changed
-   * @param {String} name Name of the header
-   * @param {String} value Value of the header
-   */
-  /**
-   * Fired when the header value has changed.
-   *
-   * @event query-parameter-changed
-   * @param {String} name Name of the parameter
-   * @param {String} value Value of the parameter
-   */
-}
-window.customElements.define('auth-method-custom', AuthMethodCustom);
 
-/**
-@license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * A mixin to be used with elements that consumes lists of client certificates.
- * It implements event listeners related to certificates data change.
- *
- * The mixin does not offer models to work with as the storing implementation
- * may be different for different platforms.
- * Use `@advanced-rest-client/arc-models/client-certificate-model.js` as a
- * default store.
- * Also, see the model definition to learn about events API for certificates.
- *
- * @mixinFunction
- * @memberof ArcComponents
- * @param {Class} base
- * @return {Class}
- */
-const ClientCertificatesConsumerMixin = (base) => class extends base {
-  static get properties() {
-    return {
-      /**
-       * The list of certificates to render.
-       * @type {Array<Object>}
-       */
-      items: { type: Array },
-      /**
-       * True when loading data from the datastore.
-       */
-      loading: { type: Boolean },
-      /**
-       * Prohibits automated certificates query when the component is initialized.
-       */
-      noAutoQueryCertificates: { type: Boolean },
-    };
-  }
   /**
-   * @return {Boolean} `true` if `items` is set and has cookies
-   */
-  get hasItems() {
-    const { items } = this;
-    return !!(items && items.length);
-  }
-  /**
-   * A computed flag that determines that the query to the databastore
-   * has been performed and empty result was returned.
-   * This can be true only if not in search.
+   * Validates current method.
    * @return {Boolean}
    */
-  get dataUnavailable() {
-    const { hasItems, loading } = this;
-    return !loading && !hasItems;
-  }
-
-  constructor() {
-    super();
-    this._dbDestroyHandler = this._dbDestroyHandler.bind(this);
-    this._dataImportHandler = this._dataImportHandler.bind(this);
-    this._certDeleteHandler = this._certDeleteHandler.bind(this);
-    this._certInsertHandler = this._certInsertHandler.bind(this);
-  }
-
-  connectedCallback() {
-    /* istanbul ignore else */
-    if (super.connectedCallback) {
-      super.connectedCallback();
-    }
-    window.addEventListener('datastore-destroyed', this._dbDestroyHandler);
-    window.addEventListener('data-imported', this._dataImportHandler);
-    window.addEventListener('client-certificate-delete', this._certDeleteHandler);
-    window.addEventListener('client-certificate-insert', this._certInsertHandler);
-  }
-
-  disconnectedCallback() {
-    /* istanbul ignore else */
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
-    window.removeEventListener('datastore-destroyed', this._dbDestroyHandler);
-    window.removeEventListener('data-imported', this._dataImportHandler);
-    window.removeEventListener('client-certificate-delete', this._certDeleteHandler);
-    window.removeEventListener('client-certificate-insert', this._certInsertHandler);
-  }
-
-  firstUpdated() {
-    const { noAutoQueryCertificates, items } = this;
-    if (!noAutoQueryCertificates && !items) {
-      this.reset();
-    }
-  }
-
-  _dbDestroyHandler(e) {
-    const { datastore } = e.detail;
-    if (datastore !== 'client-certificates') {
-      return;
-    }
-    this.items = undefined;
-  }
-
-  /**
-   * Handler for `data-imported` cutom event.
-   * Refreshes data state.
-   */
-  _dataImportHandler() {
-    this.reset();
-  }
-
-  _certDeleteHandler(e) {
-    if (e.cancelable) {
-      return;
-    }
-    const { id } = e.detail;
-    const items = this.items || [];
-    const index = items.findIndex((i) => i._id === id);
-    if (index === -1) {
-      return;
-    }
-    items.splice(index, 1);
-    this.items = [...items];
-  }
-
-  _certInsertHandler(e) {
-    if (e.cancelable) {
-      return;
-    }
-    const item = e.detail;
-    const items = this.items || [];
-    const index = items.findIndex((i) => i._id === item._id);
-    if (index === -1) {
-      items.push(item);
-    } else {
-      items[index] = item;
-    }
-    this.items = [...items];
-  }
-  /**
-   * Resets current view and requeries for certificates.
-   */
-  reset() {
-    this.loading = false;
-    this.items = undefined;
-    this.queryCertificates();
-  }
-  /**
-   * Handles an exception by sending exception details to GA.
-   * @param {String} message A message to send.
-   */
-  _handleException(message) {
-    const e = new CustomEvent('send-analytics', {
-     bubbles: true,
-     composed: true,
-     detail: {
-       type: 'exception',
-       description: message
-     }
-    });
-    this.dispatchEvent(e);
-  }
-
-  /**
-   * Queries application for list of cookies.
-   * It dispatches `session-cookie-list-all` cuystom event.
-   * @return {Promise} Resolved when cookies are available.
-   */
-  async queryCertificates() {
-    this.loading = true;
-    const e = new CustomEvent('client-certificate-list', {
-      detail: {},
-      cancelable: true,
-      composed: true,
-      bubbles: true
-    });
-    this.dispatchEvent(e);
-    if (!e.defaultPrevented) {
-      this.loading = false;
-      this._handleException('Certificates store not redy.');
-      return;
-    }
-    try {
-      this.items = await e.detail.result;
-    } catch (e) {
-      this.items = undefined;
-      this._handleException(e.message);
-    }
-    this.loading = false;
-  }
-  /**
-   * Performs a delete action of a client certificate.
-   *
-   * @param {String} id An id of the certificate to delete
-   * @return {Promise}
-   */
-  async _delete(id) {
-    const e = new CustomEvent('client-certificate-delete', {
-      detail: {
-        id
-      },
-      cancelable: true,
-      composed: true,
-      bubbles: true
-    });
-    this.dispatchEvent(e);
-    if (!e.defaultPrevented) {
-      this._handleException('Certificates store not redy');
-      return;
-    }
-    try {
-      return await e.detail.result;
-    } catch (e) {
-      this._handleException(e.message);
-    }
-  }
-
-  async _importCert(opts) {
-    if (!opts.name) {
-      opts.name = new Date().toGMTString();
-    }
-    const e = this.dispatchImportCert(opts);
-    return await e.detail.result;
-  }
-  /**
-   * Dispatches `client-certificate-insert` to import a certificate into the application.
-   * @param {Object} value Certificate definition.
-   * @return {CustomEvent} Dispatched event
-   */
-  dispatchImportCert(value) {
-    const e = new CustomEvent('client-certificate-insert', {
-      bubbles: true,
-      composed: true,
-      cancelable: true,
-      detail: {
-        value
-      }
-    });
-    this.dispatchEvent(e);
-    return e;
-  }
-};
-
-var radioStyles = css`
-:host {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  line-height: 0;
-  white-space: nowrap;
-  cursor: pointer;
-  vertical-align: middle;
-}
-
-:host(:focus) {
-  outline: none;
-}
-
-:host([disabled]) {
-  cursor: auto;
-  pointer-events: none;
-  color: var(--anypoint-radio-button-disabled-color, #a8a8a8);
-}
-
-.radio-container {
-  display: inline-block;
-  position: relative;
-  vertical-align: middle;
-  position: relative;
-  vertical-align: middle;
-  width: 16px;
-  height: 16px;
-  padding: 8px;
-}
-
-.radio-container:before {
-  top: 0%;
-  left: 0%;
-  width: 100%;
-  height: 100%;
-  opacity: 0.04;
-  background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-primary));
-  pointer-events: none;
-  content: "";
-  position: absolute;
-  border-radius: 50%;
-  transform: scale(0);
-  transition: transform ease 0.18s;
-  will-change: transform;
-}
-
-.radio-container:hover:before,
-:host(:focus) .radio-container:before {
-  transform: scale(1);
-}
-
-:host(:focus) .radio-container:before {
-  opacity: 0.08;
-}
-
-.state-container {
-  width: 16px;
-  height: 16px;
-  position: relative;
-}
-
-#offRadio, #onRadio {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  display: block;
-  border-width: 1px;
-  border-color: transparent;
-  border-style: solid;
-  position: absolute;
-}
-
-#offRadio {
-  border-color: var(--anypoint-radio-button-unchecked-color, var(--anypoint-color-aluminum5));
-  background-color: var(--anypoint-radio-button-unchecked-background-color, transparent);
-  transition: background-color 0.28s, border-color 0.28s;
-}
-
-:host(:hover) #offRadio {
-  border-color: var(--anypoint-radio-button-hover-unchecked-color, var(--anypoint-color-coreBlue2));
-}
-
-:host(:active) #offRadio,
-:host(:focus) #offRadio {
-  border-color: var(--anypoint-radio-button-active-unchecked-color, var(--anypoint-color-coreBlue3));
-}
-
-:host([checked]) #offRadio {
-  border-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-coreBlue3));
-  background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-coreBlue3));
-}
-
-:host([disabled]) #offRadio {
-  border-color: var(--anypoint-radio-button-unchecked-color, var(--anypoint-color-steel1));
-  opacity: 0.65;
-}
-
-:host([disabled][checked]) #offRadio {
-  background-color: var(--anypoint-radio-button-checked-color, var(--anypoint-color-steel1));
-}
-
-#onRadio {
-  background-color: var(--anypoint-radio-button-checked-inner-background-color, #fff);
-  -webkit-transform: scale(0);
-  transform: scale(0);
-  transition: -webkit-transform ease 0.28s;
-  transition: transform ease 0.28s;
-  will-change: transform;
-}
-
-:host([checked]) #onRadio {
-  -webkit-transform: scale(0.5);
-  transform: scale(0.5);
-}
-
-.radioLabel {
-  line-height: normal;
-  position: relative;
-  display: inline-block;
-  vertical-align: middle;
-  white-space: normal;
-  color: var(--anypoint-radio-button-label-color, var(--primary-text-color));
-}
-
-:host-context([dir="rtl"]) .radioLabel {
-  margin-left: 8px;
-}
-
-:host([disabled]) .radioLabel {
-  pointer-events: none;
-  color: var(--anypoint-radio-button-disabled-color, #a8a8a8);
-}
-`;
-
-/* eslint-disable class-methods-use-this */
-
-/**
- * `anypoint-radio-button`
- *
- * Anypoint styled radio button.
- *
- * ## Usage
- *
- * Install element:
- *
- * ```
- * npm i --save @anypoint-components/anypoint-radio-button
- * ```
- *
- * Import into your app:
- *
- * ```html
- * <script type="module" src="node_modules/@anypoint-components/anypoint-radio-button.js"></script>
- * ```
- *
- * Or into another component
- *
- * ```javascript
- * import '@anypoint-components/anypoint-radio-button.js';
- * ```
- *
- * Use it:
- *
- * ```html
- * <paper-radio-group selectable="anypoint-radio-button">
- *  <anypoint-radio-button name="a">Apple</anypoint-radio-button>
- *  <anypoint-radio-button name="b">Banana</anypoint-radio-button>
- *  <anypoint-radio-button name="c">Orange</anypoint-radio-button>
- * </paper-radio-group>
- * ```
- *
- * ### Styling
- *
- * `<anypoint-radio-button>` provides the following custom properties and mixins for styling:
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--anypoint-radio-button-radio-container` | A mixin applied to the internal radio container | `{}`
- * `--anypoint-radio-button-unchecked-color` | Border color of unchecked button | `--anypoint-color-aluminum5`
- * `--anypoint-radio-button-unchecked-background-color` | Unchecked button background color | `transparent`
- * `--anypoint-radio-button-checked-color` | Checked button selection color | `--anypoint-color-coreBlue3`
- * `--anypoint-radio-button-checked-inner-background-color` | Checked button inner cicrcle background color | `#fff`
- * `--anypoint-radio-button-label-spacing` | Spacing between the label and the button | `5px`
- * `--anypoint-radio-button-label-color` | Label color | `--primary-text-color`
- * `--anypoint-radio-button-label` | A mixin applied to the internal label | `{}`
- */
-class AnypointRadioButtonElement extends CheckedElementMixin(LitElement) {
-  get styles() {
-    return radioStyles;
-  }
-
-  render() {
-    return html`<style>${this.styles}</style>
-      <div class="radio-container">
-        <div class="state-container">
-          <div id="offRadio"></div>
-          <div id="onRadio"></div>
-        </div>
-      </div>
-      <label class="radioLabel"><slot></slot></label>`;
-  }
-
-  get checked() {
-    return this._checked || false;
-  }
-
-  set checked(value) {
-    const old = this._checked;
-    if (old === value) {
-      return;
-    }
-    this._checked = value;
-    this.requestUpdate('checked', old);
-    this._updateCheckedAria(value);
-    this._checkedChanged(value);
-  }
-
-  get disabled() {
-    return this._disabled;
-  }
-
-  set disabled(value) {
-    const old = this._disabled;
-    if (old === value) {
-      return;
-    }
-    this._disabled = value;
-    this._disabledChanged(value);
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    if (!this.hasAttribute('role')) {
-      this.setAttribute('role', 'radio');
-    }
-    if (!this.hasAttribute('tabindex')) {
-      this.setAttribute('tabindex', '0');
-    }
-    if (this.checked === undefined) {
-      this.checked = false;
-    } else {
-      this._updateCheckedAria(this.checked);
-    }
-    this.addEventListener('keydown', this._keyDownHandler);
-    this.addEventListener('click', this._clickHandler);
-    this._disabledChanged(this.disabled);
-  }
-
-  disconnectedCallback() {
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
-    this.addEventListener('keydown', this._keyDownHandler);
-    this.addEventListener('click', this._clickHandler);
-  }
-
-  _updateCheckedAria(checked=false) {
-    this.setAttribute('aria-checked', String(checked));
-  }
-
-  /**
-   * Handler for keyboard down event
-   * @param {KeyboardEvent} e
-   */
-  _keyDownHandler(e) {
-    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13) {
-      this._clickHandler();
-      this._asyncClick();
-    } else if (e.code === 'Space' || e.keyCode === 32) {
-      this._clickHandler();
-      this._asyncClick();
-      e.preventDefault();
-    }
-  }
-
-  /**
-   * Handler for pointer click event
-   */
-  _clickHandler() {
-    if (this.disabled) {
-      return;
-    }
-    this.checked = true;
-  }
-
-  /**
-   * Performs a click operation in next macrotask.
-   */
-  _asyncClick() {
-    if (this.disabled) {
-      return;
-    }
-    setTimeout(() => this.click(), 1);
-  }
-
-  /**
-   * Handles `disable` property state change and manages `aria-disabled`
-   * and `tabindex` attributes.
-   * @param {Boolean} disabled
-   */
-  _disabledChanged(disabled) {
-    if (this.parentElement === null) {
-      return;
-    }
-    this.setAttribute('aria-disabled', disabled ? 'true' : 'false');
-    if (disabled) {
-      // Read the `tabindex` attribute instead of the `tabIndex` property.
-      // The property returns `-1` if there is no `tabindex` attribute.
-      // This distinction is important when restoring the value because
-      // leaving `-1` hides shadow root children from the tab order.
-      this._oldTabIndex = this.getAttribute('tabindex');
-      this.focused = false;
-      this.setAttribute('tabindex', '-1');
-      this.blur();
-    } else if (this._oldTabIndex !== undefined) {
-      if (this._oldTabIndex === null) {
-        this.removeAttribute('tabindex');
-      } else {
-        this.setAttribute('tabindex', this._oldTabIndex);
-      }
-    }
-  }
-}
-
-window.customElements.define('anypoint-radio-button', AnypointRadioButtonElement);
-
-/**
- * Tests if given node is a radio button.
- * @param {Node} node A node to test
- * @return {boolean} True if the node has "radio" role or is a button with
- * "radio" type.
- */
-function isRadioButton(node) {
-  if (node.nodeType !== Node.ELEMENT_NODE) {
-    return false;
-  }
-  const typedElement = /** @type HTMLElement */ (node);
-  if (typedElement.getAttribute('role') === 'radio') {
-    return true;
-  }
-  const typedInput = /** @type HTMLInputElement */ (typedElement);
-  if (typedInput.localName === 'input' && typedInput.type === 'radio') {
-    return true;
-  }
-  return false;
-}
-
-/* eslint-disable no-plusplus */
-/* eslint-disable no-continue */
-/* eslint-disable no-param-reassign */
-
-/**
- * A web component that groups custom radio buttons and handles selection inside
- * the group.
- *
- * Requirements for children:
- * - must have role="radio" attribute
- * - must have name attribute
- * - radio state change must be notified via `change` event.
- *
- * Radio buttons with the same name inside their group will have single selection.
- * This means when selecting a radio button any other currently selected button
- * will be deselected.
- *
- * Also. when initializing the component, only last selected component keeps the
- * selection.
- * When new checked radio button is inserted into the group the selection is passed to the newly
- * arriving element.
- *
- * This behavior is consistent with native DOM API.
- *
- * The group element exposes `selected` property that holds a reference to
- * currently selected radio button.
- *
- * Example
- *
- * ```
- * <anypoint-radio-group>
- *  <anypoint-radio-button name="option"></anypoint-radio-button>
- *  <other-control role="button" name="option" checked></other-control>
- * </anypoint-radio-group>
- * ```
- */
-class AnypointRadioGroupElement extends MenuMixin(LitElement) {
-  createRenderRoot() {
-    return this;
-  }
-
-  /**
-   * @return {NodeList} List of radio button nodes.
-   */
-  get elements() {
-    return this.querySelectorAll('[role="radio"], input[type="radio"]');
-  }
-
-  constructor() {
-    super();
-    this.multi = false;
-  }
-
-  connectedCallback() {
-    if (super.connectedCallback) {
-      super.connectedCallback();
-    }
-    this.style.display = 'inline-block';
-    this.style.verticalAlign = 'middle';
-    this.setAttribute('role', 'radiogroup');
-    this.selectable = '[role=radio],input[type=radio]';
-    this._ensureSingleSelection();
-    if (this.disabled) {
-      this._disabledChanged(this.disabled);
-    }
-  }
-
-  /**
-   * Function that manages attribute change.
-   * If the changed attribute is `role` with value `radio` then the node is processed
-   * as a button and is added or removed from tollection.
-   * @param {MutationRecord} record A MutationRecord received from MutationObserver
-   * callback.
-   */
-  _processNodeAttributeChange(record) {
-    if (record.attributeName !== 'role') {
-      return;
-    }
-    const node = /** @type HTMLElement */ (record.target);
-    if (node === this) {
-      return;
-    }
-    if (node.getAttribute('role') === 'radio') {
-      this._processAddedNodes([node]);
-    } else {
-      this._nodeRemoved(node);
-    }
-  }
-
-  /**
-   * Adds `change` event listener to detected radio buttons.
-   * A button is considered as a radio button when its `role` is `radio`.
-   *
-   * @param {HTMLElement[]} nodes List of nodes to process.
-   */
-  _processAddedNodes(nodes) {
-    for (let i = 0, len = nodes.length; i < len; i++) {
-      const node = nodes[i];
-      if (node === this || !isRadioButton(node)) {
-        continue;
-      }
-      node.setAttribute('tabindex', '-1');
-    }
-  }
-
-  /**
-   * Removes event listenensers and possibly clears `selected` when removing nodes from
-   * light DOM.
-   * @param {NodeList} nodes Nodes to process
-   */
-  _processRemovedNodes(nodes) {
-    for (let i = 0, len = nodes.length; i < len; i++) {
-      const node = nodes[i];
-      if (node === this || !isRadioButton(node)) {
-        continue;
-      }
-      this._nodeRemoved(node);
-    }
-  }
-
-  /**
-   * A function to be called when a node from the light DOM has been removed.
-   * It clears previosly attached listeners and selection if passed node is
-   * currently selected node.
-   * @param {Node} node Removed node
-   */
-  _nodeRemoved(node) {
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return;
-    }
-    const { selected } = this;
-    const typedElement = /** @type HTMLElement */ (node);
-    if ((selected || selected === 0) && this._valueForItem(typedElement) === selected) {
-      this.selected = undefined;
-    }
-  }
-
-  /**
-   * Overrides `AnypointMenuMixin._onKeydown`. Adds right / left arrows support.
-   * @param {KeyboardEvent} e
-   */
-  _onKeydown(e) {
-    if (e.key === 'ArrowRight') {
-      this._onDownKey(e);
-      e.stopPropagation();
-    } else if (e.key === 'ArrowLeft') {
-      this._onUpKey(e);
-      e.stopPropagation();
-    } else {
-      super._onKeydown(e);
-    }
-  }
-
-  /**
-   * Overrides `AnypointSelectableMixin._applySelection` to manage item's checked
-   * state.
-   * @param {HTMLElement} item Selected / deselected item.
-   * @param {Boolean} isSelected True if the item is selected
-   */
-  _applySelection(item, isSelected) {
-    // @ts-ignore
-    if (item.disabled) {
-      return;
-    }
-    super._applySelection(item, isSelected);
-    // @ts-ignore
-    item.checked = isSelected;
-  }
-
-  /**
-   * Ensures that the last child element is checked in the group.
-   */
-  _ensureSingleSelection() {
-    const nodes = this._items;
-    let checked = false;
-    for (let i = nodes.length - 1; i >= 0; i--) {
-      // @ts-ignore
-      const currentChecked = !!nodes[i].checked;
-      if (currentChecked && !checked) {
-        checked = true;
-        if (this.attrForSelected) {
-          const value = this._valueForItem(nodes[i]);
-          this.select(value);
-        } else {
-          this.select(i);
-        }
-      } else if (currentChecked && checked) {
-        this._applySelection(nodes[i], false);
-      }
-    }
-  }
-
-  /**
-   * Overrides `AnypointSelectableMixin._mutationHandler`.
-   * Processes dynamically added nodes and updates selection if needed.
-   * @param {Array<MutationRecord>} mutationsList A list of changes record
-   */
-  _mutationHandler(mutationsList) {
-    for (const mutation of mutationsList) {
-      if (mutation.type === 'attributes') {
-        this._processNodeAttributeChange(mutation);
-      } else if (mutation.type === 'childList') {
-        if (mutation.addedNodes && mutation.addedNodes.length) {
-          this._ensureSingleSelection();
-        }
-        if (mutation.removedNodes && mutation.removedNodes.length) {
-          this._processRemovedNodes(mutation.removedNodes);
-        }
-      }
-    }
-    super._mutationHandler(mutationsList);
-  }
-
-  /**
-   * Overrides `AnypointSelectableMixin._observeItems` to include subtree.
-   * @return {MutationObserver}
-   */
-  _observeItems() {
-    const config = {
-      attributes: true,
-      childList: true,
-      subtree: true
-    };
-    const observer = new MutationObserver(this._mutationHandler);
-    observer.observe(this, config);
-    return observer;
-  }
-
-  /**
-   * Disables children when disabled state changes
-   * @param {Boolean} disabled
-   */
-  _disabledChanged(disabled) {
-    super._disabledChanged(disabled);
-    this.items.forEach((node) => {
-      // @ts-ignore
-      node.disabled = disabled;
-    });
-  }
-}
-
-window.customElements.define('anypoint-radio-group', AnypointRadioGroupElement);
-
-/**
-@license
-Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * An element to display formatted date and time.
- *
- * The `date` propery accepts Date object, Number as a timestamp or string
- * that will be parsed to the Date object.
- *
- * This element uses the `Intl` interface which is available in IE 11+ browsers.
- *
- * To format the date use [Intl.DateTimeFormat]
- * (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat)
- * inteface options.
- *
- * The default value for each date-time component property is undefined,
- * but if all component properties are undefined, then year, month, and day
- * are assumed to be "numeric" (per spec).
- *
- * ### Example
- *
- * ```html
- * <date-time date="2010-12-10T11:50:45Z" year="numeric" month="narrow" day="numeric"></date-time>
- * ```
- *
- * The element provides accessibility by using the `time` element and setting
- * the `datetime` attribute on it.
- *
- * ### Styling
- *
- * `<date-time>` provides the following custom properties and mixins for styling:
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--date-time` | Mixin applied to the element | `{}`
- *
- *
- * @customElement
- * @demo demo/index.html
- * @memberof UiElements
- */
-class DateTime extends HTMLElement {
-  static get observedAttributes() {
-    return [
-      'locales', 'date', 'year', 'month', 'day', 'hour', 'minute', 'second',
-      'weekday', 'time-zone-name', 'era', 'time-zone', 'hour12', 'itemprop'
-    ];
-  }
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this._observer = new MutationObserver(() => this._mutationHandler());
-  }
-
-  connectedCallback() {
-    this._observer.observe(this.shadowRoot, {
-      childList: true,
-      characterData: true,
-      subtree: true
-    });
-    this._updateLabel();
-  }
-
-  disconnectedCallback() {
-    this._observer.disconnect();
-  }
-
-  _mutationHandler() {
-    this.setAttribute('aria-label', this.shadowRoot.textContent);
-  }
-
-  /**
-   * A string with a BCP 47 language tag, or an array of such strings.
-   * For the general form and interpretation of the locales argument,
-   * see the Intl page.
-   * The following Unicode extension keys are allowed:
-   * - nu - Numbering system. Possible values include: "arab", "arabext",
-   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
-   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
-   * "tamldec", "telu", "thai", "tibt".
-   * - ca - Calendar. Possible values include: "buddhist", "chinese",
-   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
-   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
-   *
-   * @type {String}
-   */
-  get locales() {
-    return this.getAttribute('locales');
-  }
-  /**
-   * A string with a BCP 47 language tag, or an array of such strings.
-   * For the general form and interpretation of the locales argument,
-   * see the Intl page.
-   * The following Unicode extension keys are allowed:
-   * - nu - Numbering system. Possible values include: "arab", "arabext",
-   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
-   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
-   * "tamldec", "telu", "thai", "tibt".
-   * - ca - Calendar. Possible values include: "buddhist", "chinese",
-   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
-   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
-   *
-   * @param {String} v
-   * @type {String}
-   */
-  set locales(v) {
-    this.setAttribute('locales', v);
-  }
-  /**
-   * The representation of the year.
-   * Possible values are "numeric", "2-digit".
-   */
-  get year() {
-    return this.getAttribute('year');
-  }
-  /**
-   * The representation of the year.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set year(v) {
-    this.setAttribute('year', v);
-  }
-  /**
-   * The representation of the month.
-   * Possible values are "numeric", "2-digit", "narrow", "short", "long".
-   */
-  get month() {
-    return this.getAttribute('month');
-  }
-  /**
-   * The representation of the month.
-   * @param {String} v Possible values are "numeric", "2-digit", "narrow", "short", "long".
-   */
-  set month(v) {
-    this.setAttribute('month', v);
-  }
-  /**
-   * The representation of the day.
-   * Possible values are "numeric", "2-digit".
-   */
-  get day() {
-    return this.getAttribute('day');
-  }
-  /**
-   * The representation of the day.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set day(v) {
-    this.setAttribute('day', v);
-  }
-  /**
-   * The representation of the hour.
-   * Possible values are "numeric", "2-digit".
-   */
-  get hour() {
-    return this.getAttribute('hour');
-  }
-  /**
-   * The representation of the hour.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set hour(v) {
-    this.setAttribute('hour', v);
-  }
-  /**
-   * The representation of the minute.
-   * Possible values are "numeric", "2-digit".
-   */
-  get minute() {
-    return this.getAttribute('minute');
-  }
-  /**
-   * The representation of the minute.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set minute(v) {
-    this.setAttribute('minute', v);
-  }
-  /**
-   * The representation of the second.
-   * Possible values are "numeric", "2-digit".
-   */
-  get second() {
-    return this.getAttribute('second');
-  }
-  /**
-   * The representation of the second.
-   * @param {String} v Possible values are "numeric", "2-digit".
-   */
-  set second(v) {
-    this.setAttribute('second', v);
-  }
-  /**
-   * The representation of the weekday.
-   * Possible values are "narrow", "short", "long".
-   */
-  get weekday() {
-    return this.getAttribute('weekday');
-  }
-  /**
-   * The representation of the weekday.
-   * @param {String} v Possible values are "narrow", "short", "long".
-   */
-  set weekday(v) {
-    this.setAttribute('weekday', v);
-  }
-  /**
-   * The representation of the time zone name.
-   *
-   * Possible values are "short", "long".
-   */
-  get timeZoneName() {
-    return this.getAttribute('time-zone-name');
-  }
-  /**
-   * The representation of the time zone name.
-   *
-   * @param {String} v Possible values are "short", "long".
-   */
-  set timeZoneName(v) {
-    this.setAttribute('time-zone-name', v);
-  }
-  /**
-   * The time zone to use. The only value implementations must recognize
-   * is "UTC"; the default is the runtime's default time zone.
-   * Implementations may also recognize the time zone names of the IANA
-   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
-   * "America/New_York".
-   */
-  get timeZone() {
-    return this.getAttribute('time-zone');
-  }
-  /**
-   * The time zone to use. The only value implementations must recognize
-   * is "UTC"; the default is the runtime's default time zone.
-   * Implementations may also recognize the time zone names of the IANA
-   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
-   * "America/New_York".
-   * @param {String} v
-   */
-  set timeZone(v) {
-    this.setAttribute('time-zone', v);
-  }
-  /**
-   * The representation of the era.
-   *
-   * Possible values are "narrow", "short", "long".
-   */
-  get era() {
-    return this.getAttribute('era');
-  }
-  /**
-   * The representation of the era.
-   *
-   * @param {String} v Possible values are "narrow", "short", "long".
-   */
-  set era(v) {
-    this.setAttribute('era', v);
-  }
-  /**
-   * Whether to use 12-hour time (as opposed to 24-hour time).
-   * Possible values are `true` and `false`; the default is locale
-   * dependent.
-   *
-   * @type {Boolean}
-   */
-  get hour12() {
-    if (!this.hasAttribute('hour12') && !this.__hour12set) {
-      return null;
-    }
-    return this.hasAttribute('hour12');
-  }
-  /**
-   * Whether to use 12-hour time (as opposed to 24-hour time).
-   * Possible values are `true` and `false`; the default is locale
-   * dependent.
-   *
-   * @param {Boolean} v
-   */
-  set hour12(v) {
-    this.__hour12set = true;
-    if (v) {
-      this.setAttribute('hour12', '');
-    } else {
-      this.removeAttribute('hour12');
-    }
-  }
-  /**
-   * A date object to render.
-   * It can be a `Date` object, number representing a timestamp
-   * or valid date string. The argument is parsed by `Date` constructor
-   * to produce the value.
-   *
-   * @type {Date|String|number}
-   */
-  get date() {
-    if (this.__date) {
-      return this.__date;
-    }
-    return this.getAttribute('date');
-  }
-  /**
-   * A date object to render.
-   * It can be a `Date` object, number representing a timestamp
-   * or valid date string. The argument is parsed by `Date` constructor
-   * to produce the value.
-   *
-   * @param {Date|String|number} v The date to render
-   */
-  set date(v) {
-    this.__date = v;
-    if (typeof v === 'string') {
-      this.setAttribute('date', v);
-    } else {
-      this._updateLabel();
-    }
-  }
-
-  get itemprop() {
-    return this._getTimeNode().getAttribute('itemprop');
-  }
-
-  set itemprop(value) {
-    const old = this.itemprop;
-    if (old === value) {
-      return;
-    }
-    if (old && value === null) {
-      // This setter moves attribute from this element to "<time>" elsement.
-      // When the attribute is removed from this then it becomes null.
-      return;
-    }
-    const node = this._getTimeNode();
-    if (value) {
-      node.setAttribute('itemprop', value);
-      this.removeAttribute('itemprop');
-    } else {
-      node.removeAttribute('itemprop');
-    }
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === 'itemprop') {
-      this[name] = newValue;
-      return;
-    }
-    this._updateLabel();
-  }
-  /**
-   * Parses input `date` to a Date object.
-   * @param {String|Number|Date} date A date to parse
-   * @return {Date}
-   */
-  _getParsableDate(date) {
-    if (!date) {
-      date = new Date();
-    } else if (typeof date === 'string') {
-      try {
-        date = new Date(date);
-        const _test = date.getDate();
-        if (_test !== _test) {
-          date = new Date();
-        }
-      } catch (e) {
-        date = new Date();
-      }
-    } else if (!isNaN(date)) {
-      date = new Date(date);
-    } else if (!(date instanceof Date)) {
-      date = new Date();
-    }
-    return date;
-  }
-
-  _getIntlOptions() {
-    const options = {};
-    if (this.year) {
-      options.year = this.year;
-    }
-    if (this.month) {
-      options.month = this.month;
-    }
-    if (this.day) {
-      options.day = this.day;
-    }
-    if (this.hour) {
-      options.hour = this.hour;
-    }
-    if (this.minute) {
-      options.minute = this.minute;
-    }
-    if (this.second) {
-      options.second = this.second;
-    }
-    if (this.weekday) {
-      options.weekday = this.weekday;
-    }
-    if (this.era) {
-      options.era = this.era;
-    }
-    if (this.timeZoneName) {
-      options.timeZoneName = this.timeZoneName;
-    }
-    if (this.timeZone) {
-      options.timeZone = this.timeZone;
-    }
-    if (this.hour12 !== undefined) {
-      options.hour12 = this.hour12;
-    }
-    return options;
-  }
-  /**
-   * @return {Element} A reference to a `<time>` element that is in the shadow DOM of this element.
-   */
-  _getTimeNode() {
-    let node = this.shadowRoot.querySelector('time');
-    if (!node) {
-      node = document.createElement('time');
-      this.shadowRoot.appendChild(node);
-    }
-    return node;
-  }
-
-  _updateLabel() {
-    if (!this.parentElement) {
-      return;
-    }
-    const date = this._getParsableDate(this.date);
-    const node = this._getTimeNode();
-    node.setAttribute('datetime', date.toISOString());
-    /* istanbul ignore if */
-    if (typeof Intl === 'undefined') {
-      node.innerText = date.toString();
-      return;
-    }
-    let locales;
-    if (this.locales) {
-      locales = this.locales;
-    }
-    const options = this._getIntlOptions();
-    const value = new Intl.DateTimeFormat(locales, options).format(date);
-    node.innerText = value;
-  }
-}
-window.customElements.define('date-time', DateTime);
-
-/**
-@license
-Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * The `<auth-method-certificate>` element renders a form with installed
- * in the application client certificates.
- * The user can select a certificate from the list. Produced settings contains
- * the ID of selected certificate.
- * The application should handle this information by it's own.
- *
- * ### Example
- *
- * ```html
- * <auth-method-certificate selected="DATA STORE ID"></auth-method-certificate>
- * ```
- *
- * This example will produce a form with prefilled username and passowrd with
- * value "test".
- *
- * @customElement
- * @memberof UiElements
- * @demo demo/basic.html
- * @extends AuthMethodBase
- */
-class AuthMethodCertificate extends ClientCertificatesConsumerMixin(AuthMethodBase) {
-  get styles() {
-    return [
-      authStyles,
-      css`
-      :host {
-        display: block;
-      }
-
-      .button-content {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .cert-meta {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .cert-type-ico {
-        color: var(--accent-color);
-        text-transform: uppercase;
-        margin-right: 8px;
-      }
-
-      anypoint-radio-button {
-        width: 100%;
-        margin: 8px 0;
-        align-items: flex-start;
-      }
-
-      .default {
-        align-items: center;
-      }
-
-      .name {
-        font-size: 1rem;
-        font-weight: 400;
-        margin-bottom: 8px;
-        margin-top: 7px;
-      }
-
-      .created {
-        font-size: 0.85rem;
-        color: var(--auth-method-certificate-second-line-color, initial);
-        font-weight: 200;
-      }
-
-      .list {
-        overflow: auto;
-        max-height: 400px;
-      }`
-    ];
-  }
-
-  render() {
-    const {
-      compatibility,
-      items,
-      selected
-    } = this;
-    if (!items || !items.length) {
-      return html`<p class="empty-screen">There are no certificates installed in the application.</p>`;
-    }
-    return html`<style>${this.styles}</style>
-    <div class="form-title">Select a certificate</div>
-    <div class="list">
-      <anypoint-radio-group
-        ?compatibility="${compatibility}"
-        attrForSelected="data-id"
-        fallbackSelection="none"
-        .selected="${selected}"
-        @selected-changed="${this._selectedHandler}"
-      >
-        <anypoint-radio-button
-          data-id="none"
-          ?compatibility="${compatibility}"
-          class="default"
-        >None</anypoint-radio-button>
-        ${items.map((item) => html`<anypoint-radio-button
-          data-id="${item._id}"
-          ?compatibility="${compatibility}"
-        >
-          <div class="cert-meta">
-            <span class="name">${item.name}</span>
-            <span class="created">Added:
-              <date-time
-                .date="${item.created}"
-                year="numeric"
-                month="numeric"
-                day="numeric"
-                hour="numeric"
-                minute="numeric"
-              ></date-time>
-            </span>
-          </div>
-        </anypoint-radio-button>`)}
-      </anypoint-radio-group>
-    </div>
-    `;
-  }
-
-  static get properties() {
-    return {
-      /**
-       * The id of selected certificate.
-       */
-      selected: { type: String },
-    };
-  }
-
-  constructor() {
-    super();
-    this.type = 'client-certificate';
-    this._onAuthSettings = this._onAuthSettings.bind(this);
-  }
-
-  _attachListeners(node) {
-    node.addEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-
-  _detachListeners(node) {
-    node.removeEventListener('auth-settings-changed', this._onAuthSettings);
-  }
-  /**
-   * Resets state of the form.
-   */
-  reset() {
-    super.reset();
-    this.selected = '';
-  }
-  /**
-   * Validates the form.
-   *
-   * @return {Boolean} Validation result.
-   */
   validate() {
-    return true;
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM: return this[validateCustom]();
+      case METHOD_PASS_THROUGH: return this[validatePassThrough]();
+      case METHOD_API_KEY: return this[validateApiKey]();
+      default: return super.validate();
+    }
   }
+
   /**
-   * Creates a settings object with user provided data.
+   * Clears settrings of currently selected method.
+   */
+  clear() {
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM: this[clearCustom](); break;
+      case METHOD_PASS_THROUGH: this[clearPassThrough](); break;
+      case METHOD_API_KEY: this[clearApiKey](); break;
+      default: super.clear(); break;
+    }
+  }
+
+  /**
+   * Creates a settings object with user provided data for current method.
    *
    * @return {Object} User provided data
    */
-  getSettings() {
-    const { selected } = this;
-    if (!selected || selected === 'none') {
-      return;
+  serialize() {
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM: return this[serializeCustom]();
+      case METHOD_OAUTH2: return this[serializeOauth2Auth]();
+      case METHOD_PASS_THROUGH: return this[serializePassThrough]();
+      case METHOD_API_KEY: return this[serializeApiKey]();
+      default: return super.serialize();
     }
-    return {
-      id: this.selected
-    };
   }
+
   /**
-   * Restores settings from stored value.
+   * Restores previously serialized settings.
+   * A method type must be selected before calling this function.
    *
-   * @param {Object} settings Object returned by `_getSettings()`
+   * @param {Object} settings Depends on current type.
+   * @return {any}
    */
   restore(settings) {
-    this.selected = settings.id;
-  }
-  /**
-   * Handler to the `auth-settings-changed` event (fired by all auth panels).
-   * If the event was fired by other element with the same method ttype
-   * then the form will be updated to incomming values.
-   * This helps to sync changes between elements in the same app.
-   *
-   * @param {Event} e
-   */
-  _onAuthSettings(e) {
-    if (this._getEventTarget(e) === this || e.detail.type !== 'client-certificate') {
-      return;
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM: return this[restoreCustom](settings);
+      case METHOD_PASS_THROUGH: return this[restorePassThrough](settings);
+      case METHOD_API_KEY: return this[restoreApiKey](settings);
+      default: return super.restore(settings);
     }
-    this.restore(e.detail.settings);
   }
 
-  _selectedHandler(e) {
-    const { value } = e.detail;
-    this.selected = value;
-    this._settingsChanged();
+  render() {
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM: return this[renderCustom]();
+      case METHOD_PASS_THROUGH: return this[renderPassThrough]();
+      case METHOD_API_KEY: return this[renderApiKey]();
+      default: return super.render();
+    }
   }
+
   /**
-   * Fired when the any of the auth method settings has changed.
-   * This event will be fired quite frequently - each time anything in the text field changed.
-   * With one exception. This event will not be fired if the validation of the form didn't passed.
+   * Updates, if applicable, query parameter value.
+   * This is supported for RAML's custom scheme and Pass Through
+   * that operates on query parameters model which is only an internal
+   * model.
    *
-   * @event auth-settings-changed
-   * @param {Object} settings Current settings containing hash, password
-   * and username.
-   * @param {String} type The authorization type - basic
-   * @param {Boolean} valid True if the form has been validated.
+   * This does nothing if the query parameter has not been defined for current
+   * scheme.
+   *
+   * @param {String} name The name of the changed parameter
+   * @param {String} newValue A value to apply. May be empty but must be defined.
    */
+  updateQueryParameter(name, newValue) {
+    if (newValue === null || newValue === undefined) {
+      newValue = '';
+    }
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM:
+        this[updateQueryParameterCustom](name, newValue);
+        break;
+      case METHOD_PASS_THROUGH:
+        this[updateQueryParameterPassThrough](name, newValue);
+        break;
+      case METHOD_API_KEY:
+        this[updateQueryParameterApiKey](name, newValue);
+        break;
+    }
+  }
+
+  /**
+   * Updates, if applicable, header value.
+   * This is supported for RAML's custom scheme and Pass Through
+   * that operates on headers model which is only an internal model.
+   *
+   * This does nothing if the header has not been defined for current
+   * scheme.
+   *
+   * @param {String} name The name of the changed header
+   * @param {String} newValue A value to apply. May be empty but must be defined.
+   */
+  updateHeader(name, newValue) {
+    if (newValue === null || newValue === undefined) {
+      newValue = '';
+    }
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_CUSTOM:
+        this[updateHeaderCustom](name, newValue);
+        break;
+      case METHOD_PASS_THROUGH:
+        this[updateHeaderPassThrough](name, newValue);
+        break;
+      case METHOD_API_KEY:
+        this[updateHeaderApiKey](name, newValue);
+        break;
+    }
+  }
+
+  /**
+   * Updates, if applicable, cookie value.
+   * This is supported in OAS' Api Key.
+   *
+   * This does nothing if the cookie has not been defined for current
+   * scheme.
+   *
+   * @param {String} name The name of the changed cookie
+   * @param {String} newValue A value to apply. May be empty but must be defined.
+   */
+  updateCookie(name, newValue) {
+    if (newValue === null || newValue === undefined) {
+      newValue = '';
+    }
+    const type = normalizeType(this.type);
+    switch(type) {
+      case METHOD_API_KEY:
+        this[updateCookieApiKey](name, newValue);
+        break;
+    }
+  }
 }
-window.customElements.define('auth-method-certificate', AuthMethodCertificate);
+
+window.customElements.define('api-authorization-method', ApiAuthorizationMethod);
+
+var styles$b = css`
+:host {
+  display: block;
+}
+
+.auth-label,
+.auth-selector-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 12px 8px;
+}
+
+.auth-selector-label {
+  font-size: var(--arc-font-subhead-font-size);
+  font-weight: var(--arc-font-subhead-font-weight);
+  line-height: var(--arc-font-subhead-line-height);
+}
+`;
+
+/** @typedef {
+  import('@api-components/api-authorization-method/index.js').ApiAuthorizationMethod
+  } ApiAuthorizationMethod */
+/** @typedef {import('lit-html').TemplateResult} TemplateResult */
+
+let cache = new WeakMap();
 
 /**
-@license
-Copyright 2019 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-/**
- * Authorization panel used in the request panel to get user authorization information.
- *
- * @customElement
- * @memberof UiElements
- * @appliesMixin EventsTargetMixin
- * @appliesMixin AuthorizationPanelAmfOverlay
- * @demo demo/basic.html Basic element
- * @demo demo/meta-data.html IronMeta defined methods
- * @demo demo/amf.html RAML or OAS data from AMF model
- * @demo demo/amf-meta.html RAML or OAS data from AMF model and IronMeta
+ * @typedef AuthorizationParams
+ * @property {Object} headers
+ * @property {Object} params
+ * @property {Object} cookies
  */
-class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(LitElement)) {
+/**
+ * @typedef AuthorizationSettings
+ * @property {String} type
+ * @property {Boolean} valid
+ * @property {Object} settings
+ */
+
+function mapAuthName(name) {
+  switch (name) {
+    case 'basic': return 'Basic authorization';
+    case 'bearer': return 'Bearer';
+    default: return name;
+  }
+}
+
+/**
+ * An HTML element that renders authorization option for applied AMD model.
+ *
+ * @extends LitElement
+ * @mixes AmfHelperMixinConstructor
+ * @mixes AmfHelperMixin
+ * @class ApiAuthorization
+ */
+class ApiAuthorization extends AmfHelperMixin(LitElement) {
   get styles() {
-    return css`
-    :host {
-      display: block;
-    }
-
-    .auth-container {
-      position: relative;
-    }
-
-    .no-method-info,
-    .no-support-info {
-      font-style: var(--no-info-message-font-style, italic);
-      font-size: var(--no-info-message-font-size, 16px);
-      color: var(--no-info-message-color, rgba(0, 0, 0, 0.74));
-      margin: 12px 8px;
-    }
-
-    [hidden] {
-      display: none;
-    }
-
-    .auth-title-single {
-      font-size: 1.28rem;
-      margin: 12px 8px;
-      font-weight: 200;
-    }`;
+    return [
+      styles$b,
+    ];
   }
 
   static get properties() {
     return {
       /**
-       * Selected authorization type. It is one of the types supported by
-       * `advanced-rest-client/auth-methods` component.
-       *
-       * This corresponds to the index of `authMethods` array.
+       * Currently selected method relative to `#selectedMethods` property.
        */
       selected: { type: Number },
       /**
-       * List of currently rendered authorization methods.
-       * This value changes when `securedBy` changes to reflect number of
-       * authorization methods supported by current endpoint.
+       * Enables compatibility with Anypoint platform.
        */
-      authMethods: { type: Array },
+      compatibility: { type: Boolean },
       /**
-       * Current settings of selected auth type.
-       *
-       * Can be `undefined` if the user hasn't filled all required fields in the
-       * form.
-       */
-      settings: { type: Object },
-      /**
-       * The OAuth2 redirect URL to be set in the OAuth2 form pane.
-       */
-      redirectUri: { type: Boolean },
-      /**
-       * If true the panels won't render inline documentation if
-       * the information is available.
-       */
-      noDocs: { type: Boolean },
-      // Current HTTP method. Passed to digest method.
-      httpMethod: { type: String },
-      // Current request URL. Passed to digest method.
-      requestUrl: { type: String },
-      // Current request body. Passed to digest method.
-      requestBody: { type: String },
-      /**
-       * Enables compatibility with Anypoint styling
-       */
-      compatibility: { type: Boolean, reflect: true },
-      /**
-       * Enables Material Design outlined style
+       * Enables material's outlined theme for inputs.
        */
       outlined: { type: Boolean },
+      /**
+       * Redirect URL for the OAuth2 authorization.
+       */
+      redirectUri: { type: String },
+      /**
+       * A list of authorization methods read from the security definition.
+       */
+      methods: { type: Array },
       /**
        * When set the editor is in read only mode.
        */
@@ -75295,498 +75419,586 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
        * When set all controls are disabled in the form
        */
       disabled: { type: Boolean },
+      // Current HTTP method. Passed by digest method.
+      httpMethod: { type: String },
+      // Current request URL. Passed by digest method.
+      requestUrl: { type: String },
+      // Current request body. Passed by digest method.
+      requestBody: { type: String },
       /**
-       * If set it renders a narrow layout
+       * Whether or not the element is invalid. The validation state changes
+       * when settings change or when the `validate()` function is called.
        */
-      narrow: { type: Boolean, reflect: true },
+      invalid: { type: Boolean, reflect: true }
     };
   }
 
-  get selected() {
-    return this._selected;
+  get security() {
+    return this._security;
   }
 
-  set selected(value) {
-    const old = this._selected;
+  set security(value) {
+    const old = this._security;
     /* istanbul ignore if */
     if (old === value) {
-      return false;
+      return;
     }
-    this._selected = value;
-    this.requestUpdate('selected', old);
-    this._selectedChanged(value, old);
-    this.validate();
+    this._security = value;
+    this.requestUpdate();
+    this._processModel();
   }
 
+  /**
+   * @return {Array<String>|null} List of authorization methods to be rendered
+   */
+  get selectedMethods() {
+    const { selected, methods } = this;
+    const method = (methods || [])[selected];
+    return method ? method.types : null;
+  }
+
+  /**
+   * @return {Array<Object>|null} List of authorization schemes
+   */
+  get selectedSchemes() {
+    const { selected, methods } = this;
+    const method = (methods || [])[selected];
+    return method ? method.schemes : null;
+  }
+
+  /**
+   * In effect the same as calling the `serialize()` method
+   * @return {Array<AuthorizationSettings>} List of authorization settings.
+   */
   get settings() {
-    return this._settings;
+    return this.serialize();
   }
 
-  set settings(value) {
-    if (this._sop('settings', value)) {
-      this.validate();
-      this.dispatchEvent(new CustomEvent('settings-changed', {
-        detail: {
-          value
-        }
-      }));
+  /**
+   * @return {EventListener} Previously registered handler for `changed` event
+   */
+  get onchange() {
+    return this._onchange;
+  }
+
+  /**
+   * Registers a callback function for `changed` event
+   * @param {EventListener} value A callback to register. Pass `null` or `undefined`
+   * to clear the listener.
+   */
+  set onchange(value) {
+    if (this._onchange) {
+      this.removeEventListener('change', this._onchange);
     }
-  }
-  /**
-   * List of authorization methods supported by this element.
-   * Each item has `id` and `name` property. The `id` is internal ID for
-   * authorization methods. Can be any of: `none`, `basic`, `ntlm`, `digest`,
-   * `oauth1` and `oauth2`. The `name` property is a lable for the method
-   * used in UI.
-   * @return {Array<Object>}
-   */
-  get supportedMethods() {
-    return [{
-      'type': 'none',
-      'name': 'No authorization'
-    }, {
-      'type': 'Basic Authentication',
-      'name': 'Basic authentication'
-    }, {
-      'type': 'ntlm',
-      'name': 'NTLM'
-    }, {
-      'type': 'Digest Authentication',
-      'name': 'Digest authentication'
-    }, {
-      'type': 'OAuth 2.0',
-      'name': 'OAuth 2.0'
-    }, {
-      'type': 'OAuth 1.0',
-      'name': 'OAuth 1.0'
-    }, {
-      'type': 'client-certificate',
-      'name': 'Client certificate'
-    }];
-  }
-  /**
-   * @return {HTMLElement} Currently rendered authorization panel.
-   */
-  get currentPanel() {
-    const selector = '.auth-panel > *';
-    return this.shadowRoot.querySelector(selector);
+    if (typeof value !== 'function') {
+      this._onchange = null;
+      return;
+    }
+    this._onchange = value;
+    this.addEventListener('change', this._onchange);
   }
 
   constructor() {
     super();
-    this.selected = 0;
-    this._authSettingsHandler = this._authSettingsHandler.bind(this);
-    this._onAuthSettingsChanged = this._onAuthSettingsChanged.bind(this);
-  }
-
-  _attachListeners() {
-    if (!this.authMethods) {
-      this.authMethods = this._listAuthMethods();
-    }
-    this.addEventListener('auth-settings-changed', this._authSettingsHandler);
-    this.addEventListener('authorization-settings-changed', this._onAuthSettingsChanged);
-  }
-
-  _detachListeners() {
-    this.removeEventListener('auth-settings-changed', this._authSettingsHandler);
-    this.removeEventListener('authorization-settings-changed', this._onAuthSettingsChanged);
+    // for types
+    this._security = null;
+    this.redirectUri = null;
+    this.compatibility = false;
+    this.outlined = false;
   }
 
   /**
-   * Clears the state of the panel.
-   */
-  clear() {
-    this.selected = undefined;
-    this.settings = {};
-    this._authRequired = false;
-    this.invalid = false;
-  }
-
-  /**
-   * Replaces active panel with new one and dipatches
-   * `authorization-type-changed` event.
+   * Creates a list of configuration by calling the `serialize()` function on each
+   * currently rendered authorization form.
    *
-   * If the event is canceled it restores previous value in the selector.
-   *
-   * @param {Number} selected
-   * @param {Number} oldValue
+   * @return {Array<AuthorizationSettings>} List of authorization settings.
    */
-  _selectedChanged(selected, oldValue) {
-    if (oldValue) {
-      this.settings = {};
-    }
-    this._ensureAuthHeaderRemoved(oldValue);
-    this._notifySettings();
-  }
-  /**
-   * Ensures that the authorization header is removed if previously
-   * selected (and now deselected) type is one of using Authorization
-   * header.
-   * @param {Number} oldSelected Previously selected auth method
-   */
-  _ensureAuthHeaderRemoved(oldSelected) {
-    const methods = this.authMethods;
-    if (oldSelected === undefined || !methods) {
-      return;
-    }
-    const oldMethod = methods[oldSelected];
-    const type = oldMethod && this._panelTypeToRamType(oldMethod.type);
-    if (type && ['Basic Authentication', 'OAuth 1.0', 'OAuth 2.0']
-      .indexOf(type) !== -1) {
-      this._clearAuthHeader();
-    }
-  }
-  /**
-   * Dispatches `request-header-deleted` custom event to inform listeners
-   * that `authorization` header should not be used.
-   */
-  _clearAuthHeader() {
-    this.fire('request-header-deleted', {
-      name: 'authorization'
-    }, {
-      cancelable: true
-    });
-  }
-  /**
-   * Lists available authorization methods.
-   * By default it returns list from `supportedMethods` property which is the
-   * list of all supported methods by this element.
-   * If `iron-meta` element with key `auth-methods` is set then it will use
-   * this information to compute list of auth methods.
-   * See element description for more information.
-   *
-   * @return {Array<Object>} See `supportedMethods` property for data model.
-   */
-  _listAuthMethods() {
-    const meta = this._listMetaAuthMethods();
-    if (meta) {
-      return meta;
-    }
-    return this.supportedMethods;
-  }
-  /**
-   * Creates a listing of methods from `iron-meta` definition.
-   *
-   * @return {Array|undefined} List of methods defined in `iron-meta`
-   * or undefined if not set.
-   */
-  _listMetaAuthMethods() {
-    let meta = document.createElement('iron-meta').byKey('auth-methods');
-    if (!meta) {
-      return;
-    }
-    if (typeof meta === 'string') {
-      try {
-        meta = JSON.parse(meta);
-      } catch (e) {
-        return;
-      }
-    }
-    if (!(meta instanceof Array)) {
-      return;
-    }
+  serialize() {
+    const nodes = this.shadowRoot.querySelectorAll('api-authorization-method');
     const result = [];
-    meta.forEach((key) => {
-      let name;
-      switch (key) {
-        case null:
-          name = 'No authorization';
-          key = 'none';
-          break;
-        case 'ntlm':
-          name = 'NTLM';
-          break;
-        case 'basic':
-          name = 'Basic Authentication';
-          key = name;
-          break;
-        case 'digest':
-          name = 'Digest Authentication';
-          key = name;
-          break;
-        case 'client-certificate':
-          name = 'Client certificate';
-          key = name;
-          break;
-        case 'oauth1':
-          name = 'OAuth 1.0';
-          key = name;
-          break;
-        case 'oauth2':
-          name = 'OAuth 2.0';
-          key = name;
-          break;
-      }
-      if (name) {
-        result.push({
-          type: key,
-          name
-        });
-      }
-    });
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = /** @type ApiAuthorizationMethod */(nodes[i]);
+      result.push(this._createSettings(node));
+    }
     return result;
   }
+
   /**
-   * Handler for `auth-settings-changed` custom event.
-   * Sets up `settings` property from the event.
+   * Validates state of the editor. It sets `invalid` property when called.
    *
-   * @param {CustomEvent} e
-   */
-  _authSettingsHandler(e) {
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    if (this.readOnly || this.disabled) {
-      return;
-    }
-    this.settings = e.detail;
-    this._processPanelSettings(e.detail);
-    this._notifySettings();
-  }
-  /**
-   * Restores settings to a panel including selection and data.
+   * Exception: OAuth 2 form reports valid even when the `accessToken` is not
+   * set. This adjust for this and reports invalid when `accessToken` for OAuth 2
+   * is missing.
    *
-   * @param {Object} settings The same settings object as dispatched in
-   * `detail` object from this element.
+   * @return {Boolean} True when the form has valid data.
    */
-  restore(settings) {
-    if (!settings) {
-      if (this.selected || this.selected === 0) {
-        this.selected = undefined;
+  validate() {
+    const nodes = this.shadowRoot.querySelectorAll('api-authorization-method');
+    let valid = true;
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = /** @type ApiAuthorizationMethod */(nodes[i]);
+      const result = node.validate();
+      if (!result) {
+        valid = result;
+        break;
+      } else if (node.type === 'oauth 2' && !node.accessToken) {
+        valid = false;
+        break;
       }
-      return;
     }
-    const methods = this.authMethods;
-    if (!methods) {
-      return;
-    }
-    const index = methods.findIndex((item) =>
-      this._panelTypeToRamType(item.type) === this._panelTypeToRamType(settings.type));
-    if (index === -1) {
-      return;
-    }
-    if (this.selected !== index) {
-      this.selected = index;
-    }
-    this.settings = settings;
-    // selection might have changes so the panel was not ready
-    setTimeout(() => {
-      const panel = this.currentPanel;
-      if (panel) {
-        // Can be no-auth panel
-        panel.restore(settings.settings);
-      }
-    });
+    this.invalid = !valid;
+    return valid;
   }
+
   /**
-   * Notifies settings change if currently selected method is the same as
-   * `settings.type`.
+   * Executes `authorize()` method on each auth method currently rendered.
+   *
+   * @param {Boolean} validate By default validation is not performed before calling
+   * the `authorize()` method. Set this property to enable validation. The `authorize()`
+   * function then won't be called if the form is not valid.
+   * @return {Boolean} True if at least one function call returned `true`
    */
-  _notifySettings() {
-    if (this.readOnly || this.disabled) {
-      return;
-    }
-    const { selected } = this;
-    const config = this.authMethods && this.authMethods[selected];
-    const isBlank = ['none', 'Pass Through'].indexOf(config && config.type) !== -1;
-    if (isBlank) {
-      this.settings = {};
-    }
-    const { settings } = this;
-    let valid = false;
-    let type;
-    if (config) {
-      type = config.type;
-      if (isBlank) {
-        valid = true;
-      } else if (settings) {
-        if (type === 'client-certificate') {
-          valid = true;
-        } else {
-          valid = settings.valid || false;
+  forceAuthorization(validate=false) {
+    let result = false;
+    const nodes = this.shadowRoot.querySelectorAll('api-authorization-method');
+    for (let i = 0, len = nodes.length; i < len; i++) {
+      const node = /** @type ApiAuthorizationMethod */(nodes[i]);
+
+      if (validate) {
+        if (!node.validate()) {
+          continue;
         }
-      } else if (this.authVaid) {
-        valid = true;
       }
-    } else {
-      type = 'none';
-      if (!this._authRequired) {
-        valid = true;
+      const nodeResult = node.authorize();
+      if (!result && nodeResult) {
+        result = nodeResult;
       }
     }
-    this.fire('authorization-settings-changed', {
-      settings: settings ? settings.settings : {},
+    return result;
+  }
+
+  /**
+   * Creates an authorization settings object for passed authorization panel.
+   * @param {ApiAuthorizationMethod} target api-authorization-method instance
+   * @return {AuthorizationSettings}
+   */
+  _createSettings(target) {
+    const settings = target.serialize();
+    let valid = target.validate();
+    const { type } = target;
+    if (type === 'oauth 2' && !settings.accessToken) {
+      valid = false;
+    }
+    return {
+      type,
       valid,
-      type
+      settings,
+    };
+  }
+
+  /**
+   * A function called when the `security` property change.
+   * It calls `_applyModel()` in a debouncer so `amf` should be set regardles
+   * of the order of applying the model and security.
+   */
+  _processModel() {
+    /* istanbul ignore if */
+    if (this.__modelDebouncer) {
+      return;
+    }
+    this.selected = undefined;
+    this.__modelDebouncer = true;
+    setTimeout(() => {
+      this.__modelDebouncer = false;
+      this._applyModel();
     });
   }
+
   /**
-   * Rstores authorization settings if event is external.
+   * Reads list of authorization methods from the model.
+   * This function resets current selection.
+   */
+  _applyModel() {
+    const { security } = this;
+    if (!security) {
+      return;
+    }
+    this.methods = this._computeAuthMethods(security);
+    this.selected = 0;
+  }
+
+  /**
+   * Computes list of security schemes that can be applied to the element.
+   *
+   * @param {Array<Object>} securities A list of security schemes to process.
+   * @return {Array<Object>} A list of authorization methods that can be applied to
+   * the current endpoint. Each object secribes the list of security types
+   * that can be applied to the editor. In OAS an auth method may be an union
+   * of methods.
+   */
+  _computeAuthMethods(securities) {
+    const result = [];
+    const sec = this.ns.aml.vocabularies.security;
+    const shsKey = this._getAmfKey(sec.schemes);
+    for (let i = 0, len = securities.length; i < len; i++) {
+      const security = securities[i];
+      const schemes = this._ensureArray(security[shsKey]);
+      /* istanbul ignore if */
+      if (!schemes) {
+        continue;
+      }
+      const item = {
+        types: [],
+        names: [],
+        schemes: [],
+      };
+      for (let j = 0; j < schemes.length; j++) {
+        const [type, name] = this._listSchemeLabels(schemes[j]);
+        /* istanbul ignore if */
+        if (!type || !name) {
+          continue;
+        }
+        item.types.push(type);
+        item.names.push(name);
+        item.schemes.push(schemes[j]);
+      }
+      result.push(item);
+    }
+    return result;
+  }
+
+  /**
+   * Reads authorization scheme's name and type from the AMF model.
+   *
+   * Note, OAS and RAML has different names for types. For example RAML's `Basic
+   * Authorization` is `basic` in OAS. This function does not normalize this values.
+   *
+   * Note 2 (pawel): Because in OAS it is possible to declare multiple authorization methods to be
+   * used for an andpoint with the same request the types can be duplicate
+   * (common case with Api Key type). Because of that this element exposes the
+   * name as defined in the API spec file, even though it is a variable used
+   * to keep a reference to the security. Technically it is incorrect as this
+   * probably tell nothing to the end user but I don't see other option right now.
+   *
+   * @param {Object} scheme Authorization scheme to process
+   * @return {Array<String>} First item is the type and the second is the name.
+   * May be undefined.
+   */
+  _listSchemeLabels(scheme) {
+    const sec = this.ns.aml.vocabularies.security;
+    const name = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
+    if (name === 'null') {
+      // RAML allows to define a "null" scheme. This means that the authorization
+      // for this endpoint is optional.
+      return [name, 'No authorization'];
+    }
+    const shKey = this._getAmfKey(sec.scheme);
+    const setKey = this._getAmfKey(sec.settings);
+    const scheme1 = this._ensureArray(scheme[shKey])[0];
+    /* istanbul ignore if */
+    if (!scheme1) {
+      return [];
+    }
+    let type = this._getValue(scheme1, sec.type);
+    if (type === 'http') {
+      const settings = this._ensureArray(scheme1[setKey]);
+      /* istanbul ignore if */
+      if (!settings) {
+        return [];
+      }
+      type = this._getValue(settings[0], sec.scheme);
+    }
+    return [type, name]
+  }
+
+  /**
+   * Handler for authorization method change.
+   * The setter for the `selected` computes current method to render.
+   *
+   * @param {Event} e
+   */
+  _selectionHandler(e) {
+    this.selected = (/** @type {any} */ (e.target)).selected;
+  }
+
+  /**
+   * A function called each time anything change in the editor.
+   * Revalidates the component and dispatches `change` event.
    *
    * @param {CustomEvent} e
    */
-  _onAuthSettingsChanged(e) {
-    if (this.readOnly || e.composedPath()[0] === this) {
+  _changeHandler(e) {
+    this.validate();
+    this.dispatchEvent(new CustomEvent('change'));
+    const { amf } = this;
+    if (!amf) {
       return;
     }
-    this.restore(e.detail);
-  }
-  /**
-   * Processes incomming settings and acts if any action needed to authorize
-   * the use has to be performed.
-   *
-   * @param {Object} settings Current settings.
-   */
-  _processPanelSettings(settings) {
-    if (!settings) {
+    const target = /** @type ApiAuthorizationMethod */ (e.target);
+    const { type } = target;
+    if (['basic', 'bearer', 'oauth 2'].indexOf(type) === -1) {
       return;
     }
-    switch (settings.type) {
-      case 'oauth2': this._handleOauth2Settings(settings); break;
-      case 'digest': this._handleDigestSettings(settings); break;
+    const data = target.serialize();
+    let tmp = cache.get(amf);
+    if (!tmp) {
+      tmp = {};
+      cache.set(amf, tmp);
     }
-  }
-  /**
-   * Handles the case when OAuth2 settings changed.
-   *
-   * @param {Object} settings Oauth2 auth settings object
-   */
-  _handleOauth2Settings(settings) {
-    settings = settings || {};
-
-    const authSettings = settings.settings || {};
-    const token = authSettings.accessToken;
-    if (!token) {
-      settings.valid = false;
-      this.settings = settings;
-      return;
-    }
-    let type;
-    let value;
-    if (authSettings.deliveryMethod === 'header') {
-      type = 'request-header-changed';
-      value = authSettings.tokenType + ' ' + token;
-    } else {
-      type = 'query-parameter-changed';
-      value = token;
-    }
-    this.fire(type, {
-      name: authSettings.deliveryName,
-      value: value
-    }, {
-      cancelable: true
-    });
-  }
-  /**
-   * Handles the case when digest auth method settings changed.
-   *
-   * @param {Object} settings Digest auth method settings object
-   * It can be either username and password (that will be passed to
-   * transport method) then this function do nothing or list of Authorization
-   * header parameters.
-   */
-  _handleDigestSettings(settings) {
-    if (!settings.valid) {
-      this.fire('request-header-changed', {
-        name: 'authorization',
-        value: ''
-      });
-      return;
-    }
-    settings = settings.settings;
-    if (!settings) {
-      return;
-    }
-    const data = settings.settings;
-    if (!data || !(data.username && data.password)) {
-      return;
-    }
-    let value = 'Digest ';
-    Object.keys(data).forEach((name) => {
-      value += name + '="' + data[name] + '", ';
-    });
-    value = value.substr(0, value.length - 2);
-    this.fire('request-header-changed', {
-      name: 'authorization',
-      value: value
-    }, {
-      cancelable: true
-    });
+    tmp[type] = data;
   }
 
-  fire(type, detail, options) {
-    const defaults = {
-      bubbles: true,
-      composed: true,
-      cancelable: false
+  /**
+   * Checks for cached params in the `cache` variable and returns an object
+   * with cached values.
+   * This function returns an object event when there is no cached object for
+   * convenience to use destructing assignment.
+   *
+   * @param {String} type Authorization type to check for the authorization values
+   * @return {Object} An object with cached values
+   */
+  _readCachedParams(type) {
+    const { amf } = this;
+    if (!amf) {
+      return {};
+    }
+    const tmp = cache.get(amf);
+    if (!tmp) {
+      return {};
+    }
+    return tmp[type] || {};
+  }
+
+  /**
+   * Clears cached values for currently loaded API.
+   */
+  clearCache() {
+    const { amf } = this;
+    if (!amf) {
+      return;
+    }
+    cache.delete(amf);
+  }
+
+  /**
+   * Creates a map of parameters to be applied to the request.
+   * This is a convenience method to gather request parameters for current request.
+   * @return {AuthorizationParams}
+   */
+  createAuthParams() {
+    const { settings } = this;
+    const target = {
+      headers: {},
+      params: {},
+      cookies: {},
     };
-    if (!options) {
-      options = defaults;
+    for (let i = 0, len = settings.length; i < len; i++) {
+      const auth = settings[i];
+      this._applyAuthParams(auth, target);
+    }
+    return target;
+  }
+
+  /**
+   * Collects parameters for an authorization method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyAuthParams(auth, target) {
+    switch (auth.type) {
+      case 'basic':
+        this._applyBasicParams(auth, target);
+        break;
+      case 'pass through':
+        this._applyPtParams(auth, target);
+        break;
+      case 'oauth 2':
+        this._applyOa2Params(auth, target);
+        break;
+      case 'bearer':
+        this._applyBearerParams(auth, target);
+        break;
+      case 'api key':
+        this._applyApiKeyParams(auth, target);
+        break;
+      case 'custom':
+        this._applyRamlCustomParams(auth, target);
+        break;
+    }
+  }
+
+  /**
+   * Collects parameters for Basic method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyBasicParams(auth, target) {
+    if (!auth.valid) {
+      return;
+    }
+    const { settings } = auth;
+    const { username, password } = settings;
+    const hash = btoa(`${username}:${password}`);
+    const value = `Basic ${hash}`;
+    if (target.headers.authorization) {
+      target.headers.authorization += `, ${value}`;
     } else {
-      options = Object.assign(defaults, options);
+      target.headers.authorization = value;
     }
-    options.detail = detail;
-    const e = new CustomEvent(type, options);
-    this.dispatchEvent(e);
-    return e;
   }
+
   /**
-   * If selected authorization type is `oauth1` or `oauth2` it calls
-   * `authorize()` function of selected panel.
-   * If other method is selected it does nothing.
-   *
-   * @return {Boolean} True if the panel received intent to authorize and
-   * `false` otherwise
+   * Applies values to the headers object.
+   * @param {Object} headers Map of headers
+   * @param {Object} target The target object to apply values to
    */
-  forceTokenAuthorization() {
-    const selected = this.authMethods && this.authMethods[this.selected];
-    if (!selected) {
-      return false;
+  _applyHeaderParams(headers, target) {
+    const keys = Object.keys(headers);
+    if (!keys.length) {
+      return;
     }
-    if (['OAuth 2.0', 'OAuth 1.0'].indexOf(selected.type) === -1) {
-      return false;
-    }
-    const panel = this.currentPanel;
-    if (!panel) {
-      return true;
-    }
-    return panel.authorize();
-  }
-  /**
-   * Dispatches analytics event.
-   *
-   * @param {String} category Event category
-   * @param {String} action Event action
-   * @param {String} label Event label
-   */
-  _analyticsEvent(category, action, label) {
-    this.fire('send-analytics', {
-      type: 'event',
-      category: category,
-      action: action,
-      label: label
+    keys.forEach((key) => {
+      const value = headers[key];
+      if (value === undefined) {
+        return;
+      }
+      if (target.headers[key]) {
+        target.headers[key] += `, ${value}`;
+      } else {
+        target.headers[key] = value;
+      }
     });
   }
 
-  _selectionHandler(e) {
-    const { value } = e.detail;
-    const { name } = e.target.parentElement;
-    this[name] = value;
+  /**
+   * Applies values to the query parameters object.
+   * @param {Object} params Map of parameters
+   * @param {Object} target The target object to apply values to
+   */
+  _applyQueryParams(params, target) {
+    const keys = Object.keys(params);
+    if (!keys.length) {
+      return;
+    }
+    keys.forEach((key) => {
+      const value = params[key];
+      if (value === undefined) {
+        return;
+      }
+      target.params[key] = value;
+    });
   }
 
+  /**
+   * Collects parameters for Pass through method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyPtParams(auth, target) {
+    const { settings={} } = auth;
+    const { headers={}, queryParameters={} } = settings;
+    this._applyHeaderParams(headers, target);
+    this._applyQueryParams(queryParameters, target);
+  }
+
+  /**
+   * Collects parameters for OAuth 2 method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyOa2Params(auth, target) {
+    const { settings={} } = auth;
+    const { accessToken, deliveryMethod='header', deliveryName='authorization', tokenType='Bearer' } = settings;
+    if (!accessToken) {
+      return;
+    }
+    const isHeader = deliveryMethod === 'header';
+    const finalDeliveryName = isHeader ? deliveryName.toLowerCase() : deliveryName;
+    const value = `${tokenType} ${accessToken}`;
+    const obj = {};
+    obj[finalDeliveryName] = value;
+    if (isHeader) {
+      this._applyHeaderParams(obj, target);
+    } else {
+      this._applyQueryParams(obj, target);
+    }
+  }
+
+  /**
+   * Collects parameters for Bearer method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyBearerParams(auth, target) {
+    const { settings={}, valid } = auth;
+    if (!valid) {
+      return;
+    }
+    const { token } = settings;
+    this._applyHeaderParams({
+      authorization: `Bearer ${token}`
+    }, target);
+  }
+
+  /**
+   * Collects parameters for Api Key method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyApiKeyParams(auth, target) {
+    const { settings={} } = auth;
+    const { headers={}, queryParameters={} } = settings; /* , cookies={} */
+    this._applyHeaderParams(headers, target);
+    this._applyQueryParams(queryParameters, target);
+  }
+
+  /**
+   * Collects parameters for RAML's custom scheme method.
+   * @param {AuthorizationSettings} auth
+   * @param {Object} target An object to apply values.
+   */
+  _applyRamlCustomParams(auth, target) {
+    const { settings={} } = auth;
+    const { headers={}, queryParameters={} } = settings;
+    this._applyHeaderParams(headers, target);
+    this._applyQueryParams(queryParameters, target);
+  }
+
+  render() {
+    const { styles } = this;
+    return html`
+    <style>${styles}</style>
+    ${this._selectorTemplate()}
+    ${this._methodsTemplate()}
+    `;
+  }
+
+  /**
+   * Produces a `TemplateResult` instance for method selector.
+   *
+   * Is renders only a method label if there is only single method.
+   *
+   * @return {TemplateResult|string}
+   */
   _selectorTemplate() {
     const {
       outlined,
       compatibility,
       readOnly,
       disabled,
-      selected
+      selected,
     } = this;
-    const items = this.authMethods || [];
-    const isSingle = items.length === 1;
+    const items = this.methods || [];
+    const size = items.length;
+    if (!size) {
+      return '';
+    }
+    const isSingle = size === 1;
+    if (isSingle) {
+      return this._singleItemTemplate(items[0]);
+    }
     return html`
-    ${isSingle ? html`<div role="heading" aria-level="3" class="auth-title-single">${items[0].name}</div>` : ''}
     <anypoint-dropdown-menu
-      ?hidden="${isSingle}"
       name="selected"
       .outlined="${outlined}"
       .compatibility="${compatibility}"
@@ -75801,258 +76013,331 @@ class AuthorizationPanel extends AuthorizationPanelAmfOverlay(EventsTargetMixin(
         .outlined="${outlined}"
         .compatibility="${compatibility}"
         .readOnly="${readOnly}"
-        .disabled="${disabled}">
-        ${items.map((item) => html`<anypoint-item .compatibility="${compatibility}">${item.name}</anypoint-item>`)}
+        .disabled="${disabled}"
+        attrForItemTitle="label"
+      >
+        ${items.map((item) => this._selectorItem(item))}
       </anypoint-listbox>
-    </anypoint-dropdown-menu>`;
+    </anypoint-dropdown-menu>
+    `;
   }
 
-  _panelTemplate() {
-    const { selected, authMethods } = this;
-    if (selected === -1 || selected === undefined || !authMethods || !authMethods.length) {
-      return;
-    }
-    const item = authMethods[selected];
-    switch (item.type) {
-      case 'none': return '';
-      case 'Basic Authentication': return this._basicTemplate();
-      case 'Digest Authentication': return this._digestTemplate();
-      case 'ntlm': return this._ntlmTemplate();
-      case 'client-certificate': return this._clientCertificateTemplate();
-      case 'Pass Through': return this._passThroughTemplate();
-      case 'OAuth 2.0': return this._oauth2Template(item.type, item.name);
-      case 'OAuth 1.0': return this._oauth1Template(item.type, item.name);
-      default: return this._customTemplate(item.type, item.name);
-    }
+  /**
+   * Renders template for the title when method selector is
+   * not rendered. This happens when there's only single method to render.
+   * @param {Object} auth
+   * @return {TemplateResult}
+   */
+  _singleItemTemplate(auth) {
+    const { types } = auth;
+    const label = (types || []).map((item) => mapAuthName(item)).join(', ');
+    return html`<div class="auth-selector-label">${label}</div>`;
   }
 
-  _basicTemplate() {
-    const {
-      eventsTarget,
-      readOnly,
-      disabled,
-      compatibility,
-      outlined
-    } = this;
-
-    return html`<auth-method-basic
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
+  /**
+   * Creates a template for an authorization selector method.
+   * @param {Object} item
+   * @return {TemplateResult}
+   */
+  _selectorItem(item) {
+    const { types, names } = item;
+    const { compatibility } = this;
+    const nLabel = (names || []).join(', ');
+    return html`
+    <anypoint-item
       ?compatibility="${compatibility}"
-    ></auth-method-basic>`;
+      label="${nLabel}"
+    >
+      <anypoint-item-body twoline>
+        <div>${nLabel}</div>
+        <div secondary>${(types || []).join(', ')}</div>
+      </anypoint-item-body>
+    </anypoint-item>`;
   }
 
-  _digestTemplate() {
+  /**
+   * @return {Array<TemplateResult|string>|string} Template for authorization methods
+   * that should be rendered with current selection.
+   */
+  _methodsTemplate() {
+    const { selectedMethods } = this;
+    if (!selectedMethods) {
+      return '';
+    }
+    const selectedSchemes = this.selectedSchemes || [];
+    const renderTitles = !!selectedSchemes.length && selectedSchemes.length > 1;
+    return selectedMethods.map((item, index) => this._renderMethod(item, selectedSchemes[index], renderTitles));
+  }
+
+  /**
+   * Renders authorization method form.
+   * @param {String} type A type of the method read from API spec. This supports both RAML and OAS vocabulary.
+   * @param {Object} scheme Authorization scheme to be applied to the method
+   * @param {Boolean} renderTitle Whether or not a title over the method should be rendered.
+   * @return {TemplateResult|String}
+   */
+  _renderMethod(type, scheme, renderTitle) {
+    switch (type) {
+      case 'Basic Authentication':
+      case 'basic':
+        return this._basicAuthTemplate(scheme, renderTitle);
+      case 'Digest Authentication':
+        return this._digestAuthTemplate(scheme, renderTitle);
+      case 'Pass Through':
+        return this._passThroughAuthTemplate(scheme, renderTitle);
+      case 'OAuth 2.0':
+        return this._oa2AuthTemplate(scheme, renderTitle);
+      case 'OAuth 1.0':
+        return this._oa1AuthTemplate(scheme, renderTitle);
+      case 'bearer':
+        return this._bearerAuthTemplate(scheme, renderTitle);
+      case 'Api Key':
+        return this._apiKeyTemplate(scheme);
+      default:
+        if (String(type).indexOf('x-') === 0) {
+          return this._ramlCustomAuthTemplate(scheme);
+        }
+    }
+    return '';
+  }
+
+  /**
+   * Renders title to be rendered above authorization method
+   * @param {Object} scheme Authorization scheme to be applied to the method
+   * @return {TemplateResult|String}
+   */
+  _methodTitleTemplate(scheme) {
+    const name = this._getValue(scheme, this.ns.aml.vocabularies.core.name);
+    if (!name) {
+      return '';
+    }
+    return html`<div
+      class="auth-label"
+    >${name}</div>`;
+  }
+
+  /**
+   * Renders a template for Basic authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _basicAuthTemplate(security, renderTitle) {
     const {
-      eventsTarget,
-      readOnly,
-      disabled,
       compatibility,
       outlined,
-      narrow,
-      requestUrl,
+      amf,
+    } = this;
+    const { username='', password='' } = this._readCachedParams('basic');
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      type="basic"
+      .security="${security}"
+      .amf="${amf}"
+      .username="${username}"
+      .password="${password}"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
+  }
+
+  /**
+   * Renders a template for Digest authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _digestAuthTemplate(security, renderTitle) {
+    const {
+      compatibility,
+      outlined,
+      amf,
       httpMethod,
-      requestBody
+      requestUrl,
+      requestBody,
     } = this;
-
-    return html`<auth-method-digest
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?narrow="${narrow}"
-      ?outlined="${outlined}"
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
       ?compatibility="${compatibility}"
-      .requestUrl="${requestUrl}"
+      ?outlined="${outlined}"
+      .security="${security}"
+      .amf="${amf}"
       .httpMethod="${httpMethod}"
+      .requestUrl="${requestUrl}"
       .requestBody="${requestBody}"
-    ></auth-method-digest>`;
+      type="digest"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
   }
 
-  _ntlmTemplate() {
+  /**
+   * Renders a template for Pass through authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _passThroughAuthTemplate(security, renderTitle) {
     const {
-      eventsTarget,
-      readOnly,
-      disabled,
-      compatibility,
-      outlined
-    } = this;
-
-    return html`<auth-method-ntlm
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
-      ?compatibility="${compatibility}"
-    ></auth-method-ntlm>`;
-  }
-
-  _clientCertificateTemplate() {
-    const {
-      eventsTarget,
-      readOnly,
-      disabled,
-      compatibility,
-      outlined
-    } = this;
-
-    return html`<auth-method-certificate
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
-      ?compatibility="${compatibility}"
-    ></auth-method-certificate>`;
-  }
-
-  _oauth2Template(type, name) {
-    const {
-      eventsTarget,
-      readOnly,
-      disabled,
       compatibility,
       outlined,
-      noDocs,
-      redirectUri,
-      amf
+      amf,
     } = this;
-
-    const amfSettings = this._computeAmfSettings(type, name);
-
-    return html`<auth-method-oauth2
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
       ?compatibility="${compatibility}"
-      .noDocs="${noDocs}"
-      .redirectUri="${redirectUri}"
+      ?outlined="${outlined}"
+      .security="${security}"
       .amf="${amf}"
-      .amfSettings="${amfSettings}"
-    ></auth-method-oauth2>`;
+      type="pass through"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
   }
 
-  _oauth1Template(type, name) {
+  /**
+   * Renders a template for RAML custom authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @return {TemplateResult}
+   */
+  _ramlCustomAuthTemplate(security) {
     const {
-      eventsTarget,
-      readOnly,
-      disabled,
       compatibility,
       outlined,
-      noDocs,
-      redirectUri,
-      amf
+      amf,
     } = this;
-
-    const amfSettings = this._computeAmfSettings(type, name);
-
-    return html`<auth-method-oauth1
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
+    return html`<api-authorization-method
       ?compatibility="${compatibility}"
-      .noDocs="${noDocs}"
-      .redirectUri="${redirectUri}"
+      ?outlined="${outlined}"
+      .security="${security}"
       .amf="${amf}"
-      .amfSettings="${amfSettings}"
-    ></auth-method-oauth1>`;
+      type="custom"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
   }
 
-  _customTemplate(type, name) {
-    const amfSettings = this._computeAmfSettings(type, name);
-    if (!amfSettings) {
-      return html`<p class="no-support-info">This method is not yet supported.</p>`;
-    }
+  /**
+   * Renders a template for Bearer authorization (OAS).
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _bearerAuthTemplate(security, renderTitle) {
     const {
-      eventsTarget,
-      readOnly,
-      disabled,
       compatibility,
       outlined,
-      noDocs,
-      redirectUri,
-      amf
+      amf,
     } = this;
-
-    return html`<auth-method-custom
-      .eventsTarget="${eventsTarget}"
-      .readOnly="${readOnly}"
-      .disabled="${disabled}"
-      ?outlined="${outlined}"
+    const { token='' } = this._readCachedParams('bearer');
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
       ?compatibility="${compatibility}"
-      .noDocs="${noDocs}"
+      ?outlined="${outlined}"
+      type="bearer"
+      .amf="${amf}"
+      .security="${security}"
+      .token="${token}"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
+  }
+
+  /**
+   * Renders a template for OAuth 1 authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _oa1AuthTemplate(security, renderTitle) {
+    const {
+      compatibility,
+      outlined,
+      redirectUri,
+      amf,
+    } = this;
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      type="oauth 1"
       .redirectUri="${redirectUri}"
       .amf="${amf}"
-      .amfSettings="${amfSettings}"
-    ></auth-method-custom>`;
+      .security="${security}"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
   }
 
-  _passThroughTemplate() {
-    return html`<p class="no-support-info">This method is not yet supported.</p>`;
+  /**
+   * Renders a template for OAuth 2 authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @param {?Boolean} renderTitle
+   * @return {TemplateResult}
+   */
+  _oa2AuthTemplate(security, renderTitle) {
+    const {
+      compatibility,
+      outlined,
+      redirectUri,
+      amf,
+    } = this;
+    const {
+      accessToken,
+      clientId,
+      clientSecret,
+    } = this._readCachedParams('oauth 2');
+    return html`
+    ${renderTitle ? this._methodTitleTemplate(security) : ''}
+    <api-authorization-method
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      type="oauth 2"
+      .redirectUri="${redirectUri}"
+      .amf="${amf}"
+      .security="${security}"
+      .clientId="${clientId}"
+      .clientSecret="${clientSecret}"
+      .accessToken="${accessToken}"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>`;
   }
 
-  render() {
-    const { authMethods } = this;
-    return html`<style>${this.styles}</style>
-    <div class="auth-container">
-      ${authMethods && authMethods.length ?
-        html`
-        ${this._selectorTemplate()}
-        <section class="auth-panel">
-        ${this._panelTemplate()}
-        </section>` :
-        html`<p class="no-method-info">Authorization method for current endpoint is not supported.</p>`}
-    </div>`;
+  /**
+   * Renders a template for Api Keys authorization.
+   *
+   * @param {?Object} security Security scheme
+   * @return {TemplateResult}
+   */
+  _apiKeyTemplate(security) {
+    const {
+      compatibility,
+      outlined,
+      amf,
+    } = this;
+    return html`<api-authorization-method
+      .amf="${amf}"
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      type="api key"
+      .security="${security}"
+      @change="${this._changeHandler}"
+    ></api-authorization-method>
+    `;
   }
-  /**
-   * Fired when auth settings change.
-   *
-   * It will be fired when any of types is currently selected and
-   * any value of any property has changed.
-   *
-   * @event authorization-settings-changed
-   * @param {?Object} settings Current auth settings. It depends on enabled `type`.
-   * It might be undefined if the user unselected a method (if possible). This
-   * means that there's no selection at the moment.
-   * @param {?String} type Enabled auth type. For example `basic`, `ntlm` or `oauth2`.
-   * It may be `undefined` if the user deselected current method and none is selected.
-   * @param {Boolean} valid Flag determining if current settings are valid.
-   * This property depends on `null` security scheme when scheme is unselected
-   * (`settings` and `type` are `undefined`). If `null` security is set then
-   * it is valid when methos is unselected. `false` otherise.
-   */
-  /**
-   * Fired when the authorization type changed.
-   * Note that the `settings` property may not be updated at the moment of of
-   * firing the event.
-   *
-   * This event is cancelable. If handler cancels the event the operation
-   * is stopped and selection is set to previous value.
-   *
-   * @event authorization-type-changed
-   * @param {String} type Current auth type
-   */
-  /**
-   * Fired when the request header changed and all listeners should update
-   * header value.
-   *
-   * @event request-header-changed
-   * @param {String} name Name of the header that has changed
-   * @param {String} value Header new value
-   */
-  /**
-   * Fired when the query param changed and all listeners should update
-   * parameters / URL value.
-   *
-   * @event query-parameter-changed
-   * @param {String} name Name of the header that has changed
-   * @param {String} value Header new value
-   */
 }
 
-window.customElements.define('authorization-panel', AuthorizationPanel);
+window.customElements.define('api-authorization', ApiAuthorization);
+
+// Left for compatibility
 
 const requestHeaders = [
   {
@@ -76524,7 +76809,7 @@ function queryRequestHeaders(name) {
   return queryHeaders(name, 'request');
 }
 
-var styles$9 = css`
+var styles$c = css`
   :host {
     display: block;
   }
@@ -76624,7 +76909,7 @@ function renderAutocomplete(input, suggestions) {
  */
 class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
   get styles() {
-    return [markdownStyles, apiFormStyles, styles$9];
+    return [markdownStyles, apiFormStyles, styles$c];
   }
 
   static get properties() {
@@ -77162,7 +77447,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('api-headers-form-item', ApiHeadersFormItem);
 
-var styles$a = css`
+var styles$d = css`
   :host {
     display: block;
   }
@@ -77211,7 +77496,7 @@ var styles$a = css`
 
 class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
   get styles() {
-    return [apiFormStyles, styles$a];
+    return [apiFormStyles, styles$d];
   }
 
   static get properties() {
@@ -92815,7 +93100,7 @@ const templateCaches$1 = new WeakMap();
  * `
  * ```
  */
-const cache = directive((value) => (part) => {
+const cache$1 = directive((value) => (part) => {
     if (!(part instanceof NodePart)) {
         throw new Error('cache can only be used in text bindings');
     }
@@ -93343,7 +93628,7 @@ document.head.appendChild(template$3.content);
 
 }(Prism));
 
-var styles$b = css`:host {
+var styles$e = css`:host {
   display: block;
   flex: 1;
 }
@@ -93442,7 +93727,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     return [
       markdownStyles,
       apiFormStyles,
-      styles$b,
+      styles$e,
     ];
   }
 
@@ -93630,7 +93915,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('multipart-text-form-item', MultipartTextFormItem);
 
-var styles$c = css`
+var styles$f = css`
 :host {
   display: block;
   flex: 1;
@@ -93699,7 +93984,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     return [
       markdownStyles,
       apiFormStyles,
-      styles$c,
+      styles$f,
     ];
   }
 
@@ -93979,7 +94264,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('multipart-file-form-item', MultipartFileFormItem);
 
-var styles$d = css`
+var styles$g = css`
 :host {
   display: block;
 }
@@ -94084,7 +94369,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
     return [
       styles$1,
       apiFormStyles,
-      styles$d,
+      styles$g,
     ];
   }
 
@@ -94798,7 +95083,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
     </div>
     ${generatingPreview ? html`<p>Generating the preview</p>` : ''}
     <section>
-    ${cache(previewOpened ? this._previewTemplate() : this._formTemplate())}
+    ${cache$1(previewOpened ? this._previewTemplate() : this._formTemplate())}
     </section>
 
     <prism-highlighter></prism-highlighter>
@@ -96859,6 +97144,3251 @@ the License.
 window.customElements.define('uuid-generator', UuidGeneratorElement);
 
 /**
+The `<outh2-authorization>` performs an OAuth2 requests to get a token for given settings.
+
+@customElement
+@appliesMixin EventsTargetMixin
+*/
+class OAuth2Authorization extends EventsTargetMixin(HTMLElement) {
+  /**
+   * @return {Object} A full data returned by the authorization endpoint.
+   */
+  get tokenInfo() {
+    return this._tokenInfo;
+  }
+
+  constructor() {
+    super();
+    this._frameLoadErrorHandler = this._frameLoadErrorHandler.bind(this);
+    this._frameLoadHandler = this._frameLoadHandler.bind(this);
+    this._tokenRequestedHandler = this._tokenRequestedHandler.bind(this);
+    this._popupMessageHandler = this._popupMessageHandler.bind(this);
+    this._popupObserver = this._popupObserver.bind(this);
+  }
+
+  _attachListeners(node) {
+    node.addEventListener('oauth2-token-requested', this._tokenRequestedHandler);
+    window.addEventListener('message', this._popupMessageHandler);
+    this.setAttribute('aria-hidden', 'true');
+  }
+
+  _detachListeners(node) {
+    node.removeEventListener('oauth2-token-requested', this._tokenRequestedHandler);
+    window.removeEventListener('message', this._popupMessageHandler);
+  }
+
+  /**
+   * Clears the state of the element.
+   */
+  clear() {
+    this._state = undefined;
+    this._settings = undefined;
+    this._cleanupFrame();
+    this._cleanupPopup();
+  }
+  /**
+   * Clean up popup reference and closes the window if not yet closed.
+   */
+  _cleanupPopup() {
+    if (this._popup) {
+      if (!this._popup.closed) {
+        this._popup.close();
+      }
+      this._popup = undefined;
+    }
+  }
+  /**
+   * Handler for the `oauth2-token-requested` custom event.
+   *
+   * @param {CustomEvent} e
+   */
+  _tokenRequestedHandler(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    this.authorize(e.detail);
+  }
+  /**
+   * Authorize the user using provided settings.
+   *
+   * @param {Object<String, String>} settings Map of authorization settings.
+   * - type {String} Authorization grant type. Can be `implicit`,
+   * `authorization_code`, `client_credentials`, `password` or custom value
+   * as OAuth 2.0 allows extensions to grant type.
+   *
+   * NOTE:
+   * For authorization_code and any other grant type that may receive a code
+   * and exchange it for an access token, the settings object may have a property
+   * "overrideExchangeCodeFlow" with a boolean value (true/false).
+   *
+   * The "overrideExchangeCodeFlow" property is a flag indicating that the developer wants to handle
+   * exchanging the code for the token instead of having the module do it.
+   *
+   * If "overrideExchangeCodeFlow" is set to true for the authorization_code grant type,
+   * we dispatch an "oauth2-code-response" event with the auth code.
+   *
+   * The user of this module should listen for this event and exchange the token for an access token on their end.
+   *
+   * This allows client-side apps to exchange the auth code with their backend/server for an access token
+   * since CORS isn't enabled for the /token endpoint.
+   */
+  authorize(settings) {
+    this._tokenInfo = undefined;
+    this._type = settings.type;
+    this._state = settings.state || this.randomString(6);
+    this._settings = settings;
+    this._errored = false;
+    this._overrideExchangeCodeFlow = settings.overrideExchangeCodeFlow;
+
+    try {
+      this._sanityCheck(settings);
+    } catch (e) {
+      this._dispatchError({
+        message: e.message,
+        code: 'oauth_error',
+        state: this._state,
+        interactive: settings.interactive
+      });
+      throw e;
+    }
+
+    switch (settings.type) {
+      case 'implicit':
+        this._authorize(this._constructPopupUrl(settings, 'token'), settings);
+        break;
+      case 'authorization_code':
+        this._authorize(this._constructPopupUrl(settings, 'code'), settings);
+        break;
+      case 'client_credentials':
+        this.authorizeClientCredentials(settings).catch(() => {});
+        break;
+      case 'password':
+        this.authorizePassword(settings).catch(() => {});
+        break;
+      default:
+        this.authorizeCustomGrant(settings).catch(() => {});
+    }
+  }
+  /**
+   * Checks if basic configuration of the OAuth 2 request is valid an can proceed
+   * with authentication.
+   * @param {Object} settings authorization settings
+   * @throws {Error} When setttings are not valid
+   */
+  _sanityCheck(settings) {
+    if (settings.type === 'implicit' || settings.type === 'authorization_code') {
+      try {
+        this._checkUrl(settings.authorizationUri);
+      } catch (e) {
+        throw new Error(`authorizationUri: ${e.message}`);
+      }
+      if (settings.accessTokenUri) {
+        try {
+          this._checkUrl(settings.accessTokenUri);
+        } catch (e) {
+          throw new Error(`accessTokenUri: ${e.message}`);
+        }
+      }
+    } else if (settings.accessTokenUri) {
+      if (settings.accessTokenUri) {
+        try {
+          this._checkUrl(settings.accessTokenUri);
+        } catch (e) {
+          throw new Error(`accessTokenUri: ${e.message}`);
+        }
+      }
+    }
+  }
+  /**
+   * Checks if the URL has valid scheme for OAuth flow.
+   * @param {String} url The url value to test
+   * @throws {TypeError} When passed value is not set, empty, or not a string
+   * @throws {Error} When passed value is not a valid URL for OAuth 2 flow
+   */
+  _checkUrl(url) {
+    if (!url) {
+      throw new TypeError('the value is missing');
+    }
+    if (typeof url !== 'string') {
+      throw new TypeError('the value is not a string');
+    }
+    if (url.indexOf('http://') !== 0 && url.indexOf('https://') !== 0) {
+      throw new Error('the value has invalid scheme');
+    }
+  }
+
+  /**
+   * Authorizes the user in the OAuth authorization endpoint.
+   * By default it authorizes the user using a popup that displays
+   * authorization screen. When `interactive` property is set to `false`
+   * on the `settings` object then it will quietly create an iframe
+   * and try to receive the token.
+   *
+   * @param {String} authUrl Complete authorization url
+   * @param {Object} settings Passed user settings
+   */
+  _authorize(authUrl, settings) {
+    this._settings = settings;
+    this._errored = false;
+    if (settings.interactive === false) {
+      this._authorizeTokenNonInteractive(authUrl);
+    } else {
+      this._authorizePopup(authUrl);
+    }
+  }
+  /**
+   * Creates and opens auth popup.
+   *
+   * @param {String} url Complete authorization url
+   */
+  _authorizePopup(url) {
+    const op = 'menubar=no,location=no,resizable=yes,scrollbars=yes,status=no,width=800,height=600';
+    this._popup = window.open(url, 'oauth-window', op);
+    if (!this._popup) {
+      // popup blocked.
+      this._dispatchError({
+        message: 'Authorization popup is being blocked.',
+        code: 'popup_blocked',
+        state: this._state,
+        interactive: this._settings.interactive
+      });
+      return;
+    }
+    this._popup.window.focus();
+    this._observePopupState();
+  }
+  /**
+   * Tries to Authorize the user in a non interactive way.
+   * This method always result in a success response. When there's an error or
+   * user is not logged in then the response won't contain auth token info.
+   *
+   * @param {String} url Complete authorization url
+   */
+  _authorizeTokenNonInteractive(url) {
+    const iframe = document.createElement('iframe');
+    iframe.style.border = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.overflow = 'hidden';
+    iframe.addEventListener('error', this._frameLoadErrorHandler);
+    iframe.addEventListener('load', this._frameLoadHandler);
+    iframe.id = 'oauth2-authorization-frame';
+    iframe.setAttribute('data-owner', 'arc-oauth-authorization');
+    document.body.appendChild(iframe);
+    iframe.src = url;
+    this._iframe = iframe;
+  }
+  /**
+   * Removes the frame and any event listeners attached to it.
+   */
+  _cleanupFrame() {
+    if (!this._iframe) {
+      return;
+    }
+    this._iframe.removeEventListener('error', this._frameLoadErrorHandler);
+    this._iframe.removeEventListener('load', this._frameLoadHandler);
+    try {
+      document.body.removeChild(this._iframe);
+    } catch (_) {
+      // ...
+    }
+    this._iframe = undefined;
+  }
+  /**
+   * Handler for `error` event dispatched by oauth iframe.
+   */
+  _frameLoadErrorHandler() {
+    if (this._errored) {
+      return;
+    }
+    this._dispatchResponse({
+      interactive: false,
+      code: 'iframe_load_error',
+      state: this._state
+    });
+    this.clear();
+  }
+  /**
+   * Handler for iframe `load` event.
+   */
+  _frameLoadHandler() {
+    if (this.__frameLoadInfo) {
+      return;
+    }
+    this.__frameLoadInfo = true;
+    this.__frameLoadTimeout = setTimeout(() => {
+      if (!this.tokenInfo && !this._errored) {
+        this._dispatchResponse({
+          interactive: false,
+          code: 'not_authorized',
+          state: this._state
+        });
+      }
+      this.clear();
+      this.__frameLoadInfo = false;
+    }, 700);
+  }
+
+  // Observer if the popup has been closed befor the data has been received.
+  _observePopupState() {
+    this.__popupCheckInterval = setInterval(this._popupObserver, 250);
+  }
+  /**
+   * Function called in the interval.
+   * Observer popup state and calls `_beforePopupUnloadHandler()`
+   * when popup is no longer opened.
+   */
+  _popupObserver() {
+    if (!this._popup || this._popup.closed) {
+      clearInterval(this.__popupCheckInterval);
+      this.__popupCheckInterval = undefined;
+      this._beforePopupUnloadHandler();
+    }
+  }
+  /**
+   * Browser or server flow: open the initial popup.
+   * @param {Object} settings Settings passed to the authorize function.
+   * @param {String} type `token` or `code`
+   * @return {String} Full URL for the endpoint.
+   */
+  _constructPopupUrl(settings, type) {
+    let url = settings.authorizationUri;
+    if (url.indexOf('?') === -1) {
+      url += '?';
+    } else {
+      url += '&';
+    }
+    url += 'response_type=' + type;
+    url += '&client_id=' + encodeURIComponent(settings.clientId || '');
+    if (settings.redirectUri) {
+      url += '&redirect_uri=' + encodeURIComponent(settings.redirectUri);
+    }
+    if (settings.scopes && settings.scopes.length) {
+      url += '&scope=' + this._computeScope(settings.scopes);
+    }
+    url += '&state=' + encodeURIComponent(this._state);
+    if (settings.includeGrantedScopes) {
+      url += '&include_granted_scopes=true';
+    }
+    if (settings.loginHint) {
+      url += '&login_hint=' + encodeURIComponent(settings.loginHint);
+    }
+    if (settings.interactive === false) {
+      url += '&prompt=none';
+    }
+    // custom query parameters
+    if (settings.customData) {
+      const key = type === 'token' ? 'auth' : 'token';
+      const cs = settings.customData[key];
+      if (cs) {
+        url = this._applyCustomSettingsQuery(url, cs);
+      }
+    }
+    return url;
+  }
+  /**
+   * Computes `scope` URL parameter from scopes array.
+   *
+   * @param {Array<String>} scopes List of scopes to use with the request.
+   * @return {String} Computed scope value.
+   */
+  _computeScope(scopes) {
+    if (!scopes) {
+      return '';
+    }
+    const scope = scopes.join(' ');
+    return encodeURIComponent(scope);
+  }
+  /**
+   * Listens for a message from the popup.
+   * @param {Event} e
+   */
+  _popupMessageHandler(e) {
+    if (!this._popup && !this._iframe) {
+      return;
+    }
+    this._processPopupData(e);
+  }
+
+  _processPopupData(e) {
+    const tokenInfo = e.data;
+    const dontProcess = !this._overrideExchangeCodeFlow && (!tokenInfo || !tokenInfo.oauth2response);
+    if (dontProcess) {
+      // Possibly a message in the authorization info, not the popup.
+      return;
+    }
+    if (!this._settings) {
+      this._settings = {};
+    }
+    if (tokenInfo.state !== this._state) {
+      this._dispatchError({
+        message: 'Invalid state returned by the OAuth server.',
+        code: 'invalid_state',
+        state: this._state,
+        serverState: tokenInfo.state,
+        interactive: this._settings.interactive
+      });
+      this._errored = true;
+      this._clearIframeTimeout();
+      this.clear();
+    } else if ('error' in tokenInfo) {
+      this._dispatchError({
+        message: tokenInfo.errorDescription || 'The request is invalid.',
+        code: tokenInfo.error || 'oauth_error',
+        state: this._state,
+        interactive: this._settings.interactive
+      });
+      this._errored = true;
+      this._clearIframeTimeout();
+      this.clear();
+    } else if (this._type === 'implicit') {
+      this._handleTokenInfo(tokenInfo);
+      this.clear();
+    } else if (this._type === 'authorization_code') {
+      /**
+       * For the authorization_code flow, the developer (user of the oauth2-authorization lib)
+       * can pass a setting to override the code exchange flow. In this scenario,
+       * we dispatch an event with the auth code instead of exchanging the code for an access token.
+       * See {@link authorize()} comment for more details.
+       */
+      if (this._overrideExchangeCodeFlow) {
+        this._dispatchCodeResponse(tokenInfo);
+      } else {
+        this._exchangeCodeValue = tokenInfo.code;
+        this._exchangeCode(tokenInfo.code).catch(() => {});
+        this._clearIframeTimeout();
+      }
+    }
+  }
+
+  _clearIframeTimeout() {
+    if (this.__frameLoadTimeout) {
+      clearTimeout(this.__frameLoadTimeout);
+      this.__frameLoadTimeout = undefined;
+    }
+  }
+  // http://stackoverflow.com/a/10727155/1127848
+  randomString(len) {
+    return Math.round(Math.pow(36, len + 1) - Math.random() * Math.pow(36, len))
+      .toString(36)
+      .slice(1);
+  }
+  /**
+   * Popup is closed by this element so if data is not yet set it means that the
+   * user closed the window - probably some error.
+   * The UI state is reset if needed.
+   */
+  _beforePopupUnloadHandler() {
+    if (this.tokenInfo || (this._type === 'authorization_code' && this._exchangeCodeValue)) {
+      return;
+    }
+    const settings = this._settings || {};
+    this._dispatchError({
+      message: 'No response has been recorded.',
+      code: 'no_response',
+      state: this._state,
+      interactive: settings.interactive
+    });
+    this.clear();
+  }
+  /**
+   * Exchange code for token.
+   * One note here. This element is intened to use with applications that test endpoints.
+   * It asks user to provide `client_secret` parameter and it is not a security concern to him.
+   * However, this method **can't be used in regular web applications** because it is a
+   * security risk and whole OAuth token exchange can be compromised. Secrets should never be
+   * present on client side.
+   *
+   * @param {String} code Returned code from the authorization endpoint.
+   * @return {Promise} Promise with token information.
+   */
+  async _exchangeCode(code) {
+    const url = this._settings.accessTokenUri;
+    const body = this._getCodeEchangeBody(this._settings, code);
+    try {
+      const tokenInfo = await this._requestToken(url, body, this._settings);
+      const result = this._handleTokenInfo(tokenInfo);
+      this.clear();
+      return result;
+    } catch (cause) {
+      this._handleTokenCodeError(cause);
+    }
+  }
+  /**
+   * Returns a body value for the code exchange request.
+   * @param {Object} settings Initial settings object.
+   * @param {String} code Authorization code value returned by the authorization
+   * server.
+   * @return {String} Request body.
+   */
+  _getCodeEchangeBody(settings, code) {
+    let url = 'grant_type=authorization_code';
+    url += '&client_id=' + encodeURIComponent(settings.clientId);
+    if (settings.redirectUri) {
+      url += '&redirect_uri=' + encodeURIComponent(settings.redirectUri);
+    }
+    url += '&code=' + encodeURIComponent(code);
+    if (settings.clientSecret) {
+      url += '&client_secret=' + encodeURIComponent(settings.clientSecret);
+    } else {
+      url += '&client_secret=';
+    }
+    return url;
+  }
+  /**
+   * Requests for token from the authorization server for `code`, `password`,
+   * `client_credentials` and custom grant types.
+   *
+   * @param {String} url Base URI of the endpoint. Custom properties will be
+   * applied to the final URL.
+   * @param {String} body Generated body for given type. Custom properties will
+   * be applied to the final body.
+   * @param {Object} settings Settings object passed to the `authorize()` function
+   * @return {Promise} Promise resolved to the response string.
+   */
+  _requestToken(url, body, settings) {
+    if (settings.customData) {
+      const cs = settings.customData.token;
+      if (cs) {
+        url = this._applyCustomSettingsQuery(url, cs);
+      }
+      body = this._applyCustomSettingsBody(body, settings.customData);
+    }
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.addEventListener('load', (e) => this._processTokenResponseHandler(e, resolve, reject));
+      xhr.addEventListener('error', (e) => this._processTokenResponseErrorHandler(e, reject));
+      xhr.open('POST', url);
+      xhr.setRequestHeader('content-type', 'application/x-www-form-urlencoded');
+      if (settings.customData) {
+        this._applyCustomSettingsHeaders(xhr, settings.customData);
+      }
+      try {
+        xhr.send(body);
+      } catch (e) {
+        reject(new Error('Client request error: ' + e.message));
+      }
+    });
+  }
+  /**
+   * Handler for the code request load event.
+   * Processes the response and either rejects the promise with an error
+   * or resolves it to token info object.
+   *
+   * @param {Event} e XHR load event.
+   * @param {Function} resolve Resolve function
+   * @param {Function} reject Reject function
+   */
+  _processTokenResponseHandler(e, resolve, reject) {
+    const status = e.target.status;
+    const srvResponse = e.target.response;
+    if (status === 404) {
+      const message = 'Authorization URI is invalid. Received status 404.';
+      reject(new Error(message));
+      return;
+    } else if (status >= 400 && status < 500) {
+      const message = 'Client error: ' + srvResponse;
+      reject(new Error(message));
+      return;
+    } else if (status >= 500) {
+      const message = 'Authorization server error. Response code is ' + status;
+      reject(new Error(message));
+      return;
+    }
+    let tokenInfo;
+    try {
+      tokenInfo = this._processCodeResponse(srvResponse, e.target.getResponseHeader('content-type'));
+    } catch (e) {
+      reject(new Error(e.message));
+      return;
+    }
+    resolve(tokenInfo);
+  }
+  /**
+   * Handler for the code request error event.
+   * Rejects the promise with error description.
+   *
+   * @param {Event} e XHR error event
+   * @param {Function} reject Promise's reject function.
+   */
+  _processTokenResponseErrorHandler(e, reject) {
+    const status = e.target.status;
+    let message = 'The request to the authorization server failed.';
+    if (status) {
+      message += ' Response code is: ' + status;
+    }
+    reject(new Error(message));
+  }
+  /**
+   * Processes token request body and produces map of values.
+   *
+   * @param {String} body Body received in the response.
+   * @param {String} contentType Response content type.
+   * @return {Object} Response as an object.
+   * @throws {Error} Exception when body is invalid.
+   */
+  _processCodeResponse(body, contentType) {
+    if (!body) {
+      throw new Error('Code response body is empty.');
+    }
+    let tokenInfo;
+    if (contentType.indexOf('json') !== -1) {
+      tokenInfo = JSON.parse(body);
+      Object.keys(tokenInfo).forEach((name) => {
+        const camelName = this._camel(name);
+        if (camelName) {
+          tokenInfo[camelName] = tokenInfo[name];
+        }
+      });
+    } else {
+      tokenInfo = {};
+      body.split('&').forEach((p) => {
+        const item = p.split('=');
+        const name = item[0];
+        const camelName = this._camel(name);
+        const value = decodeURIComponent(item[1]);
+        tokenInfo[name] = value;
+        tokenInfo[camelName] = value;
+      });
+    }
+    return tokenInfo;
+  }
+
+  /**
+   * Processes token info object when it's ready.
+   * Sets `tokenInfo` property, notifies listeners about the response
+   * and cleans up.
+   *
+   * @param {Object} tokenInfo Token info returned from the server.
+   * @return {Object} The same tokenInfo, used for Promise return value.
+   */
+  _handleTokenInfo(tokenInfo) {
+    this._tokenInfo = tokenInfo;
+    tokenInfo.interactive = this._settings.interactive;
+    if ('error' in tokenInfo) {
+      this._dispatchError({
+        message: tokenInfo.errorDescription || 'The request is invalid.',
+        code: tokenInfo.error,
+        state: this._state,
+        interactive: this._settings.interactive
+      });
+    } else {
+      this._dispatchResponse(tokenInfo);
+    }
+    if (this.__frameLoadTimeout) {
+      clearTimeout(this.__frameLoadTimeout);
+      this.__frameLoadTimeout = undefined;
+    }
+    this._settings = undefined;
+    this._exchangeCodeValue = undefined;
+    return tokenInfo;
+  }
+  /**
+   * Handler fore an error that happened during code exchange.
+   * @param {Error} e
+   */
+  _handleTokenCodeError(e) {
+    this._dispatchError({
+      message: "Couldn't connect to the server. " + e.message,
+      code: 'request_error',
+      state: this._state,
+      interactive: this._settings.interactive
+    });
+    this.clear();
+    throw e;
+  }
+  /**
+   * Replaces `-` or `_` with camel case.
+   * @param {String} name The string to process
+   * @return {String|undefined} Camel cased string or `undefined` if not
+   * transformed.
+   */
+  _camel(name) {
+    let i = 0;
+    let l;
+    let changed = false;
+    while ((l = name[i])) {
+      if ((l === '_' || l === '-') && i + 1 < name.length) {
+        name = name.substr(0, i) + name[i + 1].toUpperCase() + name.substr(i + 2);
+        changed = true;
+      }
+      i++;
+    }
+    return changed ? name : undefined;
+  }
+  /**
+   * Requests a token for `password` request type.
+   *
+   * @param {Object} settings The same settings as passed to `authorize()`
+   * function.
+   * @return {Promise} Promise resolved to token info.
+   */
+  async authorizePassword(settings) {
+    this._settings = settings;
+    const url = settings.accessTokenUri;
+    const body = this._getPasswordBody(settings);
+    try {
+      const tokenInfo = await this._requestToken(url, body, settings);
+      const result = this._handleTokenInfo(tokenInfo);
+      this.clear();
+      return result;
+    } catch (cause) {
+      this._handleTokenCodeError(cause);
+    }
+  }
+  /**
+   * Generates a payload message for password authorization.
+   *
+   * @param {Object} settings Settings object passed to the `authorize()`
+   * function
+   * @return {String} Message body as defined in OAuth2 spec.
+   */
+  _getPasswordBody(settings) {
+    let url = 'grant_type=password';
+    url += '&username=' + encodeURIComponent(settings.username);
+    url += '&password=' + encodeURIComponent(settings.password);
+    if (settings.clientId) {
+      url += '&client_id=' + encodeURIComponent(settings.clientId);
+    }
+    if (settings.scopes && settings.scopes.length) {
+      url += '&scope=' + encodeURIComponent(settings.scopes.join(' '));
+    }
+    return url;
+  }
+  /**
+   * Requests a token for `client_credentials` request type.
+   *
+   * @param {Object} settings The same settings as passed to `authorize()`
+   * function.
+   * @return {Promise} Promise resolved to a token info object.
+   */
+  async authorizeClientCredentials(settings) {
+    this._settings = settings;
+    const url = settings.accessTokenUri;
+    const body = this._getClientCredentialsBody(settings);
+    try {
+      const tokenInfo = await this._requestToken(url, body, settings);
+      const result = this._handleTokenInfo(tokenInfo);
+      this.clear();
+      return result;
+    } catch (cause) {
+      this._handleTokenCodeError(cause);
+    }
+  }
+  /**
+   * Generates a payload message for client credentials.
+   *
+   * @param {Object} settings Settings object passed to the `authorize()`
+   * function
+   * @return {String} Message body as defined in OAuth2 spec.
+   */
+  _getClientCredentialsBody(settings) {
+    let url = 'grant_type=client_credentials';
+    if (settings.clientId) {
+      url += '&client_id=' + encodeURIComponent(settings.clientId);
+    }
+    if (settings.clientSecret) {
+      url += '&client_secret=' + encodeURIComponent(settings.clientSecret);
+    }
+    if (settings.scopes && settings.scopes.length) {
+      url += '&scope=' + this._computeScope(settings.scopes);
+    }
+    return url;
+  }
+  /**
+   * Performs authorization on custom grant type.
+   * This extension is described in OAuth 2.0 spec.
+   *
+   * @param {Object} settings Settings object as for `authorize()` function.
+   * @return {Promise} Promise resolved to a token info object.
+   */
+  async authorizeCustomGrant(settings) {
+    this._settings = settings;
+    const url = settings.accessTokenUri;
+    const body = this._getCustomGrantBody(settings);
+    try {
+      const tokenInfo = await this._requestToken(url, body, settings);
+      const result = this._handleTokenInfo(tokenInfo);
+      this.clear();
+      return result;
+    } catch (cause) {
+      this._handleTokenCodeError(cause);
+    }
+  }
+  /**
+   * Creates a body for custom gran type.
+   * It does not assume any parameter to be required.
+   * It applies all known OAuth 2.0 parameters and then custom parameters
+   *
+   * @param {Object} settings
+   * @return {String} Request body.
+   */
+  _getCustomGrantBody(settings) {
+    const parts = ['grant_type=' + encodeURIComponent(settings.type)];
+    if (settings.clientId) {
+      parts[parts.length] = 'client_id=' + encodeURIComponent(settings.clientId);
+    }
+    if (settings.clientSecret) {
+      parts[parts.length] = 'client_secret=' + encodeURIComponent(settings.clientSecret);
+    }
+    if (settings.scopes && settings.scopes.length) {
+      parts[parts.length] = 'scope=' + this._computeScope(settings.scopes);
+    }
+    if (settings.redirectUri) {
+      parts[parts.length] = 'redirect_uri=' + encodeURIComponent(settings.redirectUri);
+    }
+    if (settings.username) {
+      parts[parts.length] = 'username=' + encodeURIComponent(settings.username);
+    }
+    if (settings.password) {
+      parts[parts.length] = 'password=' + encodeURIComponent(settings.password);
+    }
+    return parts.join('&');
+  }
+  /**
+   * Applies custom properties defined in the OAuth settings object to the URL.
+   *
+   * @param {String} url Generated URL for an endpoint.
+   * @param {?Object} data `customData.[type]` property from the settings object.
+   * The type is either `auth` or `token`.
+   * @return {String}
+   */
+  _applyCustomSettingsQuery(url, data) {
+    if (!data || !data.parameters) {
+      return url;
+    }
+    url += url.indexOf('?') === -1 ? '?' : '&';
+    url += data.parameters
+      .map((item) => {
+        let value = item.value;
+        if (value) {
+          value = encodeURIComponent(value);
+        }
+        return encodeURIComponent(item.name) + '=' + value;
+      })
+      .join('&');
+    return url;
+  }
+  /**
+   * Applies custom headers from the settings object
+   *
+   * @param {XMLHttpRequest} xhr Instance of the request object.
+   * @param {Object} data Value of settings' `customData` property
+   */
+  _applyCustomSettingsHeaders(xhr, data) {
+    if (!data || !data.token || !data.token.headers) {
+      return;
+    }
+    data.token.headers.forEach((item) => {
+      try {
+        xhr.setRequestHeader(item.name, item.value);
+      } catch (e) {
+        // ...
+      }
+    });
+  }
+  /**
+   * Applies custom body properties from the settings to the body value.
+   *
+   * @param {String} body Already computed body for OAuth request. Custom
+   * properties are appended at the end of OAuth string.
+   * @param {Object} data Value of settings' `customData` property
+   * @return {String} Request body
+   */
+  _applyCustomSettingsBody(body, data) {
+    if (!data || !data.token || !data.token.body) {
+      return body;
+    }
+    body +=
+      '&' +
+      data.token.body
+        .map(function(item) {
+          let value = item.value;
+          if (value) {
+            value = encodeURIComponent(value);
+          }
+          return encodeURIComponent(item.name) + '=' + value;
+        })
+        .join('&');
+    return body;
+  }
+  /**
+   * Dispatches an error event that propagates through the DOM.
+   *
+   * @param {Object} detail The detail object.
+   */
+  _dispatchError(detail) {
+    const e = new CustomEvent('oauth2-error', {
+      bubbles: true,
+      composed: true,
+      detail
+    });
+    this.dispatchEvent(e);
+  }
+  /**
+   * Dispatches an event with the authorization code that propagates through the DOM.
+   * Closes the popup once the authorization code has been dispatched.
+   *
+   * @param {Object} detail The detail object.
+   */
+  _dispatchCodeResponse(detail) {
+    const e = new CustomEvent('oauth2-code-response', {
+      bubbles: true,
+      composed: true,
+      detail
+    });
+    this.dispatchEvent(e);
+    this.clear();
+  }
+  /**
+   * Dispatches an event with the token (e.g. access token) that propagates through the DOM.
+   *
+   * @param {Object} detail The detail object.
+   */
+  _dispatchResponse(detail) {
+    const e = new CustomEvent('oauth2-token-response', {
+      bubbles: true,
+      composed: true,
+      detail
+    });
+    this.dispatchEvent(e);
+  }
+  /**
+   * @return {Function} Previously registered handler for `oauth2-error` event
+   */
+  get ontokenerror() {
+    return this['_onoauth2-error'];
+  }
+  /**
+   * Registers a callback function for `oauth2-error` event
+   * @param {Function} value A callback to register. Pass `null` or `undefined`
+   * to clear the listener.
+   */
+  set ontokenerror(value) {
+    this._registerCallback('oauth2-error', value);
+  }
+  /**
+   * @return {Function} Previously registered handler for `oauth2-token-response` event
+   */
+  get ontokenresponse() {
+    return this['_onoauth2-token-response'];
+  }
+  /**
+   * Registers a callback function for `oauth2-token-response` event
+   * @param {Function} value A callback to register. Pass `null` or `undefined`
+   * to clear the listener.
+   */
+  set ontokenresponse(value) {
+    this._registerCallback('oauth2-token-response', value);
+  }
+  /**
+   * Registers an event handler for given type
+   * @param {String} eventType Event type (name)
+   * @param {Function} value The handler to register
+   */
+  _registerCallback(eventType, value) {
+    const key = `_on${eventType}`;
+    if (this[key]) {
+      this.removeEventListener(eventType, this[key]);
+    }
+    if (typeof value !== 'function') {
+      this[key] = null;
+      return;
+    }
+    this[key] = value;
+    this.addEventListener(eventType, value);
+  }
+  /**
+   * Fired when OAuth2 token has been received.
+   * Properties of the `detail` object will contain the response from the authentication server.
+   * It will contain the original parameteres but also camel case of the parameters.
+   *
+   * So for example 'implicit' will be in the response as well as `accessToken` with the same
+   * value. The puropse of this is to support JS application that has strict formatting rules
+   * and disallow using '_' in property names. Like ARC.
+   *
+   * @event oauth2-token-response
+   */
+  /**
+   * Fired wne error occurred.
+   * An error may occure when `state` parameter of the OAuth2 response is different from
+   * the requested one. Another example is when the popup window has been closed before it passed
+   * response token. It may happen when the OAuth request was invalid.
+   *
+   * @event oauth2-error
+   * @param {String} message A message that can be displayed to the user.
+   * @param {String} code A message code: `invalid_state` - when `state` parameter is different;
+   * `no_response` when the popup was closed before sendin token data; `response_parse` - when
+   * the response from the code exchange can't be parsed; `request_error` when the request
+   * errored by the transport library. Other status codes are defined in
+   * [rfc6749](https://tools.ietf.org/html/rfc6749).
+   * @param {String} state The `state` parameter either generated by this element
+   * when requesting the token or passed to the element from other element.
+   */
+}
+
+/**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+window.customElements.define('oauth2-authorization', OAuth2Authorization);
+
+/**
+ * @typedef AuthSettings
+ * @property {Boolean} valid
+ * @property {String} type
+ * @property {Object} settings
+ */
+
+/**
+An element to perform OAuth1 authorization and to sign auth requests.
+
+Note that the OAuth1 authorization wasn't designed for browser. Most existing
+OAuth1 implementation deisallow browsers to perform the authorization by
+not allowing POST requests to authorization server. Therefore receiving token
+may not be possible without using browser extensions to alter HTTP request to
+enable CORS.
+If the server disallow obtaining authorization token and secret from clients
+then your application has to listen for `oauth1-token-requested` custom event
+and perform authorization on the server side.
+
+When auth token and secret is available and the user is to perform a HTTP request,
+the request panel sends `before-request` cutom event. This element handles the event
+and apllies authorization header with generated signature to the request.
+
+## OAuth 1 configuration object
+
+Both authorization or request signing requires detailed configuration object.
+This is handled by the request panel. It sets OAuth1 configuration in the `request.auth`
+property.
+
+| Property | Type | Description |
+| ----------------|-------------|---------- |
+| `signatureMethod` | `String` | One of `PLAINTEXT`, `HMAC-SHA1`, `RSA-SHA1` |
+| `requestTokenUri` | `String` | Token request URI. Optional for before request. Required for authorization |
+| `accessTokenUri` | `String` | Access token request URI. Optional for before request. Required for authorization |
+| `authorizationUri` | `String` | User dialog URL. |
+| `consumerKey` | `String` | Consumer key to be used to generate the signature. Optional for before request. |
+| `consumerSecret` | `String` | Consumer secret to be used to generate the signature. Optional for before request. |
+| `redirectUri` | `String` | Redirect URI for the authorization. Optional for before request. |
+| `authParamsLocation` | `String` | Location of the authorization parameters. Default to `authorization` header |
+| `authTokenMethod` | `String` | Token request HTTP method. Default to `POST`. Optional for before request. |
+| `version` | `String` | Oauth1 protocol version. Default to `1.0` |
+| `nonceSize` | `Number` | Size of the nonce word to generate. Default to 32. Unused if `nonce` is set. |
+| `nonce` | `String` | Nonce to be used to generate signature. |
+| `timestamp` | `Number` | Request timestamp. If not set it sets current timestamp |
+| `customHeaders` | `Object` | Map of custom headers to set with authorization request |
+| `type` | `String` | Must be set to `oauth1` or during before-request this object will be ignored. |
+| `token` | `String` | Required for signing requests. Received OAuth token |
+| `tokenSecret` | `String` | Required for signing requests. Received OAuth token secret |
+
+## Error codes
+
+-  `params-error` Oauth1 parameters are invalid
+-  `oauth1-error` OAuth popup is blocked.
+-  `token-request-error` HTTP request to the authorization server failed
+-  `no-response` No response recorded.
+
+## Acknowledgements
+
+- This element uses [jsrsasign](https://github.com/kjur/jsrsasign) library distributed
+under MIT licence.
+- This element uses [crypto-js](https://code.google.com/archive/p/crypto-js/) library
+distributed under BSD license.
+
+## Required dependencies
+
+The `CryptoJS` and `RSAKey` libraries are not included into the element sources.
+If your project do not use this libraries already include it into your project.
+
+This component also uses `URLSearchParams` so provide a polyfill for `URL` and `URLSearchParams`.
+
+```
+npm i cryptojslib jsrsasign
+```
+
+```html
+<script src="../cryptojslib/components/core.js"></script>
+<script src="../cryptojslib/rollups/sha1.js"></script>
+<script src="../cryptojslib/components/enc-base64-min.js"></script>
+<script src="../cryptojslib/rollups/md5.js"></script>
+<script src="../cryptojslib/rollups/hmac-sha1.js"></script>
+<script src="../jsrsasign/lib/jsrsasign-rsa-min.js"></script>
+```
+*/
+if (window) {
+  window.forceJURL = true;
+}
+class OAuth1Authorization extends EventsTargetMixin(LitElement) {
+  get lastIssuedToken() {
+    return this._lastIssuedToken;
+  }
+
+  set lastIssuedToken(value) {
+    const old = this._lastIssuedToken;
+    if (old === value) {
+      return;
+    }
+    this._lastIssuedToken = value;
+    this.dispatchEvent(
+      new CustomEvent('last-issued-token-changed', {
+        detail: {
+          value
+        }
+      })
+    );
+  }
+
+  static get properties() {
+    return {
+      /**
+       * If set, requests made by this element to authorization endpoint will be
+       * prefixed with the proxy value.
+       */
+      proxy: { type: String },
+      /**
+       * Latest valid token exchanged with the authorization endpoint.
+       */
+      lastIssuedToken: { type: Object },
+      /**
+       * OAuth 1 token authorization endpoint.
+       */
+      requestTokenUri: { type: String },
+      /**
+       * Oauth 1 token exchange endpoint
+       */
+      accessTokenUri: { type: String },
+      /**
+       * Oauth 1 consumer key to use with auth request
+       */
+      consumerKey: { type: String },
+      /**
+       * Oauth 1 consumer secret to be used to generate the signature.
+       */
+      consumerSecret: { type: String },
+      /**
+       * A signature generation method.
+       * Once of: `PLAINTEXT`, `HMAC-SHA1` or `RSA-SHA1`
+       */
+      signatureMethod: { type: String },
+      /**
+       * Location of the OAuth authorization parameters.
+       * It can be either `authorization` meaning as a header and
+       * `querystring` to put OAuth parameters to the URL.
+       */
+      authParamsLocation: { type: String },
+      _caseMap: { type: Object },
+      _camelRegex: { type: Object },
+      /**
+       * Returns `application/x-www-form-urlencoded` content type value.
+       */
+      urlEncodedType: { type: String },
+      /**
+       * When set the `before-request` event is not handled by this element
+       */
+      ignoreBeforeRequest: { type: Boolean },
+    };
+  }
+
+  constructor() {
+    super();
+    this._tokenRequestedHandler = this._tokenRequestedHandler.bind(this);
+    this._listenPopup = this._listenPopup.bind(this);
+    this._handleRequest = this._handleRequest.bind(this);
+
+    this.signatureMethod = 'HMAC-SHA1';
+    this.authParamsLocation = 'authorization';
+    this._caseMap = {};
+    this._camelRegex = /([A-Z])/g;
+    this.urlEncodedType = 'application/x-www-form-urlencoded';
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute('aria-hidden', 'true');
+  }
+
+  _attachListeners(node) {
+    node.addEventListener('oauth1-token-requested', this._tokenRequestedHandler);
+    node.addEventListener('before-request', this._handleRequest);
+    window.addEventListener('message', this._listenPopup);
+  }
+
+  _detachListeners(node) {
+    node.removeEventListener('oauth1-token-requested', this._tokenRequestedHandler);
+    node.removeEventListener('before-request', this._handleRequest);
+    window.removeEventListener('message', this._listenPopup);
+  }
+
+  /**
+   * Handles the difference between the old and new API where the `auth` object
+   * of the request is an array.
+   *
+   * @param {Array<Object>|Object|undefined} auth Authorization to process.
+   * @return {Object|undefined} OAuth 1 settings or undefined.
+   */
+  _getAuthSettings(auth) {
+    if (!auth) {
+      return;
+    }
+    if (!Array.isArray(auth)) {
+      auth = [auth];
+    }
+    return auth.find((item) => item.type === 'oauth 1');
+  }
+
+  /**
+   * The `before-request` handler. Creates an authorization header if needed.
+   * Normally `before-request` expects to set a promise on the `detail.promises`
+   * object. But because this taks is sync it skips the promise and manipulate
+   * request object directly.
+   * @param {CustomEvent} e
+   */
+  _handleRequest(e) {
+    if (this.ignoreBeforeRequest) {
+      return;
+    }
+    const request = e.detail;
+    const { auth } = request;
+    const authSettings = this._getAuthSettings(auth);
+    if (!authSettings) {
+      return;
+    }
+    const { settings } = authSettings;
+    try {
+      this._applyBeforeRequestSignature(request, settings);
+    } catch(e) {
+      // eslint-disable-next-line no-console
+      console.warn('Unable to process OAuth 1 authorization', e);
+    }
+  }
+
+  /**
+   * This is similar to `signRequestObject()` fut it accepts the request object
+   * and authorization settings separately and it uses OAuth configuration
+   * from the auth object.
+   *
+   * @param {Object} request ARC/API Console request object
+   * @param {AuthSettings|Array<AuthSettings>} auth Authorization object
+   * @return {Object} Signed request object.
+   */
+  signRequest(request, auth) {
+    const authSettings = this._getAuthSettings(auth);
+    if (!authSettings) {
+      return request;
+    }
+    const settings = authSettings.settings || {};
+    const { token, tokenSecret } = settings;
+    if (!token || !tokenSecret) {
+      return request;
+    }
+    this._applyBeforeRequestSignature(request, settings);
+    return request;
+  }
+
+  /**
+   * Applies OAuth1 authorization header with generated signature for this
+   * request.
+   *
+   * This method expects the `auth` object to be set on the request. The object
+   * is full configuration for the OAuth1 authorization as described in
+   * `auth-methods/oauth1.html` element.
+   *
+   * @param {Object} request ARC request object
+   * @param {String} auth Token request auth object
+   */
+  _applyBeforeRequestSignature(request, auth) {
+    if (!request || !request.method || !request.url) {
+      return;
+    }
+    try {
+      this._prepareOauth(auth);
+    } catch (_) {
+      return;
+    }
+
+    const token = auth.token || this.lastIssuedToken.oauth_token;
+    const tokenSecret = auth.tokenSecret || this.lastIssuedToken.oauth_token_secret;
+    let method = request.method || 'GET';
+    method = method.toUpperCase();
+
+    const withPayload = ['GET', 'HEAD'].indexOf(request.method) === -1;
+    let body;
+    if (withPayload && request.headers && request.payload) {
+      let contentType$1;
+      try {
+        contentType$1 = contentType(request.headers);
+      } catch (e) {
+        // ...
+      }
+      if (contentType$1 && contentType$1.indexOf(this.urlEncodedType) === 0) {
+        body = request.payload;
+      }
+    }
+    const orderedParameters = this._prepareParameters(token, tokenSecret, method, request.url, {}, body);
+    if (this.authParamsLocation === 'authorization') {
+      const authorization = this._buildAuthorizationHeaders(orderedParameters);
+      try {
+        request.headers = replace(request.headers, 'authorization', authorization);
+      } catch (_) {
+        // ...
+      }
+    } else {
+      request.url = this._buildAuthorizationQueryStirng(request.url, orderedParameters);
+    }
+  }
+  /**
+   * A handler for the `oauth1-token-requested` event.
+   * Performs OAuth1 authorization for given settings.
+   *
+   * The detail object of the event contains OAuth1 configuration as described
+   * in `auth-methods/oauth1.html`element.
+   *
+   * @param {CustomEvent} e
+   */
+  _tokenRequestedHandler(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    this.authorize(e.detail);
+  }
+  /**
+   * Performs a request to authorization server.
+   *
+   * @param {Object} settings Oauth1 configuration. See description for more
+   * details or `auth-methods/oauth1.html` element that collectes configuration
+   * from the user.
+   */
+  authorize(settings) {
+    try {
+      this._prepareOauth(settings);
+    } catch (e) {
+      this._dispatchError('Unable to authorize: ' + e.message, 'params-error');
+      return;
+    }
+    this.getOAuthRequestToken()
+      .then((temporaryCredentials) => {
+        this.temporaryCredentials = temporaryCredentials;
+        const authorizationUri = settings.authorizationUri + '?oauth_token=' + temporaryCredentials.oauth_token;
+        this.popupClosedProperly = undefined;
+        this._popup = window.open(authorizationUri, 'api-console-oauth1');
+        if (!this._popup) {
+          // popup blocked.
+          this._dispatchError('Authorization popup is blocked', 'popup-blocked');
+          return;
+        }
+        this._next = 'exchange-token';
+        this._popup.window.focus();
+        this._observePopupState();
+      })
+      .catch((e) => {
+        const msg = e.message || 'Unknown error when getting the token';
+        this._dispatchError(msg, 'token-request-error');
+      });
+  }
+  /**
+   * Sets a configuration properties on this element from passed settings.
+   *
+   * @param {Object} params See description for more
+   * details or `auth-methods/oauth1.html` element that collectes configuration
+   * from the user.
+   */
+  _prepareOauth(params) {
+    if (params.signatureMethod) {
+      const signMethod = params.signatureMethod;
+      if (['PLAINTEXT', 'HMAC-SHA1', 'RSA-SHA1'].indexOf(signMethod) === -1) {
+        throw new Error('Unsupported signature method: ' + signMethod);
+      }
+      if (signMethod === 'RSA-SHA1') {
+        this._privateKey = params.consumerSecret;
+      }
+      this.signatureMethod = signMethod;
+    }
+    if (params.requestTokenUri) {
+      this.requestTokenUri = params.requestTokenUri;
+    }
+    if (params.accessTokenUri) {
+      this.accessTokenUri = params.accessTokenUri;
+    }
+    if (params.consumerKey) {
+      this.consumerKey = params.consumerKey;
+    }
+    if (params.consumerSecret) {
+      this.consumerSecret = params.consumerSecret;
+    }
+    if (params.redirectUri) {
+      this._authorizeCallback = params.redirectUri;
+    }
+    if (params.authParamsLocation) {
+      this.authParamsLocation = params.authParamsLocation;
+    } else {
+      this.authParamsLocation = 'authorization';
+    }
+    if (params.authTokenMethod) {
+      this.authTokenMethod = params.authTokenMethod;
+    } else {
+      this.authTokenMethod = 'POST';
+    }
+    this._version = params.version || '1.0';
+    this._nonceSize = params.nonceSize || 32;
+    this._nonce = params.nonce;
+    this._timestamp = params.timestamp;
+    this._headers = params.customHeaders || this._defaultHeaders();
+    this._oauthParameterSeperator = ',';
+  }
+  /**
+   * List of default headers to send with auth request.
+   *
+   * @return {Object} Map of default headers.
+   */
+  _defaultHeaders() {
+    return {
+      'Accept': '*/*',
+      'Connection': 'close',
+      'User-Agent': 'Advanced REST Client authorization'
+    };
+  }
+  /**
+   * Returns current timestamp.
+   *
+   * @return {Number} Current timestamp
+   */
+  getTimestamp() {
+    return Math.floor(new Date().getTime() / 1000);
+  }
+  /**
+   * URL encodes the string.
+   *
+   * @param {String} toEncode A string to encode.
+   * @return {String} Encoded string
+   */
+  encodeData(toEncode) {
+    if (!toEncode) {
+      return '';
+    }
+    const result = encodeURIComponent(toEncode);
+    return this._finishEncodeParams(result);
+  }
+  /**
+   * Normalizes url encoded values as defined in the OAuth 1 spec.
+   *
+   * @param {String} url URI encoded params.
+   * @return {String} Normalized params.
+   */
+  _finishEncodeParams(url) {
+    return url
+      .replace(/!/g, '%21')
+      .replace(/'/g, '%27')
+      .replace(/\(/g, '%28')
+      .replace(/\)/g, '%29')
+      .replace(/\*/g, '%2A');
+  }
+
+  /**
+   * URL decodes data.
+   * Also replaces `+` with ` ` (space).
+   *
+   * @param {String} toDecode String to decode.
+   * @return {String} Decoded string
+   */
+  decodeData(toDecode) {
+    if (!toDecode) {
+      return '';
+    }
+    toDecode = toDecode.replace(/\+/g, ' ');
+    return decodeURIComponent(toDecode);
+  }
+  /**
+   * Computes signature for the request.
+   *
+   * @param {String} signatureMethod Method to use to generate the signature.
+   * Supported are: `PLAINTEXT`, `HMAC-SHA1`, `RSA-SHA1`. It throws an error if
+   * value of this property is other than listed here.
+   * @param {String} requestMethod Request HTTP method.
+   * @param {String} url Request full URL.
+   * @param {Object} oauthParameters Map of oauth parameters.
+   * @param {?String} tokenSecret Optional, token secret.
+   * @return {String} Generated OAuth1 signature for given `signatureMethod`
+   * @param {?String} body Body used with the request. Note: this parameter
+   * can only be set if the request's content-type header equals
+   * `application/x-www-form-urlencoded`.
+   * @throws Error when `signatureMethod` is not one of listed here.
+   */
+  getSignature(signatureMethod, requestMethod, url, oauthParameters, tokenSecret, body) {
+    let signatureBase;
+    let key;
+    if (signatureMethod !== 'PLAINTEXT') {
+      signatureBase = this.createSignatureBase(requestMethod, url, oauthParameters, body);
+    }
+    if (signatureMethod !== 'RSA-SHA1') {
+      key = this.createSignatureKey(this.consumerSecret, tokenSecret);
+    }
+
+    switch (signatureMethod) {
+      case 'PLAINTEXT':
+        return this._createSignaturePlainText(key);
+      case 'RSA-SHA1':
+        return this._createSignatureRsaSha1(signatureBase, this._privateKey);
+      case 'HMAC-SHA1':
+        return this._createSignatureHamacSha1(signatureBase, key);
+      default:
+        throw new Error('Unknown signature method');
+    }
+  }
+  /**
+   * Normalizes URL to base string URI as described in
+   * https://tools.ietf.org/html/rfc5849#section-3.4.1.2
+   *
+   * @param {String} url Request full URL.
+   * @return {String} Base String URI
+   */
+  _normalizeUrl(url) {
+    const parsedUrl = new URL(url);
+    let port = '';
+    if (parsedUrl.port) {
+      if (
+        (parsedUrl.protocol === 'http:' && parsedUrl.port !== '80') ||
+        (parsedUrl.protocol === 'https:' && parsedUrl.port !== '443')
+      ) {
+        port = ':' + parsedUrl.port;
+      }
+    }
+    if (!parsedUrl.pathname || parsedUrl.pathname === '') {
+      parsedUrl.pathname = '/';
+    }
+    return parsedUrl.protocol + '//' + parsedUrl.hostname + port + parsedUrl.pathname;
+  }
+
+  /**
+   * @param {String} parameter Parameter name (key).
+   * @return {Boolean} True if the `parameter` is an OAuth 1 parameter.
+   */
+  _isParameterNameAnOAuthParameter(parameter) {
+    return !!(parameter && parameter.indexOf('oauth_') === 0);
+  }
+  /**
+   * Creates an Authorization header value to trasmit OAuth params in headers
+   * as described in https://tools.ietf.org/html/rfc5849#section-3.5.1
+   *
+   * @param {Array} orderedParameters Oauth parameters that are already
+   * ordered.
+   * @return {String} The Authorization header value
+   */
+  _buildAuthorizationHeaders(orderedParameters) {
+    let authHeader = 'OAuth ';
+    const params = [];
+    orderedParameters.forEach((item) => {
+      if (!this._isParameterNameAnOAuthParameter(item[0])) {
+        return;
+      }
+      params.push(this.encodeData(item[0]) + '="' + this.encodeData(item[1]) + '"');
+    });
+    authHeader += params.join(this._oauthParameterSeperator + ' ');
+    return authHeader;
+  }
+  /**
+   * Creates a body for www-urlencoded content type to transmit OAuth params
+   * in request body as described in
+   * https://tools.ietf.org/html/rfc5849#section-3.5.2
+   *
+   * @param {Array} orderedParameters Oauth parameters that are already
+   * ordered.
+   * @return {String} The body to send
+   */
+  _buildFormDataParameters(orderedParameters) {
+    const result = [];
+    orderedParameters.forEach((item) => {
+      if (!this._isParameterNameAnOAuthParameter(item[0])) {
+        return;
+      }
+      result.push(this.encodeData(item[0]) + '=' + this.encodeData(item[1]));
+    });
+    return result.join('&');
+  }
+  /**
+   * Adds query paramteres with OAuth 1 parameters to the URL
+   * as described in https://tools.ietf.org/html/rfc5849#section-3.5.3
+   *
+   * @param {String} url
+   * @param {Array} orderedParameters Oauth parameters that are already
+   * ordered.
+   * @return {String} URL to use with the request
+   */
+  _buildAuthorizationQueryStirng(url, orderedParameters) {
+    const parser = new URL(url);
+    orderedParameters.forEach((item) => {
+      parser.searchParams.append(item[0], item[1]);
+    });
+    return parser.toString();
+  }
+  // Takes an object literal that represents the arguments, and returns an array
+  // of argument/value pairs.
+  _makeArrayOfArgumentsHash(argumentsHash) {
+    const argumentPairs = [];
+    Object.keys(argumentsHash).forEach(function(key) {
+      const value = argumentsHash[key];
+      if (Array.isArray(value)) {
+        for (let i = 0, len = value.length; i < len; i++) {
+          argumentPairs[argumentPairs.length] = [key, value[i]];
+        }
+      } else {
+        argumentPairs[argumentPairs.length] = [key, value];
+      }
+    });
+    return argumentPairs;
+  }
+
+  // Sorts the encoded key value pairs by encoded name, then encoded value
+  _sortRequestParams(argumentPairs) {
+    // Sort by name, then value.
+    argumentPairs.sort(function(a, b) {
+      if (a[0] === b[0]) {
+        return a[1] < b[1] ? -1 : 1;
+      } else {
+        return a[0] < b[0] ? -1 : 1;
+      }
+    });
+    return argumentPairs;
+  }
+  /**
+   * Sort function to sort parameters as described in
+   * https://tools.ietf.org/html/rfc5849#section-3.4.1.3.2
+   * @param {String} a
+   * @param {String} b
+   * @return {Number}
+   */
+  _sortParamsFunction(a, b) {
+    if (a[0] === b[0]) {
+      return String(a[1]).localeCompare(String(b[1]));
+    }
+    return String(a[0]).localeCompare(String(b[0]));
+  }
+  /**
+   * Normalizes request parameters as described in
+   * https://tools.ietf.org/html/rfc5849#section-3.4.1.3.2
+   *
+   * @param {Array} args List of parameters to normalize. It must contain
+   * a list of array items where first element of the array is parameter name
+   * and second is parameter value.
+   * @return {String} Normalized parameters to string.
+   */
+  _normaliseRequestParams(args) {
+    const len = args.length;
+    let i = 0;
+    // First encode them #3.4.1.3.2 .1
+    for (; i < len; i++) {
+      args[i][0] = this.encodeData(args[i][0]);
+      args[i][1] = this.encodeData(args[i][1]);
+    }
+    // Then sort them #3.4.1.3.2 .2
+    args.sort(this._sortParamsFunction);
+    // Then concatenate together #3.4.1.3.2 .3 & .4
+    const result = [];
+    args.forEach((pair) => {
+      if (pair[0] === 'oauth_signature') {
+        return;
+      }
+      result.push(pair[0] + '=' + String(pair[1]));
+    });
+    return result.join('&');
+  }
+  /**
+   * Computes array of parameters from the request URL.
+   *
+   * @param {String} url Full request URL
+   * @return {Array} Array of parameters where each item is an array with
+   * first element as a name of the parameter and second element as a value.
+   */
+  _listQueryParameters(url) {
+    const parsedUrl = new URL(url);
+    const result = [];
+    parsedUrl.searchParams.forEach((value, key) => {
+      result[result.length] = [this.decodeData(key), this.decodeData(value)];
+    });
+    return result;
+  }
+  /**
+   * Computes array of parameters from the entity body.
+   * The body must be `application/x-www-form-urlencoded`.
+   *
+   * @param {String} body Entity body of `application/x-www-form-urlencoded`
+   * request
+   * @return {Array} Array of parameters where each item is an array with
+   * first element as a name of the parameter and second element as a value.
+   * Keys and values are percent decoded. Additionally each `+` is replaced
+   * with space character.
+   */
+  _formUrlEncodedToParams(body) {
+    if (!body) {
+      return [];
+    }
+    const parts = body.split('&').map((part) => {
+      const pair = part.split('=');
+      const key = this.decodeData(pair[0]);
+      let value = '';
+      if (pair[1]) {
+        value = this.decodeData(pair[1]);
+      }
+      return [key, value];
+    });
+    return parts;
+  }
+  /**
+   * Creates a signature base as defined in
+   * https://tools.ietf.org/html/rfc5849#section-3.4.1
+   *
+   * @param {String} method HTTP method used with the request
+   * @param {String} url Full URL of the request
+   * @param {Object} oauthParams Key - value pairs of OAuth parameters
+   * @param {?String} body Body used with the request. Note: this parameter
+   * can only be set if the request's content-type header equals
+   * `application/x-www-form-urlencoded`.
+   * @return {String} A base string to be used to generate signature.
+   */
+  createSignatureBase(method, url, oauthParams, body) {
+    let allParameter = [];
+    const uriParameters = this._listQueryParameters(url);
+    oauthParams = this._makeArrayOfArgumentsHash(oauthParams);
+    allParameter = uriParameters.concat(oauthParams);
+    if (body) {
+      body = this._formUrlEncodedToParams(body);
+      allParameter = allParameter.concat(body);
+    }
+    allParameter = this._normaliseRequestParams(allParameter);
+    allParameter = this.encodeData(allParameter);
+    url = this.encodeData(this._normalizeUrl(url));
+    return [method.toUpperCase(), url, allParameter].join('&');
+  }
+  /**
+   * Creates a signature key to compute the signature as described in
+   * https://tools.ietf.org/html/rfc5849#section-3.4.2
+   *
+   * @param {String} clientSecret Client secret (consumer secret).
+   * @param {?String} tokenSecret Optional, token secret
+   * @return {String} A key to be used to generate the signature.
+   */
+  createSignatureKey(clientSecret, tokenSecret) {
+    if (!tokenSecret) {
+      tokenSecret = '';
+    } else {
+      tokenSecret = this.encodeData(tokenSecret);
+    }
+    clientSecret = this.encodeData(clientSecret);
+    return clientSecret + '&' + tokenSecret;
+  }
+  /**
+   * Found at http://jsfiddle.net/ARTsinn/6XaUL/
+   *
+   * @param {String} h Hexadecimal input
+   * @return {String} Result of transforming value to string.
+   */
+  hex2b64(h) {
+    const b64map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    const b64pad = '=';
+    let i;
+    let c;
+    let ret = '';
+    for (i = 0; i + 3 <= h.length; i += 3) {
+      c = parseInt(h.substring(i, i + 3), 16);
+      ret += b64map.charAt(c >> 6) + b64map.charAt(c & 63);
+    }
+    if (i + 1 === h.length) {
+      c = parseInt(h.substring(i, i + 1), 16);
+      ret += b64map.charAt(c << 2);
+    } else if (i + 2 === h.length) {
+      c = parseInt(h.substring(i, i + 2), 16);
+      ret += b64map.charAt(c >> 2) + b64map.charAt((c & 3) << 4);
+    }
+    while ((ret.length & 3) > 0) {
+      ret += b64pad;
+    }
+    return ret;
+  }
+  /**
+   * Creates a signature for the PLAINTEXT method.
+   *
+   * In this case the signature is the key.
+   *
+   * @param {String} key Computed signature key.
+   * @return {String} Computed OAuth1 signature.
+   */
+  _createSignaturePlainText(key) {
+    return key;
+  }
+  /**
+   * Creates a signature for the RSA-SHA1 method.
+   *
+   * @param {String} baseText Computed signature base text.
+   * @param {String} privateKey Client private key.
+   * @return {String} Computed OAuth1 signature.
+   */
+  _createSignatureRsaSha1(baseText, privateKey) {
+    /* global RSAKey */
+    const rsa = new RSAKey();
+    rsa.readPrivateKeyFromPEMString(privateKey);
+    const hSig = rsa.sign(baseText, 'sha1');
+    return this.hex2b64(hSig);
+  }
+  /**
+   * Creates a signature for the HMAC-SHA1 method.
+   *
+   * @param {String} baseText Computed signature base text.
+   * @param {String} key Computed signature key.
+   * @return {String} Computed OAuth1 signature.
+   */
+  _createSignatureHamacSha1(baseText, key) {
+    /* global CryptoJS */
+    const hash = CryptoJS.HmacSHA1(baseText, key);
+    return hash.toString(CryptoJS.enc.Base64);
+  }
+  /**
+   * Returns a list of characters that can be used to buid nonce.
+   *
+   * @return {Array<String>}
+   */
+  get nonceChars() {
+    return [
+      'a',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+      'g',
+      'h',
+      'i',
+      'j',
+      'k',
+      'l',
+      'm',
+      'n',
+      'o',
+      'p',
+      'q',
+      'r',
+      's',
+      't',
+      'u',
+      'v',
+      'w',
+      'x',
+      'y',
+      'z',
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+      'F',
+      'G',
+      'H',
+      'I',
+      'J',
+      'K',
+      'L',
+      'M',
+      'N',
+      'O',
+      'P',
+      'Q',
+      'R',
+      'S',
+      'T',
+      'U',
+      'V',
+      'W',
+      'X',
+      'Y',
+      'Z',
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9'
+    ];
+  }
+
+  _getNonce(nonceSize) {
+    const result = [];
+    const chars = this.nonceChars;
+    let charPos;
+    const nonceCharsLength = chars.length;
+
+    for (let i = 0; i < nonceSize; i++) {
+      charPos = Math.floor(Math.random() * nonceCharsLength);
+      result[i] = chars[charPos];
+    }
+    return result.join('');
+  }
+
+  _prepareParameters(token, tokenSecret, method, url, extraParams, body) {
+    const oauthParameters = {
+      oauth_timestamp: this._timestamp || this.getTimestamp(),
+      oauth_nonce: this._nonce || this._getNonce(this._nonceSize),
+      oauth_version: this._version,
+      oauth_signature_method: this.signatureMethod,
+      oauth_consumer_key: this.consumerKey
+    };
+    if (token) {
+      oauthParameters.oauth_token = token;
+    }
+    let sig;
+    if (this._isEcho) {
+      sig = this.getSignature(this.signatureMethod, 'GET', this._verifyCredentials, oauthParameters, tokenSecret, body);
+    } else {
+      if (extraParams) {
+        Object.keys(extraParams).forEach((key) => {
+          oauthParameters[key] = extraParams[key];
+        });
+      }
+      sig = this.getSignature(this.signatureMethod, method, url, oauthParameters, tokenSecret, body);
+    }
+
+    const orderedParameters = this._sortRequestParams(this._makeArrayOfArgumentsHash(oauthParameters));
+    orderedParameters[orderedParameters.length] = ['oauth_signature', sig];
+    return orderedParameters;
+  }
+  // Encodes parameters in the map.
+  encodeUriParams(params) {
+    const result = Object.keys(params).map((key) => {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    });
+    return result.join('&');
+  }
+
+  /**
+   * Creates OAuth1 signature for a `request` object.
+   * The request object must contain:
+   * - `url` - String
+   * - `method` - String
+   * - `headers` - String
+   * It also may contain the `body` property.
+   *
+   * It alters the request object by applying OAuth1 parameters to a set
+   * location (qurey parameters, authorization header, body). This is
+   * controlled by `this.authParamsLocation` property. By default the
+   * parameters are applied to authorization header.
+   *
+   * @param {Object} request ARC request object.
+   * @param {?String} token OAuth token to use to generate the signature.
+   * If not set, then it will use a value from `this.lastIssuedToken`.
+   * @param {?String} tokenSecret OAuth token secret to use to generate the
+   * signature. If not set, then it will use a value from
+   * `this.lastIssuedToken`.
+   * @return {Object} The same object with applied OAuth 1 parameters.
+   */
+  signRequestObject(request, token, tokenSecret) {
+    if (!request || !request.method || !request.url) {
+      return request;
+    }
+    token = token || this.lastIssuedToken.oauth_token;
+    tokenSecret = tokenSecret || this.lastIssuedToken.oauth_token_secret;
+
+    let method = request.method || 'GET';
+    method = method.toUpperCase();
+    const withPayload = ['GET', 'HEAD'].indexOf(request.method) === -1;
+    let body;
+    if (withPayload && request.headers && request.payload) {
+      let contentType$1;
+      try {
+        contentType$1 = contentType(request.headers);
+      } catch (_) {
+        // ...
+      }
+      if (contentType$1 && contentType$1.indexOf(this.urlEncodedType) === 0) {
+        body = request.payload;
+      }
+    }
+    const orderedParameters = this._prepareParameters(token, tokenSecret, method, request.url, {}, body);
+    if (this.authParamsLocation === 'authorization') {
+      const authorization = this._buildAuthorizationHeaders(orderedParameters);
+      try {
+        request.headers = replace(request.headers, 'authorization', authorization);
+      } catch (_) {
+        // ...
+      }
+    } else {
+      request.url = this._buildAuthorizationQueryStirng(request.url, orderedParameters);
+    }
+    this.clearRequestVariables();
+    return request;
+  }
+
+  _performRequest(token, tokenSecret, method, url, extraParams, body, contentType) {
+    const withPayload = ['POST', 'PUT'].indexOf(method) !== -1;
+    const orderedParameters = this._prepareParameters(token, tokenSecret, method, url, extraParams);
+    if (withPayload && !contentType) {
+      contentType = this.urlEncodedType;
+    }
+    const headers = {};
+    if (this.authParamsLocation === 'authorization') {
+      const authorization = this._buildAuthorizationHeaders(orderedParameters);
+      if (this._isEcho) {
+        headers['X-Verify-Credentials-Authorization'] = authorization;
+      } else {
+        headers.authorization = authorization;
+      }
+    } else {
+      url = this._buildAuthorizationQueryStirng(url, orderedParameters);
+    }
+    if (this._headers) {
+      Object.keys(this._headers).forEach((key) => {
+        headers[key] = this._headers[key];
+      });
+    }
+    if (extraParams) {
+      Object.keys(extraParams).forEach((key) => {
+        if (this._isParameterNameAnOAuthParameter(key)) {
+          delete extraParams[key];
+        }
+      });
+    }
+    if (withPayload && extraParams && !body && ['POST', 'PUT'].indexOf(method) !== -1) {
+      body = this.encodeUriParams(extraParams);
+      body = this._finishEncodeParams(body);
+    }
+    if (withPayload && !body) {
+      headers['Content-length'] = '0';
+    }
+    const init = {
+      method: method,
+      headers: headers
+    };
+    if (withPayload && body) {
+      init.payload = body;
+    }
+    let responseHeaders;
+    return this.request(url, init)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Token request error ended with status ' + response.status);
+        }
+        responseHeaders = response.headers;
+        return response.text();
+      })
+      .then((text) => {
+        return {
+          response: text,
+          headers: responseHeaders
+        };
+      });
+  }
+  /**
+   * Exchanges temporary authorization token for authorized token.
+   * When ready this function fires `oauth1-token-response`
+   *
+   * @param {String} token
+   * @param {String} secret
+   * @param {String} verifier
+   * @return {Promise}
+   */
+  getOAuthAccessToken(token, secret, verifier) {
+    const extraParams = {};
+    if (verifier) {
+      extraParams.oauth_verifier = verifier;
+    }
+    const method = this.authTokenMethod;
+    return this._performRequest(token, secret, method, this.accessTokenUri, extraParams)
+      .then((response) => {
+        if (!response.response) {
+          let message = "Couldn't exchange token. ";
+          message += 'Authorization server may be down or CORS is disabled.';
+          throw new Error(message);
+        }
+        const params = {};
+        this._formUrlEncodedToParams(response.response).forEach((pair) => {
+          params[pair[0]] = pair[1];
+        });
+        return params;
+      })
+      .then((tokenInfo) => {
+        this.clearRequestVariables();
+        this.lastIssuedToken = tokenInfo;
+        const e = new CustomEvent('oauth1-token-response', {
+          bubbles: true,
+          composed: true,
+          cancelable: false,
+          detail: tokenInfo
+        });
+        this.dispatchEvent(e);
+      });
+  }
+  /**
+   * Clears variables set for current request after signature has been
+   * generated and token obtained.
+   */
+  clearRequestVariables() {
+    this.temporaryCredentials = undefined;
+    this._timestamp = undefined;
+    this._nonce = undefined;
+  }
+  /**
+   * Requests the authorization server for temporarty authorization token.
+   * This token should be passed to `authorizationUri` as a `oauth_token`
+   * parameter.
+   *
+   * @param {Object} extraParams List of extra parameters to include in the
+   * request.
+   * @return {Promise} A promise resolved to a map of OAuth 1 parameters:
+   * `oauth_token`, `oauth_token_secret`, `oauth_verifier` and
+   * `oauth_callback_confirmed` (for 1.0a version).
+   */
+  getOAuthRequestToken(extraParams) {
+    extraParams = extraParams || {};
+    if (this._authorizeCallback) {
+      extraParams.oauth_callback = this._authorizeCallback;
+    }
+    const method = this.authTokenMethod;
+    return this._performRequest(null, null, method, this.requestTokenUri, extraParams).then((response) => {
+      if (!response.response) {
+        let message = "Couldn't request for authorization token. ";
+        message += 'Authorization server may be down or CORS is disabled.';
+        throw new Error(message);
+      }
+      const params = {};
+      this._formUrlEncodedToParams(response.response).forEach((pair) => {
+        params[pair[0]] = pair[1];
+      });
+      return params;
+    });
+  }
+  /**
+   * Makes a HTTP request.
+   * Before making the request it sends `auth-request-proxy` custom event
+   * with the URL and init object in event's detail object.
+   * If the event is cancelled then it will use detail's `result` value to
+   * return from this function. The `result` must be a Promise that will
+   * resolve to a `Response` object.
+   * Otherwise it will use internall `fetch` implementation.
+   *
+   * @param {String} url An URL to call
+   * @param {Object} init Init object that will be passed to a `Request`
+   * object.
+   * @return {Promise} A promise that resolves to a `Response` object.
+   */
+  request(url, init) {
+    const e = new CustomEvent('auth-request-proxy', {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+      detail: {
+        url: url,
+        init: init
+      }
+    });
+    this.dispatchEvent(e);
+    return e.defaultPrevented ? e.detail.result : this._fetch(url, init);
+  }
+  /**
+   * Performs a HTTP request.
+   * If `proxy` is set or `iron-meta` with a key `auth-proxy` is set then
+   * it will prefix the URL with the value of proxy.
+   *
+   * @param {String} url An URL to call
+   * @param {Object} init Init object that will be passed to a `Request`
+   * object.
+   * @return {Promise} A promise that resolves to a `Response` object.
+   */
+  _fetch(url, init) {
+    let proxy;
+    if (this.proxy) {
+      proxy = this.proxy;
+    } else {
+      proxy = document.createElement('iron-meta').byKey('auth-proxy');
+    }
+    if (proxy) {
+      url = proxy + url;
+    }
+    init.mode = 'cors';
+    return fetch(url, init);
+  }
+
+  _listenPopup(e) {
+    if (
+      !location ||
+      !e.source ||
+      !this._popup ||
+      e.origin !== location.origin ||
+      e.source.location.href !== this._popup.location.href
+    ) {
+      return;
+    }
+    const tokenInfo = e.data;
+    this.popupClosedProperly = true;
+    switch (this._next) {
+      case 'exchange-token':
+        this.getOAuthAccessToken(
+          tokenInfo.oauthToken,
+          this.temporaryCredentials.oauth_token_secret,
+          tokenInfo.oauthVerifier
+        );
+        break;
+    }
+    this._popup.close();
+  }
+
+  // Observer if the popup has been closed befor the data has been received.
+  _observePopupState() {
+    const popupCheckInterval = setInterval(() => {
+      if (!this._popup || this._popup.closed) {
+        clearInterval(popupCheckInterval);
+        this._beforePopupUnloadHandler();
+      }
+    }, 500);
+  }
+
+  _beforePopupUnloadHandler() {
+    if (this.popupClosedProperly) {
+      return;
+    }
+    this._popup = undefined;
+    this._dispatchError('No response has been recorded.', 'no-response');
+  }
+  /**
+   * Dispatches an error event that propagates through the DOM.
+   *
+   * @param {String} message
+   * @param {String} code
+   */
+  _dispatchError(message, code) {
+    const e = new CustomEvent('oauth1-error', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        message: message,
+        code: code
+      }
+    });
+    this.dispatchEvent(e);
+  }
+  /**
+   * Adds camel case keys to a map of parameters.
+   * It adds new keys to the object tranformed from `oauth_token`
+   * to `oauthToken`
+   *
+   * @param {Object} obj
+   * @return {Object}
+   */
+  parseMapKeys(obj) {
+    Object.keys(obj).forEach((key) => this._parseParameter(key, obj));
+    return obj;
+  }
+  /**
+   * Parses a query parameter object to produce camel case map of parameters.
+   * This sets values to the `settings` object which is passed by reference.
+   * No need to return value.
+   *
+   * @param {String} param Key in the `settings` object.
+   * @param {Object} settings Parameters.
+   * @return {Object}
+   */
+  _parseParameter(param, settings) {
+    if (!(param in settings)) {
+      return settings;
+    }
+    const value = settings[param];
+    let oauthParam;
+    if (this._caseMap[param]) {
+      oauthParam = this._caseMap[param];
+    } else {
+      oauthParam = this._getCaseParam(param);
+    }
+    settings[oauthParam] = value;
+  }
+
+  _getCaseParam(param) {
+    return 'oauth_' + param.replace(this._camelRegex, '_$1').toLowerCase();
+  }
+
+  /**
+   * Fired when authorization is unsuccessful
+   *
+   * @event oauth1-error
+   * @param {String} message Human readable error message
+   * @param {String} code Error code associated with the error. See description
+   * of the element fo code mening.
+   */
+
+  /**
+   * Fired when the authorization is successful and token and secret are ready.
+   *
+   * @event oauth1-token-response
+   * @param {String} oauth_token Received OAuth1 token
+   * @param {String} oauth_token_secret Received OAuth1 token secret
+   */
+
+  /**
+   * Dispatched when the component requests to proxy authorization request
+   * through proxy. If the application decide to proxy the request it must
+   * cancel the events.
+   *
+   * The handler must set `event.detail.result` property to be a `Promise`
+   * with call result that will be reported to the application.
+   *
+   * It can be used to proxy CORS requests if the application can support this
+   * case.
+   *
+   * @event auth-request-proxy
+   * @param {String} url The request URL
+   * @param {Object} init The same `init` object as the one used to initialize
+   * `Request` object for fetch API.
+   */
+}
+
+/**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+window.customElements.define('oauth1-authorization', OAuth1Authorization);
+
+var styles$h = css`
+:host{
+  display: block;
+  width: 100%;
+}
+
+:host([hidden]) {
+  display: none;
+}
+
+.api-server-dropdown, .uri-input {
+  width: calc(100% - 16px);
+  max-width: 700px;
+  min-width: 280px;
+}
+
+.icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+`;
+
+/** @typedef {import('lit-html').TemplateResult} TemplateResult */
+
+/**
+ * @typedef {Object} SelectionInfo
+ * @property {String} type Type of detected selection
+ * @property {String} value Normalized value to be used as editor value
+ */
+
+const apiChangeEventType = 'apiserverchanged';
+const serverCountEventType = 'serverscountchanged';
+
+/**
+ * `api-server-selector`
+ * An element to generate view model for server
+ * elements from AMF model
+ *
+ * This component receives an AMF model, and selected node's id and type
+ * to know which servers to render
+ *
+ * When the selected server changes, it dispatches an `api-server-changed`
+ * event, with the following details:
+ * - Server value: the server id (for listed servers in the model), the URI
+ *    value (when custom base URI is selected), or the value of the `anypoint-item`
+ *    component rendered into the extra slot
+ * - Selected type: `server` | `custom` | `extra`
+ *    - `server`: server from the AMF model
+ *    - `custom`: custom base URI input change
+ *    - `extra`: extra slot's anypoint-item `value` attribute (see below)
+ *
+ * Adding extra slot:
+ * This component renders a `slot` element to render anything the users wants
+ * to add in there. To enable this, sit the `extraOptions` value in this component
+ * to true, and render an element associated to the slot name `custom-base-uri`.
+ * The items rendered in this slot should be `anypoint-item` components, and have a
+ * `value` attribute. This is the value that will be dispatched in the `api-server-changed`
+ * event.
+ *
+ *
+ *
+ * @customElement
+ * @demo demo/index.html
+ * @mixes AmfHelperMixin
+ * @mixes EventTargetMixin
+ * @extends LitElement
+ */
+class ApiServerSelector extends AmfHelperMixin(LitElement) {
+  static get properties() {
+    return {
+      /**
+       * The baseUri to override any server definition
+       */
+      baseUri: { type: String },
+
+      /**
+       * When set the `Custom base URI` is rendered in the dropdown
+       */
+      allowCustom: { type: Boolean, reflect: true },
+
+      /**
+       * The current list of servers to render
+       */
+      servers: { type: Array },
+
+      /**
+       * Currently selected type of the input.
+       * `server` | `uri` | `custom`
+       */
+      type: { type: String },
+
+      /**
+       * Current value of the server
+       */
+      value: { type: String },
+
+      /**
+       * Enables outlined material theme
+       */
+      outlined: { type: Boolean },
+
+      /**
+       * Enables compatibility with the anypoint platform
+       */
+      compatibility: { type: Boolean },
+
+      /**
+       * Holds the size of rendered custom servers.
+       */
+      _customNodesCount: { type: Number },
+
+      /**
+       * When set it automaticallt selected the first server from the list
+       * of servers when selection is missing.
+       */
+      autoSelect: { type: Boolean },
+
+      /**
+       * A programmatic access to the opened state of the drop down.
+       * Note, this does nothing when custom element is rendered.
+       */
+      opened: { type: Boolean },
+
+      /**
+       * An `@id` of selected AMF shape.
+       * When changed, it computes servers for the selection
+       */
+      selectedShape: { type: String },
+      /**
+       * The type of the selected AMF shape.
+       * When changed, it computes servers for the selection
+       */
+      selectedShapeType: { type: String },
+    };
+  }
+
+  get styles() {
+    return styles$h;
+  }
+
+  /**
+   * @return {Array<String>} Computed list of all URI values from both the servers
+   * and the list of rendered custom items.
+   */
+  get _serverValues() {
+    const result = (this.servers || []).map((item) => this._getServerUri(item));
+    return result.concat(this._customItems || []);
+  }
+
+  /**
+   * @param {Array<Object>} value List of servers to set
+   */
+  set servers(value) {
+    const old = this._servers;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+
+    this._servers = value;
+    this._updateServerSelection(value);
+    this.requestUpdate('servers', old);
+    this._notifyServersCount();
+  }
+
+  get servers() {
+    return this._servers || [];
+  }
+
+  get allowCustom() {
+    return this._allowCustom;
+  }
+
+  set allowCustom(value) {
+    const old = this.allowCustom;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+
+    this._allowCustom = value;
+    this._notifyServersCount();
+    this.requestUpdate('allowCustom', old);
+    if (!value && this.isCustom && !this._baseUri) {
+      this._resetSelection();
+    }
+  }
+
+  get baseUri() {
+    return this._baseUri;
+  }
+
+  set baseUri(value) {
+    const old = this._baseUri;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this.type = 'custom';
+    this.value = value;
+    this._baseUri = value;
+    this.requestUpdate('baseUri', old);
+  }
+
+  /**
+   * @return {String} Current base URI value from either (in order) the baseUri,
+   * current value, or just empty string.
+   */
+  get value() {
+    return this.baseUri || this._value || '';
+  }
+
+  /**
+   * Sets currenlty rendered value.
+   * If the value is not one of the drop down options then it renders custom control.
+   *
+   * This can be used to programatically set a value of the control.
+   *
+   * @param {String} value The value to render.
+   */
+  set value(value) {
+    if (this.baseUri) {
+      return;
+    }
+    const old = this._value;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._value = value;
+    this._setValue(value);
+    this.requestUpdate('value', old);
+  }
+
+  /**
+   * Async function to set value after component has finished updating
+   * @param {String} value
+   * @return {Promise<void>}
+   * @private
+   */
+  async _setValue(value) {
+    await this.updateComplete;
+    const { type, value: effectiveValue } = this._selectionInfo(value);
+    if (type === 'custom' && !this.allowCustom) {
+      return;
+    }
+    if (this.type !== type) {
+      this.type = type;
+    }
+    this.dispatchEvent(
+      new CustomEvent(apiChangeEventType, {
+        detail: {
+          value: effectiveValue,
+          type: this.type,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  /**
+   * @return {Boolean} True if selected type is "custom" type.
+   */
+  get isCustom() {
+    return this.type === 'custom';
+  }
+
+  /**
+   * Checks whether the current value is a custom value related to current list of servers.
+   * @return {Boolean} True if the value is not one of the server values or custom
+   * servers.
+   */
+  get isValueCustom() {
+    const { servers = [], value } = this;
+    if (!value) {
+      return false;
+    }
+    const srv = this._getServerIndexByUri(servers, value);
+    if (srv !== -1) {
+      return false;
+    }
+    return this._serverValues.indexOf(value) === -1;
+  }
+
+  /**
+   * @return {EventListenerObject|null} Previously registed callback function for
+   * the `api-server-changed` event.
+   */
+  get onapiserverchange() {
+    return this._onapiserverchange;
+  }
+
+  /**
+   * @param {EventListenerObject} value A callback function to be called
+   * when `api-server-changed` event is dispatched.
+   */
+  set onapiserverchange(value) {
+    const old = this._onapiserverchange;
+    if (old) {
+      this.removeEventListener(apiChangeEventType, old);
+    }
+    const isFn = typeof value === 'function';
+    if (isFn) {
+      this._onapiserverchange = value;
+      this.addEventListener(apiChangeEventType, value);
+    } else {
+      this._onapiserverchange = null;
+    }
+  }
+
+  /**
+   * @return {EventListenerObject|null} Previously registed callback function for
+   * the `servers-count-changed` event.
+   */
+  get onserverscountchange() {
+    return this._onserverscountchange || null;
+  }
+
+  /**
+   * @param {EventListenerObject} value A callback function to be called
+   * when `servers-count-changed` event is dispatched.
+   */
+  set onserverscountchange(value) {
+    const old = this._onserverscountchange;
+    if (old) {
+      this.removeEventListener(serverCountEventType, old);
+    }
+    const isFn = typeof value === 'function';
+    if (isFn) {
+      this._onserverscountchange = value;
+      this.addEventListener(serverCountEventType, value);
+    } else {
+      this._onserverscountchange = null;
+    }
+  }
+
+  /**
+   * @return {Number} Total number of list items being rendered.
+   */
+  get _serversCount() {
+    const { allowCustom, servers, _customNodesCount } = this;
+    const offset = allowCustom ? 1 : 0;
+    const serversCount = servers.length + _customNodesCount + offset;
+    return serversCount;
+  }
+
+  /**
+   * Sets new selectedShape, then tries to update servers
+   * @param {String} value AMF shape id
+   */
+  set selectedShape(value) {
+    const old = this._selectedShape;
+    if (old === value) {
+      return;
+    }
+    this._selectedShape = value;
+    const type = this.selectedShapeType;
+    this._handleShapeChange(value, type);
+    this.requestUpdate('selectedShape', old);
+  }
+
+  get selectedShape() {
+    return this._selectedShape;
+  }
+
+  /**
+   * Sets new selectedShapeType, then tries to update servers
+   * @param {String} value AMF shape type
+   */
+  set selectedShapeType(value) {
+    const old = this._selectedShapeType;
+    if (old === value) {
+      return;
+    }
+    this._selectedShapeType = value;
+    const id = this.selectedShape;
+    this._handleShapeChange(id, value);
+    this.requestUpdate('_selectedShapeType', old);
+  }
+
+  get selectedShapeType() {
+    return this._selectedShapeType;
+  }
+
+  /**
+   * Receives shape id and shape type, and looks for endpointId
+   * if the type is 'endpoint'
+   * @param {String} id AMF shape id
+   * @param {String} type AMF shape type
+   * @private
+   */
+  _handleShapeChange(id, type) {
+    let endpointId;
+    if (type === 'endpoint') {
+      endpointId = this._getEndpointIdForMethod(id);
+    }
+    this.updateServers({ id, type, endpointId });
+  }
+
+  /**
+   * Computes the endpoint id based on a given method id
+   * Returns undefined is endpoint is not found
+   * @param {String} methodId The AMF id of the method
+   * @return {String|undefined}
+   * @private
+   */
+  _getEndpointIdForMethod(methodId) {
+    const webApi = this._computeWebApi(this.amf);
+    let endpoint = this._computeMethodEndpoint(webApi, methodId);
+    if (Array.isArray(endpoint)) {
+      endpoint = endpoint[0];
+    }
+    return endpoint ? this._getValue(endpoint, '@id') : undefined;
+  }
+
+  constructor() {
+    super();
+    this._customNodesCount = 0;
+    this.value = '';
+    this.opened = false;
+
+    /**
+     * A list of custom items rendered in the slot.
+     * This property is received from the list box that mixes in `AnypointSelectableMixin`
+     * that dispatches `items-changed` event when rendered items change.
+     * @type {Array<String>}
+     */
+    this._customItems = [];
+  }
+
+  firstUpdated() {
+    this._notifyServersCount();
+  }
+
+  /**
+   * Dispatches the `servers-count-changed` event with the current number of rendered servers.
+   */
+  _notifyServersCount() {
+    const { _serversCount: value } = this;
+    this.dispatchEvent(new CustomEvent(serverCountEventType, { detail: { value } }));
+  }
+
+  /**
+   * A handler called when slotted number of children change.
+   * It sets `_customNodesCount` proeprty with the number of properties
+   * and notifies the change.
+   */
+  _childrenHandler() {
+    const nodes = this._getExtraServers();
+    this._customNodesCount = nodes.length;
+    this._notifyServersCount();
+  }
+
+  /**
+   * @override callback function when AMF change.
+   * This is asynchronous operation.
+   */
+  async __amfChanged() {
+    const { selectedShape, selectedShapeType } = this;
+    this._handleShapeChange(selectedShape, selectedShapeType);
+    await this.updateComplete;
+    this.selectIfNeeded();
+  }
+
+  /**
+   * Executes auto selection logic.
+   * It selects a fist available sever from the serves list when AMF or operation
+   * selection changed.
+   * If there are no servers, but there are custom slots available, then select
+   * first custom slot
+   * When there's already valid selection then it does nothing.
+   */
+  selectIfNeeded() {
+    if (!this.autoSelect || this.isValueCustom) {
+      return;
+    }
+    if (!this.value) {
+      let srv = this.servers[0];
+      if (srv) {
+        this.value = this._getServerUri(srv);
+      } else {
+        srv = this._getExtraServers()[0];
+        if (srv && this.amf) {
+          this.type = 'uri';
+          this.value = srv.getAttribute('value');
+        }
+      }
+
+    }
+  }
+
+  /**
+   * Collects information about selection from the current value.
+   * @param {String} value Current value for the server URI.
+   * @return {SelectionInfo} A selection info object
+   */
+  _selectionInfo(value = '') {
+    const { isCustom } = this;
+    // Default values.
+    const result = {
+      type: 'server',
+      value
+    };
+    if (isCustom) {
+      // prohibits closing the custom input.
+      result.type = 'custom';
+      return result;
+    }
+    if (!value) {
+      // When a value is cleared it is always a server
+      return result;
+    }
+    const values = this._serverValues;
+    const index = values.indexOf(value);
+    if (index === -1) {
+      // no node in the dropdown with this value. Render custom input
+      result.type = 'custom';
+      return result;
+    }
+    const itemValue = values[index];
+    const custom = this._customItems || [];
+    const isSlotted = custom.indexOf(itemValue) !== -1;
+    if (isSlotted) {
+      result.type = 'uri';
+    } else {
+      result.type = 'server';
+    }
+    return result;
+  }
+
+  /**
+   * Takes care of recognizing whether a server selection should be cleared.
+   * This happes when list of servers change and with the new list of server
+   * current selection does not exist.
+   * This ignores the selection when current type is not a `server`.
+   *
+   * @param {Array<Object>} servers List of new servers
+   */
+  _updateServerSelection(servers) {
+    if (!servers || this.type !== 'server') {
+      return;
+    }
+    const index = this._getServerIndexByUri(servers, this.value);
+    if (index === -1) {
+      this._resetSelection();
+    }
+  }
+
+  /**
+   * @param {Array<Object>} servers List of current servers
+   * @param {String} value The value to look for
+   * @return {Number} The index of found server or -1 if none found.
+   */
+  _getServerIndexByUri(servers, value) {
+    for (let i = 0; i < servers.length; i++) {
+      const server = servers[i];
+      if (this._getServerUri(server) === value) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /**
+   * Update component's servers.
+   *
+   * @param {Object=} selectedNodeParams The currently selected node parameters to set the servers for
+   * @param {String} selectedNodeParams.id The selected node ID where servers should be fetched
+   * @param {String} selectedNodeParams.type The selected node type where servers should be fetched
+   * @param {String=} selectedNodeParams.endpointId Optional endpoint id the method id belongs to
+   */
+  updateServers({ id, type, endpointId } = {}) {
+    let methodId;
+    if (type === 'method') {
+      methodId = id;
+    }
+    if (type === 'endpoint') {
+      endpointId = id;
+    }
+    this.servers = this._getServers({ endpointId, methodId });
+  }
+
+  /**
+   * Checks if an AMF node id corresponds to the provided type
+   * @param {String} id AMF node id
+   * @param {String} type AMF node type
+   * @return {boolean}
+   * @private
+   */
+  _isNodeIdOfType(id, type) {
+    const webApi = this._computeWebApi(this.amf);
+    if (type === 'method') {
+      return Boolean(this._computeMethodModel(webApi, id));
+    }
+    if (type === 'endpoint') {
+      const endpointModel = this._computeEndpointModel(webApi, id);
+      return Boolean(endpointModel);
+    }
+    return false;
+  }
+
+  /**
+   * Handler for the listbox's change event
+   * @param {CustomEvent} e
+   */
+  _handleSelectionChanged(e) {
+    const { selectedItem } = /** @type {any} */ (e.target);
+    if (!selectedItem) {
+      return;
+    }
+    let value = selectedItem.getAttribute('value');
+    if (value === 'custom') {
+      this.type = 'custom';
+      value = '';
+    }
+    this.value = value;
+  }
+
+  /**
+   * Retrieves custom base uris elements assigned to the
+   * custom-base-uri slot
+   *
+   * @return {Array<Element>} Elements assigned to custom-base-uri slot
+   */
+  _getExtraServers() {
+    const slot = this.shadowRoot.querySelector('slot');
+    const items = slot ? ( /** @type HTMLSlotElement */ (slot)).assignedElements({ flatten: true }) : [];
+    return items.filter((elm) => elm.hasAttribute('value'));
+  }
+
+  /**
+   * Handler for the input field change.
+   * @param {Event} e
+   */
+  _handleUriChange(e) {
+    const { value } = /** @type HTMLInputElement */ (e.target);
+    this.value = value;
+  }
+
+  /**
+   * Resets current selection to a default value.
+   */
+  _resetSelection() {
+    this.value = '';
+    this.type = 'server';
+    this.selectIfNeeded();
+  }
+
+  /**
+   * Computes the URI of a server.
+   * @param {Object} server Server definition to get the value from.
+   * @return {String} Server base URI.
+   */
+  _getServerUri(server) {
+    const key = this._getAmfKey(this.ns.aml.vocabularies.core.urlTemplate);
+    return this._getValue(server, key);
+  }
+
+  /**
+   * Handler for the drop down's `opened-changed` event. It sets local value
+   * for the opened flag.
+   * @param {CustomEvent} e
+   */
+  _openedHandler(e) {
+    this.opened = e.detail.value;
+  }
+
+  /**
+   * Updates list of custom items rendered in the selector.
+   * @param {CustomEvent} e
+   */
+  _listboxItemsHandler(e) {
+    const { value } = e.detail;
+    if (!Array.isArray(value) || !value.length) {
+      this._customItems = [];
+      return;
+    }
+    const result = [];
+    value.forEach((node) => {
+      const slot = node.getAttribute('slot');
+      if (slot !== 'custom-base-uri') {
+        return;
+      }
+      const value = node.getAttribute('value');
+      if (!value) {
+        return;
+      }
+      result.push(value);
+    });
+    this._customItems = result;
+  }
+
+  render() {
+    const { styles, isCustom } = this;
+    return html`
+    <style>${styles}</style>
+    ${isCustom ? this._uriInputTemplate() : this._renderDropdown()}
+    `;
+  }
+
+  /**
+   * @return {TemplateResult} Template result for the custom input.
+   */
+  _uriInputTemplate() {
+    const { compatibility, outlined, value } = this;
+    return html`
+    <anypoint-input
+      class="uri-input"
+      @input="${this._handleUriChange}"
+      .value="${value}"
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+    >
+      <label slot="label">Base URI</label>
+      <anypoint-icon-button
+        aria-label="Activate to clear and close custom editor"
+        title="Clear and close custom editor"
+        slot="suffix"
+        @click="${this._resetSelection}"
+        ?compatibility="${compatibility}"
+      >
+        <span class="icon">${close}</span>
+      </anypoint-icon-button>
+  </anypoint-input>`;
+  }
+
+  /**
+   * @return {TemplateResult} Template result for the drop down element.
+   */
+  _renderDropdown() {
+    const { compatibility, outlined, value, opened } = this;
+    return html`
+    <anypoint-dropdown-menu
+      class="api-server-dropdown"
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      .opened="${opened}"
+      fitPositionTarget
+      @opened-changed="${this._openedHandler}"
+    >
+      <label slot="label">Select server</label>
+      <anypoint-listbox
+        .selected="${value}"
+        @selected-changed="${this._handleSelectionChanged}"
+        slot="dropdown-content"
+        tabindex="-1"
+        ?compatibility="${compatibility}"
+        ?outlined="${outlined}"
+        attrforselected="value"
+        selectable="[value]"
+        @items-changed="${this._listboxItemsHandler}"
+      >
+        ${this._renderItems()}
+      </anypoint-listbox>
+    </anypoint-dropdown-menu>`;
+  }
+
+  /**
+   * Call the render functions for
+   * - Server options (from AMF Model)
+   * - Custom URI option
+   * - Extra slot
+   * @return {TemplateResult} The combination of all options
+   */
+  _renderItems() {
+    return html`
+      ${this._renderServerOptions()}
+      ${this._renderExtraSlot()}
+      ${this._renderCustomURIOption()}
+    `;
+  }
+
+  /**
+   * @return {TemplateResult|string} Custom URI `anypoint-item`
+   */
+  _renderCustomURIOption() {
+    const { allowCustom, compatibility } = this;
+    if (!allowCustom) {
+      return '';
+    }
+    return html`<anypoint-item
+      class="custom-option"
+      value="custom"
+      ?compatibility="${compatibility}"
+    >Custom base URI</anypoint-item>`;
+  }
+
+  /**
+   * @return {Array<TemplateResult>} Template result for the drop down list
+   * options for current servers
+   */
+  _renderServerOptions() {
+    const { servers, compatibility } = this;
+    const toAnypointItem = (server) => {
+      return html`<anypoint-item
+        value="${this._getServerUri(server)}"
+        ?compatibility="${compatibility}"
+      >
+        ${this._getServerUri(server)}
+      </anypoint-item>`;
+    };
+    return servers ? servers.map(toAnypointItem) : [];
+  }
+
+  /**
+   * @return {TemplateResult} Template result for the `slot` element
+   */
+  _renderExtraSlot() {
+    return html`<slot
+      @slotchange="${this._childrenHandler}"
+      name="custom-base-uri"
+    ></slot>`;
+  }
+}
+
+window.customElements.define('api-server-selector', ApiServerSelector);
+
+var styles$i = css`
+:host {
+  display: block;
+}
+
+.content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content > * {
+  margin: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.panel-warning {
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  color: var(--error-color, #FF7043);
+}
+
+.invalid-info {
+  color: var(--error-color);
+  margin-left: 12px;
+}
+
+paper-spinner {
+  margin-right: 8px;
+}
+
+.action-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.url-editor {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+api-url-editor {
+  flex: 1;
+}
+
+.send-button {
+  white-space: nowrap;
+}
+
+.section-title {
+  margin: 0.83em 8px;
+  letter-spacing: 0.1rem;
+  font-size: 20px;
+  font-weight: 200;
+}
+
+.editor-section {
+  margin: 8px 0;
+}
+
+api-body-editor,
+api-headers-editor,
+api-url-params-editor,
+authorization-panel {
+  margin: 0;
+  padding: 0;
+}
+
+:host([compatibility]) .section-title {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: initial;
+}
+
+:host([narrow]) .content {
+  display: flex;
+  flex-direction: columns;
+}
+
+:host([narrow]) api-url-editor {
+  width: auto;
+}
+
+.url-label {
+  margin: 0 8px;
+  padding: 12px 8px;
+  border-radius: 3px;
+
+  background-color: var(--api-request-editor-readonly-url-background-color, rgba(0, 0, 0, 0.12));
+  color: var(--api-request-editor-readonly-url-color, currentColor);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+`;
+
+/**
 @license
 Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -96871,16 +100401,29 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('@api-components/api-url-data-model/index.js').ApiUrlDataModel} ApiUrlDataModel */
+/** @typedef {import('@api-components/api-authorization/src/ApiAuthorization.js').ApiAuthorization} ApiAuthorization */
+/** @typedef {import('lit-html').TemplateResult} TemplateResult */
+
+/**
+ * @typedef {Object} ServerParameters
+ * @property {String=} id AMF model's ID for currently selected node.
+ * @property {String=} type API Component's internal main selection value.
+ * @property {String=} endpointId If available, current endpoint ID
+ */
+
 /**
  * `api-request-editor`
  *
  * @customElement
  * @demo demo/index.html
- * @appliesMixin EventsTargetMixin
- * @appliesMixin AmfHelperMixin
- * @memberof ApiElements
+ * @mixes AmfHelperMixin
+ * @mixes EventTargetMixin
+ * @mixes HeadersParserMixin
+ * @extends LitElement
  */
-class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
+class ApiRequestEditor extends HeadersParserMixin(AmfHelperMixin(EventsTargetMixin(LitElement))) {
   static get properties() {
     return {
       /**
@@ -96897,6 +100440,12 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
        * The editor is still in the DOM and the `urlInvalid` property still will be set.
        */
       noUrlEditor: { type: Boolean },
+      /**
+       * When set it renders a label with the computed URL.
+       * This intended to be used with `noUrlEditor` set to true.
+       * This way it replaces the editor with a simple label.
+       */
+      urlLabel: { type: Boolean },
       /**
        * A base URI for the API. To be set if RAML spec is missing `baseUri`
        * declaration and this produces invalid URL input. This information
@@ -96989,21 +100538,15 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       invalid: { type: Boolean },
       /**
        * Computed from AMF model for the metod HTTP method name.
-       *
-       * @type {String}
        */
       _httpMethod: { type: String },
       /**
        * Headers for the request.
-       *
-       * @type {String|undefined}
        */
       _headers: { type: String },
       /**
        * Body for the request. The type of the body depends on
-       * defined in the API media type.7
-       *
-       * @type {String|FormData|File}
+       * defined in the API media type.
        */
       _payload: { type: String },
       /**
@@ -97015,26 +100558,18 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       _url: { type: String },
       /**
        * Current content type.
-       *
-       * @type {String|undefined}
        */
       _contentType: { type: String },
       /**
        * Computed value of security scheme from selected method.
-       *
-       * @type {Array<Object>}
        */
       _securedBy: { type: Array },
       /**
        * Computed list of headers in the AMF model
-       *
-       * @type {Array<Object>}
        */
       _apiHeaders: { type: Array },
       /**
        * Defined by the API payload data.
-       *
-       * @type {Array<Object>|undefined}
        */
       _apiPayload: { type: Array },
       /**
@@ -97050,11 +100585,6 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
        * Flag set when the request is being made.
        */
       _loadingRequest: { type: Boolean },
-
-      // Selected by the user auth method (if any)
-      _authMethod: { type: String },
-      // Current authorization settings.
-      _authSettings: { type: Object },
       /**
        * Generated request ID when the request is sent. This value is reported
        * in send and abort events
@@ -97062,12 +100592,10 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       _requestId: { type: String },
       /**
        * Request query parameters view model
-       * @type {Array<Object>}
        */
       _queryModel: { type: Array },
       /**
        * Request path parameters view model
-       * @type {Array<Object>}
        */
       _pathModel: { type: Array },
       /**
@@ -97084,102 +100612,34 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       _urlInvalid: { type: Boolean },
 
       _endpointUri: { type: String },
-      _apiBaseUri: { type: String }
+      _apiBaseUri: { type: String },
+      /**
+       * Holds the value of the currently selected server
+       * Data type: URI
+       */
+      serverValue: { type: String },
+      /**
+       * Holds the type of the currently selected server
+       * Values: `server` | `uri` | `custom`
+       */
+      serverType: { type: String },
+      /**
+       * Optional property to set
+       * If true, the server selector is not rendered
+       */
+      noServerSelector: { type: Boolean },
+      /**
+       * Optional property to set
+       * If true, the server selector custom base URI option is rendered
+       */
+      allowCustomBaseUri: { type: Boolean },
     };
   }
 
   get styles() {
     return [
       apiFormStyles,
-      css`:host {
-        display: block;
-      }
-
-      .content {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .content > * {
-        margin: 0;
-      }
-
-      [hidden] {
-        display: none !important;
-      }
-
-      .panel-warning {
-        width: 16px;
-        height: 16px;
-        margin-left: 4px;
-        color: var(--error-color, #FF7043);
-      }
-
-      .invalid-info {
-        color: var(--error-color);
-        margin-left: 12px;
-      }
-
-      paper-spinner {
-        margin-right: 8px;
-      }
-
-      .action-bar {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        margin-top: 8px;
-      }
-
-      .url-editor {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      api-url-editor {
-        flex: 1;
-      }
-
-      .send-button {
-        white-space: nowrap;
-      }
-
-      .section-title {
-        margin: 0.83em 8px;
-        letter-spacing: 0.1rem;
-        font-size: 20px;
-        font-weight: 200;
-      }
-
-      .editor-section {
-        margin: 8px 0;
-      }
-
-      api-body-editor,
-      api-headers-editor,
-      api-url-params-editor,
-      authorization-panel {
-        margin: 0;
-        padding: 0;
-      }
-
-      :host([compatibility]) .section-title {
-        font-size: 18px;
-        font-weight: 400;
-        letter-spacing: initial;
-      }
-
-      :host([narrow]) .content {
-        display: flex;
-        flex-direction: columns;
-      }
-
-      :host([narrow]) api-url-editor {
-        width: auto;
-      }`
+      styles$i,
     ];
   }
 
@@ -97196,6 +100656,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     this._selected = value;
     this.requestUpdate('selected', old);
     this._selectedChanged();
+    this._updateServers();
   }
 
   get url() {
@@ -97271,32 +100732,108 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     return this._requestId;
   }
 
+  get serversCount() {
+    return this._serversCount;
+  }
+
+  set serversCount(value) {
+    const old = this._serversCount;
+    if (old === value) {
+      return;
+    }
+    this._serversCount = value;
+    this._updateServer();
+    this.requestUpdate('serversCount', old);
+  }
+
+  get serverValue() {
+    return this._serverValue;
+  }
+
+  set serverValue(value) {
+    const old = this._serverValue;
+    if (old === value) {
+      return;
+    }
+    this._serverValue = value;
+    this._updateServer();
+    this.requestUpdate('serverValue', old);
+  }
+
+  get serverType() {
+    return this._serverType;
+  }
+
+  set serverType(value) {
+    const old = this._serverType;
+    if (old === value) {
+      return;
+    }
+    this._serverType = value;
+    this._updateServer();
+    this.requestUpdate('serverType', old);
+  }
+
+  /**
+   * This is the final computed value for the baseUri to propagate downwards
+   * If baseUri is defined, return baseUri
+   * Else, return the selectedServerValue if serverType is not `server`
+   */
+  get effectiveBaseUri() {
+    if (this.baseUri) {
+      return this.baseUri;
+    }
+    if (this.serverType !== 'server') {
+      return this.serverValue;
+    }
+    return '';
+  }
+
+  /**
+   * @return {Boolean} True when there are not enough servers to render the selector
+   */
+  get _serverSelectorHidden() {
+    const { serversCount = 0, noServerSelector } = this;
+    return serversCount < 2 || noServerSelector;
+  }
+
   /**
    * @return {ApiUrlDataModel|null} A reference to `api-url-data-model`
    * if exists in shadow DOM.
    */
   get apiUrlDataModel() {
-    return this.shadowRoot.querySelector('api-url-data-model');
+    return /** @type {ApiUrlDataModel} */ (this.shadowRoot.querySelector('api-url-data-model'));
   }
+
+  /**
+   * @return {ApiAuthorization} A reference to the authorization panel, if exists
+   */
+  get _auth() {
+    return /** @type {ApiAuthorization} */ (this.shadowRoot.querySelector('api-authorization'));
+  }
+
   /**
    * @constructor
    */
   constructor() {
     super();
-    this._authSettingsChanged = this._authSettingsChanged.bind(this);
     this._responseHandler = this._responseHandler.bind(this);
     this._authRedirectChangedHandler = this._authRedirectChangedHandler.bind(this);
+
+    this.urlLabel = false;
+    this.outlined = false;
+    this.compatibility = false;
+    this.readOnly = false;
+    this.disabled = false;
   }
 
   _attachListeners(node) {
-    this.addEventListener('authorization-settings-changed', this._authSettingsChanged);
-    window.addEventListener('api-response', this._responseHandler);
+    node.addEventListener('api-response', this._responseHandler);
     node.addEventListener('oauth2-redirect-uri-changed', this._authRedirectChangedHandler);
   }
 
   _detachListeners(node) {
-    this.removeEventListener('authorization-settings-changed', this._authSettingsChanged);
-    window.removeEventListener('api-response', this._responseHandler);
+    node.removeEventListener('api-response', this._responseHandler);
     node.removeEventListener('oauth2-redirect-uri-changed', this._authRedirectChangedHandler);
   }
   /**
@@ -97309,13 +100846,14 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       modelGenerator.clearCache();
     }
     this._selectedChanged();
+    this._updateServers();
   }
   /**
    * Dispatches bubbling and composed custom event.
    * By default the event is cancelable until `cancelable` property is set to false.
    * @param {String} type Event type
-   * @param {?any} detail A detail to set
-   * @param {?Boolean} cancelable When false the event is not cancelable.
+   * @param {any=} detail A detail to set
+   * @param {Boolean=} cancelable When false the event is not cancelable.
    * @return {CustomEvent}
    */
   _dispatch(type, detail, cancelable) {
@@ -97335,7 +100873,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
   /**
    * Sends usage google analytics event
    * @param {String} action Action description
-   * @param {String} label Event label
+   * @param {String=} label Event label
    * @return {CustomEvent}
    */
   _sendGaEvent(action, label) {
@@ -97353,10 +100891,6 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     this._url = '';
     this._headers = '';
     this._payload = '';
-    const node = this.shadowRoot.querySelector('authorization-panel');
-    if (node) {
-      node.clear();
-    }
     this._dispatch('request-clear-state');
     this._sendGaEvent('Clear request');
   }
@@ -97374,7 +100908,6 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     this._headersInvalid = false;
     this._paramsInvalid = false;
     this._authSettings = undefined;
-    this._authMethod = undefined;
     const method = this._httpMethod = this._getValue(model, this.ns.aml.vocabularies.apiContract.method);
     this._isPayloadRequest = this._computeIsPayloadRequest(method);
     this._securedBy = this._computeSecuredBy(model);
@@ -97417,7 +100950,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     }
     const key = this._getAmfKey(this.ns.aml.vocabularies.security.security);
     let data = model[key];
-    if (data && !(data instanceof Array)) {
+    if (data && !Array.isArray(data)) {
       data = [data];
     }
     return data;
@@ -97482,12 +101015,13 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
    * request or forces authorization and sends the request.
    */
   _sendHandler() {
-    if (this._authInvalid || this._additionalAuth) {
+    if (this._authInvalid) {
       this.authAndExecute();
     } else {
       this.execute();
     }
   }
+
   /**
    * To be called when the user want to execute the request but
    * authorization is invalid (missin values).
@@ -97499,10 +101033,10 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
    */
   authAndExecute() {
     this.__requestAuthAwaiting = true;
-    const panel = this.shadowRoot.querySelector('authorization-panel');
+    const panel = this._auth;
     let result;
     if (panel) {
-      result = panel.forceTokenAuthorization();
+      result = panel.forceAuthorization(false);
     }
     if (!result) {
       const toast = this.shadowRoot.querySelector('#authFormError');
@@ -97578,35 +101112,92 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
       method: (this._httpMethod || 'get').toUpperCase(),
       url: this._url,
       headers: this._headers || '',
-      queryModel: this._queryModel,
-      pathModel: this._pathModel,
-      headersModel: this.shadowRoot.querySelector('api-headers-editor').viewModel
     };
     if (['GET', 'HEAD'].indexOf(result.method) === -1) {
       result.payload = this._payload;
     }
-    if (this._authMethod && this._authSettings) {
-      result.auth = this._authSettings;
-      result.authType = this._authMethod;
+
+    if (this._securedBy) {
+      const node = this._auth;
+      const { settings=[] } = node;
+      if (settings.length) {
+        const params = node.createAuthParams();
+        this._applyAuthorization(result, settings, params);
+        const oa1 = this.shadowRoot.querySelector('oauth1-authorization');
+        oa1.signRequest(result, settings);
+      }
     }
     return result;
   }
+
   /**
-   * Handler for the `authorization-settings-changed` dispatched by
-   * authorization panel. Sets auth settings and executes the request if
-   * any pending if valid.
+   * A function that applies authorization parameters to the request object.
    *
-   * @param {CustomEvent} e
+   * @param {Object} request The request object
+   * @param {Array<Object>} settings The authorization settings from the auth panel
+   * @param {Object} authParams A parameters to apply to the request
+   * @param {Object} authParams.headers A map of headers to apply to the request
+   * @param {Object} authParams.params A map of query parameters to apply to the request
+   * @param {Object} authParams.cookies A map of cookies to apply to the request
    */
-  _authSettingsChanged(e) {
-    this._authMethod = e.detail.type;
-    this._authSettings = e.detail.settings;
-    if (e.detail.valid && this.__requestAuthAwaiting) {
-      this.__requestAuthAwaiting = false;
-      this.execute();
-    }
-    this._reValidate();
+  _applyAuthorization(request, settings, authParams) {
+    request.auth = settings;
+    const { headers, params } = authParams;
+    this._applyQueryParams(request, params);
+    this._applyHeaders(request, headers);
   }
+
+  /**
+   * Applies a map of query parameters to the request object.
+   * @param {Object} request The request object
+   * @param {Object} params A map of query parameters to apply to the request
+   */
+  _applyQueryParams(request, params) {
+    const keys = Object.keys(params);
+    if (!keys.length) {
+      return;
+    }
+    const parser = new UrlParser(request.url);
+    const sparams = parser.searchParams;
+    for (let i = 0, len = keys.length; i < len; i++) {
+      const name = keys[i];
+      const value = params[name];
+      const index = sparams.findIndex((item) => item[0] === name);
+      if (index !== -1) {
+        sparams.splice(index, 1);
+      }
+      sparams.push([name, value]);
+    }
+    parser.searchParams = sparams;
+    request.url = parser.toString();
+  }
+
+  /**
+   * Applies a map of headers to the request object.
+   * @param {Object} request The request object
+   * @param {Object} headers A map of headers to apply to the request
+   */
+  _applyHeaders(request, headers) {
+    const keys = Object.keys(headers);
+    if (!keys.length) {
+      return;
+    }
+    if (request.headers === undefined) {
+      request.headers = '';
+    }
+    const list = this.headersToJSON(request.headers);
+    for (let i = 0, len = keys.length; i < len; i++) {
+      const name = keys[i];
+      const value = headers[name];
+      const index = list.findIndex((item) => item.name === name);
+      if (index !== -1) {
+        list.splice(index, 1);
+      }
+      list.push({ name, value });
+    }
+    request.headers = this.headersToString(list);
+  }
+
   /**
    * Handler for the `api-response` custom event.
    * Clears the loading state.
@@ -97651,7 +101242,7 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
   }
 
   get _sendLabel() {
-    return this._additionalAuth ? 'Authorize and send' : 'Send';
+    return this._authInvalid ? 'Authorize and send' : 'Send';
   }
 
   _apiChanged(e) {
@@ -97717,15 +101308,9 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
 
   async _reValidate() {
     await this.updateComplete;
-    const { _authInvalid, _urlInvalid, _paramsInvalid, _headersInvalid, _authMethod, _authSettings } = this;
+    const { _authInvalid, _urlInvalid, _paramsInvalid, _headersInvalid } = this;
     const state = !!(_authInvalid || _urlInvalid || _headersInvalid || _paramsInvalid);
-    const noOauthToken = _authMethod === 'OAuth 2.0' && (!_authSettings || !_authSettings.accessToken);
     this.invalid = state;
-    if (noOauthToken) {
-      this._additionalAuth = true;
-    } else {
-      this._additionalAuth = false;
-    }
     this.requestUpdate();
   }
 
@@ -97737,179 +101322,407 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
     return (!_pathModel || _pathModel.length === 0) && (!_queryModel || _queryModel.length === 0);
   }
 
+  _authChanged(e) {
+    const valid = e.target.validate();
+    if (valid && this.__requestAuthAwaiting) {
+      this.__requestAuthAwaiting = false;
+      this.execute();
+    }
+    this._authInvalid = !valid;
+    this._reValidate();
+  }
+
+  /**
+   * Computes a current server value for selection made in the server selector.
+   */
+  _updateServer() {
+    const { serverValue, serverType } = this;
+    if (serverType !== 'server') {
+      this.server = undefined;
+    } else {
+      this.server = this._findServerByValue(serverValue);
+    }
+  }
+
+  /**
+   * @param {String} value Server's base URI
+   * @return {Object|undefined} An element associated with the base URI or
+   * undefined if not found.
+   */
+  _findServerByValue(value) {
+    const { servers = [] } = this;
+    return servers.find((server) => this._getServerUri(server) === value);
+  }
+
+  /**
+   * @param {Object} server Server definition.
+   * @return {String|undefined} Value for server's base URI
+   */
+  _getServerUri(server) {
+    const key = this._getAmfKey(this.ns.aml.vocabularies.core.urlTemplate);
+    return this._getValue(server, key);
+  }
+
+  /**
+   * Updates the list of servers for current operation so a server for current
+   * selection can be computed.
+   * @param {ServerParameters=} [params={}]
+   */
+  _updateServers() {
+    const webApi = this._computeWebApi(this.amf);
+    const methodId = this.selected;
+    const endpoint = this._computeMethodEndpoint(webApi, methodId);
+    const endpointId = endpoint ? endpoint['@id'] : '';
+    this.servers = this._getServers({ endpointId, methodId });
+  }
+
+  /**
+   * Handler for the `serverscountchanged` dispatched from the server selector.
+   * @param {CustomEvent} e
+   */
+  _serverCountHandler(e) {
+    const { value } = e.detail;
+    this.serversCount = value;
+  }
+
+  /**
+   * Handler for the `apiserverchanged` dispatched from the server selector.
+   * @param {CustomEvent} e
+   */
+  _serverHandler(e) {
+    const { value, type } = e.detail;
+    this.serverType = type;
+    this.serverValue = value;
+  }
+
   render() {
     const {
+      styles,
+    } = this;
+    return html`<style>${styles}</style>
+    ${this._awareTemplate()}
+    ${this._oauthHandlersTemplate()}
+    ${this._urlDataModelTemplate()}
+    <div class="content">
+      ${this._serverSelectorTemplate()}
+      ${this._urlEditorTemplate()}
+      ${this._urlLabelTemplate()}
+      ${this._paramsEditorTemplate()}
+      ${this._headersEditorTemplate()}
+      ${this._bodyEditorTemplate()}
+      ${this._authTemplate()}
+      ${this._formActionsTemplate()}
+      <paper-toast
+        text="Authorization for this endpoint is required"
+        id="authFormError"
+        horizontal-align="right"
+        horizontal-offset="12"></paper-toast>
+      <uuid-generator id="uuid"></uuid-generator>
+    </div>`;
+  }
+
+  _oauthHandlersTemplate() {
+    const { eventsTarget } = this;
+    return html`
+    <oauth2-authorization .eventsTarget="${eventsTarget}"></oauth2-authorization>
+    <oauth1-authorization .eventsTarget="${eventsTarget}" ignoreBeforeRequest></oauth1-authorization>`;
+  }
+
+  _awareTemplate() {
+    const {
       aware,
+    } = this;
+    if (!aware) {
+      return '';
+    }
+    return html`<raml-aware
+      .scope="${aware}"
+      @api-changed="${this._apiChanged}"></raml-aware>`;
+  }
+
+  _urlDataModelTemplate() {
+    const {
       amf,
-      baseUri,
+      effectiveBaseUri,
       selected,
       server,
       protocols,
       version,
-      noUrlEditor,
-      eventsTarget,
-      redirectUri,
-      noDocs,
-      narrow,
-      allowCustom,
-      allowDisableParams,
-      allowHideOptional,
-      readOnly,
-      disabled,
-      compatibility,
-      outlined,
-      invalid,
-
-      _endpointUri,
-      _apiBaseUri,
-      _pathModel,
-      _queryModel,
-      _securedBy,
-      _apiHeaders,
-      _isPayloadRequest,
-      _apiPayload,
-      _loadingRequest,
-      _contentType,
-      _sendLabel,
-      _hideParamsEditor
     } = this;
-    return html`<style>${this.styles}</style>
-    ${aware ? html`<raml-aware
-      .scope="${aware}"
-      @api-changed="${this._apiChanged}"></raml-aware>` : ''}
-
-    <api-url-data-model
+    return html`<api-url-data-model
       @apibaseuri-changed="${this._apiBaseUriHandler}"
       @pathmodel-changed="${this._pathModelHandler}"
       @querymodel-changed="${this._queryModelHandler}"
       @endpointpath-changed="${this._endpointUriHandler}"
       .amf="${amf}"
-      .apiUri="${baseUri}"
+      .apiUri="${effectiveBaseUri}"
       .selected="${selected}"
-      .server="${ifDefined(server)}"
+      .server="${server}"
       .protocols="${ifDefined(protocols)}"
       .version="${ifDefined(version)}"
-    ></api-url-data-model>
+    ></api-url-data-model>`;
+  }
 
-    <div class="content">
-      <div class="url-editor" ?hidden="${noUrlEditor}">
-        <api-url-editor
-          @value-changed="${this._urlHandler}"
-          @invalid-changed="${this._urlInvalidChanged}"
-          ?required="${!noUrlEditor}"
-          autovalidate
-          .baseUri="${_apiBaseUri}"
-          .endpointPath="${_endpointUri}"
-          .queryModel="${_queryModel}"
-          .pathModel="${_pathModel}"
-          .eventsTarget="${eventsTarget}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-        ></api-url-editor>
-      </div>
+  _urlEditorTemplate() {
+    const {
+      noUrlEditor,
+      _apiBaseUri,
+      _endpointUri,
+      _queryModel,
+      _pathModel,
+      eventsTarget,
+      readOnly,
+      disabled,
+      outlined,
+      compatibility,
+    } = this;
+    return html`<div class="url-editor" ?hidden="${noUrlEditor}">
+      <api-url-editor
+        @value-changed="${this._urlHandler}"
+        @invalid-changed="${this._urlInvalidChanged}"
+        ?required="${!noUrlEditor}"
+        autovalidate
+        .baseUri="${_apiBaseUri}"
+        .endpointPath="${_endpointUri}"
+        .queryModel="${_queryModel}"
+        .pathModel="${_pathModel}"
+        .eventsTarget="${eventsTarget}"
+        .readOnly="${readOnly}"
+        .disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+      ></api-url-editor>
+    </div>`;
+  }
 
-      <div class="editor-section" ?hidden="${_hideParamsEditor}">
-        <api-url-params-editor
-          @invalid-changed="${this._paramsInvalidChanged}"
-          @urimodel-changed="${this._pathModelHandler}"
-          @querymodel-changed="${this._queryModelHandler}"
-          .uriModel="${_pathModel}"
-          .queryModel="${_queryModel}"
-          .noDocs="${noDocs}"
-          ?narrow="${narrow}"
-          ?allowcustom="${allowCustom}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-        ></api-url-params-editor>
-      </div>
+  /**
+   * @return {TemplateResult|string} Template for the request URL label.
+   */
+  _urlLabelTemplate() {
+    const { urlLabel, _url } = this;
+    if (!urlLabel) {
+      return '';
+    }
+    return html`<div class="url-label" title="Current request URL">${_url}</div>`;
+  }
 
-      <div class="editor-section" ?hidden="${!_apiHeaders}">
-        <div role="heading" aria-level="2" class="section-title">Headers</div>
-        <api-headers-editor
-          @contenttype-changed="${this._contentTypeHandler}"
-          @value-changed="${this._headersHandler}"
-          @invalid-changed="${this._headersInvalidChanged}"
-          .eventsTarget="${eventsTarget}"
-          .amf="${amf}"
-          .amfHeaders="${_apiHeaders}"
-          .noDocs="${noDocs}"
-          .isPayload="${_isPayloadRequest}"
-          ?narrow="${narrow}"
-          .readOnly="${readOnly}"
-          .disabled="${disabled}"
-          ?outlined="${outlined}"
-          ?compatibility="${compatibility}"
-          ?allowcustom="${allowCustom}"
-          ?allowDisableParams="${allowDisableParams}"
-          ?allowHideOptional="${allowHideOptional}"
-          autovalidate
-          ></api-headers-editor>
-      </div>
+  _paramsEditorTemplate() {
+    const {
+      _hideParamsEditor,
+      noDocs,
+      narrow,
+      _queryModel,
+      _pathModel,
+      allowCustom,
+      readOnly,
+      disabled,
+      outlined,
+      compatibility,
+    } = this;
+    return html`<div class="editor-section" ?hidden="${_hideParamsEditor}">
+      <api-url-params-editor
+        @invalid-changed="${this._paramsInvalidChanged}"
+        @urimodel-changed="${this._pathModelHandler}"
+        @querymodel-changed="${this._queryModelHandler}"
+        .uriModel="${_pathModel}"
+        .queryModel="${_queryModel}"
+        .noDocs="${noDocs}"
+        ?narrow="${narrow}"
+        ?allowcustom="${allowCustom}"
+        .readOnly="${readOnly}"
+        .disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+      ></api-url-params-editor>
+    </div>`;
+  }
 
-      ${_isPayloadRequest && _apiPayload ? html`
-        <div class="editor-section">
-          <div role="heading" aria-level="2" class="section-title">Body</div>
-          <api-body-editor
-            @value-changed="${this._payloadHandler}"
-            .eventsTarget="${eventsTarget}"
-            .amf="${amf}"
-            .amfBody="${_apiPayload}"
-            ?narrow="${narrow}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            ?outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            .contentType="${_contentType}"
-            ?allowcustom="${allowCustom}"
-            ?allowDisableParams="${allowDisableParams}"
-            ?allowHideOptional="${allowHideOptional}"
-            linenumbers></api-body-editor>
-        </div>` : ''}
+  _headersEditorTemplate() {
+    const {
+      _apiHeaders,
+      noDocs,
+      narrow,
+      eventsTarget,
+      amf,
+      allowCustom,
+      readOnly,
+      disabled,
+      outlined,
+      compatibility,
+      _isPayloadRequest,
+      allowDisableParams,
+      allowHideOptional,
+    } = this;
+    return html`<div class="editor-section" ?hidden="${!_apiHeaders}">
+      <div role="heading" aria-level="2" class="section-title">Headers</div>
+      <api-headers-editor
+        @content-type-changed="${this._contentTypeHandler}"
+        @value-changed="${this._headersHandler}"
+        @invalid-changed="${this._headersInvalidChanged}"
+        .eventsTarget="${eventsTarget}"
+        .amf="${amf}"
+        .amfHeaders="${_apiHeaders}"
+        .noDocs="${noDocs}"
+        .isPayload="${_isPayloadRequest}"
+        ?narrow="${narrow}"
+        .readOnly="${readOnly}"
+        .disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        ?allowcustom="${allowCustom}"
+        ?allowDisableParams="${allowDisableParams}"
+        ?allowHideOptional="${allowHideOptional}"
+        autovalidate
+        ></api-headers-editor>
+    </div>`;
+  }
 
-      ${_securedBy ? html`
-        <div class="editor-section">
-          <div role="heading" aria-level="2" class="section-title">Credentials</div>
-          <authorization-panel
-            .amf="${amf}"
-            .eventsTarget="${eventsTarget}"
-            .securedBy="${_securedBy}"
-            .redirectUri="${redirectUri}"
-            .noDocs="${noDocs}"
-            .readOnly="${readOnly}"
-            .disabled="${disabled}"
-            ?outlined="${outlined}"
-            ?compatibility="${compatibility}"
-            @invalid-changed="${this._authInvalidChanged}"
-          ></authorization-panel>
-      </div>` : undefined}
+  _bodyEditorTemplate() {
+    if (!this._isPayloadRequest || !this._apiPayload) {
+      return '';
+    }
+    const {
+      _apiPayload,
+      narrow,
+      eventsTarget,
+      amf,
+      allowCustom,
+      readOnly,
+      disabled,
+      outlined,
+      compatibility,
+      _contentType,
+      allowDisableParams,
+      allowHideOptional,
+    } = this;
 
-      <div class="action-bar">
-        ${_loadingRequest ?
-          html`<anypoint-button
-            class="send-button abort"
-            emphasis="high"
-            ?compatibility="${compatibility}"
-            @click="${this._abortRequest}">Abort</anypoint-button>` :
-          html`<anypoint-button
-            class="send-button"
-            emphasis="high"
-            ?compatibility="${compatibility}"
-            @click="${this._sendHandler}">${_sendLabel}</anypoint-button>`}
-        ${invalid ? html`<span class="invalid-info">Fill in required parameters</span>` : ''}
-        <paper-spinner alt="Loading request" .active="${_loadingRequest}"></paper-spinner>
-      </div>
+    return html`<div class="editor-section">
+      <div role="heading" aria-level="2" class="section-title">Body</div>
+      <api-body-editor
+        @content-type-changed="${this._contentTypeHandler}"
+        @value-changed="${this._payloadHandler}"
+        .eventsTarget="${eventsTarget}"
+        .amf="${amf}"
+        .amfBody="${_apiPayload}"
+        ?narrow="${narrow}"
+        .readOnly="${readOnly}"
+        .disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        .contentType="${_contentType}"
+        ?allowcustom="${allowCustom}"
+        ?allowDisableParams="${allowDisableParams}"
+        ?allowHideOptional="${allowHideOptional}"
+        linenumbers></api-body-editor>
+    </div>`;
+  }
 
-      <paper-toast
-        text="Authorization for this endpoint is required"
-        id="authFormError"
-        horizontal-align="right" horizontal-offset="12"></paper-toast>
-      <uuid-generator id="uuid"></uuid-generator>
-    </div>
-    `;
+  _authTemplate() {
+    if (!this._securedBy) {
+      return '';
+    }
+    const {
+      amf,
+      redirectUri,
+      readOnly,
+      disabled,
+      outlined,
+      compatibility,
+      _securedBy,
+    } = this;
+    return html`<div class="editor-section">
+      <div role="heading" aria-level="2" class="section-title">Credentials</div>
+      <api-authorization
+        .amf="${amf}"
+        .security="${_securedBy}"
+        .redirectUri="${redirectUri}"
+        ?readOnly="${readOnly}"
+        ?disabled="${disabled}"
+        ?outlined="${outlined}"
+        ?compatibility="${compatibility}"
+        @invalid-changed="${this._authInvalidChanged}"
+        @change=${this._authChanged}
+      ></api-authorization>
+    </div>`;
+  }
+
+  _formActionsTemplate() {
+    const {
+      _loadingRequest,
+      invalid,
+    } = this;
+    return html`<div class="action-bar">
+      ${_loadingRequest ?
+        this._abortButtonTemplate() :
+        this._sendButtonTemplate()}
+      ${invalid ? html`<span class="invalid-info">Fill in required parameters</span>` : ''}
+      <paper-spinner alt="Loading request" .active="${_loadingRequest}"></paper-spinner>
+    </div>`;
+  }
+
+  /**
+   * Creates a template for the "abort" button.
+   *
+   * @return {TemplateResult}
+   */
+  _abortButtonTemplate() {
+    const {
+      compatibility,
+    } = this;
+    return html`<anypoint-button
+      class="send-button abort"
+      emphasis="high"
+      ?compatibility="${compatibility}"
+      @click="${this._abortRequest}">Abort</anypoint-button>`;
+  }
+
+  /**
+   * Creates a template for the "send" or "auth and send" button.
+   *
+   * @return {TemplateResult}
+   */
+  _sendButtonTemplate() {
+    const {
+      compatibility,
+    } = this;
+    return html`<anypoint-button
+      class="send-button"
+      emphasis="high"
+      ?compatibility="${compatibility}"
+      @click="${this._sendHandler}">${this._sendLabel}</anypoint-button>`;
+  }
+
+  /**
+   * @return {TemplateResult} A template for the server selector
+   */
+  _serverSelectorTemplate() {
+    const {
+      amf,
+      serverType,
+      serverValue,
+      allowCustomBaseUri,
+      outlined,
+      compatibility,
+      _serverSelectorHidden,
+      selected,
+    } = this;
+    return html`
+    <api-server-selector
+      ?hidden="${_serverSelectorHidden}"
+      ?allowCustom="${allowCustomBaseUri}"
+      .amf="${amf}"
+      .value="${serverValue}"
+      .type="${serverType}"
+      .selectedShape="${selected}"
+      selectedShapeType="method"
+      autoselect
+      ?compatibility="${compatibility}"
+      ?outlined="${outlined}"
+      @serverscountchanged="${this._serverCountHandler}"
+      @apiserverchanged="${this._serverHandler}"
+    >
+      <slot name="custom-base-uri" slot="custom-base-uri"></slot>
+    </api-server-selector>`;
   }
   /**
    * Dispatched when the user requests to send current request.
@@ -97921,10 +101734,8 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
    * @param {String} method HTTP method name. Can be empty.
    * @param {String} headers HTTP headers string. Can be empty.
    * @param {String|File|FormData} payload Message body. Can be undefined.
-   * @param {?Object} auth Authorization settings from the auth panel.
+   * @param {?Array<Object>} auth Authorization settings from the auth panel.
    * May be `undefined`.
-   * @param {?String} authType Name of the authorization methods. One of
-   * `advanced-rest-client/auth-methods`.
    * @param {String} id Generated UUID for the request. Each call of
    * `execute()` function regenerates the `id`.
    * @param {?Array<Object>} queryModel Query parameters data view model
@@ -97971,601 +101782,6 @@ class ApiRequestEditor extends AmfHelperMixin(EventsTargetMixin(LitElement)) {
 }
 
 window.customElements.define('api-request-editor', ApiRequestEditor);
-
-/**
- * `api-server-selector`
- * An element to generate view model for server
- * elements from AMF model
- *
- * This component receives an AMF model, and listens
- * to navigation events to know which node's servers
- * it should render.
- *
- * When the selected server changes, it dispatches an `api-server-changed`
- * event, with the following details:
- * - Server value: the server id (for listed servers in the model), the URI
- *    value (when custom base URI is selected), or the value of the `anypoint-item`
- *    component rendered into the extra slot
- * - Selected type: `server` | `custom` | `extra`
- *    - `server`: server from the AMF model
- *    - `custom`: custom base URI input change
- *    - `extra`: extra slot's anypoint-item `value` attribute (see below)
- *
- * Adding extra slot:
- * This component renders a `slot` element to render anything the users wants
- * to add in there. To enable this, sit the `extraOptions` value in this component
- * to true, and render an element associated to the slot name `custom-base-uri`.
- * The items rendered in this slot should be `anypoint-item` components, and have a
- * `value` attribute. This is the value that will be dispatched in the `api-server-changed`
- * event.
- *
- *
- *
- * @customElement
- * @demo demo/index.html
- * @mixes AmfHelperMixin
- * @mixes EventTargetMixin
- * @extends LitElement
- */
-class ApiServerSelector extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
-  static get properties() {
-    return {
-      /**
-       * The baseUri to override any server definition
-       */
-      baseUri: { type: String },
-      /**
-       * If activated, `Custom base URI` will be in the dropdown options
-       */
-      allowCustom: { type: Boolean, reflect: true  },
-      /**
-       * Holds the current servers to show in in the dropdown menu
-       */
-      servers: { type: Array },
-      endpointId: { type: String },
-      methodId: { type: String },
-      /**
-       * Currently selected type of an base URI.
-       * `server` | `slot` | `custom`
-       */
-      selectedType: { type: String },
-      /**
-       * Current value of the server
-       * Always a URI value
-       */
-      selectedValue: { type: String },
-      /**
-       * Current selected server index
-       */
-      _selectedIndex: { type: Number },
-      /**
-       * If activated, server selector will not be visible
-       */
-      hidden: { type: Boolean, reflect: true },
-    };
-  }
-
-  constructor() {
-    super();
-    this._handleNavigationChange = this._handleNavigationChange.bind(this);
-  }
-
-  firstUpdated() {
-    this._notifyServersCount();
-  }
-
-  get styles() {
-    return css`
-    :host{
-      display: block;
-      width: 100%;
-    }
-
-    :host([hidden]) {
-      display: none;
-    }
-    
-    .api-server-dropdown, .uri-input {
-      width: calc(100% - 16px);
-      max-width: 700px;
-      min-width: 280px;
-    }
-
-    .icon {
-      display: inline-block;
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-    }
-    `;
-  }
-
-  set servers(value) {
-    const old = this._servers;
-    if (old === value) {
-      return;
-    }
-
-    this._servers = value;
-    this._checkForSelectedChange(old);
-    this.requestUpdate('servers', old);
-    this._notifyServersCount();
-  }
-
-  get servers() {
-    return this._servers || [];
-  }
-
-  get selected() {
-    return this._selectedValue;
-  }
-
-  get allowCustom() {
-    return this._allowCustom;
-  }
-
-  set allowCustom(value) {
-    const old = this.allowCustom;
-    if (old === value) {
-      return;
-    }
-
-    this._allowCustom = value;
-    this._notifyServersCount();
-    this.requestUpdate('allowCustom', old);
-  }
-
-  set amf(model) {
-    const old = this._amf;
-    if (old === model) {
-      return;
-    }
-
-    this._amf = model;
-    this.updateServers();
-  }
-
-  get amf() {
-    return this._amf;
-  }
-
-  get baseUri() {
-    return this._baseUri;
-  }
-
-  set baseUri(value) {
-    const old = this._baseUri;
-    if (old === value) {
-      return;
-    }
-
-    this._selectedIndex = this._getServersCount();
-    this.selectedType = 'custom';
-    this._selectedValue = value;
-    this._baseUri = value;
-    this.requestUpdate('baseUri', old);
-  }
-
-  get selectedValue() {
-    return this.baseUri || this._selectedValue;
-  }
-
-  set selectedValue(value) {
-    if (this.baseUri) {
-      return;
-    }
-    const old = this._selectedValue;
-    if (old === value) {
-      return;
-    }
-
-    if (this._isValueValid(value)) {
-      const selectedIndex = this._getIndexForValue(value);
-      const selectedValue = value;
-      const selectedType = this.selectedType;
-      this._selectedIndex = selectedIndex;
-      this._selectedValue = selectedValue;
-      this.requestUpdate('selectedValue', old);
-      this.dispatchEvent(
-        new CustomEvent('api-server-changed', {
-          detail: {
-            selectedValue,
-            selectedType,
-          },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    }
-  }
-
-  get methodId() {
-    return this._methodId;
-  }
-
-  set methodId(value) {
-    const old = this._methodId;
-    if (value === old) {
-      return;
-    }
-    this._methodId = value;
-  }
-
-  get endpointId() {
-    return this._endpointId;
-  }
-
-  set endpointId(value) {
-    const old = this._endpointId;
-    if (value === old) {
-      return;
-    }
-
-    this._endpointId = value;
-  }
-
-  /**
-   * @return {Boolean} True if selected type is "custom" type.
-   */
-  get isCustom() {
-    return this.selectedType === 'custom';
-  }
-
-  _attachListeners(node) {
-    super._attachListeners(node);
-    node.addEventListener('api-navigation-selection-changed', this._handleNavigationChange);
-  }
-
-  _detachListeners(node) {
-    super._detachListeners(node);
-    node.removeEventListener('api-navigation-selection-changed', this._handleNavigationChange);
-  }
-
-  _notifyServersCount() {
-    const { allowCustom = false } = this;
-    const customServer = allowCustom ? 1 : 0;
-    const serversCount = this._getServersCount() + customServer;
-    this.dispatchEvent(new CustomEvent('servers-count-changed', { detail: { serversCount } }));
-  }
-
-  _isValueValid(value) {
-    if (!this.selectedType && !value) {
-      return true;
-    }
-    switch (this.selectedType) {
-      case 'server':
-        return Boolean(this._findServerByValue(value));
-      case 'slot':
-        return this._getIndexForSlotValue(value) > -1;
-      case 'custom':
-        return true;
-      default:
-        return !value;
-    }
-  }
-
-  _findServerByValue(value) {
-    const { servers } = this;
-    if (!servers) {
-      return undefined;
-    }
-    return servers.find(server => this._getServerUri(server) === value)
-  }
-
-  _findServerById(id) {
-    const { servers } = this;
-    if (!servers) {
-      return undefined;
-    }
-    return servers.find(server => this._getServerValue(server) === id)
-  }
-
-  _getIndexForSlotValue(value) {
-    const { servers = [] } = this;
-    const extraServers = this._getExtraServers();
-    if (!extraServers) {
-      return -1;
-    }
-    const server = extraServers.find(elem => elem.getAttribute('value') === value);
-    return extraServers.indexOf(server) + servers.length;
-  }
-
-  _getIndexForValue(value) {
-    if (this.isCustom) {
-      return this._getServersCount();
-    }
-
-    if (this.selectedType === 'slot') {
-      return this._getIndexForSlotValue(value);
-    }
-
-    if (this.selectedType === 'server') {
-      const server = this._findServerByValue(value);
-      return this._getIndexOfServer(this._getServerValue(server), this.servers);
-    }
-
-    return undefined;
-  }
-
-  _handleNavigationChange(e) {
-    const { selected, type, endpointId } = e.detail;
-    const serverDefinitionAllowedTypes = ['endpoint', 'method'];
-    if (serverDefinitionAllowedTypes.indexOf(type) === -1) {
-      return;
-    }
-    this.updateServers({ id: selected, type, endpointId });
-  }
-
-  _checkForSelectedChange(oldServers) {
-    if (this._selectedIndex === undefined || this._selectedIndex === null) {
-      return;
-    }
-    if (!oldServers) {
-      oldServers = [];
-    }
-    let newIndex;
-    let newValue = this._selectedValue;
-    const isModelServerSelected = this._selectedIndex < oldServers.length;
-    if (!this.servers) {
-      newIndex = undefined;
-      newValue = undefined;
-    } else if (isModelServerSelected) {
-      const indexInNewServers = this._getIndexOfServerByUri(this._selectedValue, this.servers);
-      if (indexInNewServers > -1) {
-        newIndex = indexInNewServers;
-      } else {
-        newIndex = undefined;
-        newValue = undefined;
-      }
-    } else {
-      const serverOffest = this.servers.length - oldServers.length;
-      newIndex = this._selectedIndex + serverOffest;
-    }
-    this._changeSelected({ selectedIndex: newIndex, selectedValue: newValue });
-  }
-
-  _getIndexOfServerByUri(value, servers) {
-    for (let i = 0; i < servers.length; i++) {
-      const server = servers[i];
-      if (this._getServerUri(server) === value) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  /**
-   * Search for a server in a list of search, comparing against AMF id
-   *
-   * @param {String} serverId The desired server to search for
-   * @param {Array} servers The list of AMF server models to search in,
-   * @return {Number} The index of the server, or -1 if not found
-   */
-  _getIndexOfServer(serverId, servers) {
-    for (let i = 0; i < servers.length; i++) {
-      const server = servers[i];
-      if (this._getValue(server, '@id') === serverId) {
-        return i;
-      }
-    }
-    return -1;
-  }
-
-  _getServerValue(server) {
-    if (server) {
-      return this._getValue(server, '@id');
-    }
-    return '';
-  }
-
-  /**
-   * Update component's servers
-   *
-   * @param {?Object} selectedNodeParams The currently selected node parameters to set the servers for
-   * @param {String} selectedNodeParams.id The selected node ID where servers should be fetched
-   * @param {String} selectedNodeParams.type The selected node type where servers should be fetched
-   * @param {?String} selectedNodeParams.endpointId Optional endpoint id the method id belongs to
-   */
-  updateServers({ id, type, endpointId } = {}) {
-    let methodId;
-    if (type === 'method') {
-      methodId = id;
-    }
-    if (type === 'endpoint') {
-      endpointId = id;
-    }
-    this.methodId = methodId;
-    this.endpointId = endpointId;
-    this.servers = this._getServers({ endpointId, methodId });
-  }
-
-  /**
-   * Handler for the listbox's change event
-   * @param {CustomEvent} e
-   */
-  _handleSelectionChanged(e) {
-    const { selectedItem } = e.target;
-    const selectedIndex = e.detail.value;
-    if (!selectedItem) {
-      return;
-    }
-    let selectedValue = selectedItem.getAttribute('value');
-    if (this._isServerIndex(selectedIndex)) {
-      selectedValue = this._getServerUri(this._findServerById(selectedValue));
-    } else if (this._isCustomIndex(selectedIndex) && !this.isCustom) {
-      selectedValue = '';
-    }
-    if (selectedValue === this.selectedValue) {
-      return;
-    }
-    this._changeSelected({ selectedIndex, selectedValue });
-  }
-
-  _isServerIndex(index) {
-    const { servers } = this;
-    if (!servers) {
-      return false;
-    }
-    return index < servers.length;
-  }
-
-  _isCustomIndex(index) {
-    return index === this._getServersCount();
-  }
-
-  /**
-   *
-   * @param {?Object} params Composed object
-   * @param {?Number} params.selectedIndex The index of the selected item in the listbox
-   * @param {?String} params.selectedValue The URI value of the selected item in the listbox
-   */
-  _changeSelected({ selectedIndex, selectedValue } = {}) {
-    const oldValue = this.selectedValue;
-    if (selectedIndex === this._selectedIndex && selectedValue === oldValue) {
-      return;
-    }
-    const selectedType = this._getSelectedType(selectedIndex);
-    this.selectedType = selectedType;
-    this._selectedIndex = selectedIndex;
-    this.selectedValue = selectedValue;
-  }
-
-  /**
-   * Retrieves custom base uris elements assigned to the
-   * custom-base-uri slot
-   *
-   * @return {Array} Elements assigned to custom-base-uri slot
-   */
-  _getExtraServers() {
-    const slot = this.shadowRoot.querySelector('slot[name="custom-base-uri"]');
-    return slot ? slot.assignedElements({ flatten: true }) : [];
-  }
-
-  /**
-   * Retrieves the total amount of servers being rendered, without counting customServer
-   *
-   * @return {Number} total amount of servers being rendered
-   */
-  _getServersCount() {
-    const { servers = [] } = this;
-    const extraServers = this._getExtraServers();
-    return servers.length + extraServers.length;
-  }
-
-  _getSelectedType(selectedIndex) {
-    if (selectedIndex === null || selectedIndex === undefined) {
-      return undefined;
-    }
-    const { servers = [] } = this;
-    const customUriIndex = this._getServersCount();
-    if (selectedIndex < servers.length) {
-      return 'server';
-    } else if (selectedIndex === customUriIndex) {
-      return 'custom';
-    } else {
-      return 'slot';
-    }
-  }
-
-  _handleUriChange(event) {
-    const { value } = event.target;
-    this.selectedValue = value;
-  }
-
-  _resetSelection() {
-    this._changeSelected();
-  }
-
-  render() {
-    const { styles, isCustom } = this;
-    return html`<style>${styles}</style>
-    ${isCustom
-        ? this._renderUriInput()
-        : this._renderDropdown()}
-    `;
-  }
-
-  /**
-   * Call the render functions for
-   * - Server options (from AMF Model)
-   * - Custom URI option
-   * - Extra slot
-   * @return {TemplateResult} The combination of all options
-   */
-  _renderItems() {
-    return html`
-      ${this._renderServerOptions()}
-      ${this._renderExtraSlot()}
-      ${this._renderCustomURIOption()}
-    `;
-  }
-
-  /**
-   * @return {TemplateResult} Custom URI `anypoint-item`
-   */
-  _renderCustomURIOption() {
-    const { allowCustom } = this;
-    if (!allowCustom) {
-      return '';
-    }
-    return html`<anypoint-item class="custom-option" value="custom">Custom base URI</anypoint-item>`;
-  }
-
-  _getServerUri(server) {
-    const key = this._getAmfKey(this.ns.aml.vocabularies.core.urlTemplate);
-    return this._getValue(server, key);
-  }
-
-  _renderServerOptions() {
-    const { servers } = this;
-
-    const toAnypointItem = (server) => {
-      return html`<anypoint-item value="${this._getServerValue(server)}">
-        ${this._getServerUri(server)}
-      </anypoint-item>`;
-    };
-    return servers ? servers.map(toAnypointItem) : [];
-  }
-
-  /**
-   * Returns template result with `slot` element
-   * @return {TemplateResult}
-   */
-  _renderExtraSlot() {
-    return html`<slot @slotchange="${this._notifyServersCount}" name="custom-base-uri"></slot>`;
-  }
-
-  _renderUriInput() {
-    return html`<anypoint-input class="uri-input" @input=${this._handleUriChange} value="${this.selectedValue}">
-    <label slot="label">Base URI</label>
-    <anypoint-icon-button
-      aria-label="Activate to clear and close custom editor"
-      title="Clear and close custom editor"
-      slot="suffix"
-      @click="${this._resetSelection}"
-    >
-      <span class="icon">${close}</span>
-    </anypoint-icon-button>
-  </anypoint-input>`;
-  }
-
-  _renderDropdown() {
-    return html`
-    <anypoint-dropdown-menu class="api-server-dropdown">
-      <label slot="label">Select server</label>
-      <anypoint-listbox
-        .selected="${this._selectedIndex}"
-        @selected-changed="${this._handleSelectionChanged}"
-        slot="dropdown-content"
-        tabindex="-1"
-      >
-        ${this._renderItems()}
-      </anypoint-listbox>
-    </anypoint-dropdown-menu>`;
-  }
-}
-
-window.customElements.define('api-server-selector', ApiServerSelector);
 
 /**
 @license
@@ -98637,6 +101853,463 @@ const ResponseStatusMixin = (base) => class extends base {
     }
   }
 };
+
+/**
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+/**
+ * An element to display formatted date and time.
+ *
+ * The `date` propery accepts Date object, Number as a timestamp or string
+ * that will be parsed to the Date object.
+ *
+ * This element uses the `Intl` interface which is available in IE 11+ browsers.
+ *
+ * To format the date use [Intl.DateTimeFormat]
+ * (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat)
+ * inteface options.
+ *
+ * The default value for each date-time component property is undefined,
+ * but if all component properties are undefined, then year, month, and day
+ * are assumed to be "numeric" (per spec).
+ *
+ * ### Example
+ *
+ * ```html
+ * <date-time date="2010-12-10T11:50:45Z" year="numeric" month="narrow" day="numeric"></date-time>
+ * ```
+ *
+ * The element provides accessibility by using the `time` element and setting
+ * the `datetime` attribute on it.
+ *
+ * ### Styling
+ *
+ * `<date-time>` provides the following custom properties and mixins for styling:
+ *
+ * Custom property | Description | Default
+ * ----------------|-------------|----------
+ * `--date-time` | Mixin applied to the element | `{}`
+ *
+ *
+ * @customElement
+ * @demo demo/index.html
+ * @memberof UiElements
+ */
+class DateTime extends HTMLElement {
+  static get observedAttributes() {
+    return [
+      'locales', 'date', 'year', 'month', 'day', 'hour', 'minute', 'second',
+      'weekday', 'time-zone-name', 'era', 'time-zone', 'hour12', 'itemprop'
+    ];
+  }
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._observer = new MutationObserver(() => this._mutationHandler());
+  }
+
+  connectedCallback() {
+    this._observer.observe(this.shadowRoot, {
+      childList: true,
+      characterData: true,
+      subtree: true
+    });
+    this._updateLabel();
+  }
+
+  disconnectedCallback() {
+    this._observer.disconnect();
+  }
+
+  _mutationHandler() {
+    this.setAttribute('aria-label', this.shadowRoot.textContent);
+  }
+
+  /**
+   * A string with a BCP 47 language tag, or an array of such strings.
+   * For the general form and interpretation of the locales argument,
+   * see the Intl page.
+   * The following Unicode extension keys are allowed:
+   * - nu - Numbering system. Possible values include: "arab", "arabext",
+   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
+   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
+   * "tamldec", "telu", "thai", "tibt".
+   * - ca - Calendar. Possible values include: "buddhist", "chinese",
+   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
+   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
+   *
+   * @type {String}
+   */
+  get locales() {
+    return this.getAttribute('locales');
+  }
+  /**
+   * A string with a BCP 47 language tag, or an array of such strings.
+   * For the general form and interpretation of the locales argument,
+   * see the Intl page.
+   * The following Unicode extension keys are allowed:
+   * - nu - Numbering system. Possible values include: "arab", "arabext",
+   * "bali", "beng", "deva", "fullwide", "gujr", "guru", "hanidec", "khmr",
+   * "knda", "laoo", "latn", "limb", "mlym", "mong", "mymr", "orya",
+   * "tamldec", "telu", "thai", "tibt".
+   * - ca - Calendar. Possible values include: "buddhist", "chinese",
+   * "coptic", "ethioaa", "ethiopic", "gregory", "hebrew", "indian",
+   * "islamic", "islamicc", "iso8601", "japanese", "persian", "roc".
+   *
+   * @param {String} v
+   * @type {String}
+   */
+  set locales(v) {
+    this.setAttribute('locales', v);
+  }
+  /**
+   * The representation of the year.
+   * Possible values are "numeric", "2-digit".
+   */
+  get year() {
+    return this.getAttribute('year');
+  }
+  /**
+   * The representation of the year.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set year(v) {
+    this.setAttribute('year', v);
+  }
+  /**
+   * The representation of the month.
+   * Possible values are "numeric", "2-digit", "narrow", "short", "long".
+   */
+  get month() {
+    return this.getAttribute('month');
+  }
+  /**
+   * The representation of the month.
+   * @param {String} v Possible values are "numeric", "2-digit", "narrow", "short", "long".
+   */
+  set month(v) {
+    this.setAttribute('month', v);
+  }
+  /**
+   * The representation of the day.
+   * Possible values are "numeric", "2-digit".
+   */
+  get day() {
+    return this.getAttribute('day');
+  }
+  /**
+   * The representation of the day.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set day(v) {
+    this.setAttribute('day', v);
+  }
+  /**
+   * The representation of the hour.
+   * Possible values are "numeric", "2-digit".
+   */
+  get hour() {
+    return this.getAttribute('hour');
+  }
+  /**
+   * The representation of the hour.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set hour(v) {
+    this.setAttribute('hour', v);
+  }
+  /**
+   * The representation of the minute.
+   * Possible values are "numeric", "2-digit".
+   */
+  get minute() {
+    return this.getAttribute('minute');
+  }
+  /**
+   * The representation of the minute.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set minute(v) {
+    this.setAttribute('minute', v);
+  }
+  /**
+   * The representation of the second.
+   * Possible values are "numeric", "2-digit".
+   */
+  get second() {
+    return this.getAttribute('second');
+  }
+  /**
+   * The representation of the second.
+   * @param {String} v Possible values are "numeric", "2-digit".
+   */
+  set second(v) {
+    this.setAttribute('second', v);
+  }
+  /**
+   * The representation of the weekday.
+   * Possible values are "narrow", "short", "long".
+   */
+  get weekday() {
+    return this.getAttribute('weekday');
+  }
+  /**
+   * The representation of the weekday.
+   * @param {String} v Possible values are "narrow", "short", "long".
+   */
+  set weekday(v) {
+    this.setAttribute('weekday', v);
+  }
+  /**
+   * The representation of the time zone name.
+   *
+   * Possible values are "short", "long".
+   */
+  get timeZoneName() {
+    return this.getAttribute('time-zone-name');
+  }
+  /**
+   * The representation of the time zone name.
+   *
+   * @param {String} v Possible values are "short", "long".
+   */
+  set timeZoneName(v) {
+    this.setAttribute('time-zone-name', v);
+  }
+  /**
+   * The time zone to use. The only value implementations must recognize
+   * is "UTC"; the default is the runtime's default time zone.
+   * Implementations may also recognize the time zone names of the IANA
+   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
+   * "America/New_York".
+   */
+  get timeZone() {
+    return this.getAttribute('time-zone');
+  }
+  /**
+   * The time zone to use. The only value implementations must recognize
+   * is "UTC"; the default is the runtime's default time zone.
+   * Implementations may also recognize the time zone names of the IANA
+   * time zone database, such as "Asia/Shanghai", "Asia/Kolkata",
+   * "America/New_York".
+   * @param {String} v
+   */
+  set timeZone(v) {
+    this.setAttribute('time-zone', v);
+  }
+  /**
+   * The representation of the era.
+   *
+   * Possible values are "narrow", "short", "long".
+   */
+  get era() {
+    return this.getAttribute('era');
+  }
+  /**
+   * The representation of the era.
+   *
+   * @param {String} v Possible values are "narrow", "short", "long".
+   */
+  set era(v) {
+    this.setAttribute('era', v);
+  }
+  /**
+   * Whether to use 12-hour time (as opposed to 24-hour time).
+   * Possible values are `true` and `false`; the default is locale
+   * dependent.
+   *
+   * @type {Boolean}
+   */
+  get hour12() {
+    if (!this.hasAttribute('hour12') && !this.__hour12set) {
+      return null;
+    }
+    return this.hasAttribute('hour12');
+  }
+  /**
+   * Whether to use 12-hour time (as opposed to 24-hour time).
+   * Possible values are `true` and `false`; the default is locale
+   * dependent.
+   *
+   * @param {Boolean} v
+   */
+  set hour12(v) {
+    this.__hour12set = true;
+    if (v) {
+      this.setAttribute('hour12', '');
+    } else {
+      this.removeAttribute('hour12');
+    }
+  }
+  /**
+   * A date object to render.
+   * It can be a `Date` object, number representing a timestamp
+   * or valid date string. The argument is parsed by `Date` constructor
+   * to produce the value.
+   *
+   * @type {Date|String|number}
+   */
+  get date() {
+    if (this.__date) {
+      return this.__date;
+    }
+    return this.getAttribute('date');
+  }
+  /**
+   * A date object to render.
+   * It can be a `Date` object, number representing a timestamp
+   * or valid date string. The argument is parsed by `Date` constructor
+   * to produce the value.
+   *
+   * @param {Date|String|number} v The date to render
+   */
+  set date(v) {
+    this.__date = v;
+    if (typeof v === 'string') {
+      this.setAttribute('date', v);
+    } else {
+      this._updateLabel();
+    }
+  }
+
+  get itemprop() {
+    return this._getTimeNode().getAttribute('itemprop');
+  }
+
+  set itemprop(value) {
+    const old = this.itemprop;
+    if (old === value) {
+      return;
+    }
+    if (old && value === null) {
+      // This setter moves attribute from this element to "<time>" elsement.
+      // When the attribute is removed from this then it becomes null.
+      return;
+    }
+    const node = this._getTimeNode();
+    if (value) {
+      node.setAttribute('itemprop', value);
+      this.removeAttribute('itemprop');
+    } else {
+      node.removeAttribute('itemprop');
+    }
+  }
+
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'itemprop') {
+      this[name] = newValue;
+      return;
+    }
+    this._updateLabel();
+  }
+  /**
+   * Parses input `date` to a Date object.
+   * @param {String|Number|Date} date A date to parse
+   * @return {Date}
+   */
+  _getParsableDate(date) {
+    if (!date) {
+      date = new Date();
+    } else if (typeof date === 'string') {
+      try {
+        date = new Date(date);
+        const _test = date.getDate();
+        if (_test !== _test) {
+          date = new Date();
+        }
+      } catch (e) {
+        date = new Date();
+      }
+    } else if (!isNaN(date)) {
+      date = new Date(date);
+    } else if (!(date instanceof Date)) {
+      date = new Date();
+    }
+    return date;
+  }
+
+  _getIntlOptions() {
+    const options = {};
+    if (this.year) {
+      options.year = this.year;
+    }
+    if (this.month) {
+      options.month = this.month;
+    }
+    if (this.day) {
+      options.day = this.day;
+    }
+    if (this.hour) {
+      options.hour = this.hour;
+    }
+    if (this.minute) {
+      options.minute = this.minute;
+    }
+    if (this.second) {
+      options.second = this.second;
+    }
+    if (this.weekday) {
+      options.weekday = this.weekday;
+    }
+    if (this.era) {
+      options.era = this.era;
+    }
+    if (this.timeZoneName) {
+      options.timeZoneName = this.timeZoneName;
+    }
+    if (this.timeZone) {
+      options.timeZone = this.timeZone;
+    }
+    if (this.hour12 !== undefined) {
+      options.hour12 = this.hour12;
+    }
+    return options;
+  }
+  /**
+   * @return {Element} A reference to a `<time>` element that is in the shadow DOM of this element.
+   */
+  _getTimeNode() {
+    let node = this.shadowRoot.querySelector('time');
+    if (!node) {
+      node = document.createElement('time');
+      this.shadowRoot.appendChild(node);
+    }
+    return node;
+  }
+
+  _updateLabel() {
+    if (!this.parentElement) {
+      return;
+    }
+    const date = this._getParsableDate(this.date);
+    const node = this._getTimeNode();
+    node.setAttribute('datetime', date.toISOString());
+    /* istanbul ignore if */
+    if (typeof Intl === 'undefined') {
+      node.innerText = date.toString();
+      return;
+    }
+    let locales;
+    if (this.locales) {
+      locales = this.locales;
+    }
+    const options = this._getIntlOptions();
+    const value = new Intl.DateTimeFormat(locales, options).format(date);
+    node.innerText = value;
+  }
+}
+window.customElements.define('date-time', DateTime);
 
 /**
 @license
@@ -104274,81 +107947,25 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
-/* eslint-disable max-len */
+
+/* eslint-disable no-plusplus */
+/* eslint-disable class-methods-use-this */
+
+/** @typedef {import('lit-html').TemplateResult} TemplateResult */
+
 /**
- * Request editor and response view panels in a single element.
- *
- * This element is to replace `api-console-request` element from `mulesoft/api-console`
- * project repository.
- *
- * This is also a base case for any application that renders request and
- * response views.
- *
- * The element uses AMF model to render view based on API mnodel and current user
- * selection.
- *
- * It uses both `api-request-editor` and `response-view` elements and
- * listens to `api-request` and `api-response` events.
- * It also adds additional configuration options that exists in API console
- * (proxy, additional headers).
- *
- * ## `api-request` and `api-response` events
- *
- * See full documentation here:
- * https://github.com/advanced-rest-client/api-components-api/blob/master/docs/api-request-and-response.md
- *
- * ## Dependencies and changelog from included elements
- *
- * - XHR element is not included in the element. Use
- * `advanced-rest-client/xhr-simple-request` in your application or handle
- * `api-request` custom event to make a request.
- * - The element does not include any polyfills
- * - `redirectUrl` is now `redirectUri`
- * - `api-console-request` event is now `api-request` event
- * - `api-console-response` event is now `api-response` event
- * - Added more details to `api-request` custom event (comparing to
- * `api-console-request`)
- * - The user is able to enable/disable query parameters and headers. Set
- * `allow-disable-params` attribute to enable this behavior.
- * - The user is able to add custom query parameters or headers.
- * Set `allow-custom` attribute to enable this behavior.
- * - From authorization panel changes:
- *  - `auth-settings-changed` custom event is stopped from bubbling.
- *  Listen for `authorization-settings-changed` event instead.
- * - From auth-method-oauth2 changes:
- *  - Added `deliveryMethod` and `deliveryName` properties to the
- *  `detail.setting` object.
- * - Crypto library is no longer included into the element. Use
- *  `advanced-rest-client/cryptojs-lib` component to include the library
- *  if your project doesn't use crypto libraries already.
- *
- * ## Narrow view
- *
- * Generally the API components are flexible and mobile friendly. However,
- * it is possible to set `narrow` property to render form elements in
- * a mobile fieldly view. In most cases it means that forms controls are
- * rendered in different layout.
- *
- * ## api-navigation integration
- *
- * The element works with `api-navigation` element. Set `handle-navigation-events`
- * attribute when using `api-navigation` so the component will automatically
- * update selection when internal API navigation occurres.
- *
- * @customElement
  * @demo demo/index.html
  * @demo demo/navigation.html Automated navigation
- * @appliesMixin HeadersParserMixin
- * @appliesMixin EventsTargetMixin
- * @memberof ApiElements
  */
-class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixin(LitElement))) {
+class ApiRequestPanel extends EventsTargetMixin(LitElement) {
   get styles() {
     return css`
-    :host { display: block; }
-    response-view {
-      margin-top: var(--api-request-panel-response-margin-top, 48px);
-    }
+      :host {
+        display: block;
+      }
+      response-view {
+        margin-top: var(--api-request-panel-response-margin-top, 48px);
+      }
     `;
   }
 
@@ -104356,85 +107973,12 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     return !!this.response || !!this.responseError;
   }
 
-  render() {
-    const {
-      narrow,
-      redirectUri,
-      selected,
-      amf,
-      noUrlEditor,
-      effectiveBaseUri,
-      noDocs,
-      eventsTarget,
-      allowHideOptional,
-      allowDisableParams,
-      allowCustom,
-      server,
-      protocols,
-      version,
-      readOnly,
-      disabled,
-      compatibility,
-      outlined,
-
-      _hasResponse
-    } = this;
-
-
-    return html`<style>${this.styles}</style>
-
-    ${this._renderServerSelector()}
-    <api-request-editor
-      ?narrow="${narrow}"
-      .redirectUri="${redirectUri}"
-      .selected="${selected}"
-      .amf="${amf}"
-      ?noUrlEditor="${noUrlEditor}"
-      .baseUri="${effectiveBaseUri}"
-      ?noDocs="${noDocs}"
-      .eventsTarget="${eventsTarget}"
-      ?allowHideOptional="${allowHideOptional}"
-      ?allowDisableParams="${allowDisableParams}"
-      ?allowCustom="${allowCustom}"
-      .server="${server}"
-      .protocols="${protocols}"
-      .version="${version}"
-      ?readOnly="${readOnly}"
-      ?disabled="${disabled}"
-      ?outlined="${outlined}"
-      ?compatibility="${compatibility}">
-    </api-request-editor>
-    ${_hasResponse ? html`<response-view
-      .request="${this.request}"
-      .response="${this.response}"
-      .responseError="${this.responseError}"
-      .isError="${this.isErrorResponse}"
-      .isXhr="${this.responseIsXhr}"
-      .loadingTime="${this.loadingTime}"
-      .redirects="${this.redirects}"
-      .redirectTimings="${this.redirectsTiming}"
-      .responseTimings="${this.timing}"
-      .sentHttpMessage="${this.sourceMessage}"
-      .compatibility="${compatibility}"></response-view>` : ''}
-    `;
-  }
-
-  _renderServerSelector() {
-    const { amf, selectedServerType, selectedServerValue, allowCustomBaseUri, serverSelectorHidden } = this;
-    return html`<api-server-selector
-      ?hidden="${serverSelectorHidden}"
-      ?allowCustom="${allowCustomBaseUri}"
-      .amf=${amf}
-      selectedValue="${selectedServerValue}"
-      selectedType="${selectedServerType}"
-      @servers-count-changed="${this._handleServersCountChange}"
-    >
-      <slot name="custom-base-uri" slot="custom-base-uri"></slot>
-    </api-server-selector>`;
-  }
-
   static get properties() {
     return {
+      /**
+       * The `amf` property that passes amf model to the request editor.
+       */
+      amf: { type: Object },
       /**
        * AMF HTTP method (operation in AMF vocabulary) ID.
        */
@@ -104451,6 +107995,12 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
        * The editor is still in the DOM and the `urlInvalid` property still will be set.
        */
       noUrlEditor: { type: Boolean },
+      /**
+       * When set it renders a label with the computed URL.
+       * This intended to be used with `noUrlEditor` set to true.
+       * This way it replaces the editor with a simple label.
+       */
+      urlLabel: { type: Boolean },
       /**
        * A base URI for the API. To be set if RAML spec is missing `baseUri`
        * declaration and this produces invalid URL input. This information
@@ -104572,8 +108122,6 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
        *
        * This system allows to use different request panels on single app
        * and don't mix the results.
-       *
-       * @type {String|Number}
        */
       lastRequestId: { type: String },
       /**
@@ -104631,15 +108179,15 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
        */
       version: { type: String },
       /**
-       * Holds the value of the currently selected server 
+       * Holds the value of the currently selected server
        * Data type: URI
        */
-      selectedServerValue: { type: String },
+      serverValue: { type: String },
       /**
        * Holds the type of the currently selected server
        * Values: `server` | `slot` | `custom`
        */
-      selectedServerType: { type: String },
+      serverType: { type: String },
       /**
        * Optional property to set
        * If true, the server selector is not rendered
@@ -104650,12 +108198,6 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
        * If true, the server selector custom base URI option is rendered
        */
       allowCustomBaseUri: { type: Boolean },
-      /**
-       * Holds the value for whether there are enough servers
-       * to show the server selector.
-       * If there are not enough servers, then this value is set to true and server selector is hidden
-       */
-      serverSelectorHidden: { type: Boolean },
     };
   }
 
@@ -104674,20 +108216,6 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     this._selectedChanged(value);
   }
 
-  get handleNavigationEvents() {
-    return this._handleNavigationEvents;
-  }
-
-  set handleNavigationEvents(value) {
-    const old = this._handleNavigationEvents;
-    /* istanbul ignore if */
-    if (old === value) {
-      return;
-    }
-    this._handleNavigationEvents = value;
-    this._handleNavChanged(value);
-  }
-
   get authPopupLocation() {
     return this._authPopupLocation;
   }
@@ -104702,65 +108230,6 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     this._updateRedirectUri(value);
   }
 
-  get serversCount() {
-    return this._serversCount;
-  }
-
-  set serversCount(value) {
-    const old = this._serversCount;
-    if (old === value) {
-      return;
-    }
-    this._serversCount = value;
-    this._updateServer();
-    this._computeServerSelectorHidden();
-    this.requestUpdate('serversCount', old);
-  }
-
-  get selectedServerValue() {
-    return this._selectedServerValue;
-  }
-
-  set selectedServerValue(value) {
-    const old = this._selectedServerValue;
-    if (old === value) {
-      return;
-    }
-    this._selectedServerValue = value;
-    this._updateServer();
-    this.requestUpdate('selectedServerValue', old);
-  }
-
-  get noServerSelector() {
-    return this._noServerSelector;
-  }
-
-  set noServerSelector(value) {
-    const old = this.noServerSelector;
-    if (old === value) {
-      return;
-    }
-
-    this._noServerSelector = value;
-    this.requestUpdate('noServerSelector', old);
-    this._computeServerSelectorHidden();
-  }
-
-  /**
-   * This is the final computed value for the baseUri to propagate downwards
-   * If baseUri is defined, return baseUri
-   * Else, return the selectedServerValue if selectedServerType is not `server`
-   */
-  get effectiveBaseUri() {
-    if (this.baseUri) {
-      return this.baseUri;
-    }
-    if (this.selectedServerType !== 'server') {
-      return this.selectedServerValue;
-    }
-    return '';
-  }
-
   /**
    * @constructor
    */
@@ -104768,10 +108237,34 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     super();
     this._apiResponseHandler = this._apiResponseHandler.bind(this);
     this._apiRequestHandler = this._apiRequestHandler.bind(this);
-    this._navigationHandler = this._navigationHandler.bind(this);
     this._handleNavigationChange = this._handleNavigationChange.bind(this);
 
     this.responseIsXhr = true;
+    this.appendHeaders = null;
+    this.proxy = undefined;
+    this.proxyEncodeUrl = false;
+    this.handleNavigationEvents = false;
+    this.amf = undefined;
+    this.noUrlEditor = false;
+    this.urlLabel = undefined;
+    this.baseUri = undefined;
+    this.noDocs = false;
+    this.eventsTarget = undefined;
+    this.allowHideOptional = false;
+    this.allowDisableParams = false;
+    this.allowCustom = false;
+    this.server = undefined;
+    this.protocols = undefined;
+    this.version = undefined;
+    this.readOnly = false;
+    this.disabled = false;
+    this.compatibility = false;
+    this.outlined = false;
+    this.serverValue = undefined;
+    this.serverType = undefined;
+    this.noServerSelector = false;
+    this.allowCustomBaseUri = false;
+    this.narrow = false;
   }
 
   connectedCallback() {
@@ -104783,75 +108276,39 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     }
   }
 
-  _attachListeners() {
-    window.addEventListener('api-response', this._apiResponseHandler);
+  _attachListeners(node) {
     this.addEventListener('api-request', this._apiRequestHandler);
-    this.addEventListener('api-server-changed', this._serverChangeHandler);
-    this.addEventListener('api-navigation-selection-changed', this._handleNavigationChange);
+    node.addEventListener('api-response', this._apiResponseHandler);
+    node.addEventListener(
+      'api-navigation-selection-changed',
+      this._handleNavigationChange
+    );
   }
 
-  _detachListeners() {
-    window.removeEventListener('api-response', this._apiResponseHandler);
+  _detachListeners(node) {
     this.removeEventListener('api-request', this._apiRequestHandler);
-    this.removeEventListener('api-server-changed', this._serverChangeHandler);
-    this.removeEventListener('api-navigation-selection-changed', this._handleNavigationChange);
-    if (this.__navEventsRegistered) {
-      this._unregisterNavigationEvents();
-    }
+    node.removeEventListener('api-response', this._apiResponseHandler);
+    node.removeEventListener(
+      'api-navigation-selection-changed',
+      this._handleNavigationChange
+    );
   }
-  /**
-   * Registers `api-navigation-selection-changed` event listener handler
-   * on window object.
-   */
-  _registerNavigationEvents() {
-    this.__navEventsRegistered = true;
-    window.addEventListener('api-navigation-selection-changed', this._navigationHandler);
-  }
-  /**
-   * Removes event listener from window object for
-   * `api-navigation-selection-changed` event.
-   */
-  _unregisterNavigationEvents() {
-    this.__navEventsRegistered = false;
-    window.removeEventListener('api-navigation-selection-changed', this._navigationHandler);
-  }
-  /**
-   * Registers / unregisters event listeners depending on `state`
-   *
-   * @param {Boolean} state
-   */
-  _handleNavChanged(state) {
-    if (state) {
-      this._registerNavigationEvents();
-    } else {
-      this._unregisterNavigationEvents();
-    }
-  }
-  /**
-   * Handler for `api-navigation-selection-changed` event.
-   *
-   * @param {CustomEvent} e
-   */
-  _navigationHandler(e) {
-    const { type, selected } = e.detail;
-    this.selected = type === 'method' ? selected : undefined;
-  }
+
   /**
    * Sets OAuth 2 redirect URL for the authorization panel
    *
-   * @param {?String} location Bower components location
+   * @param {String=} [location='node_modules/'] Bower components location
    */
-  _updateRedirectUri(location) {
+  _updateRedirectUri(location = 'node_modules/') {
     const a = document.createElement('a');
-    if (!location) {
-      location = 'node_modules/';
+    let l = String(location);
+    if (l && l[l.length - 1] !== '/') {
+      l += '/';
     }
-    if (location && location[location.length - 1] !== '/') {
-      location += '/';
-    }
-    a.href = location + '@advanced-rest-client/oauth-authorization/oauth-popup.html';
+    a.href = `${l}@advanced-rest-client/oauth-authorization/oauth-popup.html`;
     this.redirectUri = a.href;
   }
+
   /**
    * A handler for the API call.
    * This handler will only check if there is authorization required
@@ -104864,11 +108321,7 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     this._appendConsoleHeaders(e);
     this._appendProxy(e);
   }
-  _serverChangeHandler(e) {
-    const { selectedValue, selectedType } = e.detail;
-    this.selectedServerType = selectedType;
-    this.selectedServerValue = selectedValue;
-  }
+
   /**
    * Appends headers defined in the `appendHeaders` array.
    * @param {CustomEvent} e The `api-request` event.
@@ -104881,23 +108334,27 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     let eventHeaders = e.detail.headers || '';
     for (let i = 0, len = headersToAdd.length; i < len; i++) {
       const header = headersToAdd[i];
-      eventHeaders = this.replaceHeaderValue(eventHeaders, header.name, header.value);
+      eventHeaders = replace(eventHeaders, header.name, header.value);
     }
     e.detail.headers = eventHeaders;
   }
+
   /**
    * Sets the proxy URL if the `proxy` property is set.
    * @param {CustomEvent} e The `api-request` event.
    */
   _appendProxy(e) {
-    const proxy = this.proxy;
+    const { proxy } = this;
     if (!proxy) {
       return;
     }
-    let url = this.proxyEncodeUrl ? encodeURIComponent(e.detail.url) : e.detail.url;
-    url = proxy + url;
-    e.detail.url = url;
+    let { url } = e.detail;
+    if (this.proxyEncodeUrl) {
+      url = encodeURIComponent(url);
+    }
+    e.detail.url = `${proxy}${url}`;
   }
+
   /**
    * Handler for the `api-response` custom event. Sets values on the response
    * panel when response is ready.
@@ -104910,6 +108367,7 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     }
     this._propagateResponse(e.detail);
   }
+
   /**
    * Propagate `api-response` detail object.
    *
@@ -104921,13 +108379,14 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     this.loadingTime = data.loadingTime;
     this.request = data.request;
     this.response = data.response;
-    const isXhr = data.isXhr === false ? false : true;
+    const isXhr = data.isXhr === undefined || data.isXhr === true;
     this.responseIsXhr = isXhr;
     this.redirects = isXhr ? undefined : data.redirects;
     this.redirectsTiming = isXhr ? undefined : data.redirectsTiming;
     this.timing = isXhr ? undefined : data.timing;
     this.sourceMessage = data.sentHttpMessage;
   }
+
   /**
    * Clears response panel when selected id changed.
    * @param {String} id
@@ -104938,6 +108397,7 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     }
     this.clearResponse();
   }
+
   /**
    * Clears response panel.
    */
@@ -104970,605 +108430,351 @@ class ApiRequestPanel extends AmfHelperMixin(EventsTargetMixin(HeadersParserMixi
     }
   }
 
-  _updateServer() {
-    const { selectedServerValue, selectedServerType } = this;
-    if (selectedServerType !== 'server') {
-      this.server = undefined;
-    } else {
-      this.server = this._computeServerFromValue(selectedServerValue);
-    }
-  }
-
-  _computeServerFromValue(value) {
-    return this._findServerByValue(value);
-  }
-
-  _findServerByValue(value) {
-    const { servers = [] } = this;
-    return servers.find(server => this._getServerUri(server) === value);
-  }
-
+  /**
+   * Handles navigation events and computes available servers.
+   *
+   * When `handleNavigationEvents` is set then it also manages the selection.
+   *
+   * @param {CustomEvent} e
+   */
   _handleNavigationChange(e) {
-    const { selected, type, endpointId } = e.detail;
-    const serverDefinitionAllowedTypes = ['endpoint', 'method'];
-    if (serverDefinitionAllowedTypes.indexOf(type) === -1) {
-      return;
+    if (this.handleNavigationEvents) {
+      const { selected: id, type } = e.detail;
+      this.selected = type === 'method' ? id : undefined;
     }
-    this.updateServers({ id: selected, type, endpointId });
   }
 
-  _handleServersCountChange(e) {
-    const { serversCount } = e.detail;
-    this.serversCount = serversCount;
+  render() {
+    return html`<style>
+        ${this.styles}
+      </style>
+      ${this._requestTemplate()} ${this._responseTemplate()} `;
   }
 
-  _getServerUri(server) {
-    const key = this._getAmfKey(this.ns.aml.vocabularies.core.urlTemplate);
-    return this._getValue(server, key);
+  /**
+   * @return {TemplateResult} A template for the request panel
+   */
+  _requestTemplate() {
+    const {
+      narrow,
+      redirectUri,
+      selected,
+      amf,
+      noUrlEditor,
+      urlLabel,
+      baseUri,
+      noDocs,
+      eventsTarget,
+      allowHideOptional,
+      allowDisableParams,
+      allowCustom,
+      server,
+      protocols,
+      version,
+      readOnly,
+      disabled,
+      compatibility,
+      outlined,
+      serverValue,
+      serverType,
+      noServerSelector,
+      allowCustomBaseUri,
+    } = this;
+
+    return html`<api-request-editor
+      ?narrow="${narrow}"
+      .redirectUri="${redirectUri}"
+      .selected="${selected}"
+      .amf="${amf}"
+      ?noUrlEditor="${noUrlEditor}"
+      ?urlLabel="${urlLabel}"
+      .baseUri="${baseUri}"
+      ?noDocs="${noDocs}"
+      .eventsTarget="${eventsTarget}"
+      ?allowHideOptional="${allowHideOptional}"
+      ?allowDisableParams="${allowDisableParams}"
+      ?allowCustom="${allowCustom}"
+      .server="${server}"
+      .protocols="${protocols}"
+      .version="${version}"
+      ?readOnly="${readOnly}"
+      ?disabled="${disabled}"
+      ?outlined="${outlined}"
+      ?compatibility="${compatibility}"
+      .serverValue="${serverValue}"
+      .serverType="${serverType}"
+      ?noServerSelector="${noServerSelector}"
+      ?allowCustomBaseUri="${allowCustomBaseUri}"
+    >
+      <slot name="custom-base-uri" slot="custom-base-uri"></slot>
+    </api-request-editor>`;
   }
 
-  _computeServerSelectorHidden() {
-    const { serversCount = 0, noServerSelector } = this;
-    const old = this.serverSelectorHidden;
-    this.serverSelectorHidden = serversCount < 2 || noServerSelector;
-    this.requestUpdate('serverSelectorHidden', old);
-  }
-
-  updateServers({ id, type, endpointId } = {}) {
-    let methodId;
-    if (type === 'method') {
-      methodId = id;
+  /**
+   * @return {TemplateResult|string} A template for the response view
+   */
+  _responseTemplate() {
+    const { _hasResponse } = this;
+    if (!_hasResponse) {
+      return '';
     }
-    if (type === 'endpoint') {
-      endpointId = id;
-    }
-    this.methodId = methodId;
-    this.endpointId = endpointId;
-    this.servers = this._getServers({ endpointId, methodId });
-  }
-
-  __amfChanged() {
-    this.updateServers();
+    return html`<response-view
+      .request="${this.request}"
+      .response="${this.response}"
+      .responseError="${this.responseError}"
+      .isError="${this.isErrorResponse}"
+      .isXhr="${this.responseIsXhr}"
+      .loadingTime="${this.loadingTime}"
+      .redirects="${this.redirects}"
+      .redirectTimings="${this.redirectsTiming}"
+      .responseTimings="${this.timing}"
+      .sentHttpMessage="${this.sourceMessage}"
+      .compatibility="${this.compatibility}"
+    ></response-view>`;
   }
 }
 
 window.customElements.define('api-request-panel', ApiRequestPanel);
 
-/**
- * @deprecated This custom element is deprecated. Use `ExampleGenerator` instead
- */
-class ApiExampleGenerator extends LitElement {
-  constructor() {
-    super();
-    this._generator = new ExampleGenerator();
-  }
-
-  get ns() {
-    return this._generator.ns;
-  }
-
-  get amf() {
-    return this._generator.amf;
-  }
-
-  set amf(value) {
-    this._generator.amf = value;
-  }
-
-  _getAmfKey(k) {
-    return this._generator._getAmfKey(k);
-  }
-
-  _ensureArray(k) {
-    return this._generator._ensureArray(k);
-  }
-
-  _resolve(k) {
-    return this._generator._resolve(k);
-  }
-  
-  _hasType(k, v) {
-    return this._generator._hasType(k, v);
-  }
-
-  listMedia(payloads) {
-    return this._generator.listMedia(payloads);
-  }
-
-  generatePayloadsExamples(payloads, media, opts) {
-    return this._generator.generatePayloadsExamples(payloads, media, opts);
-  }
-
-  generatePayloadExamples(payload, mime, opts) {
-    return this._generator.generatePayloadExamples(payload, mime, opts);
-  }
-
-  computeExamples(schema, mime, opts) {
-    return this._generator.computeExamples(schema, mime, opts);
-  }
-
-  _readJsonSchema(schema) {
-    return this._generator._readJsonSchema(schema);
-  }
-
-  _computeFromExamples(examples, mime, opts) {
-    return this._generator._computeFromExamples(examples, mime, opts);
-  }
-
-  _processExamples(examples) {
-    return this._generator._processExamples(examples);
-  }
-
-  _listTypeExamples(examples, typeId) {
-    return this._generator._listTypeExamples(examples, typeId);
-  }
-
-  _generateFromExample(example, mime, opts) {
-    return this._generator._generateFromExample(example, mime, opts);
-  }
-
-  _computeExampleArraySchape(schema, mime, opts) {
-    return this._generator._computeExampleArraySchape(schema, mime, opts);
-  }
-
-  _processJsonArrayExamples(examples) {
-    return this._generator._processJsonArrayExamples(examples);
-  }
-
-  _computeUnionExamples(schema, mime, opts) {
-    return this._generator._computeUnionExamples(schema, mime, opts);
-  }
-
-  _computeScalarType(shape) {
-    return this._generator._computeScalarType(shape);
-  }
-
-  _jsonFromStructure(structure) {
-    return this._generator._jsonFromStructure(structure);
-  }
-
-  _jsonFromStructureValue(value, obj, isArray, key, resolvedPrefix) {
-    return this._generator._jsonFromStructureValue(value, obj, isArray, key, resolvedPrefix);
-  }
-
-  _xmlFromStructure(structure, opts) {
-    return this._generator._xmlFromStructure(structure, opts);
-  }
-
-  formatXml(xml) {
-    return this._generator.formatXml(xml);
-  }
-
-  _getTypedValue(structure) {
-    return this._generator._getTypedValue(structure);
-  }
-
-  _exampleFromJsonSchema(schema, jsonSchema) {
-    return this._generator._exampleFromJsonSchema(schema, jsonSchema);
-  }
-
-  _exampleFromProperties(properties, mime, typeName, parentType) {
-    return this._generator._exampleFromProperties(properties, mime, typeName, parentType);
-  }
-
-  _jsonExampleFromProperties(properties) {
-    return this._generator._jsonExampleFromProperties(properties);
-  }
-
-  _computeJsonProperyValue(range, typeName) {
-    return this._generator._computeJsonProperyValue(range, typeName);
-  }
-
-  _typeToValue(value, type) {
-    return this._generator._typeToValue(value, type);
-  }
-
-  _computeJsonUnionValue(range, typeName) {
-    return this._generator._computeJsonUnionValue(range, typeName);
-  }
-
-  _computeJsonObjectValue(range) {
-    return this._generator._computeJsonObjectValue(range);
-  }
-
-  _computeJsonArrayValue(range) {
-    return this._generator._computeJsonArrayValue(range);
-  }
-
-  _extractExampleRawValue(example) {
-    return this._generator._extractExampleRawValue(example);
-  }
-
-  _getTypeScalarValue(range) {
-    return this._generator._getTypeScalarValue(range);
-  }
-
-  _xmlExampleFromProperties(properties, typeName, parentType) {
-    return this._generator._xmlExampleFromProperties(properties, typeName, parentType);
-  }
-
-  _xmlProcessProperty(doc, node, property) {
-    return this._generator._xmlProcessProperty(doc, node, property);
-  }
-
-  _xmlFromExamples(doc, node, example, propertyName) {
-    return this._generator._xmlFromExamples(doc, node, example, propertyName);
-  }
-
-  _readDataType(shape) {
-    return this._generator._readDataType(shape);
-  }
-
-  _appendXmlAttribute(node, property, range, serialization) {
-    return this._generator._appendXmlAttribute(node, range, serialization);
-  }
-
-  _appendXmlElement(doc, node, range) {
-    return this._generator._appendXmlElement(doc, node, range);
-  }
-
-  _appendXmlElements(doc, node, property, range) {
-    return this._generator._appendXmlElements(doc, node, range);
-  }
-
-  _appendXmlArray(doc, node, property, range, isWrapped) {
-    return this._generator._appendXmlArray(doc, node, range, isWrapped);
-  }
-
-  _xmlProcessUnionScalarProperty(doc, node, property, shape) {
-    return this._generator._xmlProcessUnionScalarProperty(doc, property, shape);
-  }
-
-  _normalizeXmlTagName(name) {
-    return this._generator._normalizeXmlTagName(name);
-  }
-
-  _xmlProcessDataProperty(doc, node, property, name) {
-    return this._generator._xmlProcessDataProperty(doc, node, property, name);
-  }
-
-  _computeExampleFromStructuredValue(model) {
-    return this._generator._computeExampleFromStructuredValue(model);
-  }
-
-  _computeStructuredExampleValue(model) {
-    return this._generator._computeStructuredExampleValue(model);
-  }
-
-  _processDataArrayProperties(doc, node, property, name) {
-    return this._generator._processDataArrayProperties(doc, node, property, name);
-  }
-
-  _processDataObjectProperties(doc, node, property) {
-    return this._generator._processDataObjectProperties(doc, node, property);
-  }
-
-  _dataNameFromKey(key) {
-    return this._generator._dataNameFromKey(key);
-  }
+var styles$j = css`:host {
+  display: block;
 }
 
-window.customElements.define('api-example-generator', ApiExampleGenerator);
+.title {
+  font-size: var(--arc-font-headline-font-size);
+  letter-spacing: var(--arc-font-headline-letter-spacing);
+  line-height: var(--arc-font-headline-line-height);
+  font-weight: var(--api-method-documentation-title-method-font-weight,
+    var(--arc-font-headline-font-weight, 500));
+  text-transform: capitalize;
+}
+
+.heading2 {
+  font-size: var(--arc-font-title-font-size);
+  font-weight: var(--arc-font-title-font-weight);
+  line-height: var(--arc-font-title-line-height);
+  margin: 0.84em 0;
+}
+
+.heading3 {
+  flex: 1;
+  font-size: var(--arc-font-subhead-font-size);
+  font-weight: var(--arc-font-subhead-font-weight);
+  line-height: var(--arc-font-subhead-line-height);
+}
+
+:host([narrow]) .title {
+  font-size: var(--arc-font-headline-narrow-font-size, 20px);
+  margin: 0;
+}
+
+:host([narrow]) .heading2 {
+  font-size: var(--arc-font-title-narrow-font-size, 18px);
+}
+
+:host([narrow]) .heading3 {
+  font-size: var(--arc-font-subhead-narrow-font-size, 17px);
+}
+
+arc-marked {
+  margin: 8px 0;
+  padding: 0px;
+}
+
+.markdown-body {
+  margin-bottom: 28px;
+  color: var(--api-endpoint-documentation-description-color, rgba(0, 0, 0, 0.74));
+}
+
+.extensions {
+  font-style: italic;
+  margin: 12px 0;
+}
+
+.bottom-nav,
+.bottom-link {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.bottom-nav {
+  padding: 32px 0;
+  margin: 16px 0;
+  color: var(--api-endpoint-documentation-bottom-navigation-color, #000);
+}
+
+.bottom-link {
+  cursor: pointer;
+  max-width: 50%;
+  word-break: break-all;
+  text-decoration: underline;
+}
+
+.bottom-link.previous {
+  margin-right: 12px;
+}
+
+.bottom-link.next {
+  margin-left: 12px;
+}
+
+.nav-separator {
+  flex: 1;
+}
+
+.url-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  font-family: var(--arc-font-code-family);
+  font-size: var(--api-endpoint-documentation-url-font-size, 1.07rem);
+  margin-bottom: 40px;
+  margin-top: 20px;
+  background-color: var(--code-background-color);
+  color: var(--code-color);
+  padding: 8px;
+  border-radius: var(--api-endpoint-documentation-url-border-radius, 4px);
+}
+
+.url-area[extra-margin] {
+  margin-top: 20px;
+}
+
+.url-value {
+  flex: 1;
+  word-break: break-all;
+}
+
+.method-label {
+  margin-bottom: 0px;
+}
+
+.method-anchor {
+  text-decoration: none;
+  color: inherit;
+}
+
+.method-anchor:hover {
+  text-decoration: underline;
+}
+
+.method {
+  margin: 0.83em 0;
+}
+
+.method p {
+  margin: 0;
+}
+
+.method-name + p {
+  margin-top: 0.83em;
+}
+
+.method-container {
+  display: flex;
+  flex-direction: row;
+  padding: 24px 0;
+  box-sizing: border-box;
+  border-top-width: 2px;
+  border-top-color: var(--api-endpoint-documentation-method-doc-border-top-color, #E5E5E5);
+  border-top-style: var(--api-endpoint-documentation-method-doc-border-top-style, dashed);
+}
+
+:host([narrow]) .method-container {
+  flex-direction: column;
+}
+
+.method-container api-method-documentation {
+  width: var(--api-endpoint-documentation-method-doc-width, 60%);
+  max-width: var(--api-endpoint-documentation-method-doc-max-width);
+  padding-right: 12px;
+  box-sizing: border-box;
+}
+
+.method-container .try-it-column {
+  width: var(--api-endpoint-documentation-tryit-width, 40%);
+  max-width: var(--api-endpoint-documentation-tryit-max-width);
+  background-color: var(--api-endpoint-documentation-tryit-background-color, #ECEFF1);
+}
+
+:host([narrow]) .method-container api-method-documentation,
+:host([narrow]) .method-container .try-it-column {
+  border: none !important;
+  max-width: 900px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.try-it-column api-request-panel,
+.try-it-column http-code-snippets {
+  padding: 4px 4px 12px 4px;
+  margin: 4px;
+  background-color: var(--api-endpoint-documentation-tryit-panels-background-color, #fff);
+  box-sizing: border-box;
+  border-radius: var(--api-endpoint-documentation-tryit-panels-border-radius, 3px);
+  border-width: 1px;
+  border-color: var(--api-endpoint-documentation-tryit-panels-border-color, #EEEEEE);
+  border-style: var(--api-endpoint-documentation-tryit-panels-border-style, solid);
+}
+
+.try-it-column .heading3 {
+  padding-left: 12px;
+  padding-right: 12px;
+  flex: 1;
+}
+
+.section-title-area {
+  flex-direction: row;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  border-bottom-width: 1px;
+  border-bottom-color: var(--api-endpoint-documentation-tryit-title-border-bottom-color, #bac6cb);
+  border-bottom-style: var(--api-endpoint-documentation-tryit-title-border-bottom-style, solid);
+}
+
+.toggle-icon {
+  margin-left: 8px;
+  transform: rotateZ(0deg);
+  transition: transform 0.3s ease-in-out;
+}
+
+.toggle-icon.opened {
+  transform: rotateZ(-180deg);
+}
+
+.noinfo {
+  font-style: var(--no-info-message-font-style, italic);
+  font-size: var(--no-info-message-font-size, 16px);
+  color: var(--no-info-message-color, rgba(0, 0, 0, 0.74));
+}
+
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+`;
 
 /**
  * `api-endpoint-documentation`
  *
- * A component to generate documentation for an endpoint from AMF model
+ * A component to generate documentation for an endpoint from the AMF model.
  *
- * This element works with [AMF](https://github.com/mulesoft/amf) data model.
- * To properly compute all the information relevant to endpoint documentation
- * set the following properties:
- *
- * - amf - as AMF's WebApi data model
- * - endpoint - As AMF's EndPoint data model
- *
- * When set, this will automatically populate the wiew with data.
- *
- * ## Updating API's base URI
- *
- * By default the component render the documentation as it is defined
- * in the AMF model. Sometimes, however, you may need to replace the base URI
- * of the API with something else. It is useful when the API does not
- * have base URI property defined (therefore this component render relative
- * paths instead of URIs) or when you want to manage different environments.
- *
- * To update base URI value either update `baseUri` property or use
- * `iron-meta` with key `ApiBaseUri`. First method is easier but the second
- * gives much more flexibility since it use a
- * [monostate pattern](http://wiki.c2.com/?MonostatePattern)
- * to manage base URI property.
- *
- * When the component constructs the funal URI for the endpoint it does the
- * following:
- * - if `baseUri` is set it uses this value as a base uri for the endpoint
- * - else if `iron-meta` with key `ApiBaseUri` exists and contains a value
- * it uses it uses this value as a base uri for the endpoin
- t
- * - else if `amf` is set then it computes base uri value from main
- * model document
- * Then it concatenates computed base URI with `endpoint`'s path property.
- *
- * ### Example
- *
- * ```html
- * <iron-meta key="ApiBaseUri" value="https://domain.com"></iron-meta>
- * ```
- *
- * To update value of the `iron-meta`:
- * ```javascript
- * new Polymer.IronMeta({key: 'ApiBaseUri'}).value = 'https://other.domain';
- * ```
- *
- * Note: The element will not get notified about the change in `iron-meta`.
- * The change will be reflected whehn `amf` or `endpoint` property chnage.
- *
- * ## Inline methods layout
- *
- * When `inlineMethods` is set then methods (api-method-document) is rendered
- * instead of list of links to methods.
- * Deep linking is still supported. The page scrolls when navigation event
- * changes.
- *
- * In this layout the try it panel is rendered next to method documentation
- * (normal layout) or below method documentation (narrow layout).
- *
- * ## Styling
- *
- * `<api-endpoint-documentation>` provides the following custom properties
- * and mixins for styling:
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--api-endpoint-documentation` | Mixin applied to this elment | `{}`
- * `--arc-font-headline` | Theme mixin, Applied to h1 element (title) | `{}`
- * `--arc-font-code1` | Theme mixin, applied to the URL area | `{}`
- * `--api-endpoint-documentation-url-font-size` | Font size of endpoin URL | `16px`
- * `--api-endpoint-documentation-url-background-color` | Background color of the URL section | `#424242`
- * `--api-endpoint-documentation-url-font-color` | Font color of the URL area | `#fff`
- * `--api-endpoint-documentation-bottom-navigation-color` | Color of of the bottom navigartion (icon + text) | `#000`
- * `--api-endpoint-documentation-tryit-background-color` | Background color of inlined "try it" panel | `#ECEFF1`
- * `--api-endpoint-documentation-method-doc-border-top-color` | Method doc top border color |  `#E5E5E5`
- * `--api-endpoint-documentation-method-doc-border-top-style` | Method doc top border style | `dashed`
- * `--api-endpoint-documentation-tryit-panels-background-color` | Bg color of try it panels | `#fff`
- * `--api-endpoint-documentation-tryit-panels-border-radius` | Try it panels border radius | `3px`
- * `--api-endpoint-documentation-tryit-panels-border-color` | Try it panels border color | `#EEEEEE`
- * `--api-endpoint-documentation-tryit-panels-border-style` | Try it panels border style | `solid`
- * `--api-endpoint-documentation-tryit-section-title`
- *
- * @customElement
- * @demo demo/index.html
- * @memberof ApiElements
- * @appliesMixin AmfHelperMixin
+ * @mixes AmfHelperMixin
+ * @extends LitElement
  */
 class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   get styles() {
     return [
       markdownStyles,
       labelStyles,
-      css`:host {
-        display: block;
-      }
-
-      .title {
-        font-size: var(--arc-font-headline-font-size);
-        letter-spacing: var(--arc-font-headline-letter-spacing);
-        line-height: var(--arc-font-headline-line-height);
-        font-weight: var(--api-method-documentation-title-method-font-weight,
-          var(--arc-font-headline-font-weight, 500));
-        text-transform: capitalize;
-      }
-
-      .heading2 {
-        font-size: var(--arc-font-title-font-size);
-        font-weight: var(--arc-font-title-font-weight);
-        line-height: var(--arc-font-title-line-height);
-        margin: 0.84em 0;
-      }
-
-      .heading3 {
-        flex: 1;
-        font-size: var(--arc-font-subhead-font-size);
-        font-weight: var(--arc-font-subhead-font-weight);
-        line-height: var(--arc-font-subhead-line-height);
-      }
-
-      :host([narrow]) .title {
-        font-size: var(--arc-font-headline-narrow-font-size, 20px);
-        margin: 0;
-      }
-
-      :host([narrow]) .heading2 {
-        font-size: var(--arc-font-title-narrow-font-size, 18px);
-      }
-
-      :host([narrow]) .heading3 {
-        font-size: var(--arc-font-subhead-narrow-font-size, 17px);
-      }
-
-      arc-marked {
-        margin: 8px 0;
-        padding: 0px;
-      }
-
-      .markdown-body {
-        margin-bottom: 28px;
-        color: var(--api-endpoint-documentation-description-color, rgba(0, 0, 0, 0.74));
-      }
-
-      .extensions {
-        font-style: italic;
-        margin: 12px 0;
-      }
-
-      .bottom-nav,
-      .bottom-link {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .bottom-nav {
-        padding: 32px 0;
-        margin: 16px 0;
-        color: var(--api-endpoint-documentation-bottom-navigation-color, #000);
-      }
-
-      .bottom-link {
-        cursor: pointer;
-        max-width: 50%;
-        word-break: break-all;
-        text-decoration: underline;
-      }
-
-      .bottom-link.previous {
-        margin-right: 12px;
-      }
-
-      .bottom-link.next {
-        margin-left: 12px;
-      }
-
-      .nav-separator {
-        flex: 1;
-      }
-
-      .url-area {
-        flex: 1;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        font-family: var(--arc-font-code-family);
-        font-size: var(--api-endpoint-documentation-url-font-size, 1.07rem);
-        margin-bottom: 40px;
-        margin-top: 20px;
-        background-color: var(--code-background-color);
-        color: var(--code-color);
-        padding: 8px;
-        border-radius: var(--api-endpoint-documentation-url-border-radius, 4px);
-      }
-
-      .url-area[extra-margin] {
-        margin-top: 20px;
-      }
-
-      .url-value {
-        flex: 1;
-        word-break: break-all;
-      }
-
-      .method-label {
-        margin-bottom: 0px;
-      }
-
-      .method-anchor {
-        text-decoration: none;
-        color: inherit;
-      }
-
-      .method-anchor:hover {
-        text-decoration: underline;
-      }
-
-      .method {
-        margin: 0.83em 0;
-      }
-
-      .method p {
-        margin: 0;
-      }
-
-      .method-name + p {
-        margin-top: 0.83em;
-      }
-
-      .method-container {
-        display: flex;
-        flex-direction: row;
-        padding: 24px 0;
-        box-sizing: border-box;
-        border-top-width: 2px;
-        border-top-color: var(--api-endpoint-documentation-method-doc-border-top-color, #E5E5E5);
-        border-top-style: var(--api-endpoint-documentation-method-doc-border-top-style, dashed);
-      }
-
-      :host([narrow]) .method-container {
-        flex-direction: column;
-      }
-
-      .method-container api-method-documentation {
-        width: var(--api-endpoint-documentation-method-doc-width, 60%);
-        max-width: var(--api-endpoint-documentation-method-doc-max-width);
-        padding-right: 12px;
-        box-sizing: border-box;
-      }
-
-      .method-container .try-it-column {
-        width: var(--api-endpoint-documentation-tryit-width, 40%);
-        max-width: var(--api-endpoint-documentation-tryit-max-width);
-        background-color: var(--api-endpoint-documentation-tryit-background-color, #ECEFF1);
-      }
-
-      :host([narrow]) .method-container api-method-documentation,
-      :host([narrow]) .method-container .try-it-column {
-        border: none !important;
-        max-width: 900px;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      .try-it-column api-request-panel,
-      .try-it-column http-code-snippets {
-        padding: 4px 4px 12px 4px;
-        margin: 4px;
-        background-color: var(--api-endpoint-documentation-tryit-panels-background-color, #fff);
-        box-sizing: border-box;
-        border-radius: var(--api-endpoint-documentation-tryit-panels-border-radius, 3px);
-        border-width: 1px;
-        border-color: var(--api-endpoint-documentation-tryit-panels-border-color, #EEEEEE);
-        border-style: var(--api-endpoint-documentation-tryit-panels-border-style, solid);
-      }
-
-      .try-it-column .heading3 {
-        padding-left: 12px;
-        padding-right: 12px;
-        flex: 1;
-      }
-
-      .section-title-area {
-        flex-direction: row;
-        display: flex;
-        align-items: center;
-        cursor: pointer;
-        user-select: none;
-        border-bottom-width: 1px;
-        border-bottom-color: var(--api-endpoint-documentation-tryit-title-border-bottom-color, #bac6cb);
-        border-bottom-style: var(--api-endpoint-documentation-tryit-title-border-bottom-style, solid);
-      }
-
-      .toggle-icon {
-        margin-left: 8px;
-        transform: rotateZ(0deg);
-        transition: transform 0.3s ease-in-out;
-      }
-
-      .toggle-icon.opened {
-        transform: rotateZ(-180deg);
-      }
-
-      .noinfo {
-        font-style: var(--no-info-message-font-style, italic);
-        font-size: var(--no-info-message-font-size, 16px);
-        color: var(--no-info-message-color, rgba(0, 0, 0, 0.74));
-      }
-
-      .icon {
-        display: block;
-        width: 24px;
-        height: 24px;
-        fill: currentColor;
-      }
-      `
+      styles$j,
     ];
   }
 
@@ -105632,8 +108838,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       narrow: { type: Boolean, reflect: true },
       /**
        * List of traits and resource types, if any.
-       *
-       * @type {Array<Object>}
        */
       extendsTypes: { type: Array },
       /**
@@ -105647,8 +108851,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       parentTypeName: { type: String },
       /**
        * List of traits appied to this endpoint
-       *
-       * @type {Array<Object>}
        */
       traits: { type: Array },
       /**
@@ -105677,7 +108879,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       noTryIt: { type: Boolean },
       /**
        * Computed list of operations to render in the operations list.
-       * @type {Object}
        */
       operations: { type: Array },
       /**
@@ -105719,7 +108920,27 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       /**
        * When set it hiddes bottom navigation links
        */
-      noNavigation: { type: Boolean }
+      noNavigation: { type: Boolean },
+      /**
+       * Holds the value of the currently selected server
+       * Data type: URI
+       */
+      serverValue: { type: String },
+      /**
+       * Holds the type of the currently selected server
+       * Values: `server` | `uri` | `custom`
+       */
+      serverType: { type: String },
+      /**
+       * Optional property to set
+       * If true, the server selector is not rendered
+       */
+      noServerSelector: { type: Boolean },
+      /**
+       * Optional property to set
+       * If true, the server selector custom base URI option is rendered
+       */
+      allowCustomBaseUri: { type: Boolean },
     };
   }
 
@@ -105729,14 +108950,6 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
 
   set legacy(value) {
     this.compatibility = value;
-  }
-
-  get _exampleGenerator() {
-    if (!this.__exampleGenerator) {
-      this.__exampleGenerator = document.createElement('api-example-generator');
-    }
-    this.__exampleGenerator.amf = this.amf;
-    return this.__exampleGenerator;
   }
 
   get baseUri() {
@@ -105750,7 +108963,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._baseUri = value;
-    this.endpointUri = this._computeEndpointUri(this.server, this.endpoint, value, this.apiVersion);
+    this.endpointUri = this._computeEndpointUri();
   }
 
   get scrollTarget() {
@@ -105779,7 +108992,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     }
     this._inlineMethods = value;
     this._inlineMethodsChanged(value);
-    this.operations = this._computeOperations(this.endpoint, value, this.amf);
+    this.operations = this._computeOperations(this.endpoint, value);
     this.requestUpdate('inlineMethods', old);
   }
 
@@ -105823,7 +109036,27 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
     this._selected = value;
+    this.endpointUri = this._computeEndpointUri();
     this._selectedChanged(value);
+  }
+
+  get server() {
+    return this._server;
+  }
+
+  set server(value) {
+    const old = this._server;
+    /* istanbul ignore if */
+    if (old === value) {
+      return;
+    }
+    this._server = value;
+    const oldUri = this.endpointUri;
+    const newUri = this._computeEndpointUri();
+    if (oldUri !== newUri) {
+      this.endpointUri = newUri;
+      this.requestUpdate('server', old);
+    }
   }
 
   constructor() {
@@ -105855,10 +109088,9 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     if (!amf) {
       return;
     }
-    const apiVersion = this.apiVersion = this._computeApiVersion(amf);
-    const server = this.server = this._computeServer(amf);
-    this.endpointUri = this._computeEndpointUri(server, this.endpoint, this.baseUri, apiVersion);
-    this.operations = this._computeOperations(this.endpoint, this.inlineMethods, amf);
+    this.apiVersion = this._computeApiVersion(amf);
+    this.endpointUri = this._computeEndpointUri();
+    this.operations = this._computeOperations(this.endpoint, this.inlineMethods);
   }
 
   _processEndpointChange() {
@@ -105871,12 +109103,17 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     this.description = this._computeDescription(endpoint);
     this.path = this._computePath(endpoint);
     this.hasCustomProperties = this._computeHasCustomProperties(endpoint);
-    this.endpointUri = this._computeEndpointUri(this.server, endpoint, this.baseUri, this.apiVersion);
+    this.endpointUri = this._computeEndpointUri();
     const types = this.extendsTypes = this._computeExtendsTypes(endpoint);
     this.traits = this._computeTraits(types);
     const parent = this.parentType = this._computeParentType(types);
     this.parentTypeName = this._computeParentTypeName(parent);
-    this.operations = this._computeOperations(endpoint, this.inlineMethods, this.amf);
+    this.operations = this._computeOperations(endpoint, this.inlineMethods);
+  }
+
+  _computeEndpointUri() {
+    const { server, baseUri, apiVersion: version, endpoint } = this;
+    return this._computeUri(endpoint, { server, baseUri, version });
   }
 
   /**
@@ -106240,7 +109477,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   /**
    * Computes example headers string for code snippets.
    * @param {Array} method Method (operation) model
-   * @return {String|undefind} Computed example value for headers
+   * @return {String|undefined} Computed example value for headers
    */
   _computeSnippetsHeaders(method) {
     if (!method) {
@@ -106265,7 +109502,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
   /**
    * Computes example payload string for code snippets.
    * @param {Array} payload Payload model from AMF
-   * @return {String|undefind} Computed example value for payload
+   * @return {String|undefined} Computed example value for payload
    */
   _computeSnippetsPayload(payload) {
     if (payload && payload instanceof Array) {
@@ -106282,11 +109519,12 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       return;
     }
 
-    let mt = this._getValue(payload, this.ns.aml.vocabularies.core.mediaType);
+    let mt = /** @type string */ (this._getValue(payload, this.ns.aml.vocabularies.core.mediaType));
     if (!mt) {
       mt = 'application/json';
     }
-    const examples = this._exampleGenerator.generatePayloadExamples(payload, mt, {});
+    const gen = new ExampleGenerator(this.amf);
+    const examples = gen.generatePayloadExamples(payload, mt, {});
     if (!examples || !examples[0]) {
       return;
     }
@@ -106495,7 +109733,8 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       baseUri,
       noTryIt,
       compatibility,
-      graph
+      graph,
+      server,
     } = this;
     const klas = this._computeTryItColumClass(index, operations);
     return html`
@@ -106503,6 +109742,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
       <api-method-documentation
         data-operation-id="${item['@id']}"
         .amf="${amf}"
+        .server="${server}"
         .endpoint="${endpoint}"
         .method="${item}"
         .narrow="${narrow}"
@@ -106542,6 +109782,10 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
         <api-request-panel
           .amf="${this.amf}"
           .selected="${item['@id']}"
+          ?noServerSelector="${this.noServerSelector}"
+          ?allowCustomBaseUri="${this.allowCustomBaseUri}"
+          .serverValue="${this.serverValue}"
+          .serverType="${this.serverType}"
           ?narrow="${this.narrow}"
           ?noUrlEditor="${this.noUrlEditor}"
           .baseUri="${this.baseUri}"
@@ -106990,7 +110234,7 @@ class ApiDocumentationDocument extends AmfHelperMixin(LitElement) {
 }
 window.customElements.define('api-documentation-document', ApiDocumentationDocument);
 
-var styles$e = css`
+var styles$k = css`
 :host {
   display: block;
   color: var(--api-summary-color, inherit);
@@ -107174,7 +110418,7 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
     return [
       markdownStyles,
       labelStyles,
-      styles$e,
+      styles$k,
     ];
   }
 
@@ -107747,12 +110991,9 @@ window.customElements.define('api-summary', ApiSummary);
  * Note: The element will not be notified about the change when `iron-meta` value change.
  * The change will be reflected when `amf` or `endpoint` property chnage.
  *
- *
- * @customElement
- * @polymer
- * @demo demo/index.html
- * @memberof ApiElements
- * @appliesMixin AmfHelperMixin
+ * @mixes AmfHelperMixin
+ * @mixes EventsTargetMixin
+ * @extends LitElement
  */
 class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   get styles() {
@@ -107768,9 +111009,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   render() {
-    const {
-      aware
-    } = this;
+    const { aware } = this;
     return html`<style>${this.styles}</style>
     ${aware ? html`<raml-aware
       .scope="${aware}"
@@ -107780,21 +111019,29 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   _renderServerSelector() {
-    const { amf, selectedServerType, selectedServerValue, allowCustomBaseUri, noServerSelector } = this;
+    if (this.noServerSelector) {
+      return '';
+    }
+    const { amf, compatibility, outlined, serverType, serverValue, allowCustomBaseUri, showsSelector, selected, selectedType } = this;
 
-    return noServerSelector
-      ? ""
-      : html`<api-server-selector
+    return html`
+      <api-server-selector
         class="server-selector"
-        slot="content"
         .amf="${amf}"
-        .selectedType="${selectedServerType}"
-        .selectedValue="${selectedServerValue}"
-        ?hidden=${!this.showsSelector}
+        .selectedShape="${selected}"
+        .selectedShapeType="${selectedType}"
+        .value="${serverValue}"
+        .type="${serverType}"
+        ?hidden="${!showsSelector}"
         ?allowCustom="${allowCustomBaseUri}"
-        @servers-count-changed="${this._handleServersCountChange}">
-          <slot name="custom-base-uri" slot="custom-base-uri"></slot>
-        </api-server-selector>`;
+        ?compatibility="${compatibility}"
+        ?outlined="${outlined}"
+        autoselect
+        @serverscountchanged="${this._handleServersCountChange}"
+        @apiserverchanged="${this._handleServerChange}"
+      >
+        <slot name="custom-base-uri" slot="custom-base-uri"></slot>
+      </api-server-selector>`;
   }
 
   _renderView() {
@@ -107809,9 +111056,13 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   _summaryTemplate() {
-    const { _docsModel, baseUri } = this;
+    const { _docsModel, baseUri, rearrangeEndpoints } = this;
 
-    return html`<api-summary .amf="${_docsModel}" .baseUri="${baseUri}"></api-summary>`;
+    return html`<api-summary
+        .amf="${_docsModel}"
+        .baseUri="${baseUri}"
+        .rearrangeendpoints="${rearrangeEndpoints}"
+      ></api-summary>`;
   }
 
   _securityTemplate() {
@@ -107842,7 +111093,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   _methodTemplate() {
-    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, noTryIt, graph, noBottomNavigation } = this;
+    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, noTryIt, graph, noBottomNavigation, server } = this;
     const prev = this._computeMethodPrevious(amf, selected);
     const next = this._computeMethodNext(amf, selected);
 
@@ -107851,11 +111102,12 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       .narrow="${narrow}"
       .compatibility="${compatibility}"
       .endpoint="${_endpoint}"
+      .server="${server}"
       .method="${_docsModel}"
       .previous="${prev}"
       .next="${next}"
       .baseUri="${this.effectiveBaseUri}"
-      .noTryIt="${noTryIt}"
+      ?noTryIt="${noTryIt}"
       ?graph="${graph}"
       ?noNavigation="${noBottomNavigation}"
       rendersecurity
@@ -107869,7 +111121,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   _inlineEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, outlined, selected, scrollTarget, redirectUri, noUrlEditor, graph, noBottomNavigation } = this;
+    const { amf, _docsModel, narrow, compatibility, outlined, selected, scrollTarget, redirectUri, noUrlEditor, graph, noBottomNavigation, server } = this;
     const prev = this._computeEndpointPrevious(amf, selected, true);
     const next = this._computeEndpointNext(amf, selected, true);
 
@@ -107879,6 +111131,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       .compatibility="${compatibility}"
       .outlined="${outlined}"
       .selected="${selected}"
+      .server="${server}"
       .endpoint="${_docsModel}"
       .previous="${prev}"
       .next="${next}"
@@ -107893,7 +111146,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   _simpleEndpointTemplate() {
-    const { amf, _docsModel, narrow, compatibility, selected, graph, noBottomNavigation } = this;
+    const { amf, _docsModel, narrow, compatibility, selected, graph, noBottomNavigation, server } = this;
     const prev = this._computeEndpointPrevious(amf, selected);
     const next = this._computeEndpointNext(amf, selected);
 
@@ -107901,6 +111154,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       .amf="${amf}"
       .narrow="${narrow}"
       .compatibility="${compatibility}"
+      .server="${server}"
       .selected="${selected}"
       .endpoint="${_docsModel}"
       .previous="${prev}"
@@ -107909,14 +111163,6 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       ?graph="${graph}"
       ?noNavigation="${noBottomNavigation}"
       ></api-endpoint-documentation>`;
-  }
-
-  _attachListeners(node) {
-    node.addEventListener('api-server-changed', this._handleServerChange);
-  }
-
-  _detachListeners(node) {
-    node.removeEventListener('api-server-changed', this._handleServerChange);
   }
 
   static get properties() {
@@ -108032,11 +111278,18 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       /**
        * The URI of the server currently selected in the server selector
        */
-      selectedServerValue: { type: String },
+      serverValue: { type: String },
       /**
        * The type of the server currently selected in the server selector
        */
-      selectedServerType: { type: String }
+      serverType: { type: String },
+      /**
+       * If this value is set, then the documentation component will pass it down
+       * to the `api-summary` component to sort the list of endpoints based
+       * on the `path` value of the endpoint, keeping the order
+       * of which endpoint was first in the list, relative to each other
+       */
+      rearrangeEndpoints: { type: Boolean },
     };
   }
 
@@ -108060,8 +111313,6 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
     }
     this._selected = value;
     this.__amfChanged();
-    this._updateServers();
-
     this.requestUpdate('selected', old);
   }
 
@@ -108076,51 +111327,7 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       return;
     }
     this.__amfChanged();
-    this._updateServers();
-
     this._selectedType = value;
-  }
-
-  get serversCount() {
-    return this._serversCount;
-  }
-
-  set serversCount(value) {
-    const old = this._serversCount;
-    if (old === value) {
-      return;
-    }
-    this._serversCount = value;
-    this._updateServers();
-    this.requestUpdate('serversCount', old);
-  }
-
-  get selectedServerValue() {
-    return this._selectedServerValue;
-  }
-
-  set selectedServerValue(value) {
-    const old = this._selectedServerValue;
-    if (old === value) {
-      return;
-    }
-    this._selectedServerValue = value;
-    this._notifyServerChanged();
-    this.requestUpdate('selectedServerValue', old);
-  }
-
-  get selectedServerType() {
-    return this._selectedServerType;
-  }
-
-  set selectedServerType(value) {
-    const old = this._selectedServerType;
-    if (old === value) {
-      return;
-    }
-    this._selectedServerType = value;
-    this._notifyServerChanged();
-    this.requestUpdate('selectedServerType', old);
   }
 
   get showsSelector() {
@@ -108133,9 +111340,9 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
   }
 
   get effectiveBaseUri() {
-    const { baseUri, selectedServerValue } = this;
+    const { baseUri, serverValue } = this;
 
-    return baseUri || selectedServerValue;
+    return baseUri || serverValue;
   }
 
   get inlineMethods() {
@@ -108170,6 +111377,10 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
     super();
     this._navigationHandler = this._navigationHandler.bind(this);
     this._handleServerChange = this._handleServerChange.bind(this);
+
+    if (this.rearrangeEndpoints === undefined) {
+      this.rearrangeEndpoints = false;
+    }
   }
 
   disconnectedCallback() {
@@ -108254,17 +111465,6 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
     window.removeEventListener('api-navigation-selection-changed', this._navigationHandler);
   }
 
-  _notifyServerChanged() {
-    this.dispatchEvent(
-      new CustomEvent('api-server-changed', {
-        detail: {
-          selectedValue: this.selectedServerValue,
-          selectedType: this.selectedServerType
-        },
-        composed: true
-      })
-    );
-  }
   /**
    * Registers / unregisters event listeners depending on `state`
    *
@@ -108277,6 +111477,34 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
       this._unregisterNavigationEvents();
     }
   }
+
+  get server() {
+    const { serverValue, serverType, selectedType, endpointId: eid, selected: mid } = this;
+    if (serverType && serverType !== 'server') {
+      return null;
+    }
+    if (['method', 'endpoint'].indexOf(selectedType) === -1) {
+      return null;
+    }
+    let endpointId;
+    let methodId;
+    if (selectedType === 'method') {
+      endpointId = eid;
+      methodId = mid;
+    } else {
+      endpointId = mid;
+    }
+
+    const servers = this._getServers({ endpointId, methodId });
+    if (!servers || !servers.length) {
+      return null;
+    }
+    if (!serverValue && servers.length) {
+      return servers[0];
+    }
+    return servers.find((server) => this._getServerUri(server) === serverValue);
+  }
+
   /**
    * Handler for `api-navigation-selection-changed` event.
    *
@@ -108286,56 +111514,26 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
     if (e.detail.passive === true) {
       return;
     }
-    this.selected = e.detail.selected;
-    this.selectedType = e.detail.type;
-    
-    this._updateServers();
+    const { selected, type, endpointId } = e.detail;
+    this.selected = selected;
+    this.selectedType = type;
+    this.endpointId = type === 'method' ? endpointId : null;
+
+    this.requestUpdate();
   }
 
   _handleServersCountChange(e) {
-    this.serversCount = e.detail.serversCount;
-  }
-
-  _updateServers() {
-    let methodId;
-    let endpointId;
-
-    if (this.selectedType === 'method') {
-      methodId = this.selected;
-    } else if (this.selectedType === 'endpoint') {
-      endpointId = this.selected;
-    }
-
-    this.servers = this._getServers({ endpointId, methodId });
-
-    this._updateServerValues();
-  }
-
-  _updateServerValues() {
-    if (this.servers && !this.selectedServerValue && this.selectedServerType !== "custom") {
-      this.selectedServerType = "server";
-      this.selectedServerValue = this._getServerUri(this.servers[0]);
-
-      return;
-    }
-
-    const serverExists = !!(this.servers || []).find(server => this._getServerUri(server) === this.selectedServerValue);
-
-    if (!serverExists && this.selectedServerType === "server"){
-      this.selectedServerType = undefined;
-      this.selectedServerValue = undefined;
-    }
+    this.serversCount = e.detail.value;
   }
 
   _getServerUri(server) {
     const key = this._getAmfKey(this.ns.aml.vocabularies.core.urlTemplate);
-
     return this._getValue(server, key);
   }
 
   _handleServerChange(e) {
-    this.selectedServerValue = e.detail.selectedValue;
-    this.selectedServerType = e.detail.selectedType;
+    this.serverValue = e.detail.value;
+    this.serverType = e.detail.type;
   }
 
   /**
@@ -108822,7 +112020,17 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
     if (!declares) {
       return;
     }
-    return declares.find((item) => item['@id'] === selected);
+    let selectedDeclaration = this._findById(declares, selected);
+
+    if (!selectedDeclaration) {
+      const references = this._computeReferences(model);
+      if (references) {
+        const declarationsInRef = references.map((r) => this._computeDeclares(r)).flat();
+        selectedDeclaration = this._findById(declarationsInRef, selected);
+      }
+    }
+
+    return selectedDeclaration;
   }
 
   _isTypeFragment(model) {
