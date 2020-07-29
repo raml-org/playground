@@ -83,7 +83,6 @@ body{
   margin: 0;
   padding: 0;
   font-family: $font-face-regular;
-  position: relative;
 }
 ul{
   text-decoration: none;
@@ -121,6 +120,20 @@ header{
   margin-bottom: 50px;
 }
 
+.section {
+  padding: 0;
+}
+.container {
+  padding: 0;
+}
+.column {
+  padding: 0;
+}
+
+.columns {
+  margin: 0;
+}
+
 .navbar {
   padding: .2rem .2rem;
   .navbar-brand {
@@ -137,7 +150,6 @@ header{
 }
 
 .raml-editor{
-  position: relative;
 
   h2{
     color: $light-gray;
@@ -333,8 +345,8 @@ header{
 #api-console-container {
   font-family: 'RobotoMono-Regular';
   width: 25%;
+  height: 100%;
   padding: 10px 20px;
-  margin: 12px 30px 30px 30px;
   position: absolute;
   top: 0;
   right: 0;
