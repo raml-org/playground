@@ -165,6 +165,10 @@ header{
   }
   .editor-block{
     .monaco-editor{
+      padding-top: 10px;
+      .monaco-editor-background {
+        padding-left: 10px;
+      }
       .monaco-editor-hover{
         margin-left: 10%;
       }
@@ -192,9 +196,6 @@ header{
           background-color:#DBE8FD;
         }
       }
-    }
-    .line-numbers{
-      color: #9EAAB7;
     }
   }
 }
@@ -344,14 +345,13 @@ header{
 /* api-documentation */
 #api-console-container {
   font-family: 'RobotoMono-Regular';
-  width: 25%;
+  width: 30%;
   height: 100%;
   padding: 10px 20px;
   position: absolute;
   top: 0;
   right: 0;
   background-color: rgba(255, 255, 255, 0.5);
-  border-radius: 7px;
   overflow-y: auto;
   color: #f5f5f5;
   --http-method-label-get-background-color: rgba(255, 255, 255, 0.4);
@@ -388,15 +388,9 @@ header{
   }
 }
 
-/* Visualizataion demo */
+/* Visualization demo */
 #editor-graph {
   padding-left: 1rem;
-}
-.vs-dark .monaco-scrollable-element>.scrollbar>.slider {
-  background: #9eaab7!important;
-}
-.monaco-scrollable-element>.scrollbar>.slider:hover {
-  background: #9eaab7!important;
 }
 .source-link {
   margin-left: 10px;
