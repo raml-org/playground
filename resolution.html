@@ -33,7 +33,7 @@
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns">
             <div class="column half-width">
                 <link rel="import" href="html_fragments/resolution/editor_left.html">
@@ -105,14 +105,14 @@
         });
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
-            var height = document.documentElement.clientHeight;
+            var height = window.innerHeight - 86;
             var ramlContainerDiv = document.getElementById("editor-container-unres");
             if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 170) + "px");
+              ramlContainerDiv.setAttribute("style", "height: " + height + "px");
             }
             var oasContainerDiv = document.getElementById("editor-container-res");
             if (window.getComputedStyle(oasContainerDiv).display !== "none") {
-              oasContainerDiv.setAttribute("style", "height: " + (height - 170) + "px");
+              oasContainerDiv.setAttribute("style", "height: " + height + "px");
             }
           }
           window.onresize = resize;
@@ -126,9 +126,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false
@@ -140,9 +144,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               readOnly: true,
               links: false,
               minimap: {

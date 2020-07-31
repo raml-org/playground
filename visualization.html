@@ -21,7 +21,7 @@
 </head>
 <body>
 <!-- Loader view -->
-<div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
+<div id="preloader" class="is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
     <h2 class="title is-2">Loading Playground: Visualization</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
@@ -34,7 +34,7 @@
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px;">
-  <div id="the-app" class="container is-marginless is-fluid" style="display: flow-root;">
+  <div id="the-app" class="is-marginless is-fluid" style="display: flow-root;">
     <link rel="import" href="html_fragments/visualization/editor_left.html">
     <link rel="import" href="html_fragments/visualization/graph_right.html">
   </div>
@@ -102,15 +102,15 @@
         });
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
-            var height = document.documentElement.clientHeight;
+            var height = window.innerHeight - 98;
             var ramlContainerDiv = document.getElementById("editor-container-raml");
             if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 155) + "px");
+              ramlContainerDiv.setAttribute("style", "height: " + height + "px");
             }
             var graphDiv = document.getElementById("graph-container");
             if (graphDiv != null) {
-                graphDiv.style.maxHeight = (height - 200) + "px";
-                graphDiv.style.height = (height - 200) + "px";
+                graphDiv.style.maxHeight = height + "px";
+                graphDiv.style.height = height + "px";
             }
           }
           window.onresize = resize;
@@ -124,9 +124,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false

@@ -52,12 +52,12 @@
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns" data-bind="visible: editorSection()=='editor'">
-            <div class="column">
+            <div class="column half-width">
                 <link rel="import" href="html_fragments/diff/editor_left.html">
             </div>
-            <div class="column">
+            <div class="column half-width">
                 <link rel="import" href="html_fragments/diff/editor_right.html">
             </div>
         </div>
@@ -128,26 +128,25 @@
         });
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
-            var height = document.documentElement.clientHeight;
+            var height = window.innerHeight - 175;
             var container
             container = document.getElementById("editor-left-container");
             if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 270) + "px";
+              container.style.height = height + "px";
             }
             container = document.getElementById("editor-right-container");
             if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 270) + "px";
+              container.style.height = height + "px";
             }
             container = document.getElementById("graphContainer");
             if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 170) + "px";
+              container.style.height = (height + 61) + "px";
             }
             container = document.getElementById("report-table");
             if (window.getComputedStyle(container).display !== "none") {
-              container.style.height = (height - 170) + "px";
+              container.style.height = (height + 61) + "px";
             }
           }
-
 
           window.onresize = resize;
           window.resizeFn = resize;
@@ -160,9 +159,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false
@@ -174,9 +177,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false
