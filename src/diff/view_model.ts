@@ -104,12 +104,16 @@ export class ViewModel extends CommonViewModel {
   }
 
   protected hashEditor (editor, cb) {
-    wap.raml10.parse(editor.getValue(), this.loadedRamlUrl)
+    return wap.raml10.parse(editor.getValue(), this.loadedRamlUrl)
       .then(model => wap.raml10.resolve(model))
       .then(model => wap.amfGraph.generateString(model))
       .then(text => jsonld.flatten(JSON.parse(text)))
       .then(flattened => cb(new HashGenerator(flattened as any[])))
-      .catch(e => console.error(`Error generating hash: ${e.toString()}`))
+      .catch(e => {
+        console.error(`Error generating hash: ${e.toString()}`)
+        this.isLoading(false)
+        this.started(false)
+      })
   }
 
   public getMainModel (): any {
