@@ -52,7 +52,7 @@
 
 <!-- Main container class -->
 <div class="section learn_raml">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns">
             <div class="column">
                 <link rel="import" href="html_fragments/learn_raml/editor.html">
@@ -176,7 +176,7 @@
           window.appModel = new learn_raml.ViewModel(ramlEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
-          window.appModel.loadDefaultRaml('examples/world-music-api/api.raml');
+          window.appModel.loadDefaultRaml('examples/orders-api/api.raml');
 
           ramlEditor.onDidChangeCursorPosition(evt => {
             if (evt.reason !== monaco.editor.CursorChangeReason.ContentFlush) {
