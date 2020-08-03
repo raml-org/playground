@@ -152,6 +152,14 @@ header{
     border-right-width: 1px;
     border-right-style: solid;
   }
+  .navbar-end {
+    display: flex!important;
+    justify-content: flex-end!important;
+    margin-left: auto!important;
+  }
+  .navbar-start {
+    display: flex!important;
+  }
 }
 
 .monaco-editor{
