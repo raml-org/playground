@@ -357,33 +357,33 @@ header{
 
 /* api-documentation */
 #api-console-container {
-  font-family: 'RobotoMono-Regular';
+  font-family: $font-face-regular;
   width: 30%;
   height: 100%;
   padding: 10px 20px;
   position: absolute;
   top: 0;
   right: 0;
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: #f3f3f3;
   overflow-y: auto;
-  color: #f5f5f5;
-  --http-method-label-get-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-post-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-put-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-patch-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-delete-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-head-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-options-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-trace-background-color: rgba(255, 255, 255, 0.4);
-  --http-method-label-connect-background-color: rgba(255, 255, 255, 0.4);
-  --link-color: #f5f5f5;
-  --api-body-document-description-color: #f5f5f5;
-  --anypoint-button-color: #f5f5f5;
-  --anypoint-button-emphasis-low-focus-color: #f5f5f5;
-  --api-annotation-document-color: #f5f5f5;
-  --http-code-snippet-container-background-color: rgba(255, 255, 255, 0.4);
+  color: #475464;
+  --http-method-label-get-background-color: transparent;
+  --http-method-label-post-background-color: transparent;
+  --http-method-label-put-background-color: transparent;
+  --http-method-label-patch-background-color: transparent;
+  --http-method-label-delete-background-color: transparent;
+  --http-method-label-head-background-color: transparent;
+  --http-method-label-options-background-color: transparent;
+  --http-method-label-trace-background-color: transparent;
+  --http-method-label-connect-background-color: transparent;
+  --http-method-label-get-color: #2097ff;
+  --http-method-label-post-color: #b061ff;
+  --api-type-document-type-background-color: #1589ee;
+  --link-color: #475464;
+  --anypoint-button-color: #475464;
+  --http-code-snippet-container-background-color: transparent;
   --http-code-snippet-code-text-shadow: 0;
-  --code-background-color: rgba(255, 255, 255, 0.4);
+  --code-background-color: transparent;
 }
 
 .joint-paper.joint-theme-default {
