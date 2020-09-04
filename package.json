@@ -5,10 +5,11 @@
   },
   "@pika/web": {
     "webDependencies": [
-      "@api-components/api-documentation"
+      "custom-components"
+
     ]
   },
   "scripts": {
-    "prepare": "pika install"
+    "prepare": "npm link js/custom-components && pika install"
   }
 }

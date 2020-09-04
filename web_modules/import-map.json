@@ -1,5 +1,5 @@
 {
   "imports": {
-    "@api-components/api-documentation": "./@api-components/api-documentation.js"
+    "custom-components": "./custom-components.js"
   }
 }
