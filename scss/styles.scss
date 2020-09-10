@@ -360,7 +360,6 @@ header{
   font-family: $font-face-regular;
   width: 30%;
   height: 100%;
-  padding: 10px 20px;
   position: absolute;
   top: 0;
   right: 0;
@@ -384,6 +383,13 @@ header{
   --http-code-snippet-container-background-color: transparent;
   --http-code-snippet-code-text-shadow: 0;
   --code-background-color: transparent;
+  #api-doc-title {
+    background-color: #d8d8d8;
+    padding: 5px 20px;
+  }
+  x-api-summary {
+    padding: 5px 20px;
+  }
 }
 
 .joint-paper.joint-theme-default {

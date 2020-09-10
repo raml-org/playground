@@ -56,11 +56,16 @@
         <div class="columns">
             <div class="column">
                 <link rel="import" href="html_fragments/learn_raml/editor.html">
+
                 <div id="api-console-container">
                   <api-navigation></api-navigation>
-                  <x-api-summary noTryIt="true" noBottomNavigation="true" handleNavigationEvents>
-                  </x-api-summary>
+                  <x-api-documentation
+                    noTryIt="true"
+                    noBottomNavigation="true"
+                    handleNavigationEvents>
+                  </x-api-documentation>
                 </div>
+
             </div>
         </div>
     </div>
