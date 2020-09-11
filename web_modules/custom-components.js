@@ -25674,180 +25674,6 @@ class ApiSummary extends AmfHelperMixin(LitElement) {
   }
 }
 
-const appliedClassMixins = new WeakMap();
-
-/** Vefify if the Mixin was previously applyed
- * @private
- * @param {function} mixin      Mixin being applyed
- * @param {object} superClass   Class receiving the new mixin
- * @returns {boolean}
- */
-function wasMixinPreviouslyApplied(mixin, superClass) {
-  let klass = superClass;
-  while (klass) {
-    if (appliedClassMixins.get(klass) === mixin) {
-      return true;
-    }
-    klass = Object.getPrototypeOf(klass);
-  }
-  return false;
-}
-
-/** Apply each mixin in the chain to make sure they are not applied more than once to the final class.
- * @export
- * @param {function} mixin      Mixin to be applyed
- * @returns {object}            Mixed class with mixin applied
- */
-function dedupeMixin(mixin) {
-  return superClass => {
-    if (wasMixinPreviouslyApplied(mixin, superClass)) {
-      return superClass;
-    }
-    const mixedClass = mixin(superClass);
-    appliedClassMixins.set(mixedClass, mixin);
-    return mixedClass;
-  };
-}
-
-/**
-@license
-Copyright 2017 The Advanced REST client authors <arc@mulesoft.com>
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
-http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
-*/
-
-/* eslint-disable no-unused-vars */
-/* eslint-disable class-methods-use-this */
-
-/**
- * @param {typeof HTMLElement} base
- */
-const mxFunction = base => {
-  class EventsTargetMixinImpl extends base {
-    /**
-     * @return {EventTarget} Currently registered events target,
-     */
-    get eventsTarget() {
-      return this._eventsTarget;
-    }
-
-    /**
-     * By default the element listens on the `window` object. If this value is set,
-     * then all events listeners will be attached to this object instead of `window`.
-     * @param {EventTarget} value Events handlers target.
-     */
-    set eventsTarget(value) {
-      const old = this._eventsTarget;
-      if (old === value) {
-        return;
-      }
-      this._eventsTarget = value;
-      this._eventsTargetChanged(value);
-      // @ts-ignore
-      if (this.requestUpdate) {
-        // @ts-ignore
-        this.requestUpdate('eventsTarget', old);
-      }
-    }
-
-    constructor() {
-      super();
-      // for types.
-      this._eventsTarget = null;
-      this._oldEventsTarget = null;
-    }
-
-    connectedCallback() {
-      // @ts-ignore
-      if (super.connectedCallback) {
-        // @ts-ignore
-        super.connectedCallback();
-      }
-      this._eventsTargetChanged(this.eventsTarget);
-    }
-
-    disconnectedCallback() {
-      // @ts-ignore
-      if (super.disconnectedCallback) {
-        // @ts-ignore
-        super.disconnectedCallback();
-      }
-      if (this._oldEventsTarget) {
-        this._detachListeners(this._oldEventsTarget);
-      }
-    }
-
-    /**
-     * Removes old handlers (if any) and attaches listeners on new event
-     * event target.
-     *
-     * @param {EventTarget=} eventsTarget Event target to set handlers on. If not set it
-     * will set handlers on the `window` object.
-     */
-    _eventsTargetChanged(eventsTarget) {
-      if (this._oldEventsTarget) {
-        this._detachListeners(this._oldEventsTarget);
-      }
-      this._oldEventsTarget = eventsTarget || window;
-      this._attachListeners(this._oldEventsTarget);
-    }
-
-    /**
-     * To be implement by the element to set event listeners from the target.
-     * @abstract
-     * @param {EventTarget} node A node to which attach event listeners to
-     */
-    _attachListeners(node) {}
-
-    /**
-     * To be implement by the element to remove event listeners from the target.
-     * @abstract
-     * @param {EventTarget} node A node to which remove event listeners to
-     */
-    _detachListeners(node) {}
-  }
-  return EventsTargetMixinImpl;
-};
-
-/**
- * `EventsTargetMixin` is a mixin that allows to set event listeners on a default or set node.
- *
- * By default the element listens on the `window` element for events. By setting
- * `eventsTarget` property on this element it removes all previously set
- * listeners and adds the same listeners to the node.
- * It also restores default state when the `eventsTarget` is removed.
- *
- * Implementations should implement two abstract methods:
- * `_attachListeners(node)` and `_detachListeners(node)`. Both of them will be
- * called with event target argument when it's required to either set or remove
- * listeners.
- *
- * ```javascript
- * class EventableElement extends EventsTargetMixin(HTMLElement) {
- *   _attachListeners: function(node) {
- *    mode.addEventListener('event', this._callback);
- *  }
- *
- *  _detachListeners: function(node) {
- *    mode.removeEventListener('event', this._callback);
- *  }
- * }
- * ```
- *
- * The mixin handles connectedCallback / disconnectedCallback and calls the
- * functions with required parameters.
- *
- * @mixin
- */
-const EventsTargetMixin = dedupeMixin(mxFunction);
-
 /** @typedef {import('lit-element').SVGTemplateResult} SVGTemplateResult */
 
 /* eslint-disable max-len */
@@ -27442,6 +27268,41 @@ Polymer({
   */
 });
 
+const appliedClassMixins = new WeakMap();
+
+/** Vefify if the Mixin was previously applyed
+ * @private
+ * @param {function} mixin      Mixin being applyed
+ * @param {object} superClass   Class receiving the new mixin
+ * @returns {boolean}
+ */
+function wasMixinPreviouslyApplied(mixin, superClass) {
+  let klass = superClass;
+  while (klass) {
+    if (appliedClassMixins.get(klass) === mixin) {
+      return true;
+    }
+    klass = Object.getPrototypeOf(klass);
+  }
+  return false;
+}
+
+/** Apply each mixin in the chain to make sure they are not applied more than once to the final class.
+ * @export
+ * @param {function} mixin      Mixin to be applyed
+ * @returns {object}            Mixed class with mixin applied
+ */
+function dedupeMixin(mixin) {
+  return superClass => {
+    if (wasMixinPreviouslyApplied(mixin, superClass)) {
+      return superClass;
+    }
+    const mixedClass = mixin(superClass);
+    appliedClassMixins.set(mixedClass, mixin);
+    return mixedClass;
+  };
+}
+
 /**
 @license
 Copyright 2017 Mulesoft.
@@ -27452,7 +27313,7 @@ All rights reserved.
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$1 = base => {
+const mxFunction = base => {
   class ControlStateMixinImpl extends base {
     static get properties() {
       return {
@@ -27644,7 +27505,7 @@ const mxFunction$1 = base => {
  *
  * @mixin
  */
-const ControlStateMixin = dedupeMixin(mxFunction$1);
+const ControlStateMixin = dedupeMixin(mxFunction);
 
 /**
 @license
@@ -27656,7 +27517,7 @@ All rights reserved.
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$2 = base => {
+const mxFunction$1 = base => {
   class ButtonStateMixinImpl extends base {
     static get properties() {
       return {
@@ -27987,7 +27848,7 @@ const mxFunction$2 = base => {
  *
  * @mixin
  */
-const ButtonStateMixin = dedupeMixin(mxFunction$2);
+const ButtonStateMixin = dedupeMixin(mxFunction$1);
 
 /**
  * A base class for Anypoint buttons.
@@ -32181,7 +32042,7 @@ window.customElements.define('clipboard-copy', ClipboardCopy);
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$3 = (base) => {
+const mxFunction$2 = (base) => {
   class JsonTableMixinImpl extends base {
     static get properties() {
       return {
@@ -32348,7 +32209,7 @@ const mxFunction$3 = (base) => {
  * Common methods for `json-table` views
  * @mixin
  */
-const JsonTableMixin = dedupeMixin(mxFunction$3);
+const JsonTableMixin = dedupeMixin(mxFunction$2);
 
 /**
 @license
@@ -32597,7 +32458,7 @@ All rights reserved.
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$4 = base => {
+const mxFunction$3 = base => {
   class HoverableMixinImpl extends base {
     static get properties() {
       return {
@@ -32712,7 +32573,7 @@ const mxFunction$4 = base => {
  *
  * @mixin
  */
-const HoverableMixin = dedupeMixin(mxFunction$4);
+const HoverableMixin = dedupeMixin(mxFunction$3);
 
 /**
  * The store.
@@ -32790,7 +32651,7 @@ function createValidationReport(value, node) {
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$5 = base => {
+const mxFunction$4 = base => {
   class ValidatableMixinImpl extends base {
     static get properties() {
       return {
@@ -33019,7 +32880,7 @@ const mxFunction$5 = base => {
  *
  * @mixin
  */
-const ValidatableMixin = dedupeMixin(mxFunction$5);
+const ValidatableMixin = dedupeMixin(mxFunction$4);
 
 /* eslint-disable class-methods-use-this */
 /* eslint-disable no-unused-vars */
@@ -33031,7 +32892,7 @@ const ValidatableMixin = dedupeMixin(mxFunction$5);
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$6 = base => {
+const mxFunction$5 = base => {
   class ArcFitMixinImpl extends base {
     static get properties() {
       return {
@@ -33878,7 +33739,7 @@ const mxFunction$6 = base => {
  *
  * @mixin
  */
-const ArcFitMixin = dedupeMixin(mxFunction$6);
+const ArcFitMixin = dedupeMixin(mxFunction$5);
 
 // Contains all connected resizables that do not have a parent.
 const ORPHANS = new Set();
@@ -33889,7 +33750,7 @@ const ORPHANS = new Set();
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$7 = base => {
+const mxFunction$6 = base => {
   class ArcResizableMixinImpl extends base {
     /**
      * The closest ancestor element that implements `ArcResizableMixin`.
@@ -34187,7 +34048,7 @@ const mxFunction$7 = base => {
  *
  * @mixin
  */
-const ArcResizableMixin = dedupeMixin(mxFunction$7);
+const ArcResizableMixin = dedupeMixin(mxFunction$6);
 
 /**
 @license
@@ -35309,7 +35170,7 @@ function removeScrollLock(element) {
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$8 = base => {
+const mxFunction$7 = base => {
   class ArcOverlayMixinImpl extends ArcFitMixin(ArcResizableMixin(base)) {
     static get properties() {
       return {
@@ -36453,7 +36314,7 @@ const mxFunction$8 = base => {
  *
  * @mixin
  */
-const ArcOverlayMixin = dedupeMixin(mxFunction$8);
+const ArcOverlayMixin = dedupeMixin(mxFunction$7);
 
 /* eslint-disable class-methods-use-this */
 /* eslint-disable no-plusplus */
@@ -38570,7 +38431,7 @@ const toggleClass = (klass, selected, node) => {
 /**
  * @param {typeof HTMLElement} base
  */
-const mxFunction$9 = (base) => {
+const mxFunction$8 = (base) => {
   class SelectableMixinImpl extends base {
     /**
      * Fired when anypoint-selector is activated (selected or deselected).
@@ -39449,7 +39310,7 @@ const mxFunction$9 = (base) => {
  * make sure that attributes are reflected to properties correctly.
  * @mixin
  */
-const SelectableMixin = dedupeMixin(mxFunction$9);
+const SelectableMixin = dedupeMixin(mxFunction$8);
 
 /* eslint-disable no-plusplus */
 
@@ -39457,7 +39318,7 @@ const SelectableMixin = dedupeMixin(mxFunction$9);
  * @param {typeof HTMLElement} base
  * @mixes SelectableMixin
  */
-const mxFunction$a = (base) => {
+const mxFunction$9 = (base) => {
   class MultiSelectableMixinImpl extends SelectableMixin(base) {
     static get properties() {
       return {
@@ -39728,7 +39589,7 @@ const mxFunction$a = (base) => {
  * make sure that attributes are reflected to properties correctly.
  * @mixin
  */
-const MultiSelectableMixin = dedupeMixin(mxFunction$a);
+const MultiSelectableMixin = dedupeMixin(mxFunction$9);
 
 class AnypointSelector extends MultiSelectableMixin(LitElement) {
   createRenderRoot() {
@@ -39767,7 +39628,7 @@ const SEARCH_RESET_TIMEOUT_MS = 1000;
  * @param {typeof HTMLElement} base
  * @mixes MultiSelectableMixin
  */
-const mxFunction$b = (base) => {
+const mxFunction$a = (base) => {
   class MenuMixinImpl extends MultiSelectableMixin(base) {
     static get properties() {
       return {
@@ -40317,7 +40178,7 @@ const mxFunction$b = (base) => {
  * make sure that attributes are reflected to properties correctly.
  * @mixin
  */
-const MenuMixin = dedupeMixin(mxFunction$b);
+const MenuMixin = dedupeMixin(mxFunction$a);
 
 /* eslint-disable no-plusplus */
 /* eslint-disable no-continue */
@@ -40326,7 +40187,7 @@ const MenuMixin = dedupeMixin(mxFunction$b);
  * @param {typeof HTMLElement} base
  * @mixes MultiSelectableMixin
  */
-const mxFunction$c = (base) => {
+const mxFunction$b = (base) => {
   class MenubarMixinImpl extends MenuMixin(base) {
     get _isRTL() {
       return window.getComputedStyle(this).direction === 'rtl';
@@ -40393,7 +40254,7 @@ const mxFunction$c = (base) => {
  *
  * @mixin
  */
-const MenubarMixin = dedupeMixin(mxFunction$c);
+const MenubarMixin = dedupeMixin(mxFunction$b);
 
 /* eslint-disable no-plusplus */
 /* eslint-disable no-param-reassign */
@@ -43078,7 +42939,7 @@ the License.
  * @param {typeof HTMLElement} base
  * @mixes MultiSelectableMixin
  */
-const mxFunction$d = (base) => {
+const mxFunction$c = (base) => {
   class PropertyDocumentMixinImpl extends AmfHelperMixin(base) {
     static get properties() {
       return {
@@ -43550,7 +43411,7 @@ const mxFunction$d = (base) => {
  * A mixin that contains common function for `property-*-document` elements.
  * @mixin
  */
-const PropertyDocumentMixin = dedupeMixin(mxFunction$d);
+const PropertyDocumentMixin = dedupeMixin(mxFunction$c);
 
 var shapeStyles = css`
   :host {
@@ -46323,348 +46184,6 @@ Polymer({
 });
 
 /**
- * `api-parameters-document`
- *
- * URI and query parameters documentation table based on
- * [AMF](https://github.com/mulesoft/amf) json/ld model.
- *
- * It rquires you to set at least one of the following properties:
- * - baseUriParameters
- * - endpointParameters
- * - queryParameters
- *
- * Otherwise it render empty block element.
- *
- * See demo for example implementation.
- *
- * @customElement
- * @demo demo/index.html
- * @memberof ApiElements
- */
-class ApiParametersDocument extends LitElement {
-  get styles() {
-    return css`:host {
-      display: block;
-      font-size: var(--arc-font-body1-font-size);
-      font-weight: var(--arc-font-body1-font-weight);
-      line-height: var(--arc-font-body1-line-height);
-    }
-
-    [hidden] {
-      display: none !important;
-    }
-
-    .section-title-area {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      cursor: pointer;
-      -webkit-user-select: none;
-      -moz-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      border-bottom: 1px var(--api-parameters-document-title-border-color, #e5e5e5) solid;
-      transition: border-bottom-color 0.15s ease-in-out;
-    }
-
-    .section-title-area[opened] {
-      border-bottom-color: transparent;
-    }
-
-    .section-title-area .table-title {
-      flex: 1;
-      flex-basis: 0.000000001px;
-    }
-
-    .toggle-icon {
-      outline: none;
-      margin-left: 8px;
-      transform: rotateZ(0deg);
-      transition: transform 0.3s ease-in-out;
-    }
-
-    .toggle-icon.opened {
-      transform: rotateZ(-180deg);
-    }
-
-    .table-title {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: var(--arc-font-subhead-font-size);
-      font-weight: var(--arc-font-subhead-font-weight);
-      line-height: var(--arc-font-subhead-line-height);
-    }
-
-    :host([narrow]) .table-title {
-      font-size: var(--api-parameters-document-title-narrow-font-size, initial);
-    }
-
-    .icon {
-      display: block;
-      width: 24px;
-      height: 24px;
-      fill: currentColor;
-    }`;
-  }
-
-  render() {
-    const {
-      aware,
-      pathOpened,
-      queryOpened,
-      _effectivePathParameters,
-      queryParameters,
-      amf,
-      narrow,
-      compatibility,
-      headerLevel,
-      graph
-    } = this;
-    const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
-    return html`<style>${this.styles}</style>
-    ${aware ?
-      html`<raml-aware
-        @api-changed="${this._apiChangedHandler}"
-        .scope="${aware}"
-        data-source="api-parameters-document"></raml-aware>` : ''}
-    ${hasPathParameters ? html`<section class="uri-parameters">
-      <div
-        class="section-title-area"
-        @click="${this.toggleUri}"
-        title="Toogle URI parameters details"
-        ?opened="${pathOpened}"
-      >
-        <div class="table-title" role="heading" aria-level="${headerLevel}">URI parameters</div>
-        <div class="title-area-actions">
-          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-            ${this._computeToggleActionLabel(pathOpened)}
-            <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
-          </anypoint-button>
-        </div>
-      </div>
-      <iron-collapse .opened="${pathOpened}">
-        <api-type-document
-          .amf="${amf}"
-          .type="${_effectivePathParameters}"
-          ?compatibility="${compatibility}"
-          ?narrow="${narrow}"
-          ?graph="${graph}"
-          noExamplesActions
-        ></api-type-document>
-      </iron-collapse>
-    </section>` : ''}
-
-    ${queryParameters ? html`<section class="query-parameters">
-      <div
-        class="section-title-area"
-        @click="${this.toggleQuery}"
-        title="Toogle query parameters details"
-        ?opened="${queryOpened}"
-      >
-        <div class="table-title" role="heading" aria-level="${headerLevel}">Query parameters</div>
-        <div class="title-area-actions">
-          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-            ${this._computeToggleActionLabel(queryOpened)}
-            <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
-          </anypoint-button>
-        </div>
-      </div>
-      <iron-collapse .opened="${queryOpened}">
-        <api-type-document
-          .amf="${amf}"
-          .type="${queryParameters}"
-          ?compatibility="${compatibility}"
-          ?narrow="${narrow}"
-          ?graph="${graph}"
-          noExamplesActions
-        ></api-type-document>
-      </iron-collapse>
-    </section>`: ''}`;
-  }
-
-  static get properties() {
-    return {
-      /**
-       * `raml-aware` scope property to use.
-       */
-      aware: { type: String },
-      /**
-       * Generated AMF json/ld model form the API spec.
-       * The element assumes the object of the first array item to be a
-       * type of `"http://raml.org/vocabularies/document#Document`
-       * on AMF vocabulary.
-       *
-       * It is only usefult for the element to resolve references.
-       *
-       * @type {Object|Array}
-       */
-      amf: { type: Object },
-      /**
-       * Set to true to open the query parameters view.
-       * Autormatically updated when the view is toggled from the UI.
-       */
-      queryOpened: { type: Boolean },
-      /**
-       * Set to true to open the path parameters view.
-       * Autormatically updated when the view is toggled from the UI.
-       */
-      pathOpened: { type: Boolean },
-      /**
-       * The `http://raml.org/vocabularies/http#variable` entry
-       * from API's `http://raml.org/vocabularies/http#server` model.
-       *
-       * @type {Array<Object>}
-       */
-      baseUriParameters: { type: Array },
-      /**
-       * Endpoint path parameters as
-       * `http://raml.org/vocabularies/http#parameter` property value of the
-       * type of `http://raml.org/vocabularies/http#EndPoint`
-       * @type {Array<Object>}
-       */
-      endpointParameters: { type: Array },
-      /**
-       * Method query parameters as
-       * `http://raml.org/vocabularies/http#parameter` property value of the
-       * type of `http://raml.org/vocabularies/http#Request`
-       * @type {Array<Object>}
-       */
-      queryParameters: { type: Array },
-      /**
-       * Set to render a mobile friendly view.
-       */
-      narrow: { type: Boolean, reflect: true },
-      /**
-       * @deprecated Use `compatibility` instead
-       */
-      legacy: { type: Boolean },
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean },
-      /**
-       * Type of the header in the documentation section.
-       * Should be in range of 1 to 6.
-       *
-       * @default 2
-       */
-      headerLevel: { type: Number },
-      /**
-       * Passed to `api-type-document`. Enables internal links rendering for types.
-       */
-      graph: { type: Boolean },
-
-      _effectivePathParameters: { type: Array }
-    };
-  }
-
-  get legacy() {
-    return this.compatibility;
-  }
-
-  set legacy(value) {
-    this.compatibility = value;
-  }
-
-  get baseUriParameters() {
-    return this._baseUriParameters;
-  }
-
-  set baseUriParameters(value) {
-    if (this._sop('baseUriParameters', value)) {
-      this._effectivePathParameters = this._computeEffectivePath(value, this.endpointParameters);
-    }
-  }
-
-  get endpointParameters() {
-    return this._endpointParameters;
-  }
-
-  set endpointParameters(value) {
-    if (this._sop('endpointParameters', value)) {
-      this._effectivePathParameters = this._computeEffectivePath(this.baseUriParameters, value);
-    }
-  }
-
-  constructor() {
-    super();
-    this.headerLevel = 2;
-  }
-
-  _sop(prop, value) {
-    const key = '_' + prop;
-    const oldValue = this[key];
-    if (oldValue === value) {
-      return false;
-    }
-    this[key] = value;
-    this.requestUpdate(prop, oldValue);
-    return true;
-  }
-  /**
-   * Handler for amf model change from `raml-aware`
-   * @param {CustomEvent} e
-   */
-  _apiChangedHandler(e) {
-    const { value } = e.detail;
-    setTimeout(() => {
-      this.amf = value;
-      // For some reson this value is not reflected in the render function
-      // unles it is delayed
-    });
-  }
-  /**
-   * Computes combined array of base uri parameters and selected endpoint
-   * parameters so the element can render single documentation table.
-   *
-   * @param {?Array} base Base uri parameetrs
-   * @param {?Array} endpoint Endpoint's uri parameters
-   * @return {Array} Combined array. Can be empty array if arguments does not
-   * contain values.
-   */
-  _computeEffectivePath(base, endpoint) {
-    let result = [];
-    if (base && base.length) {
-      result = result.concat(base);
-    }
-    if (endpoint && endpoint.length) {
-      result = result.concat(endpoint);
-    }
-    return result;
-  }
-
-  // Computes a label for the section toggle buttons.
-  _computeToggleActionLabel(opened) {
-    return opened ? 'Hide' : 'Show';
-  }
-
-  // Computes class for the toggle's button icon.
-  _computeToggleIconClass(opened) {
-    let clazz = 'toggle-icon';
-    if (opened) {
-      clazz += ' opened';
-    }
-    return clazz;
-  }
-  /**
-   * Toggles URI parameters view.
-   * Use `pathOpened` property instead.
-   */
-  toggleUri() {
-    this.pathOpened = !this.pathOpened;
-  }
-  /**
-   * Toggles `queryOpened` value.
-   */
-  toggleQuery() {
-    this.queryOpened = !this.queryOpened;
-  }
-}
-
-window.customElements.define('api-parameters-document', ApiParametersDocument);
-
-/**
 @license
 Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
 This code may only be used under the BSD style license found at
@@ -49283,6 +48802,348 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   }
 }
 window.customElements.define('api-body-document', ApiBodyDocument);
+
+/**
+ * `api-parameters-document`
+ *
+ * URI and query parameters documentation table based on
+ * [AMF](https://github.com/mulesoft/amf) json/ld model.
+ *
+ * It rquires you to set at least one of the following properties:
+ * - baseUriParameters
+ * - endpointParameters
+ * - queryParameters
+ *
+ * Otherwise it render empty block element.
+ *
+ * See demo for example implementation.
+ *
+ * @customElement
+ * @demo demo/index.html
+ * @memberof ApiElements
+ */
+class ApiParametersDocument extends LitElement {
+  get styles() {
+    return css`:host {
+      display: block;
+      font-size: var(--arc-font-body1-font-size);
+      font-weight: var(--arc-font-body1-font-weight);
+      line-height: var(--arc-font-body1-line-height);
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .section-title-area {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      cursor: pointer;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      border-bottom: 1px var(--api-parameters-document-title-border-color, #e5e5e5) solid;
+      transition: border-bottom-color 0.15s ease-in-out;
+    }
+
+    .section-title-area[opened] {
+      border-bottom-color: transparent;
+    }
+
+    .section-title-area .table-title {
+      flex: 1;
+      flex-basis: 0.000000001px;
+    }
+
+    .toggle-icon {
+      outline: none;
+      margin-left: 8px;
+      transform: rotateZ(0deg);
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .toggle-icon.opened {
+      transform: rotateZ(-180deg);
+    }
+
+    .table-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: var(--arc-font-subhead-font-size);
+      font-weight: var(--arc-font-subhead-font-weight);
+      line-height: var(--arc-font-subhead-line-height);
+    }
+
+    :host([narrow]) .table-title {
+      font-size: var(--api-parameters-document-title-narrow-font-size, initial);
+    }
+
+    .icon {
+      display: block;
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }`;
+  }
+
+  render() {
+    const {
+      aware,
+      pathOpened,
+      queryOpened,
+      _effectivePathParameters,
+      queryParameters,
+      amf,
+      narrow,
+      compatibility,
+      headerLevel,
+      graph
+    } = this;
+    const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware
+        @api-changed="${this._apiChangedHandler}"
+        .scope="${aware}"
+        data-source="api-parameters-document"></raml-aware>` : ''}
+    ${hasPathParameters ? html`<section class="uri-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleUri}"
+        title="Toogle URI parameters details"
+        ?opened="${pathOpened}"
+      >
+        <div class="table-title" role="heading" aria-level="${headerLevel}">URI parameters</div>
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            ${this._computeToggleActionLabel(pathOpened)}
+            <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+      </div>
+      <iron-collapse .opened="${pathOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${_effectivePathParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>` : ''}
+
+    ${queryParameters ? html`<section class="query-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleQuery}"
+        title="Toogle query parameters details"
+        ?opened="${queryOpened}"
+      >
+        <div class="table-title" role="heading" aria-level="${headerLevel}">Query parameters</div>
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            ${this._computeToggleActionLabel(queryOpened)}
+            <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+      </div>
+      <iron-collapse .opened="${queryOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${queryParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>`: ''}`;
+  }
+
+  static get properties() {
+    return {
+      /**
+       * `raml-aware` scope property to use.
+       */
+      aware: { type: String },
+      /**
+       * Generated AMF json/ld model form the API spec.
+       * The element assumes the object of the first array item to be a
+       * type of `"http://raml.org/vocabularies/document#Document`
+       * on AMF vocabulary.
+       *
+       * It is only usefult for the element to resolve references.
+       *
+       * @type {Object|Array}
+       */
+      amf: { type: Object },
+      /**
+       * Set to true to open the query parameters view.
+       * Autormatically updated when the view is toggled from the UI.
+       */
+      queryOpened: { type: Boolean },
+      /**
+       * Set to true to open the path parameters view.
+       * Autormatically updated when the view is toggled from the UI.
+       */
+      pathOpened: { type: Boolean },
+      /**
+       * The `http://raml.org/vocabularies/http#variable` entry
+       * from API's `http://raml.org/vocabularies/http#server` model.
+       *
+       * @type {Array<Object>}
+       */
+      baseUriParameters: { type: Array },
+      /**
+       * Endpoint path parameters as
+       * `http://raml.org/vocabularies/http#parameter` property value of the
+       * type of `http://raml.org/vocabularies/http#EndPoint`
+       * @type {Array<Object>}
+       */
+      endpointParameters: { type: Array },
+      /**
+       * Method query parameters as
+       * `http://raml.org/vocabularies/http#parameter` property value of the
+       * type of `http://raml.org/vocabularies/http#Request`
+       * @type {Array<Object>}
+       */
+      queryParameters: { type: Array },
+      /**
+       * Set to render a mobile friendly view.
+       */
+      narrow: { type: Boolean, reflect: true },
+      /**
+       * @deprecated Use `compatibility` instead
+       */
+      legacy: { type: Boolean },
+      /**
+       * Enables compatibility with Anypoint components.
+       */
+      compatibility: { type: Boolean },
+      /**
+       * Type of the header in the documentation section.
+       * Should be in range of 1 to 6.
+       *
+       * @default 2
+       */
+      headerLevel: { type: Number },
+      /**
+       * Passed to `api-type-document`. Enables internal links rendering for types.
+       */
+      graph: { type: Boolean },
+
+      _effectivePathParameters: { type: Array }
+    };
+  }
+
+  get legacy() {
+    return this.compatibility;
+  }
+
+  set legacy(value) {
+    this.compatibility = value;
+  }
+
+  get baseUriParameters() {
+    return this._baseUriParameters;
+  }
+
+  set baseUriParameters(value) {
+    if (this._sop('baseUriParameters', value)) {
+      this._effectivePathParameters = this._computeEffectivePath(value, this.endpointParameters);
+    }
+  }
+
+  get endpointParameters() {
+    return this._endpointParameters;
+  }
+
+  set endpointParameters(value) {
+    if (this._sop('endpointParameters', value)) {
+      this._effectivePathParameters = this._computeEffectivePath(this.baseUriParameters, value);
+    }
+  }
+
+  constructor() {
+    super();
+    this.headerLevel = 2;
+  }
+
+  _sop(prop, value) {
+    const key = '_' + prop;
+    const oldValue = this[key];
+    if (oldValue === value) {
+      return false;
+    }
+    this[key] = value;
+    this.requestUpdate(prop, oldValue);
+    return true;
+  }
+  /**
+   * Handler for amf model change from `raml-aware`
+   * @param {CustomEvent} e
+   */
+  _apiChangedHandler(e) {
+    const { value } = e.detail;
+    setTimeout(() => {
+      this.amf = value;
+      // For some reson this value is not reflected in the render function
+      // unles it is delayed
+    });
+  }
+  /**
+   * Computes combined array of base uri parameters and selected endpoint
+   * parameters so the element can render single documentation table.
+   *
+   * @param {?Array} base Base uri parameetrs
+   * @param {?Array} endpoint Endpoint's uri parameters
+   * @return {Array} Combined array. Can be empty array if arguments does not
+   * contain values.
+   */
+  _computeEffectivePath(base, endpoint) {
+    let result = [];
+    if (base && base.length) {
+      result = result.concat(base);
+    }
+    if (endpoint && endpoint.length) {
+      result = result.concat(endpoint);
+    }
+    return result;
+  }
+
+  // Computes a label for the section toggle buttons.
+  _computeToggleActionLabel(opened) {
+    return opened ? 'Hide' : 'Show';
+  }
+
+  // Computes class for the toggle's button icon.
+  _computeToggleIconClass(opened) {
+    let clazz = 'toggle-icon';
+    if (opened) {
+      clazz += ' opened';
+    }
+    return clazz;
+  }
+  /**
+   * Toggles URI parameters view.
+   * Use `pathOpened` property instead.
+   */
+  toggleUri() {
+    this.pathOpened = !this.pathOpened;
+  }
+  /**
+   * Toggles `queryOpened` value.
+   */
+  toggleQuery() {
+    this.queryOpened = !this.queryOpened;
+  }
+}
+
+window.customElements.define('api-parameters-document', ApiParametersDocument);
 
 /**
  * `api-headers-document`
@@ -54432,6 +54293,145 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
    * @param {String} type
    */
 }
+
+/**
+@license
+Copyright 2017 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+
+/* eslint-disable no-unused-vars */
+/* eslint-disable class-methods-use-this */
+
+/**
+ * @param {typeof HTMLElement} base
+ */
+const mxFunction$d = base => {
+  class EventsTargetMixinImpl extends base {
+    /**
+     * @return {EventTarget} Currently registered events target,
+     */
+    get eventsTarget() {
+      return this._eventsTarget;
+    }
+
+    /**
+     * By default the element listens on the `window` object. If this value is set,
+     * then all events listeners will be attached to this object instead of `window`.
+     * @param {EventTarget} value Events handlers target.
+     */
+    set eventsTarget(value) {
+      const old = this._eventsTarget;
+      if (old === value) {
+        return;
+      }
+      this._eventsTarget = value;
+      this._eventsTargetChanged(value);
+      // @ts-ignore
+      if (this.requestUpdate) {
+        // @ts-ignore
+        this.requestUpdate('eventsTarget', old);
+      }
+    }
+
+    constructor() {
+      super();
+      // for types.
+      this._eventsTarget = null;
+      this._oldEventsTarget = null;
+    }
+
+    connectedCallback() {
+      // @ts-ignore
+      if (super.connectedCallback) {
+        // @ts-ignore
+        super.connectedCallback();
+      }
+      this._eventsTargetChanged(this.eventsTarget);
+    }
+
+    disconnectedCallback() {
+      // @ts-ignore
+      if (super.disconnectedCallback) {
+        // @ts-ignore
+        super.disconnectedCallback();
+      }
+      if (this._oldEventsTarget) {
+        this._detachListeners(this._oldEventsTarget);
+      }
+    }
+
+    /**
+     * Removes old handlers (if any) and attaches listeners on new event
+     * event target.
+     *
+     * @param {EventTarget=} eventsTarget Event target to set handlers on. If not set it
+     * will set handlers on the `window` object.
+     */
+    _eventsTargetChanged(eventsTarget) {
+      if (this._oldEventsTarget) {
+        this._detachListeners(this._oldEventsTarget);
+      }
+      this._oldEventsTarget = eventsTarget || window;
+      this._attachListeners(this._oldEventsTarget);
+    }
+
+    /**
+     * To be implement by the element to set event listeners from the target.
+     * @abstract
+     * @param {EventTarget} node A node to which attach event listeners to
+     */
+    _attachListeners(node) {}
+
+    /**
+     * To be implement by the element to remove event listeners from the target.
+     * @abstract
+     * @param {EventTarget} node A node to which remove event listeners to
+     */
+    _detachListeners(node) {}
+  }
+  return EventsTargetMixinImpl;
+};
+
+/**
+ * `EventsTargetMixin` is a mixin that allows to set event listeners on a default or set node.
+ *
+ * By default the element listens on the `window` element for events. By setting
+ * `eventsTarget` property on this element it removes all previously set
+ * listeners and adds the same listeners to the node.
+ * It also restores default state when the `eventsTarget` is removed.
+ *
+ * Implementations should implement two abstract methods:
+ * `_attachListeners(node)` and `_detachListeners(node)`. Both of them will be
+ * called with event target argument when it's required to either set or remove
+ * listeners.
+ *
+ * ```javascript
+ * class EventableElement extends EventsTargetMixin(HTMLElement) {
+ *   _attachListeners: function(node) {
+ *    mode.addEventListener('event', this._callback);
+ *  }
+ *
+ *  _detachListeners: function(node) {
+ *    mode.removeEventListener('event', this._callback);
+ *  }
+ * }
+ * ```
+ *
+ * The mixin handles connectedCallback / disconnectedCallback and calls the
+ * functions with required parameters.
+ *
+ * @mixin
+ */
+const EventsTargetMixin = dedupeMixin(mxFunction$d);
 
 window.customElements.define('api-method-documentation', ApiMethodDocumentation);
 
@@ -112836,20 +112836,35 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
 	}
 }
 
-function replaceComponentsTags (strings) {
-  const tags = [
-    'api-summary'
-  ];
-  return strings.map(str => {
-    tags.forEach(tag => {
-      str = str.replaceAll(tag, `x-${tag}`);
-    });
-    return str
-  })
-}
-
-
+// Extends ApiSummary to customize its output
 class XApiSummary extends ApiSummary {
+
+  // Overriden to add new styles
+  get styles() {
+    return super.styles.concat(css`
+    span.endpoint-path {
+      float: left;
+    }
+    span.endpoint-operations {
+      float: right;
+    }
+    .endpoint-item {
+      clear: both;
+    }
+    .url-area {
+      padding: 0;
+      margin-bottom: 0;
+    }
+    .endpoints-title {
+      margin: 0;
+    }
+    .separator {
+      margin: 15px 0;
+    }
+    `);
+  }
+
+  // Overriden to customize block structure
   _titleTemplate() {
     const { _apiTitle, titleLevel } = this;
     if (!_apiTitle) {
@@ -112857,15 +112872,92 @@ class XApiSummary extends ApiSummary {
     }
     return html`
     <div class="api-title" role="heading" aria-level="${titleLevel}">
-    <label>TEST:</label>
+    <label><b>API Title</b></label></br>
     <span>${_apiTitle}</span>
     </div>`;
   }
+
+  // Overriden to customize block structure
+  _versionTemplate() {
+    const { _version } = this;
+    if (!_version) {
+      return '';
+    }
+    return html`
+    <p class="inline-description version">
+      <label><b>Version</b></label></br>
+      <span>${_version}</span>
+    </p>`;
+  }
+
+  // Overriden to customize block structure
+  _baseUriTemplate(server) {
+    const { baseUri, protocols } = this;
+    const uri = this._computeBaseUri(server, baseUri, protocols);
+    return html`
+    <div class="url-area">
+      <label><b>Base URI</b></label></br>
+      <span class="url-value">${uri}</span>
+    </div>`;
+  }
+
+  // Overriden to customize block structure
+  _endpointsTemplate() {
+    const { _endpoints } = this;
+    if (!_endpoints || !_endpoints.length) {
+      return;
+    }
+    const result = _endpoints.map((item) => this._endpointTemplate(item));
+    return html`
+    <div class="separator"></div>
+    <div class="toc">
+      <label class="section endpoints-title"><b>Endpoints</b></label></br>
+      ${result}
+    </div>
+    `;
+  }
+
+  // Overriden to customize block structure
+  _endpointTemplate(item) {
+    const ops = item.ops && item.ops.length ? item.ops.map((op) => this._methodTemplate(op, item)) : '';
+    return html`
+    <div class="endpoint-item" @click="${this._navigateItem}">
+      <span class="endpoint-path">${this._endpointPathTemplate(item)}</span>
+      <span class="endpoint-operations">${ops}</span>
+    </div>`;
+  }
 }
-window.customElements.define('api-summary', XApiSummary);
+window.customElements.define('x-api-summary', XApiSummary);
 
 
+// Extends ApiMethodDocumentation to customize its output
+class XApiMethodDocumentation extends ApiMethodDocumentation {
+
+}
+window.customElements.define('x-api-method-documentation', XApiMethodDocumentation);
+
+
+// Extends ApiDocumentation to customize its output
 class XApiDocumentation extends ApiDocumentation {
+
+  // Overriden to add new styles
+  get styles() {
+    return super.styles.concat(css`
+    x-api-summary,
+    x-api-method-documentation,
+    api-annotation-documentation,
+    api-endpoint-documentation,
+    api-security-documentation,
+    api-type-documentation {
+      padding: 15px;
+    }
+    #api-doc-title {
+      padding: 10px 15px;
+      background-color: #d8d8d8;
+    }
+    `);
+  }
+
   // Computes documentation title
   _computeApiTitle() {
     const { amf } = this;
@@ -112873,34 +112965,64 @@ class XApiDocumentation extends ApiDocumentation {
     return this._getValue(webApi, this.ns.aml.vocabularies.core.name);
   }
 
-  // Overriden to add documentation title block
+  // Overriden to add documentation title block (#api-doc-title)
   render() {
     if (!this.documentationTitle) {
       this.documentationTitle = this._computeApiTitle();
     }
     const { aware } = this;
-    const res = html`<style>${this.styles}</style>
+    return html`<style>${this.styles}</style>
     ${html`<div id="api-doc-title">${this.documentationTitle}</div>`}
     ${aware ? html`<raml-aware
       .scope="${aware}"
       @api-changed="${this._apiChanged}"></raml-aware>` : ''}
     ${this._renderServerSelector()}
     ${this._renderView()}`;
-    res.strings = replaceComponentsTags(res.strings);
-    return res
+  }
+
+  // Overriden to output x-api-summary instead of api-summary
+  _summaryTemplate() {
+    const { _docsModel, baseUri, rearrangeEndpoints } = this;
+    return html`<x-api-summary
+        .amf="${_docsModel}"
+        .baseUri="${baseUri}"
+        .rearrangeendpoints="${rearrangeEndpoints}"
+      ></x-api-summary>`;
+  }
+
+  // Overriden to output x-api-method-documentation instead of api-method-documentation
+  _methodTemplate() {
+    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, noTryIt, graph, noBottomNavigation, server } = this;
+    const prev = this._computeMethodPrevious(amf, selected);
+    const next = this._computeMethodNext(amf, selected);
+
+    return html`<x-api-method-documentation
+      .amf="${amf}"
+      .narrow="${narrow}"
+      .compatibility="${compatibility}"
+      .endpoint="${_endpoint}"
+      .server="${server}"
+      .method="${_docsModel}"
+      .previous="${prev}"
+      .next="${next}"
+      .baseUri="${this.effectiveBaseUri}"
+      ?noTryIt="${noTryIt}"
+      ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
+      rendersecurity
+      rendercodesnippets></x-api-method-documentation>`;
   }
 
   // Overriden to create breadcrumbs in documentation title block
-  _navigationHandler(e) {
-    const { selected, type, endpointId } = e.detail;
-    console.log(selected, type, endpointId);
-    this.documentationTitle = `${this._computeApiTitle()}`;
-    if (type === 'method') {
-      this.documentationTitle += ` / ${endpointId}`;
-    }
-    super._navigationHandler(e);
-  }
+  // _navigationHandler(e) {
+  //   const { selected, type, endpointId } = e.detail;
+  //   this.documentationTitle = `${this._computeApiTitle()}`
+  //   if (type === 'method') {
+  //     this.documentationTitle += ` / ${endpointId}`
+  //   }
+  //   super._navigationHandler(e);
+  // }
 }
-window.customElements.define('api-documentation', XApiDocumentation);
+window.customElements.define('x-api-documentation', XApiDocumentation);
 
-export { XApiDocumentation, XApiSummary };
+export { XApiDocumentation, XApiMethodDocumentation, XApiSummary };
