@@ -112844,12 +112844,20 @@ class XApiSummary extends ApiSummary {
     return [super.styles, css`
     span.endpoint-path {
       float: left;
+      margin: 0;
+    }
+    a.endpoint-path {
+      margin: 0!important;
     }
     span.endpoint-operations {
       float: right;
     }
     .endpoint-item {
-      clear: both;
+      margin-bottom: 10px;
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      background-color: #ffffff;
+      padding: 5px 5px 3px 7px;
     }
     .url-area {
       padding: 0;
@@ -112857,7 +112865,7 @@ class XApiSummary extends ApiSummary {
       margin-top: 12px;
     }
     .endpoints-title {
-      margin: 0!important;
+      margin: 0 0 10px 0!important;
     }
     .separator {
       margin: 15px 0;
@@ -112867,6 +112875,14 @@ class XApiSummary extends ApiSummary {
     }
     .api-title {
       margin-top: 0;
+    }
+    .clearfix::after {
+      content: "";
+      clear: both;
+      display: table;
+    }
+    .method-label {
+      margin: 0;
     }
     `];
   }
@@ -112931,6 +112947,7 @@ class XApiSummary extends ApiSummary {
     <div class="endpoint-item" @click="${this._navigateItem}">
       <span class="endpoint-path">${this._endpointPathTemplate(item)}</span>
       <span class="endpoint-operations">${ops}</span>
+      <div class="clearfix"></div>
     </div>`;
   }
 }
