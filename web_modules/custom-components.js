@@ -112841,7 +112841,7 @@ class XApiSummary extends ApiSummary {
 
   // Overriden to add new styles
   get styles() {
-    return super.styles.concat(css`
+    return [super.styles, css`
     span.endpoint-path {
       float: left;
     }
@@ -112854,14 +112854,21 @@ class XApiSummary extends ApiSummary {
     .url-area {
       padding: 0;
       margin-bottom: 0;
+      margin-top: 12px;
     }
     .endpoints-title {
-      margin: 0;
+      margin: 0!important;
     }
     .separator {
       margin: 15px 0;
     }
-    `);
+    .url-value {
+      margin: 0;
+    }
+    .api-title {
+      margin-top: 0;
+    }
+    `];
   }
 
   // Overriden to customize block structure
@@ -112896,8 +112903,8 @@ class XApiSummary extends ApiSummary {
     const uri = this._computeBaseUri(server, baseUri, protocols);
     return html`
     <div class="url-area">
-      <label><b>Base URI</b></label></br>
-      <span class="url-value">${uri}</span>
+      <label><b>Base URI</b></label>
+      <p class="url-value">${uri}</p>
     </div>`;
   }
 
@@ -112911,7 +112918,7 @@ class XApiSummary extends ApiSummary {
     return html`
     <div class="separator"></div>
     <div class="toc">
-      <label class="section endpoints-title"><b>Endpoints</b></label></br>
+      <label class="section endpoints-title"><b>Endpoints</b></label>
       ${result}
     </div>
     `;
@@ -112942,7 +112949,7 @@ class XApiDocumentation extends ApiDocumentation {
 
   // Overriden to add new styles
   get styles() {
-    return super.styles.concat(css`
+    return [super.styles, css`
     x-api-summary,
     x-api-method-documentation,
     api-annotation-documentation,
@@ -112955,7 +112962,7 @@ class XApiDocumentation extends ApiDocumentation {
       padding: 10px 15px;
       background-color: #d8d8d8;
     }
-    `);
+    `];
   }
 
   // Computes documentation title
