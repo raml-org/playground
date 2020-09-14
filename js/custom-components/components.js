@@ -205,13 +205,14 @@ export class XApiDocumentation extends ApiDocumentation {
   }
 
   // Overriden to create breadcrumbs in documentation title block
-  // _navigationHandler(e) {
-  //   const { selected, type, endpointId } = e.detail;
-  //   this.documentationTitle = `${this._computeApiTitle()}`
-  //   if (type === 'method') {
-  //     this.documentationTitle += ` / ${endpointId}`
-  //   }
-  //   super._navigationHandler(e);
-  // }
+  _navigationHandler(e) {
+    console.log(e.detail)
+    const { selected, type, endpointId } = e.detail;
+    this.documentationTitle = `${this._computeApiTitle()}`
+    if (type === 'method') {
+      this.documentationTitle += ` / ${endpointId}`
+    }
+    super._navigationHandler(e);
+  }
 }
 window.customElements.define('x-api-documentation', XApiDocumentation);

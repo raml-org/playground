@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@api-components/api-documentation": "github:advanced-rest-client/api-documentation#chore/export-component",
+    "@api-components/api-documentation": "^5.0.4",
     "@pika/web": "^0.6.1"
   },
   "@pika/web": {
