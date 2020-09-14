@@ -113062,10 +113062,8 @@ class XApiDocumentation extends ApiDocumentation {
       this.documentationTitle = html`
         <a href="#"
            onclick="(() => { window.appModel.apiConsole.dispatchNavEvent('summary', 'summary'); return false; })()"
-           >
-           ${this.documentationTitle}
-        </a>
-        <span> ${deepBreadcrumbs.replaceAll('/', ' / ')}</span>`;
+           >${this.documentationTitle}</a>
+        <span>${deepBreadcrumbs.replaceAll('/', ' / ')}</span>`;
     }
     super._navigationHandler(e);
   }
