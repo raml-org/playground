@@ -12,7 +12,7 @@ export class ApiConsole {
   }
 
   reloadContainers () {
-    this.container = document.querySelector('api-documentation')
+    this.container = document.querySelector('x-api-documentation')
     this.navContainer = document.querySelector('api-navigation')
   }
 
@@ -23,8 +23,7 @@ export class ApiConsole {
         const parsedGraph = JSON.parse(graph)
         this.container.amf = parsedGraph
         this.navContainer.amf = parsedGraph
-        this.container.selected = this.defaultSelected
-        this.container.selectedType = this.defaultSelectedType
+        this.dispatchNavEvent(this.defaultSelected, this.defaultSelectedType)
         this.collectElementsRanges(wapModel)
       })
   }
@@ -92,11 +91,17 @@ export class ApiConsole {
   switchSelected (pos: any) {
     const nearest = this.findNearestElement(pos)
     if (nearest === undefined) {
-      this.container.selected = this.defaultSelected
-      this.container.selectedType = this.defaultSelectedType
+      this.dispatchNavEvent(this.defaultSelected, this.defaultSelectedType)
     } else if (this.container.selected !== nearest.id) {
-      this.container.selected = nearest.id
-      this.container.selectedType = nearest.selectedType
+      this.dispatchNavEvent(nearest.id, nearest.selectedType)
     }
+  }
+
+  /* Dispatches api-navigation "selection changed" event. */
+  dispatchNavEvent (selected: string, type: string) {
+    window.dispatchEvent(new CustomEvent(
+      'api-navigation-selection-changed',
+      { detail: { selected, type } }
+    ))
   }
 }
