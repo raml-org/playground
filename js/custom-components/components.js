@@ -2,6 +2,7 @@ import { html, css } from 'lit-element';
 import { ApiSummary } from '@api-components/api-summary/src/ApiSummary.js';
 import { ApiMethodDocumentation } from '@api-components/api-method-documentation/src/ApiMethodDocumentation.js';
 import { ApiDocumentation } from '@api-components/api-documentation/src/ApiDocumentation.js';
+import { expandMore, chevronLeft, chevronRight } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 
 // Extends ApiSummary to customize its output
 export class XApiSummary extends ApiSummary {
@@ -123,6 +124,78 @@ window.customElements.define('x-api-summary', XApiSummary);
 
 // Extends ApiMethodDocumentation to customize its output
 export class XApiMethodDocumentation extends ApiMethodDocumentation {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+    .url-area {
+      display: block;
+      padding: 0;
+      margin: 0!important;
+    }
+    .url-value {
+      margin-left: 0;
+    }
+    anypoint-button {
+      display: block;
+      min-width: auto;
+      padding: 0!important;
+      margin: 0!important;
+    }
+    `];
+  }
+
+  // Overriden to customize block structure
+  _getUrlTemplate() {
+    const { httpMethod, endpointUri } = this;
+    return html`<section class="url-area">
+      <div><b>Endpoint URL</b></div>
+      <div class="url-value">${endpointUri}</div>
+    </section>`;
+  }
+
+  // Overriden to customize block structure
+  _getCodeSnippetsTemplate() {
+    if (!this.renderCodeSnippets) {
+      return '';
+    }
+    const {
+      _snippetsOpened,
+      _renderSnippets,
+      endpointUri,
+      httpMethod,
+      headers,
+      payload,
+      compatibility
+    } = this;
+    const iconClass = this._computeToggleIconClass(_snippetsOpened);
+    return html`<section class="snippets">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSnippets}"
+        title="Toogle code example details"
+        ?opened="${_snippetsOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${iconClass}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="heading3 table-title" role="heading" aria-level="2">
+          <b>Code samples</b>
+        </div>
+      </div>
+      <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
+      ${_renderSnippets ? html`<http-code-snippets
+        scrollable
+        ?compatibility="${compatibility}"
+        .url="${endpointUri}"
+        .method="${httpMethod}"
+        .headers="${this._computeSnippetsHeaders(headers)}"
+        .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
+      </iron-collapse>
+    </section>`;
+  }
 
 }
 window.customElements.define('x-api-method-documentation', XApiMethodDocumentation);
