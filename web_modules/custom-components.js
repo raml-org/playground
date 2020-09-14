@@ -112228,7 +112228,6 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
 	 * @param {CustomEvent} e
 	 */
 	_navigationHandler(e) {
-		console.log('>>>>>');
 		if (e.detail.passive === true) {
 			return;
 		}
@@ -112970,10 +112969,10 @@ class XApiDocumentation extends ApiDocumentation {
     return [super.styles, css`
     x-api-summary,
     x-api-method-documentation,
-    api-annotation-documentation,
     api-endpoint-documentation,
     api-security-documentation,
-    api-type-documentation {
+    api-type-documentation,
+    api-documentation-document {
       padding: 15px;
     }
     #api-doc-title {
@@ -112987,7 +112986,8 @@ class XApiDocumentation extends ApiDocumentation {
   _computeApiTitle() {
     const { amf } = this;
     const webApi = this._computeWebApi(amf);
-    return this._getValue(webApi, this.ns.aml.vocabularies.core.name);
+    const title = this._getValue(webApi, this.ns.aml.vocabularies.core.name);
+    return title && title.lenght > 0 ? title.strip() : title
   }
 
   // Overriden to add documentation title block (#api-doc-title)
@@ -113040,11 +113040,32 @@ class XApiDocumentation extends ApiDocumentation {
 
   // Overriden to create breadcrumbs in documentation title block
   _navigationHandler(e) {
-    console.log(e.detail);
-    const { selected, type, endpointId } = e.detail;
-    this.documentationTitle = `${this._computeApiTitle()}`;
-    if (type === 'method') {
-      this.documentationTitle += ` / ${endpointId}`;
+    const { selected, type } = e.detail;
+    let deepBreadcrumbs = '';
+    switch (type) {
+      case 'method':
+      case 'endpoint':
+        deepBreadcrumbs = decodeURIComponent(selected.split('end-points/').pop());
+        break
+      case 'type':
+        deepBreadcrumbs = `/types/${decodeURIComponent(selected.split('types/').pop())}`;
+        break
+      case 'documentation':
+        deepBreadcrumbs = `/documentation/${decodeURIComponent(selected.split('creative-work/').pop())}`;
+        break
+      case 'security':
+        deepBreadcrumbs = `/security/${decodeURIComponent(selected.split('securitySchemes/').pop())}`;
+        break
+    }
+    this.documentationTitle = this._computeApiTitle();
+    if (deepBreadcrumbs.length > 0) {
+      this.documentationTitle = html`
+        <a href="#"
+           onclick="(() => { window.appModel.apiConsole.dispatchNavEvent('summary', 'summary'); return false; })()"
+           >
+           ${this.documentationTitle}
+        </a>
+        <span> ${deepBreadcrumbs.replaceAll('/', ' / ')}</span>`;
     }
     super._navigationHandler(e);
   }
