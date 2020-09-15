@@ -112836,6 +112836,121 @@ class ApiDocumentation extends EventsTargetMixin(AmfHelperMixin(LitElement)) {
 	}
 }
 
+// Extends ApiDocumentation to customize its output
+class XApiDocumentation extends ApiDocumentation {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+    x-api-summary,
+    x-api-method-documentation,
+    api-endpoint-documentation,
+    api-type-documentation,
+    api-documentation-document {
+      padding: 15px;
+    }
+    #api-doc-title {
+      padding: 10px 15px;
+      background-color: #d8d8d8;
+    }
+    #api-doc-title a,
+    #api-doc-title a:visited,
+    #api-doc-title a:hover,
+    #api-doc-title a:active {
+      color: #47a1b4;
+    }
+    `];
+  }
+
+  // Computes documentation title
+  _computeApiTitle() {
+    const { amf } = this;
+    const webApi = this._computeWebApi(amf);
+    const title = this._getValue(webApi, this.ns.aml.vocabularies.core.name);
+    return title && title.lenght > 0 ? title.strip() : title
+  }
+
+  // Overriden to add documentation title block (#api-doc-title)
+  render() {
+    if (!this.documentationTitle) {
+      this.documentationTitle = this._computeApiTitle();
+    }
+    const { aware } = this;
+    return html`<style>${this.styles}</style>
+    ${html`<div id="api-doc-title">${this.documentationTitle}</div>`}
+    ${aware ? html`<raml-aware
+      .scope="${aware}"
+      @api-changed="${this._apiChanged}"></raml-aware>` : ''}
+    ${this._renderServerSelector()}
+    ${this._renderView()}`;
+  }
+
+  // Overriden to output x-api-summary instead of api-summary
+  _summaryTemplate() {
+    const { _docsModel, baseUri, rearrangeEndpoints } = this;
+    return html`<x-api-summary
+        .amf="${_docsModel}"
+        .baseUri="${baseUri}"
+        .rearrangeendpoints="${rearrangeEndpoints}"
+      ></x-api-summary>`;
+  }
+
+  // Overriden to output x-api-method-documentation instead of api-method-documentation
+  _methodTemplate() {
+    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, noTryIt, graph, noBottomNavigation, server } = this;
+    const prev = this._computeMethodPrevious(amf, selected);
+    const next = this._computeMethodNext(amf, selected);
+
+    return html`<x-api-method-documentation
+      .amf="${amf}"
+      .narrow="${narrow}"
+      .compatibility="${compatibility}"
+      .endpoint="${_endpoint}"
+      .server="${server}"
+      .method="${_docsModel}"
+      .previous="${prev}"
+      .next="${next}"
+      .baseUri="${this.effectiveBaseUri}"
+      ?noTryIt="${noTryIt}"
+      ?graph="${graph}"
+      ?noNavigation="${noBottomNavigation}"
+      rendersecurity
+      rendercodesnippets></x-api-method-documentation>`;
+  }
+
+  // Overriden to create breadcrumbs in documentation title block
+  _navigationHandler(e) {
+    const { selected, type } = e.detail;
+    let deepBreadcrumbs = '';
+    switch (type) {
+      case 'method':
+      case 'endpoint':
+        deepBreadcrumbs = decodeURIComponent(selected.split('end-points/').pop());
+        break
+      case 'type':
+        deepBreadcrumbs = `/types/${decodeURIComponent(selected.split('types/').pop())}`;
+        break
+      case 'documentation':
+        deepBreadcrumbs = `/documentation/${decodeURIComponent(selected.split('creative-work/').pop())}`;
+        break
+      case 'security':
+        deepBreadcrumbs = `/security/${decodeURIComponent(selected.split('securitySchemes/').pop())}`;
+        break
+    }
+    this.documentationTitle = this._computeApiTitle();
+    if (deepBreadcrumbs.length > 0) {
+      this.documentationTitle = html`
+        <a href="#"
+           onclick="(() => { window.appModel.apiConsole.dispatchNavEvent('summary', 'summary'); return false; })()"
+           >${this.documentationTitle}</a>
+        <span>${deepBreadcrumbs.replaceAll('/', ' / ')}</span>`;
+    }
+    super._navigationHandler(e);
+  }
+}
+window.customElements.define('x-api-documentation', XApiDocumentation);
+
+
 // Extends ApiSummary to customize its output
 class XApiSummary extends ApiSummary {
 
@@ -112968,178 +113083,251 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     .url-value {
       margin-left: 0;
     }
+    iron-collapse {
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      background-color: #fff;
+    }
+    api-security-documentation {
+      padding-left: 15px;
+    }
+    `];
+  }
+
+/*
     anypoint-button {
       display: block;
       min-width: auto;
       padding: 0!important;
       margin: 0!important;
     }
-    `];
-  }
+    .toggle-icon {
+      margin: 0!important;
+    }
+*/
 
   // Overriden to customize block structure
   _getUrlTemplate() {
     const { httpMethod, endpointUri } = this;
     return html`<section class="url-area">
       <div><b>Endpoint URL</b></div>
-      <div class="url-value">${endpointUri}</div>
+      <div class="url-value">${endpointUri}</div><hr>
     </section>`;
   }
 
-  // Overriden to customize block structure
-  _getCodeSnippetsTemplate() {
-    if (!this.renderCodeSnippets) {
-      return '';
-    }
-    const {
-      _snippetsOpened,
-      _renderSnippets,
-      endpointUri,
-      httpMethod,
-      headers,
-      payload,
-      compatibility
-    } = this;
-    const iconClass = this._computeToggleIconClass(_snippetsOpened);
-    return html`<section class="snippets">
-      <div
-        class="section-title-area"
-        @click="${this._toggleSnippets}"
-        title="Toogle code example details"
-        ?opened="${_snippetsOpened}"
-      >
-        <div class="title-area-actions">
-          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-            <span class="icon ${iconClass}">${expandMore}</span>
-          </anypoint-button>
-        </div>
-        <div class="heading3 table-title" role="heading" aria-level="2">
-          <b>Code samples</b>
-        </div>
-      </div>
-      <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
-      ${_renderSnippets ? html`<http-code-snippets
-        scrollable
-        ?compatibility="${compatibility}"
-        .url="${endpointUri}"
-        .method="${httpMethod}"
-        .headers="${this._computeSnippetsHeaders(headers)}"
-        .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
-      </iron-collapse>
-    </section>`;
-  }
+  // /*
+  //   Overriden to:
+  //     * change the position of "toggle" buttons (move them before the section title);
+  //     * remove word SHOW/HIDE from toggle buttons;
+  //     * make section titles bold;
+  // */
+  // _getCodeSnippetsTemplate() {
+  //   if (!this.renderCodeSnippets) {
+  //     return '';
+  //   }
+  //   const {
+  //     _snippetsOpened,
+  //     _renderSnippets,
+  //     endpointUri,
+  //     httpMethod,
+  //     headers,
+  //     payload,
+  //     compatibility
+  //   } = this;
+  //   const iconClass = this._computeToggleIconClass(_snippetsOpened);
+  //   return html`<section class="snippets">
+  //     <div
+  //       class="section-title-area"
+  //       @click="${this._toggleSnippets}"
+  //       title="Toogle code example details"
+  //       ?opened="${_snippetsOpened}"
+  //     >
+  //       <div class="title-area-actions">
+  //         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+  //           <span class="icon ${iconClass}">${expandMore}</span>
+  //         </anypoint-button>
+  //       </div>
+  //       <div class="heading3 table-title" role="heading" aria-level="2">
+  //         <b>Code samples</b>
+  //       </div>
+  //     </div>
+  //     <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
+  //     ${_renderSnippets ? html`<http-code-snippets
+  //       scrollable
+  //       ?compatibility="${compatibility}"
+  //       .url="${endpointUri}"
+  //       .method="${httpMethod}"
+  //       .headers="${this._computeSnippetsHeaders(headers)}"
+  //       .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
+  //     </iron-collapse>
+  //   </section>`;
+  // }
 
+  // /*
+  //   Overriden to:
+  //     * change the position of "toggle" buttons (move them before the section title);
+  //     * remove word SHOW/HIDE from toggle buttons;
+  //     * make section titles bold;
+  // */
+  // _getSecurityTemplate() {
+  //   const { renderSecurity, security } = this;
+  //   if (!renderSecurity || !security || !security.length) {
+  //     return '';
+  //   }
+  //   const { securityOpened, compatibility, amf, narrow } = this;
+  //   const label = this._computeToggleActionLabel(securityOpened);
+  //   const iconClass = this._computeToggleIconClass(securityOpened);
+  //   return html`<section class="security">
+  //     <div
+  //       class="section-title-area"
+  //       @click="${this._toggleSecurity}"
+  //       title="Toogle security details"
+  //       ?opened="${securityOpened}"
+  //     >
+  //       <div class="title-area-actions">
+  //         <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
+  //           <span class="icon ${iconClass}">${expandMore}</span>
+  //         </anypoint-button>
+  //       </div>
+  //       <div class="heading3 table-title" role="heading" aria-level="2"><b>Security</b></div>
+  //     </div>
+  //     <iron-collapse .opened="${securityOpened}">
+  //       ${security.map((item) => html`<api-security-documentation
+  //         .amf="${amf}"
+  //         .security="${item}"
+  //         ?narrow="${narrow}"
+  //         ?compatibility="${compatibility}"></api-security-documentation>`)}
+  //     </iron-collapse>
+  //   </section>`;
+  // }
+
+  // // Overriden to output x-api-parameters-document instead of api-parameters-document
+  // _getParametersTemplate() {
+  //   if (!this.hasParameters) {
+  //     return '';
+  //   }
+  //   const {
+  //     serverVariables,
+  //     endpointVariables,
+  //     queryParameters,
+  //     amf,
+  //     narrow,
+  //     compatibility,
+  //     graph
+  //   } = this;
+  //   return html`<x-api-parameters-document
+  //     .amf="${amf}"
+  //     queryopened
+  //     pathopened
+  //     .baseUriParameters="${serverVariables}"
+  //     .endpointParameters="${endpointVariables}"
+  //     .queryParameters="${queryParameters}"
+  //     ?narrow="${narrow}"
+  //     ?compatibility="${compatibility}"
+  //     ?graph="${graph}"></x-api-parameters-document>`;
+  // }
 }
 window.customElements.define('x-api-method-documentation', XApiMethodDocumentation);
 
 
-// Extends ApiDocumentation to customize its output
-class XApiDocumentation extends ApiDocumentation {
+// // Extends ApiParametersDocument to customize its output
+// export class XApiParametersDocument extends ApiParametersDocument {
 
-  // Overriden to add new styles
-  get styles() {
-    return [super.styles, css`
-    x-api-summary,
-    x-api-method-documentation,
-    api-endpoint-documentation,
-    api-security-documentation,
-    api-type-documentation,
-    api-documentation-document {
-      padding: 15px;
-    }
-    #api-doc-title {
-      padding: 10px 15px;
-      background-color: #d8d8d8;
-    }
-    `];
-  }
+//   // Overriden to add new styles
+//   get styles() {
+//     return [super.styles, css`
+//       anypoint-button {
+//         display: block;
+//         min-width: auto;
+//         padding: 0!important;
+//         margin: 0!important;
+//       }
+//       .toggle-icon {
+//         margin: 0!important;
+//       }
+//     `];
+//   }
 
-  // Computes documentation title
-  _computeApiTitle() {
-    const { amf } = this;
-    const webApi = this._computeWebApi(amf);
-    const title = this._getValue(webApi, this.ns.aml.vocabularies.core.name);
-    return title && title.lenght > 0 ? title.strip() : title
-  }
+//   /*
+//     Overriden to:
+//       * change the position of "toggle" buttons (move them before the section title);
+//       * remove word SHOW/HIDE from toggle buttons;
+//       * make section titles bold;
+//   */
+//   render() {
+//     const {
+//       aware,
+//       pathOpened,
+//       queryOpened,
+//       _effectivePathParameters,
+//       queryParameters,
+//       amf,
+//       narrow,
+//       compatibility,
+//       headerLevel,
+//       graph
+//     } = this;
+//     const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
+//     return html`<style>${this.styles}</style>
+//     ${aware ?
+//       html`<raml-aware
+//         @api-changed="${this._apiChangedHandler}"
+//         .scope="${aware}"
+//         data-source="api-parameters-document"></raml-aware>` : ''}
+//     ${hasPathParameters ? html`<section class="uri-parameters">
+//       <div
+//         class="section-title-area"
+//         @click="${this.toggleUri}"
+//         title="Toogle URI parameters details"
+//         ?opened="${pathOpened}"
+//       >
+//         <div class="title-area-actions">
+//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+//             <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
+//           </anypoint-button>
+//         </div>
+//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
+//       </div>
+//       <iron-collapse .opened="${pathOpened}">
+//         <api-type-document
+//           .amf="${amf}"
+//           .type="${_effectivePathParameters}"
+//           ?compatibility="${compatibility}"
+//           ?narrow="${narrow}"
+//           ?graph="${graph}"
+//           noExamplesActions
+//         ></api-type-document>
+//       </iron-collapse>
+//     </section>` : ''}
 
-  // Overriden to add documentation title block (#api-doc-title)
-  render() {
-    if (!this.documentationTitle) {
-      this.documentationTitle = this._computeApiTitle();
-    }
-    const { aware } = this;
-    return html`<style>${this.styles}</style>
-    ${html`<div id="api-doc-title">${this.documentationTitle}</div>`}
-    ${aware ? html`<raml-aware
-      .scope="${aware}"
-      @api-changed="${this._apiChanged}"></raml-aware>` : ''}
-    ${this._renderServerSelector()}
-    ${this._renderView()}`;
-  }
+//     ${queryParameters ? html`<section class="query-parameters">
+//       <div
+//         class="section-title-area"
+//         @click="${this.toggleQuery}"
+//         title="Toogle query parameters details"
+//         ?opened="${queryOpened}"
+//       >
+//         <div class="title-area-actions">
+//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+//             <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
+//           </anypoint-button>
+//         </div>
+//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
+//       </div>
+//       <iron-collapse .opened="${queryOpened}">
+//         <api-type-document
+//           .amf="${amf}"
+//           .type="${queryParameters}"
+//           ?compatibility="${compatibility}"
+//           ?narrow="${narrow}"
+//           ?graph="${graph}"
+//           noExamplesActions
+//         ></api-type-document>
+//       </iron-collapse>
+//     </section>`: ''}`;
+//   }
 
-  // Overriden to output x-api-summary instead of api-summary
-  _summaryTemplate() {
-    const { _docsModel, baseUri, rearrangeEndpoints } = this;
-    return html`<x-api-summary
-        .amf="${_docsModel}"
-        .baseUri="${baseUri}"
-        .rearrangeendpoints="${rearrangeEndpoints}"
-      ></x-api-summary>`;
-  }
-
-  // Overriden to output x-api-method-documentation instead of api-method-documentation
-  _methodTemplate() {
-    const { amf, _docsModel, narrow, compatibility, _endpoint, selected, noTryIt, graph, noBottomNavigation, server } = this;
-    const prev = this._computeMethodPrevious(amf, selected);
-    const next = this._computeMethodNext(amf, selected);
-
-    return html`<x-api-method-documentation
-      .amf="${amf}"
-      .narrow="${narrow}"
-      .compatibility="${compatibility}"
-      .endpoint="${_endpoint}"
-      .server="${server}"
-      .method="${_docsModel}"
-      .previous="${prev}"
-      .next="${next}"
-      .baseUri="${this.effectiveBaseUri}"
-      ?noTryIt="${noTryIt}"
-      ?graph="${graph}"
-      ?noNavigation="${noBottomNavigation}"
-      rendersecurity
-      rendercodesnippets></x-api-method-documentation>`;
-  }
-
-  // Overriden to create breadcrumbs in documentation title block
-  _navigationHandler(e) {
-    const { selected, type } = e.detail;
-    let deepBreadcrumbs = '';
-    switch (type) {
-      case 'method':
-      case 'endpoint':
-        deepBreadcrumbs = decodeURIComponent(selected.split('end-points/').pop());
-        break
-      case 'type':
-        deepBreadcrumbs = `/types/${decodeURIComponent(selected.split('types/').pop())}`;
-        break
-      case 'documentation':
-        deepBreadcrumbs = `/documentation/${decodeURIComponent(selected.split('creative-work/').pop())}`;
-        break
-      case 'security':
-        deepBreadcrumbs = `/security/${decodeURIComponent(selected.split('securitySchemes/').pop())}`;
-        break
-    }
-    this.documentationTitle = this._computeApiTitle();
-    if (deepBreadcrumbs.length > 0) {
-      this.documentationTitle = html`
-        <a href="#"
-           onclick="(() => { window.appModel.apiConsole.dispatchNavEvent('summary', 'summary'); return false; })()"
-           >${this.documentationTitle}</a>
-        <span>${deepBreadcrumbs.replaceAll('/', ' / ')}</span>`;
-    }
-    super._navigationHandler(e);
-  }
-}
-window.customElements.define('x-api-documentation', XApiDocumentation);
+// }
+// window.customElements.define('x-api-parameters-document', XApiParametersDocument);
 
 export { XApiDocumentation, XApiMethodDocumentation, XApiSummary };
