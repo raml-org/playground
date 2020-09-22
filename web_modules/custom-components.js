@@ -113425,14 +113425,14 @@ class XApiParametersDocument extends ApiParametersDocument {
         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
       </div>
       <iron-collapse .opened="${pathOpened}">
-        <api-type-document
+        <x-api-type-document
           .amf="${amf}"
           .type="${_effectivePathParameters}"
           ?compatibility="${compatibility}"
           ?narrow="${narrow}"
           ?graph="${graph}"
           noExamplesActions
-        ></api-type-document>
+        ></x-api-type-document>
       </iron-collapse>
     </section>` : ''}
 
@@ -113451,14 +113451,14 @@ class XApiParametersDocument extends ApiParametersDocument {
         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
       </div>
       <iron-collapse .opened="${queryOpened}">
-        <api-type-document
+        <x-api-type-document
           .amf="${amf}"
           .type="${queryParameters}"
           ?compatibility="${compatibility}"
           ?narrow="${narrow}"
           ?graph="${graph}"
           noExamplesActions
-        ></api-type-document>
+        ></x-api-type-document>
       </iron-collapse>
     </section>`: ''}`;
   }
@@ -113610,17 +113610,222 @@ class XApiHeadersDocument extends ApiHeadersDocument {
 
     <iron-collapse .opened="${opened}">
       ${hasHeaders ?
-        html`<api-type-document
+        html`<x-api-type-document
           .amf="${amf}"
           .type="${headers}"
           ?narrow="${narrow}"
           ?graph="${graph}"
           noExamplesActions
-        ></api-type-document>` :
+        ></x-api-type-document>` :
         html`<p class="no-info">Headers are not required by this endpoint</p>`}
     </iron-collapse>`;
   }
 }
 window.customElements.define('x-api-headers-document', XApiHeadersDocument);
 
-export { XApiBodyDocumentElement, XApiDocumentation, XApiHeadersDocument, XApiMethodDocumentation, XApiParametersDocument, XApiResponsesDocument, XApiSummary };
+
+// Extend ApiTypeDocument to customize its output
+class XApiTypeDocument extends ApiTypeDocument {
+
+  // Overriden to output x-property-shape-document
+  _objectTemplate() {
+    const items = this._computeProperties(this._resolvedType);
+    if (!items || !items.length) {
+      return '';
+    }
+    return items.map(
+      (item) => html`<x-property-shape-document
+        class="object-document"
+        .shape="${this._resolve(item)}"
+        .amf="${this.amf}"
+        .parentTypeName="${this.parentTypeName}"
+        ?narrow="${this.narrow}"
+        ?noexamplesactions="${this.noExamplesActions}"
+        ?compatibility="${this.compatibility}"
+        ?graph="${this.graph}"
+        .mediaType="${this.mediaType}"
+        ?renderReadOnly="${this.renderReadOnly}"
+      ></x-property-shape-document>`
+    );
+  }
+
+  // Overriden to output x-property-shape-document
+  _arrayTemplate() {
+    const items = this._computeArrayProperties(this._resolvedType) || [];
+    return html`
+      ${this.hasParentType
+        ? html`<x-property-shape-document
+            class="array-document"
+            .amf="${this.amf}"
+            .shape="${this._resolvedType}"
+            .parentTypeName="${this.parentTypeName}"
+            ?narrow="${this.narrow}"
+            ?noexamplesactions="${this.noExamplesActions}"
+            ?compatibility="${this.compatibility}"
+            .mediaType="${this.mediaType}"
+            ?graph="${this.graph}"
+          ></x-property-shape-document>`
+        : ''}
+
+      <div class="array-children">
+        ${items.map(
+          (item) => html`
+            ${item.isShape
+              ? html`<x-property-shape-document
+                  class="array-document"
+                  .amf="${this.amf}"
+                  .shape="${item}"
+                  parentTypeName="${this._computeArrayParentName(
+                    this.parentTypeName
+                  )}"
+                  ?narrow="${this.narrow}"
+                  ?noexamplesactions="${this.noExamplesActions}"
+                  ?compatibility="${this.compatibility}"
+                  .mediaType="${this.mediaType}"
+                  ?graph="${this.graph}"
+                ></x-property-shape-document>`
+              : ''}
+            ${item.isType
+              ? html`<api-type-document
+                  class="union-document"
+                  .amf="${this.amf}"
+                  .parentTypeName="${this.parentTypeName}"
+                  .type="${item}"
+                  ?narrow="${this.narrow}"
+                  ?noexamplesactions="${this.noExamplesActions}"
+                  ?nomainexample="${this._renderMainExample}"
+                  ?compatibility="${this.compatibility}"
+                  .mediaType="${this.mediaType}"
+                  ?graph="${this.graph}"
+                ></api-type-document>`
+              : ''}
+          `
+        )}
+      </div>
+    `;
+  }
+
+  // Overriden to output x-property-shape-document
+  render() {
+    let parts =
+      'content-action-button, code-content-action-button, content-action-button-disabled, ';
+    parts +=
+      'code-content-action-button-disabled content-action-button-active, ';
+    parts +=
+      'code-content-action-button-active, code-wrapper, example-code-wrapper, markdown-html';
+    const mediaTypes = this.mediaTypes || [];
+    return html`<style>
+        ${this.styles}
+      </style>
+      ${this.aware
+        ? html`<raml-aware
+            @api-changed="${this._apiChangedHandler}"
+            scope="${this.aware}"
+          ></raml-aware>`
+        : ''}
+      <section class="examples" ?hidden="${!this._renderMainExample}">
+        ${this.renderMediaSelector
+          ? html`<div class="media-type-selector">
+              <span>Media type:</span>
+              ${mediaTypes.map((item, index) => {
+                const selected = this.selectedMediaType === index;
+                const pressed = selected ? 'true' : 'false';
+                return html`<anypoint-button
+                  part="content-action-button"
+                  class="media-toggle"
+                  data-index="${index}"
+                  ?activated="${selected}"
+                  aria-pressed="${pressed}"
+                  @click="${this._selectMediaType}"
+                  ?compatibility="${this.compatibility}"
+                  title="Select ${item} media type"
+                  >${item}</anypoint-button
+                >`;
+              })}
+            </div>`
+          : ''}
+
+        <api-resource-example-document
+          .amf="${this.amf}"
+          .payloadId="${this.selectedBodyId}"
+          .examples="${this._resolvedType}"
+          .mediaType="${this.mediaType}"
+          .typeName="${this.parentTypeName}"
+          @has-examples-changed="${this._hasExamplesHandler}"
+          ?noauto="${!!this.isScalar}"
+          ?noactions="${this.noExamplesActions}"
+          ?rawOnly="${!this.mediaType}"
+          ?compatibility="${this.compatibility}"
+          exportparts="${parts}"
+          ?renderReadOnly="${this.renderReadOnly}"
+        ></api-resource-example-document>
+      </section>
+
+      ${this.isObject ? this._objectTemplate() : ''}
+      ${this.isArray ? this._arrayTemplate() : ''}
+      ${this.isScalar
+        ? html`<x-property-shape-document
+            class="shape-document"
+            .amf="${this.amf}"
+            .shape="${this._resolvedType}"
+            .parentTypeName="${this.parentTypeName}"
+            ?narrow="${this.narrow}"
+            ?noexamplesactions="${this.noExamplesActions}"
+            ?compatibility="${this.compatibility}"
+            .mediaType="${this.mediaType}"
+            ?graph="${this.graph}"
+          ></x-property-shape-document>`
+        : ''}
+      ${this.isUnion ? this._unionTemplate() : ''}
+      ${this.isAnd ? this._anyTemplate() : ''}
+      ${this.isAnyOf ? this._anyOfTemplate() : ''}
+      ${this.isOneOf ? this._oneOfTemplate() : ''}`;
+  }
+}
+window.customElements.define('x-api-type-document', XApiTypeDocument);
+
+
+// Extend PropertyShapeDocument to customize its output
+class XPropertyShapeDocument extends PropertyShapeDocument {
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      .data-type-string {
+        background-color: #1589ee!important;
+      }
+      .data-type-integer,
+      .data-type-number {
+        background-color: #4aca80!important;
+      }
+    `];
+  }
+
+  // Overriden to add data-type-* classes
+  _getTypeNameTemplate() {
+    let dataType = this.propertyDataType;
+    const id = this._targetTypeId;
+    const { isScalarArray } = this;
+    if (id) {
+      const label = this._targetTypeName;
+      return html`
+        <span
+          class="data-type link-label"
+          role="link"
+          tabindex="0"
+          @click="${this._navigateType}"
+          @keydown="${this._linkKeydown}"
+          >${label}</span
+        >
+        <span class="type-data-type data-type-${dataType.toLowerCase()}">${dataType}</span>
+      `;
+    }
+    if (isScalarArray) {
+      const itemType = this.arrayScalarTypeName;
+      dataType = `${dataType} of ${itemType}`;
+    }
+    return html`<span class="data-type data-type-${dataType.toLowerCase()}">${dataType}</span>`;
+  }
+}
+window.customElements.define('x-property-shape-document', XPropertyShapeDocument);
+
+export { XApiBodyDocumentElement, XApiDocumentation, XApiHeadersDocument, XApiMethodDocumentation, XApiParametersDocument, XApiResponsesDocument, XApiSummary, XApiTypeDocument, XPropertyShapeDocument };
