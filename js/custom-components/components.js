@@ -273,6 +273,34 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     .toggle-icon {
       margin: 0!important;
     }
+    http-code-snippets {
+      margin-bottom: 15px!important;
+    }
+    iron-collapse {
+      position: relative;
+      overflow: hidden;
+    }
+    #code-snippets-fullscreen-btn {
+      position: absolute;
+      right: 0px;
+      bottom: 0px;
+      z-index: 99;
+      background: #e0e0e0;
+      padding: 1px 3px;
+      cursor: pointer;
+      font-size: 13px;
+      text-transform: uppercase;
+      color: #000;
+    }
+    .fullscreen-snippets {
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: #f5f7f9;
+      width: 100%;
+      height: 100%;
+      z-index: 99;
+    }
     `];
   }
 
@@ -322,13 +350,21 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
         </div>
       </div>
       <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
-      ${_renderSnippets ? html`<http-code-snippets
-        scrollable
-        ?compatibility="${compatibility}"
-        .url="${endpointUri}"
-        .method="${httpMethod}"
-        .headers="${this._computeSnippetsHeaders(headers)}"
-        .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
+      ${_renderSnippets ? html`<div id="http-code-snippets-container">
+          <http-code-snippets
+            scrollable
+            ?compatibility="${compatibility}"
+            .url="${endpointUri}"
+            .method="${httpMethod}"
+            .headers="${this._computeSnippetsHeaders(headers)}"
+            .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>
+          <div
+            id="code-snippets-fullscreen-btn"
+            title="Toggle fullscreen"
+            onclick="(function(el) { el.parentElement.classList.toggle('fullscreen-snippets'); })(this)"
+            >Fullscreen
+          </div>
+        </div>` : ''}
       </iron-collapse>
     </section>`;
   }
