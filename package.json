@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@api-components/api-body-document": "^4.2.0",
     "@api-components/api-documentation": "^5.0.4",
     "@pika/web": "^0.6.1"
   },

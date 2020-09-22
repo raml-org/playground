@@ -1,6 +1,9 @@
 import { html, css } from 'lit-element';
 import { ApiSummary } from '@api-components/api-summary/src/ApiSummary.js';
 import { ApiMethodDocumentation } from '@api-components/api-method-documentation/src/ApiMethodDocumentation.js';
+import { ApiBodyDocumentElement } from '@api-components/api-body-document/src/ApiBodyDocumentElement.js';
+import { ApiHeadersDocument } from '@api-components/api-headers-document/src/ApiHeadersDocument.js';
+import { ApiResponsesDocument } from '@api-components/api-responses-document/src/ApiResponsesDocument.js';
 import { ApiDocumentation } from '@api-components/api-documentation/src/ApiDocumentation.js';
 import { ApiParametersDocument } from '@api-components/api-parameters-document/src/ApiParametersDocument.js';
 import { expandMore, chevronLeft, chevronRight } from '@advanced-rest-client/arc-icons/ArcIcons.js';
@@ -261,10 +264,6 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     api-security-documentation {
       padding-left: 15px;
     }
-    `];
-  }
-
-/*
     anypoint-button {
       display: block;
       min-width: auto;
@@ -274,7 +273,8 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     .toggle-icon {
       margin: 0!important;
     }
-*/
+    `];
+  }
 
   // Overriden to customize block structure
   _getUrlTemplate() {
@@ -285,217 +285,443 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     </section>`;
   }
 
-  // /*
-  //   Overriden to:
-  //     * change the position of "toggle" buttons (move them before the section title);
-  //     * remove word SHOW/HIDE from toggle buttons;
-  //     * make section titles bold;
-  // */
-  // _getCodeSnippetsTemplate() {
-  //   if (!this.renderCodeSnippets) {
-  //     return '';
-  //   }
-  //   const {
-  //     _snippetsOpened,
-  //     _renderSnippets,
-  //     endpointUri,
-  //     httpMethod,
-  //     headers,
-  //     payload,
-  //     compatibility
-  //   } = this;
-  //   const iconClass = this._computeToggleIconClass(_snippetsOpened);
-  //   return html`<section class="snippets">
-  //     <div
-  //       class="section-title-area"
-  //       @click="${this._toggleSnippets}"
-  //       title="Toogle code example details"
-  //       ?opened="${_snippetsOpened}"
-  //     >
-  //       <div class="title-area-actions">
-  //         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-  //           <span class="icon ${iconClass}">${expandMore}</span>
-  //         </anypoint-button>
-  //       </div>
-  //       <div class="heading3 table-title" role="heading" aria-level="2">
-  //         <b>Code samples</b>
-  //       </div>
-  //     </div>
-  //     <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
-  //     ${_renderSnippets ? html`<http-code-snippets
-  //       scrollable
-  //       ?compatibility="${compatibility}"
-  //       .url="${endpointUri}"
-  //       .method="${httpMethod}"
-  //       .headers="${this._computeSnippetsHeaders(headers)}"
-  //       .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
-  //     </iron-collapse>
-  //   </section>`;
-  // }
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  _getCodeSnippetsTemplate() {
+    if (!this.renderCodeSnippets) {
+      return '';
+    }
+    const {
+      _snippetsOpened,
+      _renderSnippets,
+      endpointUri,
+      httpMethod,
+      headers,
+      payload,
+      compatibility
+    } = this;
+    const iconClass = this._computeToggleIconClass(_snippetsOpened);
+    return html`<section class="snippets">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSnippets}"
+        title="Toogle code example details"
+        ?opened="${_snippetsOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${iconClass}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="heading3 table-title" role="heading" aria-level="2">
+          <b>Code samples</b>
+        </div>
+      </div>
+      <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
+      ${_renderSnippets ? html`<http-code-snippets
+        scrollable
+        ?compatibility="${compatibility}"
+        .url="${endpointUri}"
+        .method="${httpMethod}"
+        .headers="${this._computeSnippetsHeaders(headers)}"
+        .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
+      </iron-collapse>
+    </section>`;
+  }
 
-  // /*
-  //   Overriden to:
-  //     * change the position of "toggle" buttons (move them before the section title);
-  //     * remove word SHOW/HIDE from toggle buttons;
-  //     * make section titles bold;
-  // */
-  // _getSecurityTemplate() {
-  //   const { renderSecurity, security } = this;
-  //   if (!renderSecurity || !security || !security.length) {
-  //     return '';
-  //   }
-  //   const { securityOpened, compatibility, amf, narrow } = this;
-  //   const label = this._computeToggleActionLabel(securityOpened);
-  //   const iconClass = this._computeToggleIconClass(securityOpened);
-  //   return html`<section class="security">
-  //     <div
-  //       class="section-title-area"
-  //       @click="${this._toggleSecurity}"
-  //       title="Toogle security details"
-  //       ?opened="${securityOpened}"
-  //     >
-  //       <div class="title-area-actions">
-  //         <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
-  //           <span class="icon ${iconClass}">${expandMore}</span>
-  //         </anypoint-button>
-  //       </div>
-  //       <div class="heading3 table-title" role="heading" aria-level="2"><b>Security</b></div>
-  //     </div>
-  //     <iron-collapse .opened="${securityOpened}">
-  //       ${security.map((item) => html`<api-security-documentation
-  //         .amf="${amf}"
-  //         .security="${item}"
-  //         ?narrow="${narrow}"
-  //         ?compatibility="${compatibility}"></api-security-documentation>`)}
-  //     </iron-collapse>
-  //   </section>`;
-  // }
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  _getSecurityTemplate() {
+    const { renderSecurity, security } = this;
+    if (!renderSecurity || !security || !security.length) {
+      return '';
+    }
+    const { securityOpened, compatibility, amf, narrow } = this;
+    const label = this._computeToggleActionLabel(securityOpened);
+    const iconClass = this._computeToggleIconClass(securityOpened);
+    return html`<section class="security">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSecurity}"
+        title="Toogle security details"
+        ?opened="${securityOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
+            <span class="icon ${iconClass}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="heading3 table-title" role="heading" aria-level="2"><b>Security</b></div>
+      </div>
+      <iron-collapse .opened="${securityOpened}">
+        ${security.map((item) => html`<api-security-documentation
+          .amf="${amf}"
+          .security="${item}"
+          ?narrow="${narrow}"
+          ?compatibility="${compatibility}"></api-security-documentation>`)}
+      </iron-collapse>
+    </section>`;
+  }
 
-  // // Overriden to output x-api-parameters-document instead of api-parameters-document
-  // _getParametersTemplate() {
-  //   if (!this.hasParameters) {
-  //     return '';
-  //   }
-  //   const {
-  //     serverVariables,
-  //     endpointVariables,
-  //     queryParameters,
-  //     amf,
-  //     narrow,
-  //     compatibility,
-  //     graph
-  //   } = this;
-  //   return html`<x-api-parameters-document
-  //     .amf="${amf}"
-  //     queryopened
-  //     pathopened
-  //     .baseUriParameters="${serverVariables}"
-  //     .endpointParameters="${endpointVariables}"
-  //     .queryParameters="${queryParameters}"
-  //     ?narrow="${narrow}"
-  //     ?compatibility="${compatibility}"
-  //     ?graph="${graph}"></x-api-parameters-document>`;
-  // }
+  // Overriden to output x-api-parameters-document instead of api-parameters-document
+  _getParametersTemplate() {
+    if (!this.hasParameters) {
+      return '';
+    }
+    const {
+      serverVariables,
+      endpointVariables,
+      queryParameters,
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-parameters-document
+      .amf="${amf}"
+      queryopened
+      pathopened
+      .baseUriParameters="${serverVariables}"
+      .endpointParameters="${endpointVariables}"
+      .queryParameters="${queryParameters}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"></x-api-parameters-document>`;
+  }
+
+  /* Overriden to output x-api-body-document instead of api-body-document. */
+  _getBodyTemplate() {
+    const { payload } = this;
+    if (!payload || !payload.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-body-document
+      opened
+      .amf="${amf}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      .body="${payload}"></x-api-body-document>`;
+  }
+
+  /*
+    Overriden to:
+      * output x-api-responses-document instead of api-responses-document;
+      * make section title bold;
+  */
+  _getReturnsTemplate() {
+    const { returns } = this;
+    if (!returns || !returns.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<section class="response-documentation">
+      <div class="heading2" role="heading" aria-level="1"><b>Responses</b></div>
+      <x-api-responses-document
+        .amf="${amf}"
+        ?narrow="${narrow}"
+        ?compatibility="${compatibility}"
+        ?graph="${graph}"
+        .returns="${returns}"></x-api-responses-document>
+    </section>`;
+  }
+
+  /* Overriden to output x-api-headers-document instead of api-headers-document. */
+  _getHeadersTemplate() {
+    const { headers } = this;
+    if (!headers || !headers.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-headers-document
+      opened
+      .amf="${amf}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      .headers="${headers}"></x-api-headers-document>`;
+  }
 }
 window.customElements.define('x-api-method-documentation', XApiMethodDocumentation);
 
 
-// // Extends ApiParametersDocument to customize its output
-// export class XApiParametersDocument extends ApiParametersDocument {
+// Extends ApiParametersDocument to customize its output
+export class XApiParametersDocument extends ApiParametersDocument {
 
-//   // Overriden to add new styles
-//   get styles() {
-//     return [super.styles, css`
-//       anypoint-button {
-//         display: block;
-//         min-width: auto;
-//         padding: 0!important;
-//         margin: 0!important;
-//       }
-//       .toggle-icon {
-//         margin: 0!important;
-//       }
-//     `];
-//   }
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
 
-//   /*
-//     Overriden to:
-//       * change the position of "toggle" buttons (move them before the section title);
-//       * remove word SHOW/HIDE from toggle buttons;
-//       * make section titles bold;
-//   */
-//   render() {
-//     const {
-//       aware,
-//       pathOpened,
-//       queryOpened,
-//       _effectivePathParameters,
-//       queryParameters,
-//       amf,
-//       narrow,
-//       compatibility,
-//       headerLevel,
-//       graph
-//     } = this;
-//     const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
-//     return html`<style>${this.styles}</style>
-//     ${aware ?
-//       html`<raml-aware
-//         @api-changed="${this._apiChangedHandler}"
-//         .scope="${aware}"
-//         data-source="api-parameters-document"></raml-aware>` : ''}
-//     ${hasPathParameters ? html`<section class="uri-parameters">
-//       <div
-//         class="section-title-area"
-//         @click="${this.toggleUri}"
-//         title="Toogle URI parameters details"
-//         ?opened="${pathOpened}"
-//       >
-//         <div class="title-area-actions">
-//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-//             <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
-//           </anypoint-button>
-//         </div>
-//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
-//       </div>
-//       <iron-collapse .opened="${pathOpened}">
-//         <api-type-document
-//           .amf="${amf}"
-//           .type="${_effectivePathParameters}"
-//           ?compatibility="${compatibility}"
-//           ?narrow="${narrow}"
-//           ?graph="${graph}"
-//           noExamplesActions
-//         ></api-type-document>
-//       </iron-collapse>
-//     </section>` : ''}
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const {
+      aware,
+      pathOpened,
+      queryOpened,
+      _effectivePathParameters,
+      queryParameters,
+      amf,
+      narrow,
+      compatibility,
+      headerLevel,
+      graph
+    } = this;
+    const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware
+        @api-changed="${this._apiChangedHandler}"
+        .scope="${aware}"
+        data-source="api-parameters-document"></raml-aware>` : ''}
+    ${hasPathParameters ? html`<section class="uri-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleUri}"
+        title="Toogle URI parameters details"
+        ?opened="${pathOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
+      </div>
+      <iron-collapse .opened="${pathOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${_effectivePathParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>` : ''}
 
-//     ${queryParameters ? html`<section class="query-parameters">
-//       <div
-//         class="section-title-area"
-//         @click="${this.toggleQuery}"
-//         title="Toogle query parameters details"
-//         ?opened="${queryOpened}"
-//       >
-//         <div class="title-area-actions">
-//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-//             <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
-//           </anypoint-button>
-//         </div>
-//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
-//       </div>
-//       <iron-collapse .opened="${queryOpened}">
-//         <api-type-document
-//           .amf="${amf}"
-//           .type="${queryParameters}"
-//           ?compatibility="${compatibility}"
-//           ?narrow="${narrow}"
-//           ?graph="${graph}"
-//           noExamplesActions
-//         ></api-type-document>
-//       </iron-collapse>
-//     </section>`: ''}`;
-//   }
+    ${queryParameters ? html`<section class="query-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleQuery}"
+        title="Toogle query parameters details"
+        ?opened="${queryOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
+      </div>
+      <iron-collapse .opened="${queryOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${queryParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>`: ''}`;
+  }
+}
+window.customElements.define('x-api-parameters-document', XApiParametersDocument);
 
-// }
-// window.customElements.define('x-api-parameters-document', XApiParametersDocument);
+
+// Extend ApiBodyDocumentElement to customize its output
+export class XApiBodyDocumentElement extends ApiBodyDocumentElement {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const { opened, _isAnyType, aware, compatibility, headerLevel } = this;
+    const iconClass = this._computeToggleIconClass(opened);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
+
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle body details"
+      ?opened="${opened}"
+    >
+      <div class="title-area-actions">
+        <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+          <span class="icon ${iconClass}">${expandMore}</span>
+        </anypoint-button>
+      </div>
+      <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Body</b></div>
+    </div>
+
+    <iron-collapse .opened="${opened}">
+      ${_isAnyType ? this._anyTypeTemplate() : this._typedTemplate()}
+    </iron-collapse>`;
+  }
+}
+window.customElements.define('x-api-body-document', XApiBodyDocumentElement);
+
+
+// Extend ApiBodyDocumentElement to customize its output
+export class XApiResponsesDocument extends ApiResponsesDocument {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /* Overriden to output x-api-body-document instead of api-body-document. */
+  _payloadTemplate() {
+    const {
+      _payload,
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    const hasPayload = !!(_payload && _payload.length);
+    if (!hasPayload) {
+      return '';
+    }
+    return html`<x-api-body-document
+      .amf="${amf}"
+      .body="${_payload}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      renderreadonly
+      opened></x-api-body-document>`
+  }
+}
+window.customElements.define('x-api-responses-document', XApiResponsesDocument);
+
+
+// Extend ApiBodyDocumentElement to customize its output
+export class XApiHeadersDocument extends ApiHeadersDocument {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const { aware, opened, headers, amf, narrow, compatibility, headerLevel, graph } = this;
+    const hasHeaders = !!(headers && headers.length);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
+
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle headers details"
+      ?opened="${opened}"
+    >
+      <div class="title-area-actions">
+        <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+          <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
+        </anypoint-button>
+      </div>
+      <div class="headers-title" role="heading" aria-level="${headerLevel}"><b>Headers</b></div>
+    </div>
+
+    <iron-collapse .opened="${opened}">
+      ${hasHeaders ?
+        html`<api-type-document
+          .amf="${amf}"
+          .type="${headers}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>` :
+        html`<p class="no-info">Headers are not required by this endpoint</p>`}
+    </iron-collapse>`;
+  }
+}
+window.customElements.define('x-api-headers-document', XApiHeadersDocument);

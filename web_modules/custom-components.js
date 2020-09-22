@@ -48126,144 +48126,147 @@ class ApiSchemaDocument extends AmfHelperMixin(LitElement) {
 
 window.customElements.define('api-schema-document', ApiSchemaDocument);
 
+var styles$4 = css`
+:host {
+  display: block;
+  font-size: var(--arc-font-body1-font-size);
+  font-weight: var(--arc-font-body1-font-weight);
+  line-height: var(--arc-font-body1-line-height);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.section-title-area {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  border-bottom: 1px var(--api-body-document-title-border-color, #e5e5e5) solid;
+  transition: border-bottom-color 0.15s ease-in-out;
+}
+
+.section-title-area[opened] {
+  border-bottom-color: transparent;
+}
+
+.section-title-area .table-title {
+  flex: 1;
+  flex-basis: 0.000000001px;
+  font-size: var(--api-body-document-title-narrow-font-size, initial);
+}
+
+.toggle-button {
+  outline: none;
+}
+
+.toggle-icon {
+  margin-left: 8px;
+  transform: rotateZ(0deg);
+  transition: transform 0.3s ease-in-out;
+}
+
+.toggle-icon.opened {
+  transform: rotateZ(-180deg);
+}
+
+.table-title {
+  font-size: var(--arc-font-subhead-font-size);
+  font-weight: var(--arc-font-subhead-font-weight);
+  line-height: var(--arc-font-subhead-line-height);
+}
+
+:host([narrow]) .table-title {
+  font-size: var(--api-body-document-title-narrow-font-size, initial);
+}
+
+.type-title {
+  font-size: var(--arc-font-body2-font-size);
+  font-weight: var(--arc-font-body2-font-weight);
+  line-height: var(--arc-font-body2-line-height);
+}
+
+.body-name {
+  font-weight: var(--api-body-document-any-info-font-weight, 500);
+  font-size: 1.1rem;
+}
+
+anypoint-button[active] {
+  background-color: var(--api-body-document-media-button-background-color, #CDDC39);
+}
+
+.media-type-selector {
+  margin: 20px 0;
+}
+
+.markdown-html {
+  margin-bottom: 28px;
+  margin-top: 28px;
+  color: var(--api-body-document-description-color, rgba(0, 0, 0, 0.74));
+}
+
+.markdown-html[data-with-title] {
+  margin-top: 0;
+}
+
+api-schema-document {
+  background-color: var(--code-background-color);
+  padding: 8px;
+  color: var(--api-body-document-code-color, initial);
+  word-break: break-all;
+}
+
+.media-type-label {
+  font-weight: var(--api-body-document-media-type-label-font-weight, 500);
+  margin-left: 8px;
+}
+
+.media-toggle {
+  outline: none;
+  color: var(--api-body-document-toggle-view-color, var(--arc-toggle-view-icon-color, rgba(0, 0, 0, 0.74)));
+}
+
+.any-info,
+.any-info-description {
+  color: var(--api-body-document-description-color, rgba(0, 0, 0, 0.74));
+}
+
+.any-info {
+  font-size: var(--api-body-document-any-info-font-size, 16px);
+}
+
+arc-marked {
+  background-color: transparent;
+  padding: 0px;
+}
+
+.icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+`;
+
+/* eslint-disable class-methods-use-this */
+
+/** @typedef {import('lit-element').TemplateResult} TemplateResult */
+/** @typedef {import('@anypoint-web-components/anypoint-button').AnypointButton} AnypointButton */
+/** @typedef {import('./ApiBodyDocumentElement').MediaTypeItem} MediaTypeItem */
+
 /**
- * `api-body-document`
- *
  * A component to render HTTP method body documentation based on AMF model.
- *
- * @customElement
- * @demo demo/index.html
- * @memberof ApiElements
- * @appliesMixin AmfHelperMixin
  */
-class ApiBodyDocument extends AmfHelperMixin(LitElement) {
+class ApiBodyDocumentElement extends AmfHelperMixin(LitElement) {
   get styles() {
     return [
       markdownStyles,
-      css`:host {
-        display: block;
-        font-size: var(--arc-font-body1-font-size);
-        font-weight: var(--arc-font-body1-font-weight);
-        line-height: var(--arc-font-body1-line-height);
-      }
-
-      [hidden] {
-        display: none !important;
-      }
-
-      .section-title-area {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        cursor: pointer;
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-        border-bottom: 1px var(--api-body-document-title-border-color, #e5e5e5) solid;
-        transition: border-bottom-color 0.15s ease-in-out;
-      }
-
-      .section-title-area[opened] {
-        border-bottom-color: transparent;
-      }
-
-      .section-title-area .table-title {
-        flex: 1;
-        flex-basis: 0.000000001px;
-        font-size: var(--api-body-document-title-narrow-font-size, initial);
-      }
-
-      .toggle-button {
-        outline: none;
-      }
-
-      .toggle-icon {
-        margin-left: 8px;
-        transform: rotateZ(0deg);
-        transition: transform 0.3s ease-in-out;
-      }
-
-      .toggle-icon.opened {
-        transform: rotateZ(-180deg);
-      }
-
-      .table-title {
-        font-size: var(--arc-font-subhead-font-size);
-        font-weight: var(--arc-font-subhead-font-weight);
-        line-height: var(--arc-font-subhead-line-height);
-      }
-
-      :host([narrow]) .table-title {
-        font-size: var(--api-body-document-title-narrow-font-size, initial);
-      }
-
-      .type-title {
-        font-size: var(--arc-font-body2-font-size);
-        font-weight: var(--arc-font-body2-font-weight);
-        line-height: var(--arc-font-body2-line-height);
-      }
-
-      .body-name {
-        font-weight: var(--api-body-document-any-info-font-weight, 500);
-        font-size: 1.1rem;
-      }
-
-      anypoint-button[active] {
-        background-color: var(--api-body-document-media-button-background-color, #CDDC39);
-      }
-
-      .media-type-selector {
-        margin: 20px 0;
-      }
-
-      .markdown-html {
-        margin-bottom: 28px;
-        margin-top: 28px;
-        color: var(--api-body-document-description-color, rgba(0, 0, 0, 0.74));
-      }
-
-      .markdown-html[data-with-title] {
-        margin-top: 0;
-      }
-
-      api-schema-document {
-        background-color: var(--code-background-color);
-        padding: 8px;
-        color: var(--api-body-document-code-color, initial);
-        word-break: break-all;
-      }
-
-      .media-type-label {
-        font-weight: var(--api-body-document-media-type-label-font-weight, 500);
-        margin-left: 8px;
-      }
-
-      .media-toggle {
-        outline: none;
-        color: var(--api-body-document-toggle-view-color, var(--arc-toggle-view-icon-color, rgba(0, 0, 0, 0.74)));
-      }
-
-      .any-info,
-      .any-info-description {
-        color: var(--api-body-document-description-color, rgba(0, 0, 0, 0.74));
-      }
-
-      .any-info {
-        font-size: var(--api-body-document-any-info-font-size, 16px);
-      }
-
-      arc-marked {
-        background-color: transparent;
-        padding: 0px;
-      }
-
-      .icon {
-        display: block;
-        width: 24px;
-        height: 24px;
-        fill: currentColor;
-      }`
+      styles$4,
     ];
   }
 
@@ -48281,12 +48284,10 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       /**
        * AMF model for body as a `http://raml.org/vocabularies/http#payload`
        * type.
-       * @type {Array<Object>}
        */
       body: { type: Array },
       /**
        * List of discovered media types in the `body`.
-       * @type {Array<Object>}
        */
       _mediaTypes: { type: Array },
       /**
@@ -48349,10 +48350,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       /**
        * Set to render a mobile friendly view.
        */
-       narrow: {
-         type: Boolean,
-         reflect: true
-       },
+       narrow: { type: Boolean, reflect: true },
        /**
         * Enables compatibility with Anypoint components.
         */
@@ -48376,29 +48374,47 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
        renderReadOnly: { type: Boolean },
     };
   }
+
   get _mediaTypes() {
     return this.__mediaTypes;
   }
+
   set _mediaTypes(value) {
-    if (this._sop('_mediaTypes', value)) {
-      this._renderMediaSelector = this._computeRenderMediaSelector(value);
+    const old = this.__mediaTypes;
+    if (old === value) {
+      return;
     }
+    this.__mediaTypes = value;
+    this.requestUpdate('_mediaTypes', old);
+    this._renderMediaSelector = this._computeRenderMediaSelector(value);
   }
+
   get _selectedBody() {
     return this.__selectedBody;
   }
+
   set _selectedBody(value) {
-    if (this._sop('_selectedBody', value)) {
-      this._selectedBodyChanged(value);
+    const old = this.__selectedBody;
+    if (old === value) {
+      return;
     }
+    this.__selectedBody = value;
+    this.requestUpdate('_selectedBody', old);
+    this._selectedBodyChanged(value);
   }
+
   get _selectedSchema() {
     return this.__selectedSchema;
   }
+
   set _selectedSchema(value) {
-    if (this._sop('_selectedSchema', value)) {
-      this._selectedSchemaChanged(value);
+    const old = this.__selectedSchema;
+    if (old === value) {
+      return;
     }
+    this.__selectedSchema = value;
+    this.requestUpdate('_selectedSchema', old);
+    this._selectedSchemaChanged(value);
   }
 
   get selected() {
@@ -48406,10 +48422,14 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   }
 
   set selected(value) {
-    if (this._sop('selected', value)) {
-      this._selectedBody = this._computeSelectedBody(value, this.body);
-      this._selectedMediaType = this._computeSelectedMediaName(value, this.body);
+    const old = this._selected;
+    if (old === value) {
+      return;
     }
+    this._selected = value;
+    this.requestUpdate('selected', old);
+    this._selectedBody = this._computeSelectedBody(value, this.body);
+    this._selectedMediaType = this._computeSelectedMediaName(value, this.body);
   }
 
   get body() {
@@ -48417,32 +48437,15 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   }
 
   set body(value) {
-    if (this._sop('body', value)) {
-      this._selectedBody = this._computeSelectedBody(this.selected, value);
-      this._selectedMediaType = this._computeSelectedMediaName(this.selected, value);
-      this._bodyChanged();
-    }
-  }
-
-  __amfChanged() {
-    this._bodyChanged();
-  }
-
-  /**
-   * Sets observable property that causes render action.
-   * @param {String} prop Property name
-   * @param {any} value Value to set
-   * @return {Boolean} True when the property has been updated.
-   */
-  _sop(prop, value) {
-    const key = '_' + prop;
-    const old = this[key];
+    const old = this._body;
     if (old === value) {
-      return false;
+      return;
     }
-    this[key] = value;
-    this.requestUpdate(prop, old);
-    return true;
+    this._body = value;
+    this.requestUpdate('body', old);
+    this._selectedBody = this._computeSelectedBody(this.selected, value);
+    this._selectedMediaType = this._computeSelectedMediaName(this.selected, value);
+    this._bodyChanged();
   }
 
   constructor() {
@@ -48450,6 +48453,22 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     this._renderMediaSelector = false;
     this._hasObjectExamples = false;
     this.headerLevel = 2;
+    this.compatibility = false;
+    this.renderReadOnly = false;
+    this.graph = false;
+    this.narrow = false;
+    /**
+     * @type {string}
+     */
+    this.aware = undefined;
+    /**
+     * @type {MediaTypeItem[]=}
+     */
+    this._mediaTypes = undefined;
+  }
+
+  __amfChanged() {
+    this._bodyChanged();
   }
 
   _bodyChanged() {
@@ -48483,10 +48502,11 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     this._selectedSchema = this._computeSelectedSchema(value);
     this._hasObjectExamples = false;
   }
+
   /**
    * Computes list of media types in the `body`
-   * @param {Array} body Current value of the body.
-   * @return {Array<Object>}
+   * @param {object} body Current value of the body.
+   * @return {MediaTypeItem[]|undefined}
    */
   _computeMediaTypes(body) {
     const result = [];
@@ -48498,86 +48518,81 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
         });
       }
     });
-    return result.length ? result : '';
+    return result.length ? result : undefined;
   }
+
   /**
    * Computes value for `renderMediaSelector` properety.
-   * @param {Object} types `mediaTypes` change record.
-   * @return {Boolean}
+   * @param {MediaTypeItem[]} types `mediaTypes` change record.
+   * @return {boolean}
    */
   _computeRenderMediaSelector(types) {
     return !!(types && types.length && types.length > 1);
   }
-  /**
-   * Computes if `selected` equals current item index.
-   *
-   * @param {Number} selected
-   * @param {Number} index
-   * @return {Boolean}
-   */
-  _mediaTypeActive(selected, index) {
-    return selected === index;
-  }
+
   /**
    * Handler for media type type button click.
    * Sets `selected` property.
    *
-   * @param {ClickEvent} e
+   * @param {PointerEvent} e
    */
   _selectMediaType(e) {
-    const { target } = e;
-    const index = Number(target.dataset.index);
-    if (index !== index) {
+    const node = /** @type AnypointButton */ (e.target);
+    const index = Number(node.dataset.index);
+    if (Number.isNaN(index)) {
       return;
     }
     if (index !== this.selected) {
       this.selected = index;
     }
     setTimeout(() => {
-      target.active = true;
+      node.active = true;
     });
   }
+
   /**
    * Computes value of `http://raml.org/vocabularies/http#schema` for body.
    * @param {Number} selected Index of currently selected media type in
    * `mediaTypes` array
-   * @param {Array<Object>} body List of body in request.
+   * @param {Array<Object>} body List of body in the request.
    * @return {Object|undefined}
    */
   _computeSelectedBody(selected, body) {
     if (!body || (!selected && selected !== 0)) {
-      return;
+      return undefined;
     }
     return body[selected];
   }
 
   _computeSelectedSchema(selectedBody) {
     if (!selectedBody) {
-      return;
+      return undefined;
     }
     const key = this._getAmfKey(this.ns.aml.vocabularies.shapes.schema);
     let schema = selectedBody[key];
     if (!schema) {
-      return;
+      return undefined;
     }
-    if (schema instanceof Array) {
-      schema = schema[0];
+    if (Array.isArray(schema)) {
+      [schema] = schema;
     }
     return this._resolve(schema);
   }
+
   /**
    * Computes value for `selectedMediaType` property.
-   * @param {Number} selected Currently selected media type index in the selector.
-   * @param {Array<Object>} body List of bodies.
-   * @return {String} Content type value.
+   * @param {number} selected Currently selected media type index in the selector.
+   * @param {Array<Object>} body List of body schemas.
+   * @return {string} Content type value.
    */
   _computeSelectedMediaName(selected, body) {
     if (!body || (!selected && selected !== 0)) {
-      return;
+      return undefined;
     }
     const data = body[selected];
-    return this._getValue(data, this.ns.aml.vocabularies.core.mediaType);
+    return /** @type string */ (this._getValue(data, this.ns.aml.vocabularies.core.mediaType));
   }
+
   /**
    * Handler for body value change. Computes basic view control properties.
    * @param {Object} body Currently computed body.
@@ -48613,10 +48628,12 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     this._isSchema = isSchema;
     this._isAnyType = isAnyType;
   }
+
   // Computes a label for the section toggle buttons.
   _computeToggleActionLabel(opened) {
     return opened ? 'Hide' : 'Show';
   }
+
   // Computes class for the toggle's button icon.
   _computeToggleIconClass(opened) {
     let clazz = 'toggle-icon';
@@ -48625,6 +48642,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     }
     return clazz;
   }
+
   /**
    * Toggles URI parameters view.
    * Use `pathOpened` property instead.
@@ -48632,6 +48650,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
   toggle() {
     this.opened = !this.opened;
   }
+
   /**
    * Computes `typeName` as a name of body in the AMF model.
    *
@@ -48639,7 +48658,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
    * @return {String|undefined}
    */
   _computeTypeName(body) {
-    let value = this._getValue(body, this.ns.w3.shacl.name);
+    let value = /** @type string */ (this._getValue(body, this.ns.w3.shacl.name));
     if (value && (value === 'schema' || value.indexOf('amf_inline_type') === 0)) {
       value = undefined;
     }
@@ -48650,6 +48669,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     const { value } = e.detail;
     this.amf = value;
   }
+
   /**
    * A template to render for "Any" AMF model.
    * @return {TemplateResult}
@@ -48696,6 +48716,7 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     ></api-resource-example-document>
     `;
   }
+
   /**
    * A template to render for any AMF model\ that is different than "any".
    * @return {TemplateResult}
@@ -48755,21 +48776,33 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
       ''}`;
   }
 
+  /**
+   * @return {TemplateResult[]|string} Template for the media types buttons
+   */
   _mediaTypesTemplate() {
-    const items = this._mediaTypes;
-    if (!items || !items.length) {
-      return;
+    const items = /** @type MediaTypeItem[] */ (this._mediaTypes);
+    if (!Array.isArray(items) || !items.length) {
+      return '';
     }
-    const selected = this.selected;
-    return items.map((item, index) =>
-      html`<anypoint-button
-        class="media-toggle"
-        data-index="${index}"
-        title="Select ${item.label} media type"
-        .active="${selected === index}"
-        ?compatibility="${this.compatibility}"
-        toggles
-        @click="${this._selectMediaType}">${item.label}</anypoint-button>`);
+    return items.map((item, index) => this._mediaTypeToggleButtonTemplate(item, index));
+  }
+
+  /**
+   * @param {MediaTypeItem} item
+   * @param {number} index
+   * @return {TemplateResult} Template for a media types button
+   */
+  _mediaTypeToggleButtonTemplate(item, index) {
+    const { selected } = this;
+    return html`<anypoint-button
+      class="media-toggle"
+      data-index="${index}"
+      title="Select ${item.label} media type"
+      .active="${selected === index}"
+      ?compatibility="${this.compatibility}"
+      toggles
+      @click="${this._selectMediaType}"
+    >${item.label}</anypoint-button>`;
   }
 
   render() {
@@ -48801,7 +48834,8 @@ class ApiBodyDocument extends AmfHelperMixin(LitElement) {
     </iron-collapse>`;
   }
 }
-window.customElements.define('api-body-document', ApiBodyDocument);
+
+window.customElements.define('api-body-document', ApiBodyDocumentElement);
 
 /**
  * `api-parameters-document`
@@ -49366,7 +49400,7 @@ class ApiHeadersDocument extends LitElement {
 
 window.customElements.define('api-headers-document', ApiHeadersDocument);
 
-var styles$4 = css`
+var styles$5 = css`
 :host {
   display: block;
 }
@@ -49389,7 +49423,7 @@ api-links-document {
 }
 `;
 
-var styles$5 = css`
+var styles$6 = css`
 :host {
   display: block;
 }
@@ -49423,7 +49457,7 @@ var styles$5 = css`
 
 class ApiLinksDocument extends AmfHelperMixin(LitElement) {
   get styles() {
-    return [markdownStyles, styles$5];
+    return [markdownStyles, styles$6];
   }
 
   static get properties() {
@@ -49523,7 +49557,7 @@ class ApiResponsesDocument extends AmfHelperMixin(LitElement) {
   get styles() {
     return [
       markdownStyles,
-      styles$4,
+      styles$5,
     ];
   }
 
@@ -52945,7 +52979,7 @@ class ApiSecurityDocumentation extends AmfHelperMixin(LitElement) {
 
 window.customElements.define('api-security-documentation', ApiSecurityDocumentation);
 
-var styles$6 = css`
+var styles$7 = css`
 :host {
   display: block;
 }
@@ -53268,7 +53302,7 @@ class ApiMethodDocumentation extends AmfHelperMixin(LitElement) {
     return [
       markdownStyles,
       httpMethodStyles,
-      styles$6,
+      styles$7,
     ];
   }
 
@@ -60827,7 +60861,7 @@ class AnypointCheckbox extends ButtonStateMixin(ControlStateMixin(CheckedElement
 
 window.customElements.define('anypoint-checkbox', AnypointCheckbox);
 
-var styles$7 = css`
+var styles$8 = css`
 :host {
   display: inline-block;
   position: relative;
@@ -60901,7 +60935,7 @@ anypoint-button .icon {
  */
 class ApiPropertyFormItem extends ValidatableMixin(LitElement) {
   get styles() {
-    return styles$7;
+    return styles$8;
   }
 
   _enumTemplate() {
@@ -63091,7 +63125,7 @@ Polymer({
   }
 });
 
-var styles$8 = css`
+var styles$9 = css`
 :host {
   display: block;
 }
@@ -63227,7 +63261,7 @@ class ApiUrlParamsForm extends ApiFormMixin(ValidatableMixin(LitElement)) {
     return [
       markdownStyles,
       apiFormStyles,
-      styles$8,
+      styles$9,
     ];
   }
 
@@ -63587,7 +63621,7 @@ class ApiUrlParamsForm extends ApiFormMixin(ValidatableMixin(LitElement)) {
 
 window.customElements.define('api-url-params-form', ApiUrlParamsForm);
 
-var styles$9 = css`
+var styles$a = css`
 :host {
   display: block;
   margin: 8px 12px;
@@ -63617,7 +63651,7 @@ var styles$9 = css`
  */
 class ApiUrlParamsEditor extends ValidatableMixin(EventsTargetMixin(LitElement)) {
   get styles() {
-    return styles$9;
+    return styles$a;
   }
 
   render() {
@@ -72217,7 +72251,7 @@ const offIcon = html`<svg viewBox="0 0 16 16">
   <path d="M13.289 3.418c-.218-.252-.455-.489-.707-.707L8 7.293 3.418 2.711c-.252.218-.489.455-.707.707L7.293 8l-4.582 4.582c.218.252.455.489.707.707L8 8.707l4.582 4.582c.252-.218.489-.455.707-.707L8.707 8l4.582-4.582z"></path>
 </svg>`;
 
-var styles$a = css`
+var styles$b = css`
 :host {
   display: inline-flex;
   flex-direction: row;
@@ -72403,7 +72437,7 @@ var styles$a = css`
  */
 class AnypointSwitch extends ButtonStateMixin(ControlStateMixin(CheckedElementMixin(LitElement))) {
   static get styles() {
-    return styles$a;
+    return styles$b;
   }
 
   static get properties() {
@@ -75985,7 +76019,7 @@ const ApiOauth2MethodMixin = (superClass) => class extends superClass {
   }
 };
 
-var styles$b = css`
+var styles$c = css`
 :host {
   display: block;
 }
@@ -76506,7 +76540,7 @@ class ApiAuthorizationMethod extends AmfHelperMixin(
   get styles() {
     return [
       super.styles,
-      styles$b,
+      styles$c,
     ];
   }
 
@@ -76741,7 +76775,7 @@ class ApiAuthorizationMethod extends AmfHelperMixin(
 
 window.customElements.define('api-authorization-method', ApiAuthorizationMethod);
 
-var styles$c = css`
+var styles$d = css`
 :host {
   display: block;
 }
@@ -76800,7 +76834,7 @@ function mapAuthName(name) {
 class ApiAuthorization extends AmfHelperMixin(LitElement) {
   get styles() {
     return [
-      styles$c,
+      styles$d,
     ];
   }
 
@@ -78224,7 +78258,7 @@ function queryRequestHeaders(name) {
   return queryHeaders(name, 'request');
 }
 
-var styles$d = css`
+var styles$e = css`
   :host {
     display: block;
   }
@@ -78324,7 +78358,7 @@ function renderAutocomplete(input, suggestions) {
  */
 class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
   get styles() {
-    return [markdownStyles, apiFormStyles, styles$d];
+    return [markdownStyles, apiFormStyles, styles$e];
   }
 
   static get properties() {
@@ -78862,7 +78896,7 @@ class ApiHeadersFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('api-headers-form-item', ApiHeadersFormItem);
 
-var styles$e = css`
+var styles$f = css`
   :host {
     display: block;
   }
@@ -78911,7 +78945,7 @@ var styles$e = css`
 
 class ApiHeadersForm extends ValidatableMixin(ApiFormMixin(LitElement)) {
   get styles() {
-    return [apiFormStyles, styles$e];
+    return [apiFormStyles, styles$f];
   }
 
   static get properties() {
@@ -95043,7 +95077,7 @@ document.head.appendChild(template$3.content);
 
 }(Prism));
 
-var styles$f = css`:host {
+var styles$g = css`:host {
   display: block;
   flex: 1;
 }
@@ -95142,7 +95176,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
     return [
       markdownStyles,
       apiFormStyles,
-      styles$f,
+      styles$g,
     ];
   }
 
@@ -95330,7 +95364,7 @@ class MultipartTextFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('multipart-text-form-item', MultipartTextFormItem);
 
-var styles$g = css`
+var styles$h = css`
 :host {
   display: block;
   flex: 1;
@@ -95399,7 +95433,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
     return [
       markdownStyles,
       apiFormStyles,
-      styles$g,
+      styles$h,
     ];
   }
 
@@ -95679,7 +95713,7 @@ class MultipartFileFormItem extends ValidatableMixin(LitElement) {
 
 window.customElements.define('multipart-file-form-item', MultipartFileFormItem);
 
-var styles$h = css`
+var styles$i = css`
 :host {
   display: block;
 }
@@ -95784,7 +95818,7 @@ class MultipartPayloadEditor extends ApiFormMixin(ValidatableMixin(LitElement)) 
     return [
       styles$2,
       apiFormStyles,
-      styles$h,
+      styles$i,
     ];
   }
 
@@ -100879,7 +100913,7 @@ the License.
 */
 window.customElements.define('oauth1-authorization', OAuth1Authorization);
 
-var styles$i = css`
+var styles$j = css`
 :host{
   display: block;
   width: 100%;
@@ -101018,7 +101052,7 @@ class ApiServerSelector extends AmfHelperMixin(LitElement) {
   }
 
   get styles() {
-    return styles$i;
+    return styles$j;
   }
 
   /**
@@ -101699,7 +101733,7 @@ class ApiServerSelector extends AmfHelperMixin(LitElement) {
 
 window.customElements.define('api-server-selector', ApiServerSelector);
 
-var styles$j = css`
+var styles$k = css`
 :host {
   display: block;
 }
@@ -102054,7 +102088,7 @@ class ApiRequestEditor extends HeadersParserMixin(AmfHelperMixin(EventsTargetMix
   get styles() {
     return [
       apiFormStyles,
-      styles$j,
+      styles$k,
     ];
   }
 
@@ -109951,7 +109985,7 @@ class ApiRequestPanel extends EventsTargetMixin(LitElement) {
 
 window.customElements.define('api-request-panel', ApiRequestPanel);
 
-var styles$k = css`:host {
+var styles$l = css`:host {
   display: block;
 }
 
@@ -110189,7 +110223,7 @@ class ApiEndpointDocumentation extends AmfHelperMixin(LitElement) {
     return [
       markdownStyles,
       httpMethodStyles,
-      styles$k,
+      styles$l,
     ];
   }
 
@@ -113091,10 +113125,6 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     api-security-documentation {
       padding-left: 15px;
     }
-    `];
-  }
-
-/*
     anypoint-button {
       display: block;
       min-width: auto;
@@ -113104,7 +113134,8 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     .toggle-icon {
       margin: 0!important;
     }
-*/
+    `];
+  }
 
   // Overriden to customize block structure
   _getUrlTemplate() {
@@ -113115,219 +113146,445 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     </section>`;
   }
 
-  // /*
-  //   Overriden to:
-  //     * change the position of "toggle" buttons (move them before the section title);
-  //     * remove word SHOW/HIDE from toggle buttons;
-  //     * make section titles bold;
-  // */
-  // _getCodeSnippetsTemplate() {
-  //   if (!this.renderCodeSnippets) {
-  //     return '';
-  //   }
-  //   const {
-  //     _snippetsOpened,
-  //     _renderSnippets,
-  //     endpointUri,
-  //     httpMethod,
-  //     headers,
-  //     payload,
-  //     compatibility
-  //   } = this;
-  //   const iconClass = this._computeToggleIconClass(_snippetsOpened);
-  //   return html`<section class="snippets">
-  //     <div
-  //       class="section-title-area"
-  //       @click="${this._toggleSnippets}"
-  //       title="Toogle code example details"
-  //       ?opened="${_snippetsOpened}"
-  //     >
-  //       <div class="title-area-actions">
-  //         <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-  //           <span class="icon ${iconClass}">${expandMore}</span>
-  //         </anypoint-button>
-  //       </div>
-  //       <div class="heading3 table-title" role="heading" aria-level="2">
-  //         <b>Code samples</b>
-  //       </div>
-  //     </div>
-  //     <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
-  //     ${_renderSnippets ? html`<http-code-snippets
-  //       scrollable
-  //       ?compatibility="${compatibility}"
-  //       .url="${endpointUri}"
-  //       .method="${httpMethod}"
-  //       .headers="${this._computeSnippetsHeaders(headers)}"
-  //       .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
-  //     </iron-collapse>
-  //   </section>`;
-  // }
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  _getCodeSnippetsTemplate() {
+    if (!this.renderCodeSnippets) {
+      return '';
+    }
+    const {
+      _snippetsOpened,
+      _renderSnippets,
+      endpointUri,
+      httpMethod,
+      headers,
+      payload,
+      compatibility
+    } = this;
+    const iconClass = this._computeToggleIconClass(_snippetsOpened);
+    return html`<section class="snippets">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSnippets}"
+        title="Toogle code example details"
+        ?opened="${_snippetsOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${iconClass}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="heading3 table-title" role="heading" aria-level="2">
+          <b>Code samples</b>
+        </div>
+      </div>
+      <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
+      ${_renderSnippets ? html`<http-code-snippets
+        scrollable
+        ?compatibility="${compatibility}"
+        .url="${endpointUri}"
+        .method="${httpMethod}"
+        .headers="${this._computeSnippetsHeaders(headers)}"
+        .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>` : ''}
+      </iron-collapse>
+    </section>`;
+  }
 
-  // /*
-  //   Overriden to:
-  //     * change the position of "toggle" buttons (move them before the section title);
-  //     * remove word SHOW/HIDE from toggle buttons;
-  //     * make section titles bold;
-  // */
-  // _getSecurityTemplate() {
-  //   const { renderSecurity, security } = this;
-  //   if (!renderSecurity || !security || !security.length) {
-  //     return '';
-  //   }
-  //   const { securityOpened, compatibility, amf, narrow } = this;
-  //   const label = this._computeToggleActionLabel(securityOpened);
-  //   const iconClass = this._computeToggleIconClass(securityOpened);
-  //   return html`<section class="security">
-  //     <div
-  //       class="section-title-area"
-  //       @click="${this._toggleSecurity}"
-  //       title="Toogle security details"
-  //       ?opened="${securityOpened}"
-  //     >
-  //       <div class="title-area-actions">
-  //         <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
-  //           <span class="icon ${iconClass}">${expandMore}</span>
-  //         </anypoint-button>
-  //       </div>
-  //       <div class="heading3 table-title" role="heading" aria-level="2"><b>Security</b></div>
-  //     </div>
-  //     <iron-collapse .opened="${securityOpened}">
-  //       ${security.map((item) => html`<api-security-documentation
-  //         .amf="${amf}"
-  //         .security="${item}"
-  //         ?narrow="${narrow}"
-  //         ?compatibility="${compatibility}"></api-security-documentation>`)}
-  //     </iron-collapse>
-  //   </section>`;
-  // }
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  _getSecurityTemplate() {
+    const { renderSecurity, security } = this;
+    if (!renderSecurity || !security || !security.length) {
+      return '';
+    }
+    const { securityOpened, compatibility, amf, narrow } = this;
+    const label = this._computeToggleActionLabel(securityOpened);
+    const iconClass = this._computeToggleIconClass(securityOpened);
+    return html`<section class="security">
+      <div
+        class="section-title-area"
+        @click="${this._toggleSecurity}"
+        title="Toogle security details"
+        ?opened="${securityOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button security" ?compatibility="${compatibility}">
+            <span class="icon ${iconClass}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="heading3 table-title" role="heading" aria-level="2"><b>Security</b></div>
+      </div>
+      <iron-collapse .opened="${securityOpened}">
+        ${security.map((item) => html`<api-security-documentation
+          .amf="${amf}"
+          .security="${item}"
+          ?narrow="${narrow}"
+          ?compatibility="${compatibility}"></api-security-documentation>`)}
+      </iron-collapse>
+    </section>`;
+  }
 
-  // // Overriden to output x-api-parameters-document instead of api-parameters-document
-  // _getParametersTemplate() {
-  //   if (!this.hasParameters) {
-  //     return '';
-  //   }
-  //   const {
-  //     serverVariables,
-  //     endpointVariables,
-  //     queryParameters,
-  //     amf,
-  //     narrow,
-  //     compatibility,
-  //     graph
-  //   } = this;
-  //   return html`<x-api-parameters-document
-  //     .amf="${amf}"
-  //     queryopened
-  //     pathopened
-  //     .baseUriParameters="${serverVariables}"
-  //     .endpointParameters="${endpointVariables}"
-  //     .queryParameters="${queryParameters}"
-  //     ?narrow="${narrow}"
-  //     ?compatibility="${compatibility}"
-  //     ?graph="${graph}"></x-api-parameters-document>`;
-  // }
+  // Overriden to output x-api-parameters-document instead of api-parameters-document
+  _getParametersTemplate() {
+    if (!this.hasParameters) {
+      return '';
+    }
+    const {
+      serverVariables,
+      endpointVariables,
+      queryParameters,
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-parameters-document
+      .amf="${amf}"
+      queryopened
+      pathopened
+      .baseUriParameters="${serverVariables}"
+      .endpointParameters="${endpointVariables}"
+      .queryParameters="${queryParameters}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"></x-api-parameters-document>`;
+  }
+
+  /* Overriden to output x-api-body-document instead of api-body-document. */
+  _getBodyTemplate() {
+    const { payload } = this;
+    if (!payload || !payload.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-body-document
+      opened
+      .amf="${amf}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      .body="${payload}"></x-api-body-document>`;
+  }
+
+  /*
+    Overriden to:
+      * output x-api-responses-document instead of api-responses-document;
+      * make section title bold;
+  */
+  _getReturnsTemplate() {
+    const { returns } = this;
+    if (!returns || !returns.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<section class="response-documentation">
+      <div class="heading2" role="heading" aria-level="1"><b>Responses</b></div>
+      <x-api-responses-document
+        .amf="${amf}"
+        ?narrow="${narrow}"
+        ?compatibility="${compatibility}"
+        ?graph="${graph}"
+        .returns="${returns}"></x-api-responses-document>
+    </section>`;
+  }
+
+  /* Overriden to output x-api-headers-document instead of api-headers-document. */
+  _getHeadersTemplate() {
+    const { headers } = this;
+    if (!headers || !headers.length) {
+      return '';
+    }
+    const {
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    return html`<x-api-headers-document
+      opened
+      .amf="${amf}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      .headers="${headers}"></x-api-headers-document>`;
+  }
 }
 window.customElements.define('x-api-method-documentation', XApiMethodDocumentation);
 
 
-// // Extends ApiParametersDocument to customize its output
-// export class XApiParametersDocument extends ApiParametersDocument {
+// Extends ApiParametersDocument to customize its output
+class XApiParametersDocument extends ApiParametersDocument {
 
-//   // Overriden to add new styles
-//   get styles() {
-//     return [super.styles, css`
-//       anypoint-button {
-//         display: block;
-//         min-width: auto;
-//         padding: 0!important;
-//         margin: 0!important;
-//       }
-//       .toggle-icon {
-//         margin: 0!important;
-//       }
-//     `];
-//   }
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
 
-//   /*
-//     Overriden to:
-//       * change the position of "toggle" buttons (move them before the section title);
-//       * remove word SHOW/HIDE from toggle buttons;
-//       * make section titles bold;
-//   */
-//   render() {
-//     const {
-//       aware,
-//       pathOpened,
-//       queryOpened,
-//       _effectivePathParameters,
-//       queryParameters,
-//       amf,
-//       narrow,
-//       compatibility,
-//       headerLevel,
-//       graph
-//     } = this;
-//     const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
-//     return html`<style>${this.styles}</style>
-//     ${aware ?
-//       html`<raml-aware
-//         @api-changed="${this._apiChangedHandler}"
-//         .scope="${aware}"
-//         data-source="api-parameters-document"></raml-aware>` : ''}
-//     ${hasPathParameters ? html`<section class="uri-parameters">
-//       <div
-//         class="section-title-area"
-//         @click="${this.toggleUri}"
-//         title="Toogle URI parameters details"
-//         ?opened="${pathOpened}"
-//       >
-//         <div class="title-area-actions">
-//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-//             <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
-//           </anypoint-button>
-//         </div>
-//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
-//       </div>
-//       <iron-collapse .opened="${pathOpened}">
-//         <api-type-document
-//           .amf="${amf}"
-//           .type="${_effectivePathParameters}"
-//           ?compatibility="${compatibility}"
-//           ?narrow="${narrow}"
-//           ?graph="${graph}"
-//           noExamplesActions
-//         ></api-type-document>
-//       </iron-collapse>
-//     </section>` : ''}
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const {
+      aware,
+      pathOpened,
+      queryOpened,
+      _effectivePathParameters,
+      queryParameters,
+      amf,
+      narrow,
+      compatibility,
+      headerLevel,
+      graph
+    } = this;
+    const hasPathParameters = !!(_effectivePathParameters && _effectivePathParameters.length);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware
+        @api-changed="${this._apiChangedHandler}"
+        .scope="${aware}"
+        data-source="api-parameters-document"></raml-aware>` : ''}
+    ${hasPathParameters ? html`<section class="uri-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleUri}"
+        title="Toogle URI parameters details"
+        ?opened="${pathOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${this._computeToggleIconClass(pathOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="table-title" role="heading" aria-level="${headerLevel}"><b>URI parameters</b></div>
+      </div>
+      <iron-collapse .opened="${pathOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${_effectivePathParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>` : ''}
 
-//     ${queryParameters ? html`<section class="query-parameters">
-//       <div
-//         class="section-title-area"
-//         @click="${this.toggleQuery}"
-//         title="Toogle query parameters details"
-//         ?opened="${queryOpened}"
-//       >
-//         <div class="title-area-actions">
-//           <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
-//             <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
-//           </anypoint-button>
-//         </div>
-//         <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
-//       </div>
-//       <iron-collapse .opened="${queryOpened}">
-//         <api-type-document
-//           .amf="${amf}"
-//           .type="${queryParameters}"
-//           ?compatibility="${compatibility}"
-//           ?narrow="${narrow}"
-//           ?graph="${graph}"
-//           noExamplesActions
-//         ></api-type-document>
-//       </iron-collapse>
-//     </section>`: ''}`;
-//   }
+    ${queryParameters ? html`<section class="query-parameters">
+      <div
+        class="section-title-area"
+        @click="${this.toggleQuery}"
+        title="Toogle query parameters details"
+        ?opened="${queryOpened}"
+      >
+        <div class="title-area-actions">
+          <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+            <span class="icon ${this._computeToggleIconClass(queryOpened)}">${expandMore}</span>
+          </anypoint-button>
+        </div>
+        <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Query parameters</b></div>
+      </div>
+      <iron-collapse .opened="${queryOpened}">
+        <api-type-document
+          .amf="${amf}"
+          .type="${queryParameters}"
+          ?compatibility="${compatibility}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>
+      </iron-collapse>
+    </section>`: ''}`;
+  }
+}
+window.customElements.define('x-api-parameters-document', XApiParametersDocument);
 
-// }
-// window.customElements.define('x-api-parameters-document', XApiParametersDocument);
 
-export { XApiDocumentation, XApiMethodDocumentation, XApiSummary };
+// Extend ApiBodyDocumentElement to customize its output
+class XApiBodyDocumentElement extends ApiBodyDocumentElement {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const { opened, _isAnyType, aware, compatibility, headerLevel } = this;
+    const iconClass = this._computeToggleIconClass(opened);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
+
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle body details"
+      ?opened="${opened}"
+    >
+      <div class="title-area-actions">
+        <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+          <span class="icon ${iconClass}">${expandMore}</span>
+        </anypoint-button>
+      </div>
+      <div class="table-title" role="heading" aria-level="${headerLevel}"><b>Body</b></div>
+    </div>
+
+    <iron-collapse .opened="${opened}">
+      ${_isAnyType ? this._anyTypeTemplate() : this._typedTemplate()}
+    </iron-collapse>`;
+  }
+}
+window.customElements.define('x-api-body-document', XApiBodyDocumentElement);
+
+
+// Extend ApiBodyDocumentElement to customize its output
+class XApiResponsesDocument extends ApiResponsesDocument {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /* Overriden to output x-api-body-document instead of api-body-document. */
+  _payloadTemplate() {
+    const {
+      _payload,
+      amf,
+      narrow,
+      compatibility,
+      graph
+    } = this;
+    const hasPayload = !!(_payload && _payload.length);
+    if (!hasPayload) {
+      return '';
+    }
+    return html`<x-api-body-document
+      .amf="${amf}"
+      .body="${_payload}"
+      ?narrow="${narrow}"
+      ?compatibility="${compatibility}"
+      ?graph="${graph}"
+      renderreadonly
+      opened></x-api-body-document>`
+  }
+}
+window.customElements.define('x-api-responses-document', XApiResponsesDocument);
+
+
+// Extend ApiBodyDocumentElement to customize its output
+class XApiHeadersDocument extends ApiHeadersDocument {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-button {
+        display: block;
+        min-width: auto;
+        padding: 0!important;
+        margin: 0!important;
+      }
+      .toggle-icon {
+        margin: 0!important;
+      }
+    `];
+  }
+
+  /*
+    Overriden to:
+      * change the position of "toggle" buttons (move them before the section title);
+      * remove word SHOW/HIDE from toggle buttons;
+      * make section titles bold;
+  */
+  render() {
+    const { aware, opened, headers, amf, narrow, compatibility, headerLevel, graph } = this;
+    const hasHeaders = !!(headers && headers.length);
+    return html`<style>${this.styles}</style>
+    ${aware ?
+      html`<raml-aware @api-changed="${this._apiChangedHandler}" .scope="${aware}"></raml-aware>` : ''}
+
+    <div
+      class="section-title-area"
+      @click="${this.toggle}"
+      title="Toogle headers details"
+      ?opened="${opened}"
+    >
+      <div class="title-area-actions">
+        <anypoint-button class="toggle-button" ?compatibility="${compatibility}">
+          <span class="icon ${this._computeToggleIconClass(opened)}">${expandMore}</span>
+        </anypoint-button>
+      </div>
+      <div class="headers-title" role="heading" aria-level="${headerLevel}"><b>Headers</b></div>
+    </div>
+
+    <iron-collapse .opened="${opened}">
+      ${hasHeaders ?
+        html`<api-type-document
+          .amf="${amf}"
+          .type="${headers}"
+          ?narrow="${narrow}"
+          ?graph="${graph}"
+          noExamplesActions
+        ></api-type-document>` :
+        html`<p class="no-info">Headers are not required by this endpoint</p>`}
+    </iron-collapse>`;
+  }
+}
+window.customElements.define('x-api-headers-document', XApiHeadersDocument);
+
+export { XApiBodyDocumentElement, XApiDocumentation, XApiHeadersDocument, XApiMethodDocumentation, XApiParametersDocument, XApiResponsesDocument, XApiSummary };
