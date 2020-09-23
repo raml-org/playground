@@ -113901,6 +113901,9 @@ class XPropertyShapeDocument extends PropertyShapeDocument {
       .data-type-number {
         background-color: #4aca80!important;
       }
+      .property-name {
+        font-family: monospace;
+      }
     `];
   }
 
