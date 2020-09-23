@@ -120,7 +120,7 @@ gulp.task('serveLearnRaml', gulp.series(
   'bundleLearnRaml',
   gulp.parallel(
     serveHandler('learn_raml')
-    // watchHandler('learn_raml', 'bundleLearnRaml')
+    watchHandler('learn_raml', 'bundleLearnRaml')
   )
 ))
 
