@@ -25720,6 +25720,9 @@ const infoOutline = iconWrapper(
 const insertDriveFile = iconWrapper(
   svg`<path d="M6 2c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"></path>`
 );
+const openInNew = iconWrapper(
+  svg`<path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path>`
+);
 const removeCircleOutline = iconWrapper(
   svg`<path d="M7 11v2h10v-2H7zm5-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"></path>`
 );
@@ -50170,7 +50173,11 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('./BaseCodeSnippet').UrlDetails} UrlDetails */
+
 const URI_CACHE = {};
+
 /**
  * `base-code-snippet`
  *
@@ -50183,7 +50190,7 @@ const URI_CACHE = {};
  * Each child class must implement `_processCommand()` function which results
  * to a code to highlight. It takes 4 attributes (in order): url, method,
  * headers, and payload.
- * Mind that all atguments are optional.
+ * Mind that all arguments are optional.
  *
  * If the child class implements it's own template, it should contain
  * `<code></code>` inside the template where the highlighted value is
@@ -50191,15 +50198,6 @@ const URI_CACHE = {};
  *
  * Parent element, presumably `http-code-snippets`, or main document
  * must include `prism-element/prism-highlighter.html` in it's DOM.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/index.html
- * @memberof ApiElements
  */
 class BaseCodeSnippet extends LitElement {
   static get _httpStyles() {
@@ -50212,7 +50210,7 @@ class BaseCodeSnippet extends LitElement {
 
   render() {
     return html`<style>${this.styles}</style>
-<button class="copy-button" title="Copy to clipboard" @click="${this._copyToClipboard}">Copy</button>
+    <button class="copy-button" title="Copy to clipboard" @click="${this._copyToClipboard}">Copy</button>
     <code class="code language-snippet"></code>`;
   }
 
@@ -50229,7 +50227,6 @@ class BaseCodeSnippet extends LitElement {
       /**
        * Parsed HTTP headers.
        * Each item contains `name` and `value` properties.
-       * @type {Array<Object>}
        */
       headers: { type: Array },
       /**
@@ -50260,57 +50257,61 @@ class BaseCodeSnippet extends LitElement {
   }
 
   set url(value) {
-    this._setProp('url', value);
+    const old = this._url;
+    if (old === value) {
+      return;
+    }
+    this._url = value;
+    this.requestUpdate('url', old);
+    this._valuesChanged();
   }
 
   set method(value) {
-    this._setProp('method', value);
+    const old = this._method;
+    if (old === value) {
+      return;
+    }
+    this._method = value;
+    this.requestUpdate('method', old);
+    this._valuesChanged();
   }
 
   set headers(value) {
-    this._setProp('headers', value);
+    const old = this._headers;
+    if (old === value) {
+      return;
+    }
+    this._headers = value;
+    this.requestUpdate('headers', old);
+    this._valuesChanged();
   }
 
   set payload(value) {
-    this._setProp('payload', value);
+    const old = this._payload;
+    if (old === value) {
+      return;
+    }
+    this._payload = value;
+    this.requestUpdate('payload', old);
+    this._valuesChanged();
   }
 
   get _code() {
     return this.shadowRoot.querySelector('code');
   }
 
-  _setProp(prop, value) {
-    if (this._sop(prop, value)) {
-      this._valuesChanged();
-    }
-  }
-
-  _sop(prop, value) {
-    const key = '_' + prop;
-    const old = this[key];
-    if (old === value) {
-      return false;
-    }
-    this[key] = value;
-    this.requestUpdate(prop, old);
-    return true;
-  }
-
   connectedCallback() {
-    if (super.connectedCallback) {
-      super.connectedCallback();
-    }
+    super.connectedCallback();
     if (!this.__valuesDebouncer) {
       this._valuesChanged();
     }
   }
 
   disconnectedCallback() {
-    if (super.disconnectedCallback) {
-      super.disconnectedCallback();
-    }
+    super.disconnectedCallback();
     this._clearValueTimeout();
   }
+
   /**
    * Clears timeout from the debouncer if set.
    */
@@ -50320,6 +50321,7 @@ class BaseCodeSnippet extends LitElement {
       this.__valuesDebouncer = undefined;
     }
   }
+
   /**
    * Computes code value with debouncer.
    */
@@ -50330,6 +50332,7 @@ class BaseCodeSnippet extends LitElement {
       this._processCommand();
     });
   }
+
   /**
    * Processes command by calling, respectively, `_computeCommand()` and
    * `_highlight()`. The result is added to the `<code>` block in the template.
@@ -50345,8 +50348,24 @@ class BaseCodeSnippet extends LitElement {
     this._code.innerHTML = code;
   }
 
-  _computeCommand() {}
+  /**
+   * @abstract
+   * @param {string} url
+   * @param {string} method
+   * @param {string} headers
+   * @param {string=} payload
+   * @returns {string}
+   */
+  _computeCommand(url, method, headers, payload) {
+    return `${url} ${method} ${headers} ${payload}`;
+  }
 
+  /**
+   * Dispatches `syntax-highlight` event to highlight the syntax.
+   * @param {string} code 
+   * @param {string} lang 
+   * @returns {string}
+   */
   _highlight(code, lang) {
     const e = new CustomEvent('syntax-highlight', {
       bubbles: true,
@@ -50360,24 +50379,26 @@ class BaseCodeSnippet extends LitElement {
     this.dispatchEvent(e);
     return e.detail.code || code;
   }
+
   /**
    * Reads the host, port and path from the url.
    * This function uses URI library to parse the URL so you have to
    * include this library from bower_components if the element want to use it.
    *
-   * @param {String} url
-   * @return {Object}
+   * @param {string} value
+   * @return {UrlDetails}
    */
-  urlDetails(url) {
-    if (URI_CACHE[url]) {
-      return URI_CACHE[url];
+  urlDetails(value) {
+    if (URI_CACHE[value]) {
+      return URI_CACHE[value];
     }
-    url = url || this.url;
-    const result = {
+    const url = value || this.url;
+    const result = /** @type UrlDetails */ ({
       path: '',
       port: '',
-      hostValue: ''
-    };
+      hostValue: '',
+      autoPort: false,
+    });
     if (!url) {
       return result;
     }
@@ -50387,7 +50408,7 @@ class BaseCodeSnippet extends LitElement {
     } catch (e) {
       if (url[0] === '/') {
         result.path = url;
-        result.post = 80;
+        result.port = '80';
       }
       return result;
     }
@@ -50395,16 +50416,16 @@ class BaseCodeSnippet extends LitElement {
     if (host) {
       host = decodeURIComponent(host);
     }
-    let port = uri.port;
+    let { port } = uri;
     if (!port) {
       result.autoPort = true;
       if (uri.protocol === 'https:') {
-        port = 443;
+        port = '443';
       } else {
-        port = 80;
+        port = '80';
       }
     }
-    result.port = port;
+    result.port = String(port);
     result.hostValue = host;
     const query = uri.search;
     let path = uri.pathname;
@@ -50442,6 +50463,7 @@ class BaseCodeSnippet extends LitElement {
     try {
       document.execCommand('copy');
     } catch (err) {
+      // ...
     }
     document.body.removeChild(el);
     document.getSelection().removeAllRanges();
@@ -50449,14 +50471,15 @@ class BaseCodeSnippet extends LitElement {
       document.getSelection().addRange(selected);
     }
   }
+
   /**
    * Sends the `content-copy` event.
    * If the event is canceled then the logic from this element won't be
    * executed. Useful if current platform doesn't support `execCommand('copy')`
    * and has other way to manage clipboard.
    *
-   * @param {String} value The value to dispatch with the event.
-   * @return {Boolean} True if handler executed copy function.
+   * @param {string} value The value to dispatch with the event.
+   * @return {boolean} True if handler executed copy function.
    */
   _beforeCopy(value) {
     const ev = new CustomEvent('content-copy', {
@@ -50471,7 +50494,6 @@ class BaseCodeSnippet extends LitElement {
     return ev.defaultPrevented;
   }
 }
-window.customElements.define('base-code-snippet', BaseCodeSnippet);
 
 !function(t){t.languages.http={"request-line":{pattern:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\s(?:https?:\/\/|\/)\S+\sHTTP\/[0-9.]+/m,inside:{property:/^(?:POST|GET|PUT|DELETE|OPTIONS|PATCH|TRACE|CONNECT)\b/,"attr-name":/:\w+/}},"response-status":{pattern:/^HTTP\/1.[01] \d+.*/m,inside:{property:{pattern:/(^HTTP\/1.[01] )\d+.*/i,lookbehind:!0}}},"header-name":{pattern:/^[\w-]+:(?=.)/m,alias:"keyword"}};var a,e,n,i=t.languages,p={"application/javascript":i.javascript,"application/json":i.json||i.javascript,"application/xml":i.xml,"text/xml":i.xml,"text/html":i.html,"text/css":i.css},s={"application/json":!0,"application/xml":!0};for(var r in p)if(p[r]){a=a||{};var T=s[r]?(n=(e=r).replace(/^[a-z]+\//,""),"(?:"+e+"|\\w+/(?:[\\w.-]+\\+)+"+n+"(?![+\\w.-]))"):r;a[r.replace(/\//g,"-")]={pattern:RegExp("(content-type:\\s*"+T+"[\\s\\S]*?)(?:\\r?\\n|\\r){2}[\\s\\S]*","i"),lookbehind:!0,inside:p[r]};}a&&t.languages.insertBefore("http","header-name",a);}(Prism);
 
@@ -50488,33 +50510,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `raw-http-snippet`
  *
  * Code snippet to display raw HTTP message
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/raw.html Raw demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class RawHttpSnippet extends BaseCodeSnippet {
+class RawHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'http';
   }
 
   /**
    * Computes bas command for cURL.
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete cURL command for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -50530,6 +50545,10 @@ class RawHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _genHeadersPart(headers) {
     let result = '';
     if (headers && headers instanceof Array) {
@@ -50541,6 +50560,10 @@ class RawHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {string} payload 
+   * @returns {string}
+   */
   _genPayloadPart(payload) {
     let result = '';
     if (payload) {
@@ -50551,7 +50574,8 @@ class RawHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('raw-http-snippet', RawHttpSnippet);
+
+window.customElements.define('raw-http-snippet', RawHttpSnippetElement);
 
 !function(e){var t="\\b(?:BASH|BASHOPTS|BASH_ALIASES|BASH_ARGC|BASH_ARGV|BASH_CMDS|BASH_COMPLETION_COMPAT_DIR|BASH_LINENO|BASH_REMATCH|BASH_SOURCE|BASH_VERSINFO|BASH_VERSION|COLORTERM|COLUMNS|COMP_WORDBREAKS|DBUS_SESSION_BUS_ADDRESS|DEFAULTS_PATH|DESKTOP_SESSION|DIRSTACK|DISPLAY|EUID|GDMSESSION|GDM_LANG|GNOME_KEYRING_CONTROL|GNOME_KEYRING_PID|GPG_AGENT_INFO|GROUPS|HISTCONTROL|HISTFILE|HISTFILESIZE|HISTSIZE|HOME|HOSTNAME|HOSTTYPE|IFS|INSTANCE|JOB|LANG|LANGUAGE|LC_ADDRESS|LC_ALL|LC_IDENTIFICATION|LC_MEASUREMENT|LC_MONETARY|LC_NAME|LC_NUMERIC|LC_PAPER|LC_TELEPHONE|LC_TIME|LESSCLOSE|LESSOPEN|LINES|LOGNAME|LS_COLORS|MACHTYPE|MAILCHECK|MANDATORY_PATH|NO_AT_BRIDGE|OLDPWD|OPTERR|OPTIND|ORBIT_SOCKETDIR|OSTYPE|PAPERSIZE|PATH|PIPESTATUS|PPID|PS1|PS2|PS3|PS4|PWD|RANDOM|REPLY|SECONDS|SELINUX_INIT|SESSION|SESSIONTYPE|SESSION_MANAGER|SHELL|SHELLOPTS|SHLVL|SSH_AUTH_SOCK|TERM|UID|UPSTART_EVENTS|UPSTART_INSTANCE|UPSTART_JOB|UPSTART_SESSION|USER|WINDOWID|XAUTHORITY|XDG_CONFIG_DIRS|XDG_CURRENT_DESKTOP|XDG_DATA_DIRS|XDG_GREETER_DATA_DIR|XDG_MENU_PREFIX|XDG_RUNTIME_DIR|XDG_SEAT|XDG_SEAT_PATH|XDG_SESSION_DESKTOP|XDG_SESSION_ID|XDG_SESSION_PATH|XDG_SESSION_TYPE|XDG_VTNR|XMODIFIERS)\\b",n={environment:{pattern:RegExp("\\$"+t),alias:"constant"},variable:[{pattern:/\$?\(\([\s\S]+?\)\)/,greedy:!0,inside:{variable:[{pattern:/(^\$\(\([\s\S]+)\)\)/,lookbehind:!0},/^\$\(\(/],number:/\b0x[\dA-Fa-f]+\b|(?:\b\d+\.?\d*|\B\.\d+)(?:[Ee]-?\d+)?/,operator:/--?|-=|\+\+?|\+=|!=?|~|\*\*?|\*=|\/=?|%=?|<<=?|>>=?|<=?|>=?|==?|&&?|&=|\^=?|\|\|?|\|=|\?|:/,punctuation:/\(\(?|\)\)?|,|;/}},{pattern:/\$\((?:\([^)]+\)|[^()])+\)|`[^`]+`/,greedy:!0,inside:{variable:/^\$\(|^`|\)$|`$/}},{pattern:/\$\{[^}]+\}/,greedy:!0,inside:{operator:/:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/,punctuation:/[\[\]]/,environment:{pattern:RegExp("(\\{)"+t),lookbehind:!0,alias:"constant"}}},/\$(?:\w+|[#?*!@$])/],entity:/\\(?:[abceEfnrtv\\"]|O?[0-7]{1,3}|x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})/};e.languages.bash={shebang:{pattern:/^#!\s*\/.*/,alias:"important"},comment:{pattern:/(^|[^"{\\$])#.*/,lookbehind:!0},"function-name":[{pattern:/(\bfunction\s+)\w+(?=(?:\s*\(?:\s*\))?\s*\{)/,lookbehind:!0,alias:"function"},{pattern:/\b\w+(?=\s*\(\s*\)\s*\{)/,alias:"function"}],"for-or-select":{pattern:/(\b(?:for|select)\s+)\w+(?=\s+in\s)/,alias:"variable",lookbehind:!0},"assign-left":{pattern:/(^|[\s;|&]|[<>]\()\w+(?=\+?=)/,inside:{environment:{pattern:RegExp("(^|[\\s;|&]|[<>]\\()"+t),lookbehind:!0,alias:"constant"}},alias:"variable",lookbehind:!0},string:[{pattern:/((?:^|[^<])<<-?\s*)(\w+?)\s*(?:\r?\n|\r)[\s\S]*?(?:\r?\n|\r)\2/,lookbehind:!0,greedy:!0,inside:n},{pattern:/((?:^|[^<])<<-?\s*)(["'])(\w+)\2\s*(?:\r?\n|\r)[\s\S]*?(?:\r?\n|\r)\3/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\](?:\\\\)*)(["'])(?:\\[\s\S]|\$\([^)]+\)|`[^`]+`|(?!\2)[^\\])*\2/,lookbehind:!0,greedy:!0,inside:n}],environment:{pattern:RegExp("\\$?"+t),alias:"constant"},variable:n.variable,function:{pattern:/(^|[\s;|&]|[<>]\()(?:add|apropos|apt|aptitude|apt-cache|apt-get|aspell|automysqlbackup|awk|basename|bash|bc|bconsole|bg|bzip2|cal|cat|cfdisk|chgrp|chkconfig|chmod|chown|chroot|cksum|clear|cmp|column|comm|composer|cp|cron|crontab|csplit|curl|cut|date|dc|dd|ddrescue|debootstrap|df|diff|diff3|dig|dir|dircolors|dirname|dirs|dmesg|du|egrep|eject|env|ethtool|expand|expect|expr|fdformat|fdisk|fg|fgrep|file|find|fmt|fold|format|free|fsck|ftp|fuser|gawk|git|gparted|grep|groupadd|groupdel|groupmod|groups|grub-mkconfig|gzip|halt|head|hg|history|host|hostname|htop|iconv|id|ifconfig|ifdown|ifup|import|install|ip|jobs|join|kill|killall|less|link|ln|locate|logname|logrotate|look|lpc|lpr|lprint|lprintd|lprintq|lprm|ls|lsof|lynx|make|man|mc|mdadm|mkconfig|mkdir|mke2fs|mkfifo|mkfs|mkisofs|mknod|mkswap|mmv|more|most|mount|mtools|mtr|mutt|mv|nano|nc|netstat|nice|nl|nohup|notify-send|npm|nslookup|op|open|parted|passwd|paste|pathchk|ping|pkill|pnpm|popd|pr|printcap|printenv|ps|pushd|pv|quota|quotacheck|quotactl|ram|rar|rcp|reboot|remsync|rename|renice|rev|rm|rmdir|rpm|rsync|scp|screen|sdiff|sed|sendmail|seq|service|sftp|sh|shellcheck|shuf|shutdown|sleep|slocate|sort|split|ssh|stat|strace|su|sudo|sum|suspend|swapon|sync|tac|tail|tar|tee|time|timeout|top|touch|tr|traceroute|tsort|tty|umount|uname|unexpand|uniq|units|unrar|unshar|unzip|update-grub|uptime|useradd|userdel|usermod|users|uudecode|uuencode|v|vdir|vi|vim|virsh|vmstat|wait|watch|wc|wget|whereis|which|who|whoami|write|xargs|xdg-open|yarn|yes|zenity|zip|zsh|zypper)(?=$|[)\s;|&])/,lookbehind:!0},keyword:{pattern:/(^|[\s;|&]|[<>]\()(?:if|then|else|elif|fi|for|while|in|case|esac|function|select|do|done|until)(?=$|[)\s;|&])/,lookbehind:!0},builtin:{pattern:/(^|[\s;|&]|[<>]\()(?:\.|:|break|cd|continue|eval|exec|exit|export|getopts|hash|pwd|readonly|return|shift|test|times|trap|umask|unset|alias|bind|builtin|caller|command|declare|echo|enable|help|let|local|logout|mapfile|printf|read|readarray|source|type|typeset|ulimit|unalias|set|shopt)(?=$|[)\s;|&])/,lookbehind:!0,alias:"class-name"},boolean:{pattern:/(^|[\s;|&]|[<>]\()(?:true|false)(?=$|[)\s;|&])/,lookbehind:!0},"file-descriptor":{pattern:/\B&\d\b/,alias:"important"},operator:{pattern:/\d?<>|>\||\+=|==?|!=?|=~|<<[<-]?|[&\d]?>>|\d?[<>]&?|&[>&]?|\|[&|]?|<=?|>=?/,inside:{"file-descriptor":{pattern:/^\d/,alias:"important"}}},punctuation:/\$?\(\(?|\)\)?|\.\.|[{}[\];\\]/,number:{pattern:/(^|\s)(?:[1-9]\d*|0)(?:[.,]\d+)?\b/,lookbehind:!0}};for(var a=["comment","function-name","for-or-select","assign-left","string","environment","function","keyword","builtin","boolean","file-descriptor","operator","punctuation","number"],r=n.variable[1].inside,s=0;s<a.length;s++)r[a[s]]=e.languages.bash[a[s]];e.languages.shell=e.languages.bash;}(Prism);
 
@@ -50568,36 +50592,30 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `curl-http-snippet`
  *
  * A snippet for curl command in bash.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/curl.html cURL demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class CurlHttpSnippet extends BaseCodeSnippet {
+class CurlHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'bash';
   }
+
   /**
    * Computes command for cURL.
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete cURL command for given arguments
+   * @param {string} urlValue
+   * @param {string} methodValue
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
-  _computeCommand(url, method, headers, payload) {
-    url = url || '';
-    method = method || 'GET';
+  _computeCommand(urlValue, methodValue, headers, payload) {
+    const url = urlValue || '';
+    const method = methodValue || 'GET';
     let result = `curl "${url}" \\\n`;
     if (method !== 'GET') {
       result += `  -X ${method} \\\n`;
@@ -50605,6 +50623,7 @@ class CurlHttpSnippet extends BaseCodeSnippet {
     if (payload) {
       let quot = '';
       try {
+        // eslint-disable-next-line no-param-reassign
         payload = JSON.stringify(payload);
       } catch (_) {
         quot = '"';
@@ -50626,7 +50645,8 @@ class CurlHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('curl-http-snippet', CurlHttpSnippet);
+
+window.customElements.define('curl-http-snippet', CurlHttpSnippetElement);
 
 /**
 @license
@@ -50641,33 +50661,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
- * `raw-http-snippet`
+ * `xhr-http-snippet`
  *
  * A snippet for requests made in JavaScript using XHR object.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/xhr.html XHR demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class XhrHttpSnippet extends BaseCodeSnippet {
+class XhrHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'javascript';
   }
 
   /**
    * Computes code for JavaScript (XHR API).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -50681,7 +50694,7 @@ class XhrHttpSnippet extends BaseCodeSnippet {
     result += '  console.log(response);\n';
     result += '});\n';
     result += 'xhr.addEventListener(\'error\', function(e) {\n';
-    result += '  console.error(\'Request errored with status\', e.target.status);\n';
+    result += '  console.error(\'Request error with status\', e.target.status);\n';
     result += '});\n';
     result += `xhr.open('${method}', '${url}');\n`;
     if (hasHeaders) {
@@ -50696,6 +50709,7 @@ class XhrHttpSnippet extends BaseCodeSnippet {
       const size = list.length;
       list.forEach((line, i) => {
         const nl = i + 1 === size ? '' : '\\n';
+        // eslint-disable-next-line no-param-reassign
         line = line.replace(re, '\\\'');
         result += `body += '${line}${nl}';\n`;
       });
@@ -50706,7 +50720,8 @@ class XhrHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('xhr-http-snippet', XhrHttpSnippet);
+
+window.customElements.define('xhr-http-snippet', XhrHttpSnippetElement);
 
 /**
 @license
@@ -50721,33 +50736,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `fetch-js-http-snippet`
  *
  * A snippet for requests made in JavaScript using Fetch API.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/fetch-js.html Fetch (JavaScript) demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class FetchJsHttpSnippet extends BaseCodeSnippet {
+class FetchJsHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'javascript';
   }
 
   /**
    * Computes code for JavaScript (Fetch API).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -50794,6 +50802,11 @@ class FetchJsHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * 
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _createHeaders(headers) {
     let result = 'const headers = new Headers();\n';
     for (let i = 0, len = headers.length; i < len; i++) {
@@ -50804,11 +50817,17 @@ class FetchJsHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * 
+   * @param {string} payload 
+   * @returns {string}
+   */
   _createPayload(payload) {
     return `const body = \`${payload}\`;\n\n`;
   }
 }
-window.customElements.define('fetch-js-http-snippet', FetchJsHttpSnippet);
+
+window.customElements.define('fetch-js-http-snippet', FetchJsHttpSnippetElement);
 
 /**
 @license
@@ -50823,33 +50842,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `node-http-snippet`
  *
- * A set of code snippets for Python requests.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/python.html Python demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
+ * A set of code snippets for Node requests.
  */
-class NodeHttpSnippet extends BaseCodeSnippet {
+class NodeHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'javascript';
   }
 
   /**
    * Computes code for JavaScript (Node).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -50889,6 +50901,11 @@ class NodeHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * 
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _genHeadersPart(headers) {
     let result = '';
     if (headers && headers instanceof Array && headers.length) {
@@ -50906,6 +50923,11 @@ class NodeHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * 
+   * @param {string} payload 
+   * @returns {string}
+   */
   _genPayloadPart(payload) {
     let result = '';
     if (payload) {
@@ -50915,7 +50937,8 @@ class NodeHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('node-http-snippet', NodeHttpSnippet);
+
+window.customElements.define('node-http-snippet', NodeHttpSnippetElement);
 
 /**
 @license
@@ -50930,32 +50953,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `fetch-js-http-snippet`
  *
  * A snippet for requests made in JavaScript using Fetch API.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @demo demo/fetch-js.html Fetch (JavaScript) demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
+class AsyncFetchJsHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'javascript';
   }
 
   /**
    * Computes code for JavaScript (Fetch API).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -50990,6 +51007,7 @@ class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
       result += ', init';
     }
     result += ');\n';
+    // eslint-disable-next-line no-template-curly-in-string
     result += '  console.log(`response status is ${response.status}`);\n';
     result += '  const mediaType = response.headers.get(\'content-type\');\n';
     result += '  let data;\n';
@@ -51003,6 +51021,11 @@ class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * 
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _createHeaders(headers) {
     let result = '  const headers = new Headers();\n';
     for (let i = 0, len = headers.length; i < len; i++) {
@@ -51013,7 +51036,12 @@ class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
-  _createPayload(payload) {
+  /**
+   * 
+   * @param {string} payload 
+   * @returns {string}
+   */
+  _createPayload(payload='') {
     // return `  const body = \`${payload}\`;\n\n`;
     let result = '  const body = `';
     const list = payload.split('\n');
@@ -51027,7 +51055,8 @@ class AsyncFetchJsHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('async-fetch-js-http-snippet', AsyncFetchJsHttpSnippet);
+
+window.customElements.define('async-fetch-js-http-snippet', AsyncFetchJsHttpSnippetElement);
 
 /**
 @license
@@ -51042,29 +51071,84 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+/** @typedef {import('lit-element').TemplateResult} TemplateResult */
+
 /**
  * `javascript-http-snippet`
  *
  * A set of code snippets for JavaScript requests.
- *
- * ## Styling
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--http-code-snippets` | Mixin applied to this elment | `{}`
- *
- * @customElement
- * @polymer
- * @demo demo/javascript.html JavaScript demo
- * @memberof ApiElements
  */
-class JavascriptHttpSnippets extends LitElement {
+class JavascriptHttpSnippetsElement extends LitElement {
   get styles() {
     return css`:host {
       display: block;
     }`;
   }
 
+  
+  static get properties() {
+    return {
+      /**
+       * Currently selected snippet
+       * @attribute
+       */
+      selected: { type: Number },
+      /**
+       * Request URL
+       * @attribute
+       */
+      url: { type: String },
+      /**
+       * HTTP method
+       * @attribute
+       */
+      method: { type: String },
+      /**
+       * Parsed HTTP headers.
+       * Each item contains `name` and `value` properties.
+       */
+      headers: { type: Array },
+      /**
+       * HTTP body (the message)
+       * @attribute
+       */
+      payload: { type: String },
+      /**
+       * Enables compatibility with Anypoint components.
+       * @attribute
+       */
+      compatibility: { type: Boolean, reflect: true }
+    };
+  }
+
+  constructor() {
+    super();
+    this.selected = 0;
+    this.compatibility = false;
+    this.url = undefined;
+    this.method = undefined; 
+    this.payload = undefined;
+    /**
+     * @type {CodeHeader[]}
+     */
+    this.headers = undefined;
+  }
+
+  /**
+   * Handler for `selected-changed` event dispatched on anypoint-tabs.
+   * @param {CustomEvent} e
+   */
+  _selectedCHanged(e) {
+    const { value } = e.detail;
+    this.selected = value;
+  }
+
+  /**
+   * @param {number} selected 
+   * @returns {TemplateResult|string} Template for the current snippet
+   */
   _renderPage(selected) {
     const { url, method, payload, headers } = this;
     switch (selected) {
@@ -51088,9 +51172,13 @@ class JavascriptHttpSnippets extends LitElement {
         .method="${method}"
         .payload="${payload}"
         .headers="${headers}"></xhr-http-snippet>`;
+      default: return '';
     }
   }
 
+  /**
+   * @returns {TemplateResult}
+   */
   render() {
     const { selected, compatibility } = this;
     return html`<style>${this.styles}</style>
@@ -51106,47 +51194,9 @@ class JavascriptHttpSnippets extends LitElement {
     ${this._renderPage(selected)}
     `;
   }
-  static get properties() {
-    return {
-      selected: { type: Number },
-      /**
-       * Request URL
-       */
-      url: { type: String },
-      /**
-       * HTTP method
-       */
-      method: { type: String },
-      /**
-       * Parsed HTTP headers.
-       * Each item contains `name` and `value` properties.
-       * @type {Array<Object>}
-       */
-      headers: { type: Array },
-      /**
-       * HTTP body (the message)
-       */
-      payload: { type: String },
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean, reflect: true }
-    };
-  }
-  constructor() {
-    super();
-    this.selected = 0;
-  }
-  /**
-   * Handler for `selected-changed` event dispatched on anypoint-tabs.
-   * @param {CustomEvent} e
-   */
-  _selectedCHanged(e) {
-    const { value } = e.detail;
-    this.selected = value;
-  }
 }
-window.customElements.define('javascript-http-snippets', JavascriptHttpSnippets);
+
+window.customElements.define('javascript-http-snippets', JavascriptHttpSnippetsElement);
 
 Prism.languages.python={comment:{pattern:/(^|[^\\])#.*/,lookbehind:!0},"string-interpolation":{pattern:/(?:f|rf|fr)(?:("""|''')[\s\S]*?\1|("|')(?:\\.|(?!\2)[^\\\r\n])*\2)/i,greedy:!0,inside:{interpolation:{pattern:/((?:^|[^{])(?:{{)*){(?!{)(?:[^{}]|{(?!{)(?:[^{}]|{(?!{)(?:[^{}])+})+})+}/,lookbehind:!0,inside:{"format-spec":{pattern:/(:)[^:(){}]+(?=}$)/,lookbehind:!0},"conversion-option":{pattern:/![sra](?=[:}]$)/,alias:"punctuation"},rest:null}},string:/[\s\S]+/}},"triple-quoted-string":{pattern:/(?:[rub]|rb|br)?("""|''')[\s\S]*?\1/i,greedy:!0,alias:"string"},string:{pattern:/(?:[rub]|rb|br)?("|')(?:\\.|(?!\1)[^\\\r\n])*\1/i,greedy:!0},function:{pattern:/((?:^|\s)def[ \t]+)[a-zA-Z_]\w*(?=\s*\()/g,lookbehind:!0},"class-name":{pattern:/(\bclass\s+)\w+/i,lookbehind:!0},decorator:{pattern:/(^\s*)@\w+(?:\.\w+)*/im,lookbehind:!0,alias:["annotation","punctuation"],inside:{punctuation:/\./}},keyword:/\b(?:and|as|assert|async|await|break|class|continue|def|del|elif|else|except|exec|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|print|raise|return|try|while|with|yield)\b/,builtin:/\b(?:__import__|abs|all|any|apply|ascii|basestring|bin|bool|buffer|bytearray|bytes|callable|chr|classmethod|cmp|coerce|compile|complex|delattr|dict|dir|divmod|enumerate|eval|execfile|file|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|intern|isinstance|issubclass|iter|len|list|locals|long|map|max|memoryview|min|next|object|oct|open|ord|pow|property|range|raw_input|reduce|reload|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|unichr|unicode|vars|xrange|zip)\b/,boolean:/\b(?:True|False|None)\b/,number:/(?:\b(?=\d)|\B(?=\.))(?:0[bo])?(?:(?:\d|0x[\da-f])[\da-f]*\.?\d*|\.\d+)(?:e[+-]?\d+)?j?\b/i,operator:/[-+%=]=?|!=|\*\*?=?|\/\/?=?|<[<=>]?|>[=>]?|[&|^~]/,punctuation:/[{}[\];(),.:]/},Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest=Prism.languages.python,Prism.languages.py=Prism.languages.python;
 
@@ -51163,35 +51213,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
- * `raw-http-snippet`
+ * `requests-python-http-snippet`
  *
  * A snippet for requests made in Python using the Requests library.
- *
- * ## Styling
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/requests-python.html Python > request demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class RequestsPythonHttpSnippet extends BaseCodeSnippet {
+class RequestsPythonHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'python';
   }
 
   /**
    * Computes code for Python (Request lib).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String|undefined} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -51216,8 +51257,8 @@ class RequestsPythonHttpSnippet extends BaseCodeSnippet {
   }
 
   /**
-   * @param {Array<Object>} headers List of headers
-   * @return {String} Headers variable definition
+   * @param {CodeHeader[]} headers List of headers
+   * @return {string} Headers variable definition
    */
   _getHeaders(headers) {
     let result = 'headers = {';
@@ -51231,9 +51272,10 @@ class RequestsPythonHttpSnippet extends BaseCodeSnippet {
     result += '}\n';
     return result;
   }
+
   /**
-   * @param {String} payload HTTP body
-   * @return {String} Body variable definition
+   * @param {string} payload HTTP body
+   * @return {string} Body variable definition
    */
   _getPayload(payload) {
     let result = 'body = """';
@@ -51244,10 +51286,10 @@ class RequestsPythonHttpSnippet extends BaseCodeSnippet {
 
   /**
    * Computes value of connection definition
-   * @param {String} method HTTP request method
-   * @param {Boolean} hasPayload True if the request contains payload message
-   * @param {Boolean} hasHeaders True if the request contains headers
-   * @return {String}
+   * @param {string} method HTTP request method
+   * @param {boolean} hasPayload True if the request contains payload message
+   * @param {boolean} hasHeaders True if the request contains headers
+   * @return {string}
    */
   _getConnection(method, hasPayload, hasHeaders) {
     const lowerMethod = String(method).toLowerCase();
@@ -51261,8 +51303,9 @@ class RequestsPythonHttpSnippet extends BaseCodeSnippet {
     result += ')\n\n';
     return result;
   }
+
   /**
-   * @return {String} Returns ending of the code definition
+   * @return {string} Returns ending of the code definition
    */
   _getFooter() {
     let result = 'print(req.status_code)\n';
@@ -51271,7 +51314,8 @@ class RequestsPythonHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('requests-python-http-snippet', RequestsPythonHttpSnippet);
+
+window.customElements.define('requests-python-http-snippet', RequestsPythonHttpSnippetElement);
 
 /**
 @license
@@ -51286,33 +51330,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `python-27-http-snippet`
  *
  * A snippet for requests made in Python 2.7 using native library.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/python-27.html Python 2.7 demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class Python27HttpSnippet extends BaseCodeSnippet {
+class Python27HttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'python';
   }
 
   /**
    * Computes code for Python (2.7).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -51335,9 +51372,10 @@ class Python27HttpSnippet extends BaseCodeSnippet {
     result += this._getFooter();
     return result;
   }
+
   /**
-   * @param {Array<Object>} headers List of headers
-   * @return {String} Headers variable definition
+   * @param {CodeHeader[]} headers List of headers
+   * @return {string} Headers variable definition
    */
   _getHeaders(headers) {
     let result = 'headers = {';
@@ -51351,9 +51389,10 @@ class Python27HttpSnippet extends BaseCodeSnippet {
     result += '}\n';
     return result;
   }
+
   /**
-   * @param {String} payload HTTP body
-   * @return {String} Body variable definition
+   * @param {string} payload HTTP body
+   * @return {string} Body variable definition
    */
   _getPayload(payload) {
     let result = 'body = """';
@@ -51361,18 +51400,19 @@ class Python27HttpSnippet extends BaseCodeSnippet {
     result += '"""\n\n';
     return result;
   }
+
   /**
    * Computes value of connection definition
-   * @param {String} url HTTP request url
-   * @param {String} method HTTP request method
-   * @param {Boolean} hasPayload True if the request contains payload message
-   * @param {Boolean} hasHeaders True if the request contains headers
-   * @return {String}
+   * @param {string} url HTTP request url
+   * @param {string} method HTTP request method
+   * @param {boolean} hasPayload True if the request contains payload message
+   * @param {boolean} hasHeaders True if the request contains headers
+   * @return {string}
    */
   _getConnection(url, method, hasPayload, hasHeaders) {
     const data = this.urlDetails(url);
     let clazz = 'HTTP';
-    if (data.port === 443 || data.port === '443') {
+    if (data.port === '443') {
       clazz += 'S';
     }
     let result = `conn = httplib.${clazz}Connection('${data.hostValue}')\n`;
@@ -51386,8 +51426,9 @@ class Python27HttpSnippet extends BaseCodeSnippet {
     result += ')\n';
     return result;
   }
+
   /**
-   * @return {String} Returns ending of the code definition
+   * @return {string} Returns ending of the code definition
    */
   _getFooter() {
     let result = 'res = conn.getresponse()\n';
@@ -51398,7 +51439,8 @@ class Python27HttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('python-27-http-snippet', Python27HttpSnippet);
+
+window.customElements.define('python-27-http-snippet', Python27HttpSnippetElement);
 
 /**
 @license
@@ -51413,33 +51455,26 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
- * `raw-http-snippet`
+ * `python31-http-snippet`
  *
  * A snippet for requests made in Python 3.1 using native library.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/python-31.html Python 3.1 demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class Python31HttpSnippet extends BaseCodeSnippet {
+class Python31HttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'python';
   }
 
   /**
    * Computes code for Python (3.1).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String|undefined} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -51464,8 +51499,8 @@ class Python31HttpSnippet extends BaseCodeSnippet {
   }
 
   /**
-   * @param {Array<Object>} headers List of headers
-   * @return {String} Headers variable definition
+   * @param {CodeHeader[]} headers List of headers
+   * @return {string} Headers variable definition
    */
   _getHeaders(headers) {
     let result = 'headers = {';
@@ -51479,9 +51514,10 @@ class Python31HttpSnippet extends BaseCodeSnippet {
     result += '}\n';
     return result;
   }
+  
   /**
-   * @param {String} payload HTTP body
-   * @return {String} Body variable definition
+   * @param {string} payload HTTP body
+   * @return {string} Body variable definition
    */
   _getPayload(payload) {
     let result = 'body = """';
@@ -51492,16 +51528,16 @@ class Python31HttpSnippet extends BaseCodeSnippet {
 
   /**
    * Computes value of connection definition
-   * @param {String} url HTTP request url
-   * @param {String} method HTTP request method
-   * @param {Boolean} hasPayload True if the request contains payload message
-   * @param {Boolean} hasHeaders True if the request contains headers
-   * @return {String}
+   * @param {string} url HTTP request url
+   * @param {string} method HTTP request method
+   * @param {boolean} hasPayload True if the request contains payload message
+   * @param {boolean} hasHeaders True if the request contains headers
+   * @return {string}
    */
   _getConnection(url, method, hasPayload, hasHeaders) {
     const data = this.urlDetails(url);
     let clazz = 'HTTP';
-    if (data.port === 443 || data.port === '443') {
+    if (data.port === '443') {
       clazz += 'S';
     }
     let result = `conn = http.client.${clazz}Connection('${data.hostValue}')\n`;
@@ -51515,8 +51551,9 @@ class Python31HttpSnippet extends BaseCodeSnippet {
     result += ')\n';
     return result;
   }
+
   /**
-   * @return {String} Returns ending of the code definition
+   * @return {string} Returns ending of the code definition
    */
   _getFooter() {
     let result = 'res = conn.getresponse()\n';
@@ -51528,7 +51565,8 @@ class Python31HttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('python-31-http-snippet', Python31HttpSnippet);
+
+window.customElements.define('python-31-http-snippet', Python31HttpSnippetElement);
 
 /**
 @license
@@ -51543,29 +51581,84 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+/** @typedef {import('lit-element').TemplateResult} TemplateResult */
+
 /**
- * `raw-http-snippet`
+ * `python-http-snippets`
  *
  * A set of code snippets for Python requests.
- *
- * ## Styling
- *
- * Custom property | Description | Default
- * ----------------|-------------|----------
- * `--http-code-snippets` | Mixin applied to this elment | `{}`
- *
- * @customElement
- * @polymer
- * @demo demo/python.html Python demo
- * @memberof ApiElements
  */
-class PythonHttpSnippets extends LitElement {
+class PythonHttpSnippetsElement extends LitElement {
   get styles() {
-    return css`:host {
+    return css`
+    :host {
       display: block;
     }`;
   }
 
+  static get properties() {
+    return {
+      /**
+       * Currently selected snippet
+       * @attribute
+       */
+      selected: { type: Number },
+      /**
+       * Request URL
+       * @attribute
+       */
+      url: { type: String },
+      /**
+       * HTTP method
+       * @attribute
+       */
+      method: { type: String },
+      /**
+       * Parsed HTTP headers.
+       * Each item contains `name` and `value` properties.
+       */
+      headers: { type: Array },
+      /**
+       * HTTP body (the message)
+       * @attribute
+       */
+      payload: { type: String },
+      /**
+       * Enables compatibility with Anypoint components.
+       * @attribute
+       */
+      compatibility: { type: Boolean }
+    };
+  }
+
+  constructor() {
+    super();
+    this.selected = 0;
+    this.compatibility = false;
+    this.url = undefined;
+    this.method = undefined; 
+    this.payload = undefined;
+    /**
+     * @type {CodeHeader[]}
+     */
+    this.headers = undefined;
+  }
+
+  /**
+   * Handler for `selected-changed` event dispatched on anypoint-tabs.
+   * @param {CustomEvent} e
+   */
+  _selectedCHanged(e) {
+    const { value } = e.detail;
+    this.selected = value;
+  }
+
+  /**
+   * @param {number} selected 
+   * @returns {TemplateResult|string} Template for the current snippet
+   */
   _renderPage(selected) {
     const { url, method, payload, headers } = this;
     switch (selected) {
@@ -51584,9 +51677,13 @@ class PythonHttpSnippets extends LitElement {
         .method="${method}"
         .payload="${payload}"
         .headers="${headers}"></python-31-http-snippet>`;
+      default: return '';
     }
   }
 
+  /**
+   * @returns {TemplateResult}
+   */
   render() {
     const { selected, compatibility } = this;
     return html`<style>${this.styles}</style>
@@ -51601,49 +51698,9 @@ class PythonHttpSnippets extends LitElement {
     ${this._renderPage(selected)}
     `;
   }
-
-  static get properties() {
-    return {
-      selected: { type: Number },
-      /**
-       * Request URL
-       */
-      url: { type: String },
-      /**
-       * HTTP method
-       */
-      method: { type: String },
-      /**
-       * Parsed HTTP headers.
-       * Each item contains `name` and `value` properties.
-       * @type {Array<Object>}
-       */
-      headers: { type: Array },
-      /**
-       * HTTP body (the message)
-       */
-      payload: { type: String },
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean }
-    };
-  }
-
-  constructor() {
-    super();
-    this.selected = 0;
-  }
-  /**
-   * Handler for `selected-changed` event dispatched on anypoint-tabs.
-   * @param {CustomEvent} e
-   */
-  _selectedCHanged(e) {
-    const { value } = e.detail;
-    this.selected = value;
-  }
 }
-window.customElements.define('python-http-snippets', PythonHttpSnippets);
+
+window.customElements.define('python-http-snippets', PythonHttpSnippetsElement);
 
 /**
 @license
@@ -51658,22 +51715,15 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `c-curl-http-snippet`
  *
  * A snippet for requests made in C using curl library.
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/c-curl.html C curl demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class CcurlHttpSnippet extends BaseCodeSnippet {
+class CcurlHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'clike';
   }
@@ -51684,11 +51734,11 @@ class CcurlHttpSnippet extends BaseCodeSnippet {
 
   /**
    * Computes code for C with curl.
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -51702,7 +51752,7 @@ class CcurlHttpSnippet extends BaseCodeSnippet {
     result += `\tcurl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "${method}");\n`;
     result += '\t/* if redirected, tell libcurl to follow redirection */\n';
     result += '\tcurl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);\n\n';
-    if (headers && headers instanceof Array) {
+    if (Array.isArray(headers)) {
       result += '\tstruct curl_slist *headers = NULL;\n';
       headers.forEach((h) => {
         result += `\theaders = curl_slist_append(headers, "${h.name}: ${h.value}");\n`;
@@ -51711,10 +51761,9 @@ class CcurlHttpSnippet extends BaseCodeSnippet {
     }
     if (payload) {
       result += '\n';
-      payload = String(payload);
       const re = /"/g;
       result += '\tchar *body ="';
-      payload.split('\n').map(function(line) {
+      String(payload).split('\n').forEach((line) => {
         result += line.replace(re, '\\"');
       });
       result += '";\n';
@@ -51735,7 +51784,8 @@ class CcurlHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 }
-window.customElements.define('c-curl-http-snippet', CcurlHttpSnippet);
+
+window.customElements.define('c-curl-http-snippet', CcurlHttpSnippetElement);
 
 !function(e){var t=/\b(?:abstract|assert|boolean|break|byte|case|catch|char|class|const|continue|default|do|double|else|enum|exports|extends|final|finally|float|for|goto|if|implements|import|instanceof|int|interface|long|module|native|new|null|open|opens|package|private|protected|provides|public|record|requires|return|short|static|strictfp|super|switch|synchronized|this|throw|throws|to|transient|transitive|try|uses|var|void|volatile|while|with|yield)\b/,a=/\b[A-Z](?:\w*[a-z]\w*)?\b/;e.languages.java=e.languages.extend("clike",{"class-name":[a,/\b[A-Z]\w*(?=\s+\w+\s*[;,=())])/],keyword:t,function:[e.languages.clike.function,{pattern:/(\:\:)[a-z_]\w*/,lookbehind:!0}],number:/\b0b[01][01_]*L?\b|\b0x[\da-f_]*\.?[\da-f_p+-]+\b|(?:\b\d[\d_]*\.?[\d_]*|\B\.\d[\d_]*)(?:e[+-]?\d[\d_]*)?[dfl]?/i,operator:{pattern:/(^|[^.])(?:<<=?|>>>?=?|->|--|\+\+|&&|\|\||::|[?:~]|[-+*/%&|^!=<>]=?)/m,lookbehind:!0}}),e.languages.insertBefore("java","string",{"triple-quoted-string":{pattern:/"""[ \t]*[\r\n](?:(?:"|"")?(?:\\.|[^"\\]))*"""/,greedy:!0,alias:"string"}}),e.languages.insertBefore("java","class-name",{annotation:{alias:"punctuation",pattern:/(^|[^.])@\w+/,lookbehind:!0},namespace:{pattern:RegExp("(\\b(?:exports|import(?:\\s+static)?|module|open|opens|package|provides|requires|to|transitive|uses|with)\\s+)(?!<keyword>)[a-z]\\w*(?:\\.[a-z]\\w*)*\\.?".replace(/<keyword>/g,function(){return t.source})),lookbehind:!0,inside:{punctuation:/\./}},generics:{pattern:/<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<(?:[\w\s,.&?]|<[\w\s,.&?]*>)*>)*>)*>/,inside:{"class-name":a,keyword:t,punctuation:/[<>(),.:]/,operator:/[?&|]/}}});}(Prism);
 
@@ -51752,40 +51802,32 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `java-platform-http-snippet`
  *
  * A snippet for requests made in Java using the platform functions
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/java-platform.html Java Platform demo
- * @demo demo/java.html Java demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class JavaPlatformHttpSnippet extends BaseCodeSnippet {
+class JavaPlatformHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'java';
   }
 
   /**
-   * Computes code for Java (patform).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * Computes code for Java (platform).
+   * @param {string} urlValue
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
-  _computeCommand(url, method, headers, payload) {
-    if (!url || !method) {
+  _computeCommand(urlValue, method, headers, payload) {
+    if (!urlValue || !method) {
       return '';
     }
-    url = String(url);
+    const url = String(urlValue);
     let result = `URL url = new URL("${url}");\n`;
     let klass = 'Http';
     if (url.indexOf('https') === 0) {
@@ -51812,6 +51854,10 @@ class JavaPlatformHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _genHeadersPart(headers) {
     let result = '';
     if (headers && headers.length) {
@@ -51822,6 +51868,10 @@ class JavaPlatformHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {string} payload 
+   * @returns {string}
+   */
   _genPayloadPart(payload) {
     let result = '';
     if (payload) {
@@ -51840,11 +51890,14 @@ class JavaPlatformHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {string} payload 
+   * @returns {string[]}
+   */
   _payloadToList(payload) {
     return payload.split('\n').map((item) => item.replace(/"/g, '\\"'));
   }
 }
-window.customElements.define('java-platform-http-snippet', JavaPlatformHttpSnippet);
 
 /**
 @license
@@ -51859,33 +51912,42 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+window.customElements.define('java-platform-http-snippet', JavaPlatformHttpSnippetElement);
+
+/**
+@license
+Copyright 2018 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+
 /**
  * `java-spring-http-snippet`
  *
  * A snippet for requests made in Java using the spring functions
- *
- * ### Styling
- *
- * See `http-code-snippets` for styling documentation.
- *
- * @customElement
- * @polymer
- * @demo demo/java-spring.html Java Spring demo
- * @demo demo/java.html Java demo
- * @memberof ApiElements
- * @extends BaseCodeSnippet
  */
-class JavaSpringHttpSnippet extends BaseCodeSnippet {
+class JavaSpringHttpSnippetElement extends BaseCodeSnippet {
   get lang() {
     return 'java';
   }
+
   /**
    * Computes code for Java (Spring).
-   * @param {String} url
-   * @param {String} method
-   * @param {Array<Object>|undefined} headers
-   * @param {String} payload
-   * @return {String} Complete code for given arguments
+   * @param {string} url
+   * @param {string} method
+   * @param {CodeHeader[]} headers
+   * @param {string} payload
+   * @return {string} Complete code for given arguments
    */
   _computeCommand(url, method, headers, payload) {
     if (!url || !method) {
@@ -51907,6 +51969,10 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {CodeHeader[]} headers 
+   * @returns {string}
+   */
   _genHeadersPart(headers) {
     let result = '';
     if (headers && headers.length) {
@@ -51917,6 +51983,10 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {string} payload 
+   * @returns {string}
+   */
   _genPayloadPart(payload) {
     let result = '';
     if (payload) {
@@ -51925,6 +51995,7 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
       const len = list.length;
       list.forEach((line, i) => {
         if (i + 1 !== len) {
+          // eslint-disable-next-line no-param-reassign
           line += '\\n';
         }
         result += `sb.append("${line}");\n`;
@@ -51936,11 +52007,16 @@ class JavaSpringHttpSnippet extends BaseCodeSnippet {
     return result;
   }
 
+  /**
+   * @param {string} payload 
+   * @returns {string[]}
+   */
   _payloadToList(payload) {
     return payload.split('\n').map((item) => item.replace(/"/g, '\\"'));
   }
 }
-window.customElements.define('java-spring-http-snippet', JavaSpringHttpSnippet);
+
+window.customElements.define('java-spring-http-snippet', JavaSpringHttpSnippetElement);
 
 /**
 @license
@@ -51955,23 +52031,84 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 License for the specific language governing permissions and limitations under
 the License.
 */
+
+
+/** @typedef {import('../BaseCodeSnippet').CodeHeader} CodeHeader */
+/** @typedef {import('lit-element').TemplateResult} TemplateResult */
+
 /**
  * `javascript-http-snippet`
  *
- * A set of code snippets for Java requests.
- *
- * @customElement
- * @polymer
- * @demo demo/java.html Java demo
- * @memberof ApiElements
+ * A set of code snippets for Java requests.=
  */
-class JavatHttpSnippets extends LitElement {
+class JavaHttpSnippetsElement extends LitElement {
   get styles() {
     return css`:host {
       display: block;
     }`;
   }
 
+  static get properties() {
+    return {
+      /**
+       * Currently selected snippet
+       * @attribute
+       */
+      selected: { type: Number },
+      /**
+       * Request URL
+       * @attribute
+       */
+      url: { type: String },
+      /**
+       * HTTP method
+       * @attribute
+       */
+      method: { type: String },
+      /**
+       * Parsed HTTP headers.
+       * Each item contains `name` and `value` properties.
+       */
+      headers: { type: Array },
+      /**
+       * HTTP body (the message)
+       * @attribute
+       */
+      payload: { type: String },
+      /**
+       * Enables compatibility with Anypoint components.
+       * @attribute
+       */
+      compatibility: { type: Boolean, reflect: true }
+    };
+  }
+
+  constructor() {
+    super();
+    this.selected = 0;
+    this.compatibility = false;
+    this.url = undefined;
+    this.method = undefined; 
+    this.payload = undefined;
+    /**
+     * @type {CodeHeader[]}
+     */
+    this.headers = undefined;
+  }
+
+  /**
+   * Handler for `selected-changed` event dispatched on anypoint-tabs.
+   * @param {CustomEvent} e
+   */
+  _selectedCHanged(e) {
+    const { value } = e.detail;
+    this.selected = value;
+  }
+
+  /**
+   * @param {number} selected 
+   * @returns {TemplateResult|string} Template for the current snippet
+   */
   _renderPage(selected) {
     const { url, method, payload, headers } = this;
     switch (selected) {
@@ -51985,9 +52122,13 @@ class JavatHttpSnippets extends LitElement {
         .method="${method}"
         .payload="${payload}"
         .headers="${headers}"></java-spring-http-snippet>`;
+      default: return '';
     }
   }
 
+  /**
+   * @returns {TemplateResult}
+   */
   render() {
     const { selected, compatibility } = this;
     return html`<style>${this.styles}</style>
@@ -52000,38 +52141,92 @@ class JavatHttpSnippets extends LitElement {
     </anypoint-tabs>
     ${this._renderPage(selected)}`;
   }
+}
+
+window.customElements.define('java-http-snippets', JavaHttpSnippetsElement);
+
+/** @typedef {import('./BaseCodeSnippet').CodeHeader} CodeHeader */
+
+/**
+ * `http-code-snippets`
+ *
+ * Code snippets to display code implementation examples for a HTTP request
+ */
+class HttpCodeSnippetsElement extends LitElement {
+  get styles() {
+    return css`
+    :host {
+      display: block;
+    }`;
+  }
 
   static get properties() {
     return {
+      /**
+       * Currently selected tab for the platform row.
+       * @attribute
+       */
       selected: { type: Number },
       /**
+       * Computed list of headers from `headers` property.
+       * It is an array of objects where each object contains `name` and `value`
+       * properties.
+       */
+      _headersList: { type: Array },
+      // Passed to `anypoint-tabs` `scrollable` property
+      scrollable: { type: Boolean },
+      /**
        * Request URL
+       * @attribute
        */
       url: { type: String },
       /**
        * HTTP method
+       * @attribute
        */
       method: { type: String },
       /**
        * Parsed HTTP headers.
        * Each item contains `name` and `value` properties.
-       * @type {Array<Object>}
+       * @attribute
        */
-      headers: { type: Array },
+      headers: { type: String },
       /**
        * HTTP body (the message)
+       * @attribute
        */
       payload: { type: String },
       /**
        * Enables compatibility with Anypoint components.
+       * @attribute
        */
       compatibility: { type: Boolean, reflect: true }
     };
   }
+
+  get headers() {
+    return this._headers;
+  }
+
+  set headers(value) {
+    const old = this._headers;
+    if (old === value) {
+      return;
+    }
+    this._headers = value;
+    this._headersList = this.headersToList(value);
+  }
+
   constructor() {
     super();
     this.selected = 0;
+    this.scrollable = false;
+    this.compatibility = false;
+    this.url = undefined;
+    this.method = undefined; 
+    this.payload = undefined;
   }
+
   /**
    * Handler for `selected-changed` event dispatched on anypoint-tabs.
    * @param {CustomEvent} e
@@ -52040,47 +52235,56 @@ class JavatHttpSnippets extends LitElement {
     const { value } = e.detail;
     this.selected = value;
   }
-}
-window.customElements.define('java-http-snippets', JavatHttpSnippets);
 
-/**
- * `http-code-snippets`
- *
- * Code snippets to display code implementatyion examples for a HTTP request
- *
- * ## Polyfills
- *
- * This component requires `advanced-rest-client/URL` (or other) polyfill for
- * URL object. This spec is not supported in Safari 9 and IE 11.
- * If you are targeting this browsers install ind include this dependency.
- *
- * This component does not include polyfills.
- *
- * ## Styling
- *
- * See http-code-snippets-style.js file for styling definition.
- *
- * @customElement
- * @demo demo/index.html
- * @memberof ApiElements
- */
-class HttpCodeSnippets extends LitElement {
-  get styles() {
-    return css`:host {
-      display: block;
-    }`;
+  /**
+   * Computes a list of headers from a headers string.
+   * @param {string=} headersValue The headers to process
+   * @return {CodeHeader[]} Headers as a list od maps. Can be empty.
+   */
+  headersToList(headersValue) {
+    let headers = headersValue || this.headers;
+    if (!headers || !headers.trim() || typeof headers !== 'string') {
+      return [];
+    }
+    const result = [];
+    headers = headers.replace('\\n', '\n');
+    headers = headers.split(/\n(?=[^ \t]+)/gim);
+    for (let i = 0, len = headers.length; i < len; i++) {
+      const line = headers[i].trim();
+      if (line === '') {
+        continue;
+      }
+      const sepPosition = line.indexOf(':');
+      if (sepPosition === -1) {
+        result[result.length] = {
+          name: line,
+          value: ''
+        };
+        continue;
+      }
+      const name = line.substr(0, sepPosition);
+      const value = line.substr(sepPosition + 1).trim();
+      const obj = {
+        name,
+        value,
+      };
+      result.push(obj);
+    }
+    return result;
   }
 
   render() {
     const { selected, scrollable, compatibility } = this;
-    return html`<style>${this.styles}</style>
+    return html`
+    <style>${this.styles}</style>
     <prism-highlighter></prism-highlighter>
     <anypoint-tabs
       .selected="${selected}"
       ?scrollable="${scrollable}"
       fitcontainer
       ?compatibility="${compatibility}"
-      @selected-changed="${this._selectedCHanged}">
+      @selected-changed="${this._selectedCHanged}"
+    >
       <anypoint-tab>cURL</anypoint-tab>
       <anypoint-tab>HTTP</anypoint-tab>
       <anypoint-tab>JavaScript</anypoint-tab>
@@ -52127,111 +52331,12 @@ class HttpCodeSnippets extends LitElement {
         .payload="${payload}"
         .headers="${headers}"
         ?compatibility="${compatibility}"></java-http-snippets>`;
+      default: return '';
     }
-  }
-
-  static get properties() {
-    return {
-      /**
-       * Currently selected tab for the platform row.
-       */
-      selected: { type: Number },
-      /**
-       * Computed list of headers from `headers` property.
-       * It is an array of objects where each object contains `name` and `value`
-       * properties.
-       * @type {Array<Object>}
-       */
-      _headersList: { type: Array },
-      // Passed to `anypoint-tabs` `scrollable` property
-      scrollable: { type: Boolean },
-      /**
-       * Request URL
-       */
-      url: { type: String },
-      /**
-       * HTTP method
-       */
-      method: { type: String },
-      /**
-       * Parsed HTTP headers.
-       * Each item contains `name` and `value` properties.
-       */
-      headers: { type: String },
-      /**
-       * HTTP body (the message)
-       */
-      payload: { type: String },
-      /**
-       * Enables compatibility with Anypoint components.
-       */
-      compatibility: { type: Boolean, reflect: true }
-    };
-  }
-
-  get headers() {
-    return this._headers;
-  }
-
-  set headers(value) {
-    const old = this._headers;
-    if (old === value) {
-      return;
-    }
-    this._headers = value;
-    this._headersList = this.headersToList(value);
-  }
-
-  constructor() {
-    super();
-    this.selected = 0;
-  }
-  /**
-   * Handler for `selected-changed` event dispatched on anypoint-tabs.
-   * @param {CustomEvent} e
-   */
-  _selectedCHanged(e) {
-    const { value } = e.detail;
-    this.selected = value;
-  }
-  /**
-   * Computes a list of headers from a headers string.
-   * @param {?String} headers
-   * @return {Array} Headers as a list od maps. Can be empty.
-   */
-  headersToList(headers) {
-    headers = headers || this.headers;
-    if (!headers || !headers.trim() || typeof headers !== 'string') {
-      return [];
-    }
-    const result = [];
-    headers = headers.replace('\\n', '\n');
-    headers = headers.split(/\n(?=[^ \t]+)/gim);
-    for (let i = 0, len = headers.length; i < len; i++) {
-      const line = headers[i].trim();
-      if (line === '') {
-        continue;
-      }
-      const sepPosition = line.indexOf(':');
-      if (sepPosition === -1) {
-        result[result.length] = {
-          name: line,
-          value: ''
-        };
-        continue;
-      }
-      const name = line.substr(0, sepPosition);
-      const value = line.substr(sepPosition + 1).trim();
-      const obj = {
-        name: name,
-        value: value
-      };
-      result.push(obj);
-    }
-    return result;
   }
 }
-window.customElements.define('http-code-snippets', HttpCodeSnippets);
+
+window.customElements.define('http-code-snippets', HttpCodeSnippetsElement);
 
 /**
  * `api-oauth2-settings-document`
@@ -113134,8 +113239,8 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     .toggle-icon {
       margin: 0!important;
     }
-    http-code-snippets {
-      margin-bottom: 15px!important;
+    x-http-code-snippets {
+      margin-bottom: 0!important;
     }
     iron-collapse {
       position: relative;
@@ -113143,15 +113248,13 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
     }
     #code-snippets-fullscreen-btn {
       position: absolute;
-      right: 0px;
-      bottom: 0px;
+      right: 0;
+      top: 0;
       z-index: 99;
-      background: #e0e0e0;
-      padding: 1px 3px;
+      background: #fff;
+      padding: 12px 12px;
       cursor: pointer;
-      font-size: 13px;
       text-transform: uppercase;
-      color: #000;
     }
     .fullscreen-snippets {
       position: fixed;
@@ -113212,18 +113315,18 @@ class XApiMethodDocumentation extends ApiMethodDocumentation {
       </div>
       <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
       ${_renderSnippets ? html`<div id="http-code-snippets-container">
-          <http-code-snippets
+          <x-http-code-snippets
             scrollable
             ?compatibility="${compatibility}"
             .url="${endpointUri}"
             .method="${httpMethod}"
             .headers="${this._computeSnippetsHeaders(headers)}"
-            .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>
+            .payload="${this._computeSnippetsPayload(payload)}"></x-http-code-snippets>
           <div
             id="code-snippets-fullscreen-btn"
             title="Toggle fullscreen"
             onclick="(function(el) { el.parentElement.classList.toggle('fullscreen-snippets'); })(this)"
-            >Fullscreen
+            ><span class="icon">${openInNew}</span>
           </div>
         </div>` : ''}
       </iron-collapse>
@@ -113787,6 +113890,7 @@ window.customElements.define('x-api-type-document', XApiTypeDocument);
 
 // Extend PropertyShapeDocument to customize its output
 class XPropertyShapeDocument extends PropertyShapeDocument {
+
   // Overriden to add new styles
   get styles() {
     return [super.styles, css`
@@ -113816,8 +113920,7 @@ class XPropertyShapeDocument extends PropertyShapeDocument {
           @keydown="${this._linkKeydown}"
           >${label}</span
         >
-        <span class="type-data-type data-type-${dataType.toLowerCase()}">${dataType}</span>
-      `;
+        <span class="type-data-type data-type-${dataType.toLowerCase()}">${dataType}</span>`;
     }
     if (isScalarArray) {
       const itemType = this.arrayScalarTypeName;
@@ -113828,4 +113931,19 @@ class XPropertyShapeDocument extends PropertyShapeDocument {
 }
 window.customElements.define('x-property-shape-document', XPropertyShapeDocument);
 
-export { XApiBodyDocumentElement, XApiDocumentation, XApiHeadersDocument, XApiMethodDocumentation, XApiParametersDocument, XApiResponsesDocument, XApiSummary, XApiTypeDocument, XPropertyShapeDocument };
+
+// Override HttpCodeSnippetsElement to customize its output
+class XHttpCodeSnippetsElement extends HttpCodeSnippetsElement {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-tabs {
+        margin-right: 40px;
+      }
+    `];
+  }
+}
+window.customElements.define('x-http-code-snippets', XHttpCodeSnippetsElement);
+
+export { XApiBodyDocumentElement, XApiDocumentation, XApiHeadersDocument, XApiMethodDocumentation, XApiParametersDocument, XApiResponsesDocument, XApiSummary, XApiTypeDocument, XHttpCodeSnippetsElement, XPropertyShapeDocument };

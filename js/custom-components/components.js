@@ -8,7 +8,8 @@ import { PropertyShapeDocument } from '@api-components/api-type-document/src/Pro
 import { ApiResponsesDocument } from '@api-components/api-responses-document/src/ApiResponsesDocument.js';
 import { ApiDocumentation } from '@api-components/api-documentation/src/ApiDocumentation.js';
 import { ApiParametersDocument } from '@api-components/api-parameters-document/src/ApiParametersDocument.js';
-import { expandMore, chevronLeft, chevronRight } from '@advanced-rest-client/arc-icons/ArcIcons.js';
+import { HttpCodeSnippetsElement } from '@advanced-rest-client/http-code-snippets/src/HttpCodeSnippetsElement.js';
+import { expandMore, openInNew } from '@advanced-rest-client/arc-icons/ArcIcons.js';
 
 
 // Extends ApiDocumentation to customize its output
@@ -275,8 +276,8 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     .toggle-icon {
       margin: 0!important;
     }
-    http-code-snippets {
-      margin-bottom: 15px!important;
+    x-http-code-snippets {
+      margin-bottom: 0!important;
     }
     iron-collapse {
       position: relative;
@@ -284,15 +285,13 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
     }
     #code-snippets-fullscreen-btn {
       position: absolute;
-      right: 0px;
-      bottom: 0px;
+      right: 0;
+      top: 0;
       z-index: 99;
-      background: #e0e0e0;
-      padding: 1px 3px;
+      background: #fff;
+      padding: 12px 12px;
       cursor: pointer;
-      font-size: 13px;
       text-transform: uppercase;
-      color: #000;
     }
     .fullscreen-snippets {
       position: fixed;
@@ -353,18 +352,18 @@ export class XApiMethodDocumentation extends ApiMethodDocumentation {
       </div>
       <iron-collapse .opened="${_snippetsOpened}" @transitionend="${this._snippetsTransitionEnd}">
       ${_renderSnippets ? html`<div id="http-code-snippets-container">
-          <http-code-snippets
+          <x-http-code-snippets
             scrollable
             ?compatibility="${compatibility}"
             .url="${endpointUri}"
             .method="${httpMethod}"
             .headers="${this._computeSnippetsHeaders(headers)}"
-            .payload="${this._computeSnippetsPayload(payload)}"></http-code-snippets>
+            .payload="${this._computeSnippetsPayload(payload)}"></x-http-code-snippets>
           <div
             id="code-snippets-fullscreen-btn"
             title="Toggle fullscreen"
             onclick="(function(el) { el.parentElement.classList.toggle('fullscreen-snippets'); })(this)"
-            >Fullscreen
+            ><span class="icon">${openInNew}</span>
           </div>
         </div>` : ''}
       </iron-collapse>
@@ -928,6 +927,7 @@ window.customElements.define('x-api-type-document', XApiTypeDocument);
 
 // Extend PropertyShapeDocument to customize its output
 export class XPropertyShapeDocument extends PropertyShapeDocument {
+
   // Overriden to add new styles
   get styles() {
     return [super.styles, css`
@@ -957,8 +957,7 @@ export class XPropertyShapeDocument extends PropertyShapeDocument {
           @keydown="${this._linkKeydown}"
           >${label}</span
         >
-        <span class="type-data-type data-type-${dataType.toLowerCase()}">${dataType}</span>
-      `;
+        <span class="type-data-type data-type-${dataType.toLowerCase()}">${dataType}</span>`;
     }
     if (isScalarArray) {
       const itemType = this.arrayScalarTypeName;
@@ -968,3 +967,18 @@ export class XPropertyShapeDocument extends PropertyShapeDocument {
   }
 }
 window.customElements.define('x-property-shape-document', XPropertyShapeDocument);
+
+
+// Override HttpCodeSnippetsElement to customize its output
+export class XHttpCodeSnippetsElement extends HttpCodeSnippetsElement {
+
+  // Overriden to add new styles
+  get styles() {
+    return [super.styles, css`
+      anypoint-tabs {
+        margin-right: 40px;
+      }
+    `];
+  }
+}
+window.customElements.define('x-http-code-snippets', XHttpCodeSnippetsElement);
