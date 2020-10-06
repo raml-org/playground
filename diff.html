@@ -22,7 +22,7 @@
 <body>
 <!-- Loader view -->
 <div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
-    <h2 class="title is-2">Loading Playground: Diff</h2>
+    <h2 class="title is-2">Loading Example: Diff</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
 
@@ -154,9 +154,63 @@
 
           customizeMonaco();
 
+          var editorLeftValue = `#%RAML 1.0
+title: Mobile Order API
+baseUri: http://localhost:8081/api
+version: 1.0
+
+traits:
+  paging:
+    queryParameters:
+      size:
+        description: the amount of elements of each result page
+        type: integer
+        required: false
+        example: 10
+      page:
+        description: the page number
+        type: integer
+        required: false
+        example: 0
+
+annotationTypes:
+  monitoringInterval:
+    type: integer
+
+/orders:
+  displayName: Orders
+  get:
+    is: [ paging ]
+    (monitoringInterval): 30
+    description: Lists all orders of a specific user
+    queryParameters:
+      userId:
+        type: string
+        description: use to query all orders of a user
+  post:
+  /{orderId}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: object
+              properties:
+                order_id: string
+                creation_date: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      product_id: string
+                      quantity: integer
+
+`
+
           var editorLeft = monaco.editor
             .create(document.getElementById("editor-left-container"), {
-              value: '',
+              value: editorLeftValue,
               language: 'raml',
               automaticLayout: true,
               scrollBeyondLastLine: true,
@@ -172,9 +226,65 @@
               }
             });
 
+          var editorRightValue = `#%RAML 1.0
+title: Mobile Order API
+baseUri: http://localhost:8081/api
+version: 1.0
+
+types:
+  ProductItem:
+    type: object
+    properties:
+      product_id: string
+      quantity: integer
+  Order:
+    type: object
+    properties:
+      order_id: string
+      creation_date: string
+      items: ProductItem[]
+
+traits:
+  paging:
+    queryParameters:
+      size:
+        description: the amount of elements of each result page
+        type: integer
+        required: false
+        example: 10
+      page:
+        description: the page number
+        type: number
+        required: false
+        example: 0
+
+annotationTypes:
+  monitoringInterval:
+    type: integer
+
+/orders:
+  displayName: Orders
+  get:
+    is: [ paging ]
+    (monitoringInterval): 30
+    description: Lists all orders of a specific user
+    queryParameters:
+      userId:
+        type: integer
+        description: use to query all orders of a user
+  post:
+  /{orderId}:
+    get:
+      responses:
+        200:
+          body:
+            application/json:
+              type: Order
+`
+
           var editorRight = monaco.editor
             .create(document.getElementById("editor-right-container"), {
-              value: '',
+              value: editorRightValue,
               language: 'raml',
               automaticLayout: true,
               scrollBeyondLastLine: true,
