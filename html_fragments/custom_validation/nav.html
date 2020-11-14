@@ -4,29 +4,16 @@
     <nav class="navbar">
         <div class="navbar-brand">
             <div class="logo-wrapper navbar-item">
-                <span class="nav-logo-img">
+                <div class="nav-logo-img">
                     <img src='./images/ramlLogo.svg'>
-                </span>
-                <span style="margin-left: 5px" class="nav-logo-text" class="nav-logo-text">Playground</span>
+                </div>
             </div>
         </div>
-        <div class="navbar-start navbar-menu">
-
-        </div>
-        <div class="navbar-end navbar-menu">
-            <span class="navbar-item">
-                <a class="button" data-bind="click: loadModal.show.bind(loadModal)">
-                    <span class="icon">
-                        <i class="fas fa-folder-open"></i>
-                    </span>
-                    <span>Load RAML File</span>
-                </a>
-            </span>
-        </div>
-        <div class="navbar-item">
-            <div class="dropdown is-right">
-              <select name="raml-demo" class="raml-demo-select"
-                      data-bind="event: { change: switchDemo }">
+        <div class="navbar-start">
+            <div class="dropdown is-right navbar-item">
+              <select name="raml-demo" class="raml-demo-select button"
+                      data-bind="event: { change: switchDemo }"
+                      style="padding-right: 30px;">
                   <option value="learn_raml.html">Example: Learn RAML</option>
                   <option value="raml_oas.html">Example: RAML + OAS</option>
                   <option value="visualization.html">Example: Visualization</option>
@@ -35,12 +22,16 @@
                   <option value="diff.html">Example: Diff</option>
               </select>
             </div>
-            <a href="https://github.com/raml-org/playground/tree/master/src/custom_validation"
-               title="Source code"
-               target="_blank"
-               class="source-link">
-              <img src='./images/GitHub-Mark-32px.png'>
-            </a>
+        </div>
+        <div class="navbar-end">
+          <div class="navbar-item">
+              <a href="https://github.com/raml-org/playground/tree/master/src/custom_validation"
+                 title="Source code"
+                 target="_blank"
+                 class="source-link">
+                <img src='./images/GitHub-Mark-32px.png'>
+              </a>
+          </div>
         </div>
     </nav>
 </div>

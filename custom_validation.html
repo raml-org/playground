@@ -23,7 +23,7 @@
 <body>
 <!-- Loader view -->
 <div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
-    <h2 class="title is-2">Loading Playground: Custom Validation</h2>
+    <h2 class="title is-2">Loading Example: Custom Validation</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
 
@@ -34,15 +34,15 @@
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns">
             <div class="column is-2" id="navigator-container">
                 <link rel="import" href="html_fragments/custom_validation/navigator.html">
             </div>
-            <div class="column">
+            <div class="column half-width">
                 <link rel="import" href="html_fragments/custom_validation/editor_raml.html">
             </div>
-            <div class="column">
+            <div class="column half-width">
                 <link rel="import" href="html_fragments/custom_validation/editor_profile.html">
             </div>
         </div>
@@ -106,28 +106,22 @@
                 require(['vs/editor/editor.main'], function () {
 
                     var resize = function () {
-                        var height = document.documentElement.clientHeight;
+                        var height = window.innerHeight - 108;
                         var editors = ["editor-profile-container", "editor-raml-container"];
                         editors.forEach(function(editor) {
                             var containerDiv = document.getElementById(editor);
                             var style = window.getComputedStyle(containerDiv);
                             var hidden = style.display == "none";
                             if (!hidden) {
-                                containerDiv.setAttribute("style", "height: " + (height - 180) + "px");
+                                containerDiv.setAttribute("style", "height: " + height + "px");
                             }
                         });
 
                         var navigatorHeight = getHeight("navigator");
                         var navigatorContainerHeight = getHeight("navigator-container");
-
-                        if(navigatorContainerHeight - navigatorHeight < 154) {
-                            document.getElementById("navigator").style.height = (navigatorContainerHeight - 154) + "px";
-                        } else {
-                            document.getElementById("navigator").style.height = "auto";
-                        }
-
-                        document.getElementById("shapes-list").style.height = (height - 180) + "px";
-                        document.getElementById("shapes-list").style.overflow = "scroll";
+                        document.getElementById("navigator").style.height = "auto";
+                        document.getElementById("shapes-list").style.height = (height - 10) + "px";
+                        document.getElementById("shapes-list").style.overflow = "auto";
 
                     };
 
@@ -148,9 +142,13 @@
                     var profileEditor = monaco.editor.create(document.getElementById("editor-profile-container"), {
                         language: 'raml',
                         automaticLayout: true,
-                        scrollBeyondLastLine: false,
+                        scrollBeyondLastLine: true,
                         renderLineHighlight: "none",
                         occurrencesHighlight: false,
+                        renderIndentGuides: false,
+                        overviewRulerBorder: false,
+                        lineNumbersMinChars: 3,
+                        folding: false,
                         readOnly: false,
                         value: [
                             "#%Validation Profile 1.0\n" +
@@ -218,9 +216,13 @@
                     var ramlEditor = monaco.editor.create(document.getElementById("editor-raml-container"), {
                         automaticLayout: true,
                         language: 'raml',
-                        scrollBeyondLastLine: false,
+                        scrollBeyondLastLine: true,
                         renderLineHighlight: "none",
                         occurrencesHighlight: false,
+                        renderIndentGuides: false,
+                        overviewRulerBorder: false,
+                        lineNumbersMinChars: 3,
+                        folding: false,
                         readOnly: false,
                         value: [
                             "#%RAML 1.0\n" +

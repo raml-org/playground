@@ -26,7 +26,7 @@
     <script src="bower_components/codemirror/addon/lint/json-lint.js"></script>
     <script src="bower_components/marked/lib/marked.js"></script>
     <script type="module">
-      import './web_modules/@api-components/api-documentation.js';
+      import './web_modules/custom-components.js';
     </script>
     <!-- /API Documentation -->
 
@@ -40,7 +40,7 @@
 <body>
 <!-- Loader view -->
 <div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
-    <h2 class="title is-2">Loading Playground: Learn RAML</h2>
+    <h2 class="title is-2">Loading Example: Learn RAML</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
 
@@ -52,15 +52,20 @@
 
 <!-- Main container class -->
 <div class="section learn_raml">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns">
             <div class="column">
                 <link rel="import" href="html_fragments/learn_raml/editor.html">
+
                 <div id="api-console-container">
                   <api-navigation></api-navigation>
-                  <api-documentation noTryIt="true" noBottomNavigation="true" handleNavigationEvents>
-                  </api-documentation>
+                  <x-api-documentation
+                    noTryIt="true"
+                    noBottomNavigation="true"
+                    handleNavigationEvents>
+                  </x-api-documentation>
                 </div>
+
             </div>
         </div>
     </div>
@@ -128,17 +133,15 @@
         });
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
-            var height = document.documentElement.clientHeight;
+            var height = window.innerHeight - 51;
             var containersIds = ["editor-container-raml"];
             containersIds.forEach(id => {
               var container = document.getElementById(id);
-              var offset = container.getBoundingClientRect().top + 20;
-              container.setAttribute("style", "height: " + (height - offset) + "px");
+              container.setAttribute("style", "height: " + height + "px");
             })
             var container = document.getElementById("api-console-container");
-            var offset = container.getBoundingClientRect().top + 40;
-            container.setAttribute("style", "height: " + (height - offset) + "px");
-
+            var offset = container.getBoundingClientRect().top;
+            container.setAttribute("style", "height: " + height + "px");
           }
           window.onresize = resize;
           window.resizeFn = resize;
@@ -151,9 +154,13 @@
               value: '',
               language: 'raml',
               automaticLayout: true,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false
@@ -174,7 +181,7 @@
           window.appModel = new learn_raml.ViewModel(ramlEditor);
           window.appModel.apply();
           window.appModel.loadRamlFromQueryParam();
-          window.appModel.loadDefaultRaml('examples/world-music-api/api.raml');
+          window.appModel.loadDefaultRaml('examples/orders-api/api.raml');
 
           ramlEditor.onDidChangeCursorPosition(evt => {
             if (evt.reason !== monaco.editor.CursorChangeReason.ContentFlush) {

@@ -22,7 +22,7 @@
 <body>
 <!-- Loader view -->
 <div id="preloader" class="container is-marginless is-fluid" style="background-color: white; top:0; position: absolute; width: 100%; height: 100%; text-align: center; padding-top: 13%; z-index: 1000">
-    <h2 class="title is-2">Loading Playground: RAML + OAS</h2>
+    <h2 class="title is-2">Loading Example: RAML + OAS</h2>
     <progress id="preloader-progress" class="progress is-info" value="0" max="100" style="margin-left: 25%; max-width: 50%">0%</progress>
 </div>
 
@@ -33,7 +33,7 @@
 
 <!-- Main container class -->
 <div class="section" style="padding: 0px">
-    <div id="the-app" class="container is-marginless is-fluid">
+    <div id="the-app" class="is-marginless is-fluid">
         <div class="columns">
             <div class="column half-width">
                 <link rel="import" href="html_fragments/raml_oas/editor_left.html">
@@ -105,14 +105,14 @@
         });
         require(['vs/editor/editor.main'], function() {
           var resize = function() {
-            var height = document.documentElement.clientHeight;
+            var height = window.innerHeight - 86;
             var ramlContainerDiv = document.getElementById("editor-container-raml");
             if (window.getComputedStyle(ramlContainerDiv).display !== "none") {
-              ramlContainerDiv.setAttribute("style", "height: " + (height - 165) + "px");
+              ramlContainerDiv.setAttribute("style", "height: " + height + "px");
             }
             var oasContainerDiv = document.getElementById("editor-container-oas");
             if (window.getComputedStyle(oasContainerDiv).display !== "none") {
-              oasContainerDiv.setAttribute("style", "height: " + (height - 165) + "px");
+              oasContainerDiv.setAttribute("style", "height: " + height + "px");
             }
           }
           window.onresize = resize;
@@ -128,7 +128,11 @@
               automaticLayout: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false
@@ -142,7 +146,11 @@
               automaticLayout: true,
               renderLineHighlight: "none",
               occurrencesHighlight: false,
-              scrollBeyondLastLine: false,
+              scrollBeyondLastLine: true,
+              renderIndentGuides: false,
+              overviewRulerBorder: false,
+              lineNumbersMinChars: 3,
+              folding: false,
               links: false,
               minimap: {
                 enabled: false

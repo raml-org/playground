@@ -1,14 +1,16 @@
 {
   "dependencies": {
-    "@api-components/api-documentation": "^5.0.3",
+    "@advanced-rest-client/http-code-snippets": "^3.2.0",
+    "@api-components/api-body-document": "^4.2.0",
+    "@api-components/api-documentation": "^5.0.4",
     "@pika/web": "^0.6.1"
   },
   "@pika/web": {
     "webDependencies": [
-      "@api-components/api-documentation"
+      "custom-components"
     ]
   },
   "scripts": {
-    "prepare": "pika install"
+    "prepare": "npm link js/custom-components && pika install"
   }
 }

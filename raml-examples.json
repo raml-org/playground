@@ -1,0 +1,310 @@
+[
+  {
+    "name": "annotations/advanced.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/annotations/advanced.raml"
+  },
+  {
+    "name": "annotations/annotation-targets.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/annotations/annotation-targets.raml"
+  },
+  {
+    "name": "annotations/simple-annotations.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/annotations/simple-annotations.raml"
+  },
+  {
+    "name": "defining-examples/organisation-api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/defining-examples/organisation-api.raml"
+  },
+  {
+    "name": "defining-examples/using-strict.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/defining-examples/using-strict.raml"
+  },
+  {
+    "name": "fragments/datatype/arrays/book.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/arrays/book.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/arrays/chapter.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/arrays/chapter.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/general/Email.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/general/Email.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/general/Url.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/general/Url.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/general/User.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/general/User.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/general/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/general/api.raml"
+  },
+  {
+    "name": "fragments/datatype/inheritance/Animal.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/inheritance/Animal.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/inheritance/Dog.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/inheritance/Dog.dataType.raml"
+  },
+  {
+    "name": "fragments/datatype/inheritance/animal.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/datatype/inheritance/animal.lib.raml"
+  },
+  {
+    "name": "fragments/extensions/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/extensions/api.raml"
+  },
+  {
+    "name": "fragments/extensions/dev-api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/extensions/dev-api.raml"
+  },
+  {
+    "name": "fragments/extensions/types.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/extensions/types.lib.raml"
+  },
+  {
+    "name": "fragments/overlays/librarybooks.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/overlays/librarybooks.raml"
+  },
+  {
+    "name": "fragments/overlays/spanish.overlay.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/overlays/spanish.overlay.raml"
+  },
+  {
+    "name": "fragments/resourcetype/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/resourcetype/api.raml"
+  },
+  {
+    "name": "fragments/resourcetype/collection.resourceType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/fragments/resourcetype/collection.resourceType.raml"
+  },
+  {
+    "name": "helloworld/helloworld.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/helloworld/helloworld.raml"
+  },
+  {
+    "name": "libraries/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/libraries/api.raml"
+  },
+  {
+    "name": "libraries/types.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/libraries/types.lib.raml"
+  },
+  {
+    "name": "media-types/defaults/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/media-types/defaults/api.raml"
+  },
+  {
+    "name": "media-types/multipart-data/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/media-types/multipart-data/api.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/api.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/docs/intro.doc.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/docs/intro.doc.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/docs/security.doc.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/docs/security.doc.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/hypermedia.extension.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/hypermedia.extension.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/modules/annotations.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/modules/annotations.lib.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/modules/resource-types.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/modules/resource-types.lib.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/modules/security.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/modules/security.lib.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/modules/traits.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/modules/traits.lib.raml"
+  },
+  {
+    "name": "others/alainn-mobile-shopping/modules/types.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/alainn-mobile-shopping/modules/types.lib.raml"
+  },
+  {
+    "name": "others/banking-api/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/api.raml"
+  },
+  {
+    "name": "others/banking-api/dataTypes/CustomErrorMessage.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/dataTypes/CustomErrorMessage.raml"
+  },
+  {
+    "name": "others/banking-api/dataTypes/shapes.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/dataTypes/shapes.raml"
+  },
+  {
+    "name": "others/banking-api/resourceTypes/collection.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/resourceTypes/collection.raml"
+  },
+  {
+    "name": "others/banking-api/resourceTypes/member.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/resourceTypes/member.raml"
+  },
+  {
+    "name": "others/banking-api/securitySchemes/oauth2_0.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/securitySchemes/oauth2_0.raml"
+  },
+  {
+    "name": "others/banking-api/traits/content-cacheable.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/traits/content-cacheable.raml"
+  },
+  {
+    "name": "others/banking-api/traits/pageable.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/traits/pageable.raml"
+  },
+  {
+    "name": "others/banking-api/traits/partial.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/traits/partial.raml"
+  },
+  {
+    "name": "others/banking-api/traits/sortable.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/traits/sortable.raml"
+  },
+  {
+    "name": "others/banking-api/traits/traits.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/banking-api/traits/traits.raml"
+  },
+  {
+    "name": "others/mobile-order-api/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/mobile-order-api/api.raml"
+  },
+  {
+    "name": "others/mobile-order-api/assets.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/mobile-order-api/assets.lib.raml"
+  },
+  {
+    "name": "others/tutorial-jukebox-api/jukebox-api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/tutorial-jukebox-api/jukebox-api.raml"
+  },
+  {
+    "name": "others/world-music-api/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/world-music-api/api.raml"
+  },
+  {
+    "name": "others/world-music-api/libraries/api.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/world-music-api/libraries/api.lib.raml"
+  },
+  {
+    "name": "others/world-music-api/libraries/songs.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/world-music-api/libraries/songs.lib.raml"
+  },
+  {
+    "name": "others/world-music-api/schemas/idea.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/world-music-api/schemas/idea.dataType.raml"
+  },
+  {
+    "name": "others/world-music-api/secured/accessToken.trait.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/others/world-music-api/secured/accessToken.trait.raml"
+  },
+  {
+    "name": "query-parameters/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/query-parameters/api.raml"
+  },
+  {
+    "name": "resourcetypes/optional-properties.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/resourcetypes/optional-properties.raml"
+  },
+  {
+    "name": "resourcetypes/simple-resourcetype.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/resourcetypes/simple-resourcetype.raml"
+  },
+  {
+    "name": "schemas/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/schemas/api.raml"
+  },
+  {
+    "name": "traits/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/traits/api.raml"
+  },
+  {
+    "name": "traits/orderable.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/traits/orderable.raml"
+  },
+  {
+    "name": "traits/pageable.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/traits/pageable.raml"
+  },
+  {
+    "name": "traits/secured.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/traits/secured.raml"
+  },
+  {
+    "name": "typesystem/additional-properties/recipient-with-pattern.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/additional-properties/recipient-with-pattern.dataType.raml"
+  },
+  {
+    "name": "typesystem/additional-properties/recipient.dataType.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/additional-properties/recipient.dataType.raml"
+  },
+  {
+    "name": "typesystem/array-type.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/array-type.lib.raml"
+  },
+  {
+    "name": "typesystem/complex.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/complex.raml"
+  },
+  {
+    "name": "typesystem/defining-dates.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/defining-dates.lib.raml"
+  },
+  {
+    "name": "typesystem/discriminators/discriminator.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/discriminators/discriminator.raml"
+  },
+  {
+    "name": "typesystem/discriminators/discriminatorValue.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/discriminators/discriminatorValue.raml"
+  },
+  {
+    "name": "typesystem/file-type.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/file-type.raml"
+  },
+  {
+    "name": "typesystem/monetary.lib.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/monetary.lib.raml"
+  },
+  {
+    "name": "typesystem/referencing-using-libs/api.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/referencing-using-libs/api.raml"
+  },
+  {
+    "name": "typesystem/referencing-using-libs/dataTypes/address.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/referencing-using-libs/dataTypes/address.raml"
+  },
+  {
+    "name": "typesystem/referencing-using-libs/dataTypes/customer.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/referencing-using-libs/dataTypes/customer.raml"
+  },
+  {
+    "name": "typesystem/referencing-using-libs/dataTypes/person.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/referencing-using-libs/dataTypes/person.raml"
+  },
+  {
+    "name": "typesystem/referencing-using-libs/dataTypes/shapes.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/referencing-using-libs/dataTypes/shapes.raml"
+  },
+  {
+    "name": "typesystem/simple.raml",
+    "url": "https://raw.githubusercontent.com/raml-org/raml-examples/master/typesystem/simple.raml"
+  }
+]
