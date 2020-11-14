@@ -1,5 +1,4 @@
 import * as ko from 'knockout'
-import axios from 'axios'
 
 export class LoadFileEvent {
   constructor (public location: string) {
@@ -17,7 +16,8 @@ export class LoadModal {
 
   public fileUrl: ko.Observable<string> = ko.observable<string>('');
 
-  public ghExamplesRepo = 'raml-org/raml-examples';
+  // Array of elements similar to:
+  // {name: "myApi.raml", url: "https://example.com/myApi.raml"}
   public ghExamples: ko.ObservableArray<any> = ko.observableArray([]);
   public selectedGhExample: ko.Observable<any> = ko.observable<any>();
 
@@ -28,31 +28,23 @@ export class LoadModal {
       }
     })
 
-    this.loadGhExamples()
+    this.loadRamlExamples()
   }
 
   /*
-    Loads RAML examples from `this.ghExamplesRepo` github repository.
-    First gets SHA of the latest commit on default branch and then
-    loads files tree of that commit.
+    Loads RAML examples data from a JSON file. The file is populated by
+    `gulp reloadRamlExamples` command.
   */
-  public loadGhExamples () {
-    const apiBase = `https://api.github.com/repos/${this.ghExamplesRepo}`
-    return axios.get(`${apiBase}/commits`)
-      .then(resp => {
-        const latestCommit = resp.data[0].sha
-        return axios.get(`${apiBase}/git/trees/${latestCommit}?recursive=1`)
+  public loadRamlExamples () {
+    const urlPieces = window.location.href.split('/').slice(0, -1)
+    urlPieces.push('raml-examples.json')
+    return fetch(urlPieces.join('/'))
+      .then(resp => resp.text())
+      .then(text => {
+        JSON.parse(text).forEach(x => this.ghExamples.push(x))
       })
-      .then(resp => {
-        const ramlFiles = resp.data.tree.filter(el => {
-          return el.type === 'blob' && el.path.endsWith('.raml')
-        })
-        ramlFiles.forEach(el => {
-          this.ghExamples.push({
-            name: el.path,
-            url: `https://raw.githubusercontent.com/${this.ghExamplesRepo}/master/${el.path}`
-          })
-        })
+      .catch(e => {
+        console.error(`Failed to load RAML examples: ${e.toString()}`)
       })
   }
 

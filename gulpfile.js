@@ -133,6 +133,36 @@ gulp.task('serveResolution', gulp.series(
   )
 ))
 
+/*
+  Reloads RAML examples from "raml-org/raml-examples" and writes them
+  into "docs/raml-examples.json". The JSON file is then used by
+  the Load Modal to populate "Load RAML File" dropdown.
+*/
+gulp.task('reloadRamlExamples', async () => {
+  const fs = require('fs')
+  const path = require('path')
+  const axios = require('axios')
+
+  const apiBase = 'https://api.github.com/repos/raml-org/raml-examples'
+  const ghExamples = []
+
+  const commitsResp = await axios.get(`${apiBase}/commits`)
+  const latestCommit = commitsResp.data[0].sha
+  const filesResp = await axios.get(`${apiBase}/git/trees/${latestCommit}?recursive=1`)
+  const ramlFiles = filesResp.data.tree.filter(el => {
+    return el.type === 'blob' && el.path.endsWith('.raml')
+  })
+  ramlFiles.forEach(el => {
+    ghExamples.push({
+      name: el.path,
+      url: `https://raw.githubusercontent.com/raml-org/raml-examples/master/${el.path}`
+    })
+  })
+  fs.writeFileSync(
+    path.join(__dirname, 'docs', 'raml-examples.json'),
+    JSON.stringify(ghExamples, null, 2))
+})
+
 /* Bundle all the demos */
 gulp.task('bundleAll', gulp.series(
   'css',
@@ -141,7 +171,8 @@ gulp.task('bundleAll', gulp.series(
   'bundleCustomValidation',
   'bundleDiff',
   'bundleLearnRaml',
-  'bundleResolution'
+  'bundleResolution',
+  'reloadRamlExamples'
 ))
 
 gulp.task('serve', gulp.series('serveLearnRaml'))
