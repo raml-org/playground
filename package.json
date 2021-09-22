@@ -16,7 +16,7 @@
     "axios": "^0.19.2",
     "dagre": "^0.8.5",
     "graphlib": "^2.1.8",
-    "jointjs": "^3.2.0",
+    "jointjs": "^3.4.2",
     "js-sha1": "^0.6.0",
     "jsonld": "^3.1.1",
     "knockout": "^3.5.1",
