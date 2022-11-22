@@ -31,7 +31,7 @@
     "@types/jquery": "^3.5.0",
     "@typescript-eslint/parser": "^3.7.1",
     "babelify": "^10.0.0",
-    "browser-sync": "^2.26.12",
+    "browser-sync": "^2.27.10",
     "browserify": "^16.5.1",
     "fancy-log": "^1.3.3",
     "gulp": "^4.0.2",
